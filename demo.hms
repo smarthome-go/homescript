@@ -1,0 +1,14 @@
+# This is a test
+switch(if temperature > 10 { 'switch1' } else { 'switch2' }, off)
+switch('switch', on)
+
+if switchOn('s2')  {
+     
+} else {
+
+}
+
+print('message')
+alert('title', 'message')
+notify('user', 'title', 'description')
+play('server', 'mode')

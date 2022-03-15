@@ -1,0 +1,37 @@
+Expressions = { eol }, [Expression, { eol, { eol }, Expression }], { eol } ;
+
+(* Expressions *)
+Expression  = OrExpr;
+OrExpr      = AndExpr, { '||', AndExpr } ;
+AndExpr     = EqExpr,  { '&&', EqExpr  } ;
+EqExpr      = RelExpr, [ ('==' | '!=' ), RelExpr ] ;
+RelExpr     = NotExpr, [ ( '<' | '<=' | '>' | ">=" ), NotExpr ];
+NotExpr     = ["!"], Atom;
+Atom        = number
+            | string
+            | bool
+            | identifier
+            | IfExpr
+            | CallExpr
+            | '(', Expression, ')';
+IfExpr      = 'if', Expression, '{', Expressions, '}', [ 'else', '{', Expressions, '}' ] ;
+CallExpr    = identifier, '(', [ Expression, { ',', Expression } ], ')' ;
+
+
+(* Tokens *)
+eol         = ? line break ? ;
+number      = DIGIT, {DIGIT} ;
+string      = '"', {CHAR - '"'}, '"'
+            | "'", {CHAR - "'"}, "'" ;
+bool        = 'true' | 'false' | 'on' | 'off' ;
+identifier  = LETTER, { LETTER} ;
+
+(* Character lists *)
+LETTER      = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J'
+            | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T'
+            | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | 'a' | 'b' | 'c' | 'd'
+            | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n'
+            | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x'
+            | 'y' | 'z' ;
+DIGIT       = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
+CHAR        = ? any UTF8 character ? ;
