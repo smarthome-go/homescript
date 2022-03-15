@@ -1,30 +1,29 @@
-Expressions = { eol }, [Expression, { eol, { eol }, Expression }], { eol } ;
+Expressions = { eol } , [ Expression, { eol , { eol } , Expression } ] , { eol } ;
 
 (* Expressions *)
-Expression  = OrExpr;
-OrExpr      = AndExpr, { '||', AndExpr } ;
-AndExpr     = EqExpr,  { '&&', EqExpr  } ;
-EqExpr      = RelExpr, [ ('==' | '!=' ), RelExpr ] ;
-RelExpr     = NotExpr, [ ( '<' | '<=' | '>' | ">=" ), NotExpr ];
-NotExpr     = ["!"], Atom;
+Expression  = OrExpr ;
+OrExpr      = AndExpr , { '||' , AndExpr } ;
+AndExpr     = EqExpr , { '&&' , EqExpr } ;
+EqExpr      = RelExpr , [ ( '==' | '!=' ) , RelExpr ] ;
+RelExpr     = NotExpr , [ ( '<' | '<=' | '>' | '>=' ) , NotExpr ] ;
+NotExpr     = [ '!' ] , Atom ;
 Atom        = number
             | string
             | bool
             | identifier
             | IfExpr
             | CallExpr
-            | '(', Expression, ')';
-IfExpr      = 'if', Expression, '{', Expressions, '}', [ 'else', '{', Expressions, '}' ] ;
-CallExpr    = identifier, '(', [ Expression, { ',', Expression } ], ')' ;
-
+            | '(' , Expression , ')' ;
+IfExpr      = 'if' , Expression , '{' , Expressions , '}' , [ 'else' , '{' , Expressions , '}' ] ;
+CallExpr    = identifier , '(' , [ Expression , { ',' , Expression } ] , ')' ;
 
 (* Tokens *)
 eol         = ? line break ? ;
-number      = DIGIT, {DIGIT} ;
-string      = '"', {CHAR - '"'}, '"'
-            | "'", {CHAR - "'"}, "'" ;
+number      = DIGIT , { DIGIT } ;
+string      = '"' , { CHAR - '"' } , '"'
+            | "'" , { CHAR - "'" } , "'" ;
 bool        = 'true' | 'false' | 'on' | 'off' ;
-identifier  = LETTER, { LETTER} ;
+identifier  = LETTER , { LETTER } ;
 
 (* Character lists *)
 LETTER      = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J'
