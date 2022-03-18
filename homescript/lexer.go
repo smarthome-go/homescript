@@ -9,7 +9,7 @@ type Lexer struct {
 }
 
 var (
-	ErrQuotesNotClosed = errors.New("string quote was opened but not closed")
+	ErrQuotesNotClosed = errors.New("String literal was never closed")
 )
 
 func NewLexer(input string) Lexer {
@@ -42,20 +42,22 @@ func (self *Lexer) makeString() (Token, error) {
 	startQuote := self.CurrentChar
 	var value string
 
-	self.advance()
+	self.advance() // Skip opening quote
 	for self.CurrentChar != nil && *self.CurrentChar != *startQuote {
 		value += string(*self.CurrentChar)
 		self.advance()
 	}
 
+	// Check for closing quote
 	if self.CurrentChar == nil {
-		// String is never closed
 		return Token{}, ErrQuotesNotClosed
 	}
 
-	// String is properly closed
-	self.advance()
-	return Token{}, nil
+	self.advance() // Skip closing quote
+	return Token{
+		TokenType: String,
+		Value:     value,
+	}, nil
 }
 
 func (self *Lexer) advance() {

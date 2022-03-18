@@ -28,15 +28,16 @@ const (
 	Else               // else
 )
 
-type Position struct {
-	Filename string
-	Index    uint32
-	Line     uint32
-	Column   int32
-}
+// TODO: Add positions to tokens and errors
+// type Position struct {
+// 	Filename string
+// 	Index    uint32
+// 	Line     uint32
+// 	Column   int32
+// }
 
 type Token struct {
 	TokenType TokenType
 	Value     string
-	Position  Position
+	// Position  Position
 }
