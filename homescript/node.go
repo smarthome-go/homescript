@@ -2,9 +2,7 @@ package homescript
 
 type Expressions []Expression
 
-type Expression OrExpr
-
-type OrExpr struct {
+type Expression struct {
 	Base      AndExpr
 	Following []AndExpr
 }

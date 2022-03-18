@@ -3,11 +3,12 @@ package homescript
 type TokenType uint8
 
 const (
-	EOF        TokenType = iota
-	EOL                  // \n
-	Number               // int
-	String               // " "
-	Identifier           // temperature, sleep
+	Unknown TokenType = iota
+	EOF
+	EOL        // \n
+	Number     // int
+	String     // " "
+	Identifier // temperature, sleep
 
 	// Terminal symbols
 	Or                 // ||
