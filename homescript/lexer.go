@@ -161,18 +161,25 @@ func (self *Lexer) makeSingleChar(tokenType TokenType) Token {
 }
 
 func (self *Lexer) makeString() (Token, error) {
-	startQuote := self.CurrentChar
+	startQuote := *self.CurrentChar
+	fmt.Printf("start quote: %c", startQuote)
 	var value string
 
+	fmt.Printf("%c\n", *self.CurrentChar)
 	self.advance() // Skip opening quote
-	for self.CurrentChar != nil && *self.CurrentChar != *startQuote {
+	for self.CurrentChar != nil {
+		if *self.CurrentChar == startQuote {
+			fmt.Println("start quote reached")
+			break
+		}
 		value += string(*self.CurrentChar)
+		fmt.Printf("%c\n", *self.CurrentChar)
 		self.advance()
 	}
 
 	// Check for closing quote
 	if self.CurrentChar == nil {
-		return Token{}, errors.New("String literal was never closed")
+		return Token{}, errors.New("String literal never closed")
 	}
 
 	self.advance() // Skip closing quote

@@ -3,7 +3,7 @@ package homescript
 import "fmt"
 
 func Test() {
-	program := `print(42, 'homescript gut')`
+	program := "print(42, 'homescript gut')"
 	// parser := NewParser(NewLexer(program))
 	// res, err := parser.Parse()
 	// if len(err) > 0 {
@@ -15,7 +15,11 @@ func Test() {
 	// fmt.Println(res)
 
 	lexer := NewLexer(program)
-	for res, err := lexer.Scan(); err != nil; {
+	for {
+		res, err := lexer.Scan()
+		if err != nil {
+			panic(err.Error())
+		}
 		fmt.Println(res)
 	}
 }
