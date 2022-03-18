@@ -71,6 +71,7 @@ func (self *Lexer) Scan() (Token, error) {
 			}
 			return Token{}, errors.New(fmt.Sprintf("Illegal character: %c", *self.CurrentChar))
 		}
+		self.advance()
 	}
 	return Token{
 		TokenType: EOF,
@@ -114,6 +115,7 @@ func (self *Lexer) makeNumber() Token {
 	self.advance()
 	for self.CurrentChar != nil && isDigit(*self.CurrentChar) {
 		value += string(*self.CurrentChar)
+		self.advance()
 	}
 	return Token{
 		TokenType: Number,
