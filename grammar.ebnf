@@ -1,8 +1,7 @@
 Expressions = { eol } , [ Expression, { eol , { eol } , Expression } ] , { eol } ;
 
 (* Expressions *)
-Expression  = OrExpr ;
-OrExpr      = AndExpr , { '||' , AndExpr } ;
+Expression  = AndExpr , { '||' , AndExpr } ;
 AndExpr     = EqExpr , { '&&' , EqExpr } ;
 EqExpr      = RelExpr , [ ( '==' | '!=' ) , RelExpr ] ;
 RelExpr     = NotExpr , [ ( '<' | '<=' | '>' | '>=' ) , NotExpr ] ;
