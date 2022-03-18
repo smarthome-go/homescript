@@ -11,10 +11,6 @@ type Lexer struct {
 	Input        []rune
 }
 
-var (
-	ErrQuotesNotClosed = errors.New("String literal was never closed")
-)
-
 func NewLexer(input string) Lexer {
 	var currentChar *rune
 	if input == "" {
@@ -174,7 +170,7 @@ func (self *Lexer) makeString() (Token, error) {
 
 	// Check for closing quote
 	if self.CurrentChar == nil {
-		return Token{}, ErrQuotesNotClosed
+		return Token{}, errors.New("String literal was never closed")
 	}
 
 	self.advance() // Skip closing quote
