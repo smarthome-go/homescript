@@ -3,7 +3,19 @@ package homescript
 import "fmt"
 
 func Test() {
-	fmt.Println("hallo")
-	lexer := NewLexer("")
-	lexer.Scan()
+	program := `print(42, 'homescript gut')`
+	// parser := NewParser(NewLexer(program))
+	// res, err := parser.Parse()
+	// if len(err) > 0 {
+	// 	for i := 0; i < len(err); i += 1 {
+	// 		fmt.Println(err[i].Error())
+	// 	}
+	// 	return
+	// }
+	// fmt.Println(res)
+
+	lexer := NewLexer(program)
+	for res, err := lexer.Scan(); err != nil; {
+		fmt.Println(res)
+	}
 }
