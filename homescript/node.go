@@ -35,7 +35,7 @@ type NotExpr struct {
 	Base    Atom
 }
 
-// Atoms
+///////////// Atom /////////////
 
 type AtomKind uint8
 
