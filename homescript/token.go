@@ -29,8 +29,10 @@ const (
 )
 
 type Position struct {
-	Line   uint32
-	Column int32
+	Filename string
+	Index    uint32
+	Line     uint32
+	Column   int32
 }
 
 type Token struct {
