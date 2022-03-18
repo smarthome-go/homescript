@@ -34,7 +34,9 @@ func (self *Lexer) Scan() (Token, error) {
 			self.advance()
 		case '\r':
 			self.advance()
-		case '"' | '\'':
+		case '"':
+			return self.makeString()
+		case '\'':
 			return self.makeString()
 		case '#':
 			self.skipComment()

@@ -3,7 +3,8 @@ package homescript
 import "fmt"
 
 func Test() {
-	program := "print(42, 'homescript gut')"
+	// If there is a ' ' in the code, an error will occur
+	program := `print(42, 12, "homescript gut")`
 	// parser := NewParser(NewLexer(program))
 	// res, err := parser.Parse()
 	// if len(err) > 0 {
@@ -20,6 +21,9 @@ func Test() {
 		if err != nil {
 			panic(err.Error())
 		}
-		fmt.Println(res)
+		fmt.Println(res.Value)
+		if res.TokenType == EOF {
+			return
+		}
 	}
 }
