@@ -7,7 +7,7 @@ const (
 	EOL                  // \n
 	Number               // int
 	String               // " "
-	Identifier           // true | false | on | off
+	Identifier           // temperature, sleep
 
 	// Terminal symbols
 	Or                 // ||
@@ -26,6 +26,8 @@ const (
 	Comma              // ,
 	If                 // if
 	Else               // else
+	True               // true | on
+	False              // false | off
 )
 
 // TODO: Add positions to tokens and errors
