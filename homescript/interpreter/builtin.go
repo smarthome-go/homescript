@@ -31,15 +31,11 @@ func Sleep(_ Executor, args ...Value) (Value, error) {
 func Print(executor Executor, args ...Value) (Value, error) {
 	msgs := make([]string, 0)
 	for _, arg := range args {
-		if arg.Type() == Variable {
-			val, err := arg.(ValueVariable).Callback(executor)
-			if err != nil {
-				return nil, err
-			}
-			msgs = append(msgs, val.ToString())
-		} else {
-			msgs = append(msgs, arg.ToString())
+		res, err := arg.ToString(executor)
+		if err != nil {
+			return nil, err
 		}
+		msgs = append(msgs, res)
 	}
 	executor.Print(msgs...)
 	return ValueVoid{}, nil
