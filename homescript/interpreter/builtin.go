@@ -5,6 +5,17 @@ import (
 	"time"
 )
 
+func Exit(executor Executor, args ...Value) (Value, error) {
+	if len(args) != 1 {
+		return nil, fmt.Errorf("Function 'exit' takes 1 argument but %d were given", len(args))
+	}
+	if args[0].Type() != Number {
+		return nil, fmt.Errorf("First argument of function 'exit' has to be of type Number")
+	}
+	executor.Exit(args[0].(ValueNumber).Value)
+	return ValueVoid{}, nil
+}
+
 func Sleep(_ Executor, args ...Value) (Value, error) {
 	if len(args) != 1 {
 		return nil, fmt.Errorf("Function 'sleep' takes 1 argument but %d were given", len(args))

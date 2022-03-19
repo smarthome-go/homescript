@@ -9,7 +9,7 @@ const (
 )
 
 type Executor interface {
-	Sleep(seconds int)
+	Exit(code int)
 	Print(args ...string)
 	SwitchOn(name string) (bool, error)
 	Switch(name string, on bool) error
