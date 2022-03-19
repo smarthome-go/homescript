@@ -26,7 +26,7 @@ func (self ValueVoid) ToString() string { return "void" }
 type ValueNumber struct{ value int }
 
 func (self ValueNumber) Type() ValueType  { return Number }
-func (self ValueNumber) ToString() string { return string(self.value) }
+func (self ValueNumber) ToString() string { return fmt.Sprint(self.value) }
 
 type ValueString struct{ value string }
 
