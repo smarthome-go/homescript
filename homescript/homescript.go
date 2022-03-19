@@ -60,11 +60,13 @@ func (self DummyExecutor) GetDate() (int, int, int, int, int, int) {
 }
 
 func Test() {
+	start := time.Now()
 	content, err1 := ioutil.ReadFile("demo.hms")
+	fmt.Printf("File Read: %v\n", time.Since(start))
 	if err1 != nil {
 		panic(err1.Error())
 	}
-
+	fmt.Printf("Parsing: %v\n", time.Since(start))
 	parser := NewParser(NewLexer(string(content)))
 	res, err := parser.Parse()
 	if len(err) > 0 {
@@ -74,5 +76,11 @@ func Test() {
 		return
 	}
 	runner := NewInterpreter(res, DummyExecutor{})
-	runner.Run()
+	startRun := time.Now()
+	errRuntime := runner.Run()
+	if errRuntime != nil {
+		fmt.Println(errRuntime.Error())
+	}
+	fmt.Printf("Execution: %v\n", time.Since(startRun))
+	fmt.Printf("TOTAL: %v\n", time.Since(start))
 }

@@ -130,6 +130,10 @@ func Notify(executor Executor, args ...Value) (Value, error) {
 	return ValueVoid{}, nil
 }
 
+func Log(executor Executor, args ...Value) (Value, error) {
+
+}
+
 ////////////// Variables //////////////
 func GetUser(executor Executor) (Value, error) {
 	return ValueString{Value: executor.GetUser()}, nil
