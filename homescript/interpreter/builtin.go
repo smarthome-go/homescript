@@ -12,7 +12,7 @@ func Sleep(_ Executor, args ...Value) (Value, error) {
 	if args[0].Type() != Number {
 		return nil, fmt.Errorf("First argument of function 'sleep' has to be of type Number")
 	}
-	seconds := args[0].(ValueNumber).value
+	seconds := args[0].(ValueNumber).Value
 	time.Sleep(time.Second * time.Duration(seconds))
 	return ValueVoid{}, nil
 }
@@ -21,7 +21,7 @@ func Print(executor Executor, args ...Value) (Value, error) {
 	msgs := make([]string, 0)
 	for _, arg := range args {
 		if arg.Type() == Variable {
-			val, err := arg.(ValueVariable).callback(executor)
+			val, err := arg.(ValueVariable).Callback(executor)
 			if err != nil {
 				return nil, err
 			}
@@ -41,13 +41,13 @@ func SwitchOn(executor Executor, args ...Value) (Value, error) {
 	if args[0].Type() != String {
 		return nil, fmt.Errorf("First argument of function 'switchOn' has to be of type String")
 	}
-	name := args[0].(ValueString).value
+	name := args[0].(ValueString).Value
 	value, err := executor.SwitchOn(name)
 	if err != nil {
 		return nil, err
 	}
 	return ValueBoolean{
-		value: value,
+		Value: value,
 	}, nil
 }
 
@@ -61,8 +61,8 @@ func Switch(executor Executor, args ...Value) (Value, error) {
 	if args[1].Type() != Boolean {
 		return nil, fmt.Errorf("Second argument of function 'switch' has to be of type Boolean")
 	}
-	name := args[0].(ValueString).value
-	on := args[1].(ValueBoolean).value
+	name := args[0].(ValueString).Value
+	on := args[1].(ValueBoolean).Value
 	err := executor.Switch(name, on)
 	if err != nil {
 		return nil, err
@@ -80,8 +80,8 @@ func Play(executor Executor, args ...Value) (Value, error) {
 	if args[1].Type() != String {
 		return nil, fmt.Errorf("Second argument of function 'play' has to be of type String")
 	}
-	server := args[0].(ValueString).value
-	mode := args[1].(ValueString).value
+	server := args[0].(ValueString).Value
+	mode := args[1].(ValueString).Value
 	err := executor.Play(server, mode)
 	if err != nil {
 		return nil, err
@@ -102,9 +102,9 @@ func Notify(executor Executor, args ...Value) (Value, error) {
 	if args[2].Type() != Number {
 		return nil, fmt.Errorf("Third argument of function 'notify' has to be of type Number")
 	}
-	title := args[0].(ValueString).value
-	description := args[1].(ValueString).value
-	rawLevel := args[2].(ValueNumber).value
+	title := args[0].(ValueString).Value
+	description := args[1].(ValueString).Value
+	rawLevel := args[2].(ValueNumber).Value
 	var level NotificationLevel
 	switch rawLevel {
 	case 1:
@@ -125,7 +125,7 @@ func Notify(executor Executor, args ...Value) (Value, error) {
 
 ////////////// Variables //////////////
 func GetUser(executor Executor) (Value, error) {
-	return ValueString{value: executor.GetUser()}, nil
+	return ValueString{Value: executor.GetUser()}, nil
 }
 
 func GetWeather(executor Executor) (Value, error) {
@@ -133,7 +133,7 @@ func GetWeather(executor Executor) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ValueString{value: val}, nil
+	return ValueString{Value: val}, nil
 }
 
 func GetTemperature(executor Executor) (Value, error) {
@@ -141,35 +141,35 @@ func GetTemperature(executor Executor) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ValueNumber{value: val}, nil
+	return ValueNumber{Value: val}, nil
 }
 
 func GetCurrentYear(executor Executor) (Value, error) {
 	year, _, _, _, _, _ := executor.GetDate()
-	return ValueNumber{value: year}, nil
+	return ValueNumber{Value: year}, nil
 }
 
 func GetCurrentMonth(executor Executor) (Value, error) {
 	_, month, _, _, _, _ := executor.GetDate()
-	return ValueNumber{value: month}, nil
+	return ValueNumber{Value: month}, nil
 }
 
 func GetCurrentDay(executor Executor) (Value, error) {
 	_, _, day, _, _, _ := executor.GetDate()
-	return ValueNumber{value: day}, nil
+	return ValueNumber{Value: day}, nil
 }
 
 func GetCurrentHour(executor Executor) (Value, error) {
 	_, _, _, hour, _, _ := executor.GetDate()
-	return ValueNumber{value: hour}, nil
+	return ValueNumber{Value: hour}, nil
 }
 
 func GetCurrentMinute(executor Executor) (Value, error) {
 	_, _, _, _, minute, _ := executor.GetDate()
-	return ValueNumber{value: minute}, nil
+	return ValueNumber{Value: minute}, nil
 }
 
 func GetCurrentSecond(executor Executor) (Value, error) {
 	_, _, _, _, _, second := executor.GetDate()
-	return ValueNumber{value: second}, nil
+	return ValueNumber{Value: second}, nil
 }

@@ -23,30 +23,30 @@ type ValueVoid struct{}
 func (self ValueVoid) Type() ValueType  { return Void }
 func (self ValueVoid) ToString() string { return "void" }
 
-type ValueNumber struct{ value int }
+type ValueNumber struct{ Value int }
 
 func (self ValueNumber) Type() ValueType  { return Number }
-func (self ValueNumber) ToString() string { return fmt.Sprint(self.value) }
+func (self ValueNumber) ToString() string { return fmt.Sprint(self.Value) }
 
-type ValueString struct{ value string }
+type ValueString struct{ Value string }
 
 func (self ValueString) Type() ValueType  { return String }
-func (self ValueString) ToString() string { return self.value }
+func (self ValueString) ToString() string { return self.Value }
 
-type ValueBoolean struct{ value bool }
+type ValueBoolean struct{ Value bool }
 
 func (self ValueBoolean) Type() ValueType  { return Boolean }
-func (self ValueBoolean) ToString() string { return fmt.Sprintf("%t", self.value) }
+func (self ValueBoolean) ToString() string { return fmt.Sprintf("%t", self.Value) }
 
 type ValueFunction struct {
-	callback func(executor Executor, args ...Value) (Value, error)
+	Callback func(executor Executor, args ...Value) (Value, error)
 }
 
 func (self ValueFunction) Type() ValueType  { return Function }
 func (self ValueFunction) ToString() string { return "<function>" }
 
 type ValueVariable struct {
-	callback func(executor Executor) (Value, error)
+	Callback func(executor Executor) (Value, error)
 }
 
 func (self ValueVariable) Type() ValueType  { return Variable }
