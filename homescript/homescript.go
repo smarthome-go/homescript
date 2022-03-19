@@ -1,10 +1,17 @@
 package homescript
 
-import "fmt"
+import (
+	"fmt"
+	"io/ioutil"
+)
 
 func Test() {
-	program := `print(42, 12, "homescript gut")`
-	parser := NewParser(NewLexer(program))
+	content, err1 := ioutil.ReadFile("demo.hms")
+	if err1 != nil {
+		panic(err1.Error())
+	}
+
+	parser := NewParser(NewLexer(string(content)))
 	res, err := parser.Parse()
 	if len(err) > 0 {
 		for i := 0; i < len(err); i += 1 {
