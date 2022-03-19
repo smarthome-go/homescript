@@ -11,14 +11,14 @@ const (
 type Executor interface {
 	Sleep(seconds int)
 	Print(args ...string)
-	SwitchOn(name string) bool
-	Switch(name string, on bool)
-	Play(server string, mode string)
-	Notify(title string, description string, level NotificationLevel)
+	SwitchOn(name string) (bool, error)
+	Switch(name string, on bool) error
+	Play(server string, mode string) error
+	Notify(title string, description string, level NotificationLevel) error
 
 	// Builtin variables
 	GetUser() string
-	GetWeather() string
-	GetTemperature() int
+	GetWeather() (string, error)
+	GetTemperature() (int, error)
 	GetDate() (int, int, int, int, int, int)
 }
