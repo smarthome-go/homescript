@@ -52,7 +52,7 @@ func (self ValueNumber) IsLessThan(executor Executor, other Value) (bool, error)
 		val = other
 	}
 	if val.Type() != Number {
-		return false, fmt.Errorf("Cannot compare void type with %s type", val.TypeName())
+		return false, fmt.Errorf("Cannot compare %s type with %s type", self.TypeName(), val.TypeName())
 	}
 	return self.Value < val.(ValueNumber).Value, nil
 }
@@ -68,7 +68,7 @@ func (self ValueNumber) IsLessThanOrEqual(executor Executor, other Value) (bool,
 		val = other
 	}
 	if val.Type() != Number {
-		return false, fmt.Errorf("Cannot compare void type with %s type", val.TypeName())
+		return false, fmt.Errorf("Cannot compare %s type with %s type", self.TypeName(), val.TypeName())
 	}
 	return self.Value <= val.(ValueNumber).Value, nil
 }
@@ -84,7 +84,7 @@ func (self ValueNumber) IsGreaterThan(executor Executor, other Value) (bool, err
 		val = other
 	}
 	if val.Type() != Number {
-		return false, fmt.Errorf("Cannot compare void type with %s type", val.TypeName())
+		return false, fmt.Errorf("Cannot compare %s type with %s type", self.TypeName(), val.TypeName())
 	}
 	return self.Value > val.(ValueNumber).Value, nil
 }
@@ -100,7 +100,7 @@ func (self ValueNumber) IsGreaterThanOrEqual(executor Executor, other Value) (bo
 		val = other
 	}
 	if val.Type() != Number {
-		return false, fmt.Errorf("Cannot compare void type with %s type", val.TypeName())
+		return false, fmt.Errorf("Cannot compare %s type with %s type", self.TypeName(), val.TypeName())
 	}
 	return self.Value >= val.(ValueNumber).Value, nil
 }
@@ -175,7 +175,7 @@ func (self ValueVariable) IsLessThan(executor Executor, other Value) (bool, erro
 		return false, err
 	}
 	if val.Type() != Number {
-		return false, fmt.Errorf("Cannot compare void type with %s type", other.TypeName())
+		return false, fmt.Errorf("Cannot compare %s type with %s type", val.TypeName(), other.TypeName())
 	}
 	return val.(ValueNumber).IsLessThan(executor, other)
 }
@@ -185,7 +185,7 @@ func (self ValueVariable) IsLessThanOrEqual(executor Executor, other Value) (boo
 		return false, err
 	}
 	if val.Type() != Number {
-		return false, fmt.Errorf("Cannot compare void type with %s type", other.TypeName())
+		return false, fmt.Errorf("Cannot compare %s type with %s type", val.TypeName(), other.TypeName())
 	}
 	return val.(ValueNumber).IsLessThanOrEqual(executor, other)
 }
@@ -195,7 +195,7 @@ func (self ValueVariable) IsGreaterThan(executor Executor, other Value) (bool, e
 		return false, err
 	}
 	if val.Type() != Number {
-		return false, fmt.Errorf("Cannot compare void type with %s type", other.TypeName())
+		return false, fmt.Errorf("Cannot compare %s type with %s type", val.TypeName(), other.TypeName())
 	}
 	return val.(ValueNumber).IsGreaterThan(executor, other)
 }
@@ -205,7 +205,7 @@ func (self ValueVariable) IsGreaterThanOrEqual(executor Executor, other Value) (
 		return false, err
 	}
 	if val.Type() != Number {
-		return false, fmt.Errorf("Cannot compare void type with %s type", other.TypeName())
+		return false, fmt.Errorf("Cannot compare %s type with %s type", val.TypeName(), other.TypeName())
 	}
 	return val.(ValueNumber).IsGreaterThanOrEqual(executor, other)
 }
