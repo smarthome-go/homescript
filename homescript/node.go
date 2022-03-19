@@ -29,8 +29,8 @@ type RelExpr struct {
 }
 
 type NotExpr struct {
-	Negated bool
 	Base    Atom
+	Negated bool
 }
 
 ///////////// Atom /////////////
