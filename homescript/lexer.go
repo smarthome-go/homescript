@@ -25,55 +25,54 @@ func NewLexer(input string) Lexer {
 	}
 }
 
-func (l *Lexer) Scan() (Token, error) {
-	for l.CurrentChar != nil {
-		switch *l.CurrentChar {
+func (self *Lexer) Scan() (Token, error) {
+	for self.CurrentChar != nil {
+		switch *self.CurrentChar {
 		case ' ':
-			l.advance()
+			fallthrough
 		case '\t':
-			l.advance()
+			fallthrough
 		case '\r':
-			l.advance()
+			self.advance()
 		case '"':
-			return l.makeString()
+			fallthrough
 		case '\'':
-			return l.makeString()
+			return self.makeString()
 		case '#':
-			l.skipComment()
+			self.skipComment()
 		case '|':
-			return l.makeDoubleChar('|', Or)
+			return self.makeDoubleChar('|', Or)
 		case '&':
-			return l.makeDoubleChar('&', And)
+			return self.makeDoubleChar('&', And)
 		case '=':
-			return l.makeDoubleChar('=', Equal)
+			return self.makeDoubleChar('=', Equal)
 		case '!':
-			return l.makeOptionalEquals(Not, NotEqual), nil
+			return self.makeOptionalEquals(Not, NotEqual), nil
 		case '<':
-			return l.makeOptionalEquals(LessThan, LessThanOrEqual), nil
+			return self.makeOptionalEquals(LessThan, LessThanOrEqual), nil
 		case '>':
-			return l.makeOptionalEquals(GreaterThan, GreaterThanOrEqual), nil
+			return self.makeOptionalEquals(GreaterThan, GreaterThanOrEqual), nil
 		case '(':
-			return l.makeSingleChar(LeftParenthesis), nil
+			return self.makeSingleChar(LeftParenthesis), nil
 		case ')':
-			return l.makeSingleChar(RightParenthesis), nil
+			return self.makeSingleChar(RightParenthesis), nil
 		case '{':
-			return l.makeSingleChar(LeftCurlyBrace), nil
+			return self.makeSingleChar(LeftCurlyBrace), nil
 		case '}':
-			return l.makeSingleChar(RightCurlyBrace), nil
+			return self.makeSingleChar(RightCurlyBrace), nil
 		case ',':
-			return l.makeSingleChar(Comma), nil
+			return self.makeSingleChar(Comma), nil
 		case '\n':
-			return l.makeSingleChar(EOL), nil
+			return self.makeSingleChar(EOL), nil
 		default:
-			if isDigit(*l.CurrentChar) {
-				return l.makeNumber(), nil
+			if isDigit(*self.CurrentChar) {
+				return self.makeNumber(), nil
 			}
-			if isLetter(*l.CurrentChar) {
-				return l.makeName(), nil
+			if isLetter(*self.CurrentChar) {
+				return self.makeName(), nil
 			}
-			return Token{}, errors.New(fmt.Sprintf("Illegal character: %c", *l.CurrentChar))
+			return Token{}, errors.New(fmt.Sprintf("Illegal character: %c", *self.CurrentChar))
 		}
-		l.advance()
 	}
 	return Token{
 		TokenType: EOF,
@@ -81,12 +80,12 @@ func (l *Lexer) Scan() (Token, error) {
 	}, nil
 }
 
-func (l *Lexer) makeName() Token {
-	value := string(*l.CurrentChar)
-	l.advance()
-	for l.CurrentChar != nil && isLetter(*l.CurrentChar) {
-		value += string(*l.CurrentChar)
-		l.advance()
+func (self *Lexer) makeName() Token {
+	value := string(*self.CurrentChar)
+	self.advance()
+	for self.CurrentChar != nil && isLetter(*self.CurrentChar) {
+		value += string(*self.CurrentChar)
+		self.advance()
 	}
 	var tokenType TokenType
 	switch value {
@@ -112,12 +111,12 @@ func (l *Lexer) makeName() Token {
 
 }
 
-func (l *Lexer) makeNumber() Token {
-	value := string(*l.CurrentChar)
-	l.advance()
-	for l.CurrentChar != nil && isDigit(*l.CurrentChar) {
-		value += string(*l.CurrentChar)
-		l.advance()
+func (self *Lexer) makeNumber() Token {
+	value := string(*self.CurrentChar)
+	self.advance()
+	for self.CurrentChar != nil && isDigit(*self.CurrentChar) {
+		value += string(*self.CurrentChar)
+		self.advance()
 	}
 	return Token{
 		TokenType: Number,
@@ -125,11 +124,11 @@ func (l *Lexer) makeNumber() Token {
 	}
 }
 
-func (l *Lexer) makeOptionalEquals(standardTokenType TokenType, withEqualTokenType TokenType) Token {
-	char := *l.CurrentChar
-	l.advance()
-	if l.CurrentChar != nil && *l.CurrentChar == '=' {
-		l.advance()
+func (self *Lexer) makeOptionalEquals(standardTokenType TokenType, withEqualTokenType TokenType) Token {
+	char := *self.CurrentChar
+	self.advance()
+	if self.CurrentChar != nil && *self.CurrentChar == '=' {
+		self.advance()
 		return Token{
 			TokenType: withEqualTokenType,
 			Value:     string(char) + "=",
@@ -141,68 +140,64 @@ func (l *Lexer) makeOptionalEquals(standardTokenType TokenType, withEqualTokenTy
 	}
 }
 
-func (l *Lexer) makeDoubleChar(char rune, tokenType TokenType) (Token, error) {
-	l.advance()
-	if l.CurrentChar == nil || *l.CurrentChar != char {
-		return Token{}, errors.New(fmt.Sprintf("Expected character: %c, found: %c", char, *l.CurrentChar))
+func (self *Lexer) makeDoubleChar(char rune, tokenType TokenType) (Token, error) {
+	self.advance()
+	if self.CurrentChar == nil || *self.CurrentChar != char {
+		return Token{}, errors.New(fmt.Sprintf("Expected character: %c, found: %c", char, *self.CurrentChar))
 	}
-	l.advance()
+	self.advance()
 	return Token{
 		TokenType: tokenType,
 		Value:     string(char) + string(char),
 	}, nil
 }
 
-func (l *Lexer) makeSingleChar(tokenType TokenType) Token {
-	char := *l.CurrentChar
-	l.advance()
+func (self *Lexer) makeSingleChar(tokenType TokenType) Token {
+	char := *self.CurrentChar
+	self.advance()
 	return Token{
 		TokenType: tokenType,
 		Value:     string(char),
 	}
 }
 
-func (l *Lexer) makeString() (Token, error) {
-	startQuote := *l.CurrentChar
-	fmt.Printf("start quote: %c", startQuote)
+func (self *Lexer) makeString() (Token, error) {
+	startQuote := *self.CurrentChar
 	var value string
 
-	fmt.Printf("%c\n", *l.CurrentChar)
-	l.advance() // Skip opening quote
-	for l.CurrentChar != nil {
-		if *l.CurrentChar == startQuote {
-			fmt.Println("start quote reached")
+	self.advance() // Skip opening quote
+	for self.CurrentChar != nil {
+		if *self.CurrentChar == startQuote {
 			break
 		}
-		value += string(*l.CurrentChar)
-		fmt.Printf("%c\n", *l.CurrentChar)
-		l.advance()
+		value += string(*self.CurrentChar)
+		self.advance()
 	}
 
 	// Check for closing quote
-	if l.CurrentChar == nil {
+	if self.CurrentChar == nil {
 		return Token{}, errors.New("String literal never closed")
 	}
 
-	l.advance() // Skip closing quote
+	self.advance() // Skip closing quote
 	return Token{
 		TokenType: String,
 		Value:     value,
 	}, nil
 }
 
-func (l *Lexer) skipComment() {
-	l.advance()
-	for l.CurrentChar != nil && *l.CurrentChar != '\n' {
-		l.advance()
+func (self *Lexer) skipComment() {
+	self.advance()
+	for self.CurrentChar != nil && *self.CurrentChar != '\n' {
+		self.advance()
 	}
 }
 
-func (l *Lexer) advance() {
-	l.CurrentIndex += 1
-	if l.CurrentIndex >= uint32(len(l.Input)) {
-		l.CurrentChar = nil
+func (self *Lexer) advance() {
+	self.CurrentIndex += 1
+	if self.CurrentIndex >= uint32(len(self.Input)) {
+		self.CurrentChar = nil
 		return
 	}
-	l.CurrentChar = &l.Input[l.CurrentIndex]
+	self.CurrentChar = &self.Input[self.CurrentIndex]
 }
