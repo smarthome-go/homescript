@@ -242,6 +242,7 @@ func (self *Parser) atom() (Atom, error) {
 		}, nil
 	}
 	if self.isType(LeftParenthesis) {
+		self.advance()
 		expr, err := self.expression()
 		if err != nil {
 			return nil, err
