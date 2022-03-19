@@ -41,6 +41,19 @@ func (self *DummyExecutor) Notify(
 func (self *DummyExecutor) Play(server string, mode string) {
 	fmt.Printf("Playing '%s' on server '%s'\n", mode, server)
 }
+func (self *DummyExecutor) GetUser() string {
+	return "admin"
+}
+func (self *DummyExecutor) GetWeather() string {
+	return "rainy"
+}
+func (self *DummyExecutor) GetTemperature() int {
+	return 42
+}
+func (self *DummyExecutor) GetDate() (int, int, int, int, int, int) {
+	now := time.Now()
+	return now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second()
+}
 
 func Test() {
 	content, err1 := ioutil.ReadFile("demo.hms")
