@@ -22,18 +22,18 @@ func NewParser(lexer Lexer) Parser {
 
 func (self *Parser) Parse() (Expressions, []error) {
 	self.advance()
-	statements, err := self.expressions()
+	expressions, err := self.expressions()
 	if err != nil {
 		self.Errors = append(self.Errors, err)
 		return nil, self.Errors
 	}
 	if self.CurrentToken.TokenType != EOF {
-		self.Errors = append(self.Errors, errors.New("expected EOF"))
+		self.Errors = append(self.Errors, fmt.Errorf("Expected EOF, got %s", self.CurrentToken.Value))
 	}
 	if len(self.Errors) > 0 {
 		return nil, self.Errors
 	}
-	return statements, nil
+	return expressions, nil
 }
 
 func (self *Parser) expect(tokenType TokenType, name string) {
@@ -58,10 +58,10 @@ func (self *Parser) isOfTypes(tokenTypes ...TokenType) bool {
 }
 
 func (self *Parser) expressions() (Expressions, error) {
-	for self.CurrentToken.TokenType == EOL {
+	for self.isType(EOL) {
 		self.advance()
 	}
-	if self.isOfTypes(EOF, RightCurlyBrace) {
+	if !self.isOfTypes(EOF, RightCurlyBrace) {
 		expressions := make(Expressions, 0)
 		expression, err := self.expression()
 		if err != nil {
