@@ -21,6 +21,13 @@ type Value interface {
 	IsEqual(executor Executor, other Value) (bool, error)
 }
 
+type ValueRelational interface {
+	IsLessThan(executor Executor, other Value) (bool, error)
+	IsLessThanOrEqual(executor Executor, other Value) (bool, error)
+	IsGreaterThan(executor Executor, other Value) (bool, error)
+	IsGreaterThanOrEqual(executor Executor, other Value) (bool, error)
+}
+
 type ValueVoid struct{}
 
 func (self ValueVoid) Type() ValueType                     { return Void }
