@@ -5,10 +5,10 @@ switch(if temperature > 10 { 'switch1' } else { 'switch2' }, off)
 # All builtins are later provided via callback
 switch('switch', on)
 
-if switchOn('s2')  {
-     
+if switchOn('s3')  {
+    print("switch is on: s2")
 } else {
-
+    print("switch is off: s2")
 }
 
 # Sleep takes the amount of seconds to sleep
@@ -23,4 +23,4 @@ notify('title', 'description', 1)
 # Sends last paramerter (mode) to first parameter (radigo server)
 play('server', 'mode')
 
-exit(1)
+exit(42)

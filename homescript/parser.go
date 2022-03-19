@@ -238,7 +238,7 @@ func (self *Parser) atom() (Atom, error) {
 			return nil, err
 		}
 		return AtomIf{
-			IfExpression: ifExpr,
+			IfExpr: ifExpr,
 		}, nil
 	}
 	if self.isType(LeftParenthesis) {
@@ -248,8 +248,8 @@ func (self *Parser) atom() (Atom, error) {
 		}
 		self.expect(RightParenthesis, "')'")
 		self.advance()
-		return AtomExpression{
-			Expression: expr,
+		return AtomExpr{
+			Expr: expr,
 		}, nil
 	}
 	if self.isType(Identifier) {
@@ -261,7 +261,7 @@ func (self *Parser) atom() (Atom, error) {
 				return nil, err
 			}
 			return AtomCall{
-				CallExpression: callExpr,
+				CallExpr: callExpr,
 			}, nil
 		}
 		return AtomIdentifier{
@@ -271,13 +271,13 @@ func (self *Parser) atom() (Atom, error) {
 	return nil, errors.New(fmt.Sprintf("Expected expression, found '%s'", self.CurrentToken.Value))
 }
 
-func (self *Parser) callExpr(name string) (CallExpression, error) {
+func (self *Parser) callExpr(name string) (CallExpr, error) {
 	self.advance()
 	args := make(Expressions, 0)
 	if !self.isType(RightParenthesis) {
 		argument, err := self.expression()
 		if err != nil {
-			return CallExpression{}, err
+			return CallExpr{}, err
 		}
 		args = append(args, argument)
 
@@ -285,30 +285,30 @@ func (self *Parser) callExpr(name string) (CallExpression, error) {
 			self.advance()
 			argument, err := self.expression()
 			if err != nil {
-				return CallExpression{}, err
+				return CallExpr{}, err
 			}
 			args = append(args, argument)
 		}
 	}
 	self.expect(RightParenthesis, "')'")
 	self.advance()
-	return CallExpression{
+	return CallExpr{
 		Name:      name,
 		Arguments: args,
 	}, nil
 }
 
-func (self *Parser) ifExpr() (IfExpression, error) {
+func (self *Parser) ifExpr() (IfExpr, error) {
 	self.advance()
 	condition, err := self.expression()
 	if err != nil {
-		return IfExpression{}, nil
+		return IfExpr{}, nil
 	}
 	self.expect(LeftCurlyBrace, "'{'")
 	self.advance()
 	ifBody, err := self.expressions()
 	if err != nil {
-		return IfExpression{}, err
+		return IfExpr{}, err
 	}
 	self.expect(RightCurlyBrace, "'}'")
 	self.advance()
@@ -318,17 +318,17 @@ func (self *Parser) ifExpr() (IfExpression, error) {
 		self.advance()
 		elseBody, err := self.expressions()
 		if err != nil {
-			return IfExpression{}, err
+			return IfExpr{}, err
 		}
 		self.expect(RightCurlyBrace, "'}'")
 		self.advance()
-		return IfExpression{
+		return IfExpr{
 			Condition: condition,
 			Body:      ifBody,
 			ElseBody:  elseBody,
 		}, nil
 	}
-	return IfExpression{
+	return IfExpr{
 		Condition: condition,
 		Body:      ifBody,
 		ElseBody:  nil,

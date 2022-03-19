@@ -1,6 +1,8 @@
 package homescript
 
 import (
+	"fmt"
+
 	"github.com/MikMuellerDev/homescript-dev/homescript/interpreter"
 )
 
@@ -127,7 +129,10 @@ func (self *Interpreter) visitEqExpr(node EqExpr) (interpreter.Value, error) {
 	if errOther != nil {
 		return nil, err
 	}
-	equal := base == other
+	equal, err := base.IsEqual(self.Executor, other)
+	if err != nil {
+		return nil, err
+	}
 	switch node.Other.TokenType {
 	case Equal:
 		return interpreter.ValueBoolean{
@@ -138,11 +143,139 @@ func (self *Interpreter) visitEqExpr(node EqExpr) (interpreter.Value, error) {
 			Value: !equal,
 		}, nil
 	default:
-		panic("this can not happen")
+		panic("unreachable")
 	}
 }
 
 func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, error) {
-	
-	return nil, nil
+	base, err := self.visitNotExpr(node.Base)
+	if err != nil {
+		return nil, err
+	}
+	if node.Other == nil {
+		return base, nil
+	}
+	other, err := self.visitNotExpr(node.Other.NotExpr)
+	if err != nil {
+		return nil, err
+	}
+	var leftSide interpreter.ValueRelational
+	if base.Type() == interpreter.Number {
+		leftSide = base.(interpreter.ValueNumber)
+	} else if base.Type() == interpreter.Variable {
+		leftSide = base.(interpreter.ValueVariable)
+	} else {
+		return nil, fmt.Errorf("Cannot compare %s type with %s type", base.TypeName(), other.TypeName())
+	}
+	var truth bool
+	var errTruth error
+	switch node.Other.TokenType {
+	case GreaterThan:
+		truth, errTruth = leftSide.IsGreaterThan(self.Executor, other)
+	case GreaterThanOrEqual:
+		truth, errTruth = leftSide.IsGreaterThanOrEqual(self.Executor, other)
+	case LessThan:
+		truth, errTruth = leftSide.IsLessThan(self.Executor, other)
+	case LessThanOrEqual:
+		truth, errTruth = leftSide.IsLessThanOrEqual(self.Executor, other)
+	default:
+		panic("unreachable")
+	}
+	if errTruth != nil {
+		return nil, errTruth
+	}
+	return interpreter.ValueBoolean{
+		Value: truth,
+	}, nil
+}
+
+func (self *Interpreter) visitNotExpr(node NotExpr) (interpreter.Value, error) {
+	base, err := self.visitAtom(node.Base)
+	if err != nil {
+		return nil, err
+	}
+	if node.Negated {
+		truth, err := base.IsTrue(self.Executor)
+		if err != nil {
+			return nil, err
+		}
+		return interpreter.ValueBoolean{
+			Value: !truth,
+		}, nil
+	}
+	return base, nil
+}
+
+func (self *Interpreter) visitAtom(node Atom) (interpreter.Value, error) {
+	var result interpreter.Value
+	var err error
+	switch node.Kind() {
+	case AtomNumberKind:
+		result = interpreter.ValueNumber{
+			Value: node.(AtomNumber).Num,
+		}
+	case AtomStringKind:
+		result = interpreter.ValueString{
+			Value: node.(AtomString).Content,
+		}
+	case AtomBooleanKind:
+		result = interpreter.ValueBoolean{
+			Value: node.(AtomBoolean).Value,
+		}
+	case AtomIdentifierKind:
+		name := node.(AtomIdentifier).Name
+		value, exists := self.Scope[name]
+		if !exists {
+			return nil, fmt.Errorf("Variable or function '%s' does not exists", name)
+		}
+		if value.Type() == interpreter.Variable {
+			result, err = value.(interpreter.ValueVariable).Callback(self.Executor)
+		} else {
+			result = value
+		}
+	case AtomIfKind:
+		result, err = self.visitIfExpr(node.(AtomIf).IfExpr)
+	case AtomCallKind:
+		result, err = self.visitCallExpr(node.(AtomCall).CallExpr)
+	case AtomExpressionKind:
+		result, err = self.visitExpression(node.(AtomExpr).Expr)
+	}
+	return result, err
+}
+
+func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, error) {
+	condition, err := self.visitExpression(node.Condition)
+	if err != nil {
+		return nil, err
+	}
+	truth, errTruth := condition.IsTrue(self.Executor)
+	if errTruth != nil {
+		return nil, errTruth
+	}
+	if truth {
+		return self.visitExpressions(node.Body)
+	}
+	if node.ElseBody == nil {
+		return interpreter.ValueVoid{}, nil
+	}
+	return self.visitExpressions(node.ElseBody)
+}
+
+func (self *Interpreter) visitCallExpr(node CallExpr) (interpreter.Value, error) {
+	value, exists := self.Scope[node.Name]
+	if !exists {
+		return nil, fmt.Errorf("Variable or function '%s' does not exists", node.Name)
+	}
+	if value.Type() != interpreter.Function {
+		return nil, fmt.Errorf("Type %s is not callable", value.TypeName())
+	}
+	arguments := make([]interpreter.Value, 0)
+	for _, argument := range node.Arguments {
+		val, err := self.visitExpression(argument)
+		if err != nil {
+			return nil, err
+		}
+		arguments = append(arguments, val)
+	}
+	return value.(interpreter.ValueFunction).Callback(self.Executor, arguments...)
 }

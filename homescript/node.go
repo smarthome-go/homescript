@@ -72,29 +72,29 @@ type AtomIdentifier struct{ Name string }
 func (self AtomIdentifier) Kind() AtomKind { return AtomIdentifierKind }
 
 // If
-type AtomIf struct{ IfExpression IfExpression }
+type AtomIf struct{ IfExpr IfExpr }
 
 func (self AtomIf) Kind() AtomKind { return AtomIfKind }
 
 // Call
 type AtomCall struct {
-	CallExpression CallExpression
+	CallExpr CallExpr
 }
 
 func (self AtomCall) Kind() AtomKind { return AtomCallKind }
 
 // Expression
-type AtomExpression struct{ Expression Expression }
+type AtomExpr struct{ Expr Expression }
 
-func (self AtomExpression) Kind() AtomKind { return AtomExpressionKind }
+func (self AtomExpr) Kind() AtomKind { return AtomExpressionKind }
 
-type IfExpression struct {
+type IfExpr struct {
 	Condition Expression
 	Body      Expressions
 	ElseBody  Expressions
 }
 
-type CallExpression struct {
+type CallExpr struct {
 	Name      string
-	Arguments Expressions
+	Arguments []Expression
 }
