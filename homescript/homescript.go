@@ -72,7 +72,7 @@ func (self DummyExecutor) GetDate() (int, int, int, int, int, int) {
 func Run(executor interpreter.Executor, code string) (string, error) {
 	parser := NewParser(NewLexer(code))
 	res, err := parser.Parse()
-	homeScriptInterpreter := NewInterpreter(res, DummyExecutor{})
+	homeScriptInterpreter := NewInterpreter(res, executor)
 	if err != nil && len(err) > 0 {
 		var output string
 		// If something goes wrong, return the first error and concatenate the other to the output
