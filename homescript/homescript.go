@@ -3,7 +3,6 @@ package homescript
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"time"
 
 	"github.com/MikMuellerDev/homescript-dev/homescript/interpreter"
@@ -12,8 +11,9 @@ import (
 type DummyExecutor struct{}
 
 func (self DummyExecutor) Exit(code int) {
-	os.Exit(code)
+	// os.Exit(code)
 }
+
 func (self DummyExecutor) Print(args ...string) {
 	for i, arg := range args {
 		fmt.Print(arg)
