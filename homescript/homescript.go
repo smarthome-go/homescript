@@ -2,7 +2,6 @@ package homescript
 
 import (
 	"fmt"
-	"io/ioutil"
 	"time"
 
 	"github.com/MikMuellerDev/homescript-dev/homescript/interpreter"
@@ -67,28 +66,27 @@ func (self DummyExecutor) GetDate() (int, int, int, int, int, int) {
 	return now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second()
 }
 
-func Test() {
-	start := time.Now()
-	content, err1 := ioutil.ReadFile("demo.hms")
-	fmt.Printf("File Read: %v\n", time.Since(start))
-	if err1 != nil {
-		panic(err1.Error())
-	}
-	fmt.Printf("Parsing: %v\n", time.Since(start))
-	parser := NewParser(NewLexer(string(content)))
+// Runs a provided homescript file given the source code
+// Returns an error and an output
+// The output is currently empty if the script runs without errors
+func Run(executor interpreter.Executor, code string) (string, error) {
+	parser := NewParser(NewLexer(code))
 	res, err := parser.Parse()
-	if len(err) > 0 {
-		for i := 0; i < len(err); i += 1 {
-			fmt.Println(err[i].Error())
+	homeScriptInterpreter := NewInterpreter(res, DummyExecutor{})
+	if err != nil && len(err) > 0 {
+		var output string
+		// If something goes wrong, return the first error and concatenate the other to the output
+		for errIndex, errorItem := range err {
+			output += fmt.Sprintf("%s", errorItem.Error())
+			if errIndex-1 < len(err) {
+				output += "\n"
+			}
 		}
-		return
+		return output, err[0]
 	}
-	runner := NewInterpreter(res, DummyExecutor{})
-	startRun := time.Now()
-	errRuntime := runner.Run()
+	errRuntime := homeScriptInterpreter.Run()
 	if errRuntime != nil {
-		fmt.Println(errRuntime.Error())
+		return errRuntime.Error(), errRuntime
 	}
-	fmt.Printf("Execution: %v\n", time.Since(startRun))
-	fmt.Printf("TOTAL: %v\n", time.Since(start))
+	return "", nil
 }
