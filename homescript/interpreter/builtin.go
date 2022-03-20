@@ -112,7 +112,7 @@ func Notify(executor Executor, args ...Value) (Value, error) {
 	title := args[0].(ValueString).Value
 	description := args[1].(ValueString).Value
 	rawLevel := args[2].(ValueNumber).Value
-	var level NotificationLevel
+	var level LogLevel
 	switch rawLevel {
 	case 1:
 		level = LevelInfo
@@ -131,7 +131,43 @@ func Notify(executor Executor, args ...Value) (Value, error) {
 }
 
 func Log(executor Executor, args ...Value) (Value, error) {
-
+	if len(args) != 3 {
+		return nil, fmt.Errorf("Function 'log' takes 3 arguments but %d were given", len(args))
+	}
+	if args[0].Type() != String {
+		return nil, fmt.Errorf("First argument of function 'log' has to be of type String")
+	}
+	if args[1].Type() != String {
+		return nil, fmt.Errorf("Second argument of function 'log' has to be of type String")
+	}
+	if args[2].Type() != Number {
+		return nil, fmt.Errorf("Third argument of function 'log' has to be of type Number")
+	}
+	title := args[0].(ValueString).Value
+	description := args[1].(ValueString).Value
+	rawLevel := args[2].(ValueNumber).Value
+	var level LogLevel
+	switch rawLevel {
+	case 0:
+		level = LevelTrace
+	case 1:
+		level = LevelDebug
+	case 2:
+		level = LevelInfo
+	case 3:
+		level = LevelWarn
+	case 4:
+		level = LevelError
+	case 5:
+		level = LevelFatal
+	default:
+		return nil, fmt.Errorf("Notification level has to be one of 0, 1, 2, 3, 4, or 5 got %d", rawLevel)
+	}
+	err := executor.Log(title, description, level)
+	if err != nil {
+		return nil, err
+	}
+	return ValueVoid{}, nil
 }
 
 ////////////// Variables //////////////

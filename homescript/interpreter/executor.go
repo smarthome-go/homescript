@@ -1,11 +1,14 @@
 package interpreter
 
-type NotificationLevel uint8
+type LogLevel uint8
 
 const (
-	LevelInfo NotificationLevel = iota
+	LevelTrace LogLevel = iota
+	LevelDebug
+	LevelInfo
 	LevelWarn
 	LevelError
+	LevelFatal
 )
 
 type Executor interface {
@@ -14,7 +17,8 @@ type Executor interface {
 	SwitchOn(name string) (bool, error)
 	Switch(name string, on bool) error
 	Play(server string, mode string) error
-	Notify(title string, description string, level NotificationLevel) error
+	Notify(title string, description string, level LogLevel) error
+	Log(title string, description string, level LogLevel) error
 
 	// Builtin variables
 	GetUser() string

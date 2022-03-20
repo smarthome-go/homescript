@@ -40,9 +40,17 @@ func (self DummyExecutor) Play(server string, mode string) error {
 func (self DummyExecutor) Notify(
 	title string,
 	description string,
-	level interpreter.NotificationLevel,
+	level interpreter.LogLevel,
 ) error {
 	fmt.Printf("Sending notification with level %d '%s' -- '%s'\n", level, title, description)
+	return nil
+}
+func (self DummyExecutor) Log(
+	title string,
+	description string,
+	level interpreter.LogLevel,
+) error {
+	fmt.Printf("Logging '%s' -- '%s' with level %d\n", title, description, level)
 	return nil
 }
 func (self DummyExecutor) GetUser() string {
