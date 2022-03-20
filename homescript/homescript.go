@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/MikMuellerDev/homescript-dev/homescript/interpreter"
+	"github.com/MikMuellerDev/homescript/homescript/interpreter"
 )
 
 type DummyExecutor struct{}

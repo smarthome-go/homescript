@@ -3,7 +3,7 @@ package homescript
 import (
 	"fmt"
 
-	"github.com/MikMuellerDev/homescript-dev/homescript/interpreter"
+	"github.com/MikMuellerDev/homescript/homescript/interpreter"
 )
 
 type Interpreter struct {
