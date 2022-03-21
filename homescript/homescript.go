@@ -67,26 +67,17 @@ func (self DummyExecutor) GetDate() (int, int, int, int, int, int) {
 }
 
 // Runs a provided homescript file given the source code
-// Returns an error and an output
-// The output is currently empty if the script runs without errors
-func Run(executor interpreter.Executor, code string) (string, error) {
+// Returns an error slice
+func Run(executor interpreter.Executor, code string) []error {
 	parser := NewParser(NewLexer(code))
-	res, err := parser.Parse()
-	homeScriptInterpreter := NewInterpreter(res, executor)
+	ast, err := parser.Parse()
+	homeScriptInterpreter := NewInterpreter(ast, executor)
 	if err != nil && len(err) > 0 {
-		var output string
-		// If something goes wrong, return the first error and concatenate the other to the output
-		for errIndex, errorItem := range err {
-			output += fmt.Sprintf("%s", errorItem.Error())
-			if errIndex-1 < len(err) {
-				output += "\n"
-			}
-		}
-		return output, err[0]
+		return err
 	}
 	errRuntime := homeScriptInterpreter.Run()
 	if errRuntime != nil {
-		return errRuntime.Error(), errRuntime
+		return []error{errRuntime}
 	}
-	return "", nil
+	return nil
 }
