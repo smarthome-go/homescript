@@ -20,7 +20,7 @@ func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 		return error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("First argument of function 'exit' has to be of type Number"),
+			"First argument of function 'exit' has to be of type Number",
 		), nil
 	}
 	code := args[0].(ValueNumber).Value
@@ -47,7 +47,7 @@ func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Er
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("First argument of function 'sleep' has to be of type Number"),
+			"First argument of function 'sleep' has to be of type Number",
 		)
 	}
 	seconds := args[0].(ValueNumber).Value
@@ -80,7 +80,7 @@ func SwitchOn(executor Executor, location error.Location, args ...Value) (Value,
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("First argument of function 'switchOn' has to be of type String"),
+			"First argument of function 'switchOn' has to be of type String",
 		)
 	}
 	name := args[0].(ValueString).Value
@@ -105,14 +105,14 @@ func Switch(executor Executor, location error.Location, args ...Value) (Value, *
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("First argument of function 'switch' has to be of type String"),
+			"First argument of function 'switch' has to be of type String",
 		)
 	}
 	if args[1].Type() != Boolean {
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Second argument of function 'switch' has to be of type Boolean"),
+			"Second argument of function 'switch' has to be of type Boolean",
 		)
 	}
 	name := args[0].(ValueString).Value
@@ -136,14 +136,14 @@ func Play(executor Executor, location error.Location, args ...Value) (Value, *er
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("First argument of function 'play' has to be of type String"),
+			"First argument of function 'play' has to be of type String",
 		)
 	}
 	if args[1].Type() != String {
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Second argument of function 'play' has to be of type String"),
+			"Second argument of function 'play' has to be of type String",
 		)
 	}
 	server := args[0].(ValueString).Value
@@ -167,21 +167,21 @@ func Notify(executor Executor, location error.Location, args ...Value) (Value, *
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("First argument of function 'notify' has to be of type String"),
+			"First argument of function 'notify' has to be of type String",
 		)
 	}
 	if args[1].Type() != String {
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Second argument of function 'notify' has to be of type String"),
+			"Second argument of function 'notify' has to be of type String",
 		)
 	}
 	if args[2].Type() != Number {
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Third argument of function 'notify' has to be of type Number"),
+			"Third argument of function 'notify' has to be of type Number",
 		)
 	}
 	title := args[0].(ValueString).Value
@@ -228,21 +228,21 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("First argument of function 'log' has to be of type String"),
+			"First argument of function 'log' has to be of type String",
 		)
 	}
 	if args[1].Type() != String {
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Second argument of function 'log' has to be of type String"),
+			"Second argument of function 'log' has to be of type String",
 		)
 	}
 	if args[2].Type() != Number {
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Third argument of function 'log' has to be of type Number"),
+			"Third argument of function 'log' has to be of type Number",
 		)
 	}
 	title := args[0].(ValueString).Value
