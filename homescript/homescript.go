@@ -14,13 +14,11 @@ func (self DummyExecutor) Exit(code int) {
 	os.Exit(code)
 }
 func (self DummyExecutor) Print(args ...string) {
-	for i, arg := range args {
-		fmt.Print(arg)
-		if i == len(args)-1 {
-			fmt.Print(" ")
-		}
+	output := ""
+	for _, arg := range args {
+		output += arg
 	}
-	fmt.Println()
+	fmt.Println(output)
 }
 func (self DummyExecutor) SwitchOn(name string) (bool, error) {
 	if name == "s3" {
