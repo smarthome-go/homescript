@@ -1,16 +1,13 @@
 # The Homescript DSL
 
-*'Homescript'* is a fast and custom DSL (domain-specific language) for the  [Smarthome server](https://github.com/MikMuellerDev/smarthome).
-
-Homescript provides a scripting interface for smarthome users in order to create customized routines and workflows which can not be represented in another way easily.
-
-Homescript works in a similar way as most interpreted languages, consisting of a *lexer*, *parser*, and *interpreter*
+Homescript is a fast and custom DSL (domain-specific language) for the  [Smarthome server](https://github.com/MikMuellerDev/smarthome).
+It provides a scripting interface for Smarthome users in order to create customized routines and workflows.
 
 
 ## Documentation
 ### Builtin variables
 #### Weather
-```go
+```python
 print(weather)
 ```
 The current weather in a human-readable format.
@@ -20,19 +17,19 @@ Possible weather types should be:
 - cloudy
 - windy
 
-Like any other builtin, the functionality must be provided by the host-software, (in this case smarthome) via callback functions.
+Like any other builtin, the functionality must be provided by the host-software.
 
-*This means that variable values may change*
+*Note: This means that variable values may change*
 #### Temperature
-```go
+```python
 print(temperature)
 ```
-The current temperature in the area of the smarthome-server can be queried with the code above.
+The current temperature in the area of the Smarthome-server can be queried with the code above.
 
-*Note: the temperature's measurement unit is dependent on the implementation of the callback functions*
+*Note: the temperature's measurement unit is dependent on the host implementation*
 
 #### Time
-```go
+```python
 print(currentYear)
 print(currentMonth)
 print(currentDay)
@@ -40,38 +37,36 @@ print(currentHour)
 print(currentMinute)
 print(currentSecond)
 ```
-Returns the values matching the localtime of the smarthome-server.
-Prints the local time variables
+Returns the values matching the local time of the Smarthome-server
 
 #### User
-```go
+```python
 print(user)
 ```
 Prints the username of the user currently running the script
 
 ### Builtin Functions
 
-#### Power / Switch
-##### Changing power of a switch 
-```go
+#### Switch
+##### Changing power of a switch
+```python
 switch("switchName", on)
 switch("switchName", true)
 switch("switchName", off)
 switch("switchName", false)
 ```
 Changes the power state of a given switch.
-A real implementation should check following parameters
-- The user's permissions and if they are allowed to interact with this switch
-- Handle errors and pass them back to homescript
-- The validity of the switch and return errors
+A real implementation should check following things
+- The user's permissions for the switch
+- The validity of the switch
 
-##### Quering power of a switch
-```go
+##### Querying power of a switch
+```python
 print(switchOn("switchName"))
 ```
 The code above should return the power state of the requested switch as a boolean.
 #### Sending Notifications
-```go
+```python
 notify("Notification Title", "An interesting description", 1)
 ```
 
@@ -83,10 +78,10 @@ Legal notification levels (*last parameter*) are:
 - 3 Error
 
 #### Logging
-```go
+```python
 log("Log Title", "What happened?", 4)
 ```
-Logs a message to the server's console and to the internal loggin system.
+Logs a message to the server's console and to the internal logging system.
 
 Depending on the implementation, this should only be allowed to the admin user.
 Legal log levels (*last parameter*) are:
@@ -98,65 +93,58 @@ Legal log levels (*last parameter*) are:
 - 5 Fatal
 
 #### RadiGo
-```go
+```python
 play("server id", "mode id")
 ```
-If smarthome is used with a [radiGo](https://github.com/MikMuellerDev/radiGo) server, homescript can change the modes.
+If Smarthome is used with a [RadiGo](https://github.com/MikMuellerDev/radiGo) server, Homescript can change the modes.
 
 #### Exit
-```go
+```python
 exit(42)
 ```
-Exit can be seen as a way to signalize the failure of a script.
-Any non-0 exit code indicates the failure of the current script.
-However, exit can be seen as a way to terminate the current script conditionally (top-level return), for example using guard-cases.
+Exit stops execution of the running script with a provided exit code.
+Any non-0 exit code indicates a failure.
 
-However, due to limitations with goroutines, `exit()` only works for local testing and in the cli.
+However, due to limitations with goroutines, `exit()` currently only works for local testing and in the cli.
 
-## A possible home-script
+## A possible Homescript script
 
 ```python
-# This project was developed for smarthome
+# This project was developed for Smarthome
 # https://github.com/MikMuellerDev/smarthome
 
-# If is a expression and can therefore be used inline
+# `If` is an expression and can therefore be used inline
 switch(if temperature > 10 { 'switch1' } else { 'switch2' }, off)
 
-# All builtins are later provided via callback, allowing interaction of homescript and smarthome
+# All built-ins are provided by Smarthome, allowing interaction between Homescript and Smarthome
 # Changes power for said outlet, on / off are aliases for true / false
+switch('switch3', true)
 
-# There are some built-in variables which behave static but are provided by smarthome during runtime:
+# There are some built-in variables which are also provided by Smarthome during runtime:
 # Simple concatenation in print is supported
 print("The current temperature is ", temperature, " degrees.")
 print(weather)
 print(currentHour)
 print(user)
 
-# Activates the following switch
-switch('switch', on)
-
-# switchOn can be used to query the power state of a given switch
-if switchOn('s3')  {
+# `switchOn` can be used to query the power state of a given switch
+if switchOn('switch3')  {
     print("switch is on.")
 } else {
     print("switch is off.")
 }
 
-# Sleep takes the amount of seconds to pause the execution of the current script
+# `sleep` pauses the execution of the current script for the given amount of seconds
 sleep(1)
 
-# Print 'prints' to a specified callback (console + output)
-print('message')
-
-# Sends a notification to the current user, last parameter is the level (1..3)
+# `notify` sends a notification to the current user, last parameter is the level (1..3)
 notify('title', 'description', 1)
 
-# Allows smarthome to communicate with radigo servers
+# Allows Smarthome to communicate with RadiGo servers
 # https://github.com/MikMuellerDev/radiGo
 play('server', 'mode')
 
-# Exit terminates the current homescript file
-# (can be seen as a top-level return)
+# Exit terminates execution
 exit(0)
 
 print("Unreachable code.")
