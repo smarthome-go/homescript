@@ -14,6 +14,7 @@ const (
 	TypeError
 	ReferenceError
 	ValueError
+	RuntimeError
 )
 
 func NewError(errorType ErrorType, location Location, message string) *Error {
@@ -27,6 +28,8 @@ func NewError(errorType ErrorType, location Location, message string) *Error {
 		typeName = "ReferenceError"
 	case ValueError:
 		typeName = "ValueError"
+	case RuntimeError:
+		typeName = "RuntimeError"
 	default:
 		panic(0)
 	}

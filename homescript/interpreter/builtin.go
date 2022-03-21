@@ -46,10 +46,10 @@ func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Er
 	return ValueVoid{}, nil
 }
 
-func Print(executor Executor, _ error.Location, args ...Value) (Value, *error.Error) {
+func Print(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	msgs := make([]string, 0)
 	for _, arg := range args {
-		res, err := arg.ToString(executor)
+		res, err := arg.ToString(executor, location)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +77,7 @@ func SwitchOn(executor Executor, location error.Location, args ...Value) (Value,
 	name := args[0].(ValueString).Value
 	value, err := executor.SwitchOn(name)
 	if err != nil {
-		return nil, err
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueBoolean{
 		Value: value,
@@ -110,7 +110,7 @@ func Switch(executor Executor, location error.Location, args ...Value) (Value, *
 	on := args[1].(ValueBoolean).Value
 	err := executor.Switch(name, on)
 	if err != nil {
-		return nil, err
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueVoid{}, nil
 }
@@ -141,7 +141,7 @@ func Play(executor Executor, location error.Location, args ...Value) (Value, *er
 	mode := args[1].(ValueString).Value
 	err := executor.Play(server, mode)
 	if err != nil {
-		return nil, err
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueVoid{}, nil
 }
@@ -195,7 +195,7 @@ func Notify(executor Executor, location error.Location, args ...Value) (Value, *
 	}
 	err := executor.Notify(title, description, level)
 	if err != nil {
-		return nil, err
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueVoid{}, nil
 }
@@ -255,58 +255,58 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 	}
 	err := executor.Log(title, description, level)
 	if err != nil {
-		return nil, err
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueVoid{}, nil
 }
 
 ////////////// Variables //////////////
-func GetUser(executor Executor) (Value, *error.Error) {
+func GetUser(executor Executor, _ error.Location) (Value, *error.Error) {
 	return ValueString{Value: executor.GetUser()}, nil
 }
 
-func GetWeather(executor Executor) (Value, *error.Error) {
+func GetWeather(executor Executor, location error.Location) (Value, *error.Error) {
 	val, err := executor.GetWeather()
 	if err != nil {
-		return nil, err
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueString{Value: val}, nil
 }
 
-func GetTemperature(executor Executor) (Value, *error.Error) {
+func GetTemperature(executor Executor, location error.Location) (Value, *error.Error) {
 	val, err := executor.GetTemperature()
 	if err != nil {
-		return nil, err
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueNumber{Value: val}, nil
 }
 
-func GetCurrentYear(executor Executor) (Value, *error.Error) {
+func GetCurrentYear(executor Executor, _ error.Location) (Value, *error.Error) {
 	year, _, _, _, _, _ := executor.GetDate()
 	return ValueNumber{Value: year}, nil
 }
 
-func GetCurrentMonth(executor Executor) (Value, *error.Error) {
+func GetCurrentMonth(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, month, _, _, _, _ := executor.GetDate()
 	return ValueNumber{Value: month}, nil
 }
 
-func GetCurrentDay(executor Executor) (Value, *error.Error) {
+func GetCurrentDay(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, _, day, _, _, _ := executor.GetDate()
 	return ValueNumber{Value: day}, nil
 }
 
-func GetCurrentHour(executor Executor) (Value, *error.Error) {
+func GetCurrentHour(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, _, _, hour, _, _ := executor.GetDate()
 	return ValueNumber{Value: hour}, nil
 }
 
-func GetCurrentMinute(executor Executor) (Value, *error.Error) {
+func GetCurrentMinute(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, _, _, _, minute, _ := executor.GetDate()
 	return ValueNumber{Value: minute}, nil
 }
 
-func GetCurrentSecond(executor Executor) (Value, *error.Error) {
+func GetCurrentSecond(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, _, _, _, _, second := executor.GetDate()
 	return ValueNumber{Value: second}, nil
 }

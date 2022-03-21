@@ -28,12 +28,12 @@ type RelExpr struct {
 		TokenType
 		NotExpr
 	}
-	Location error.Location
 }
 
 type NotExpr struct {
-	Base    Atom
-	Negated bool
+	Base     Atom
+	Negated  bool
+	Location error.Location
 }
 
 ///////////// Atom /////////////
@@ -98,6 +98,7 @@ type IfExpr struct {
 	Condition Expression
 	Body      Expressions
 	ElseBody  Expressions
+	Location  error.Location
 }
 
 type CallExpr struct {

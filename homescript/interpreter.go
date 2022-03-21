@@ -65,7 +65,7 @@ func (self *Interpreter) visitExpression(node Expression) (interpreter.Value, *e
 	if len(node.Following) == 0 {
 		return base, nil
 	}
-	truth, err := base.IsTrue(self.Executor)
+	truth, err := base.IsTrue(self.Executor, node.Base.Base.Base.Base.Location)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (self *Interpreter) visitExpression(node Expression) (interpreter.Value, *e
 		if errOther != nil {
 			return nil, errOther
 		}
-		truth, err := other.IsTrue(self.Executor)
+		truth, err := other.IsTrue(self.Executor, node.Base.Base.Base.Base.Location)
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +96,7 @@ func (self *Interpreter) visitAndExpr(node AndExpr) (interpreter.Value, *error.E
 	if len(node.Following) == 0 {
 		return base, nil
 	}
-	truth, err := base.IsTrue(self.Executor)
+	truth, err := base.IsTrue(self.Executor, node.Base.Base.Base.Location)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (self *Interpreter) visitAndExpr(node AndExpr) (interpreter.Value, *error.E
 		if errOther != nil {
 			return nil, errOther
 		}
-		truth, err := other.IsTrue(self.Executor)
+		truth, err := other.IsTrue(self.Executor, node.Base.Base.Base.Location)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +131,7 @@ func (self *Interpreter) visitEqExpr(node EqExpr) (interpreter.Value, *error.Err
 	if errOther != nil {
 		return nil, err
 	}
-	equal, err := base.IsEqual(self.Executor, other)
+	equal, err := base.IsEqual(self.Executor, node.Base.Base.Location, other)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, *error.E
 	} else {
 		return nil, error.NewError(
 			error.TypeError,
-			node.Location,
+			node.Base.Location,
 			fmt.Sprintf("Cannot compare %s type with %s type", base.TypeName(), other.TypeName()),
 		)
 	}
@@ -177,13 +177,13 @@ func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, *error.E
 	var errTruth *error.Error
 	switch node.Other.TokenType {
 	case GreaterThan:
-		truth, errTruth = leftSide.IsGreaterThan(self.Executor, other, node.Location)
+		truth, errTruth = leftSide.IsGreaterThan(self.Executor, other, node.Base.Location)
 	case GreaterThanOrEqual:
-		truth, errTruth = leftSide.IsGreaterThanOrEqual(self.Executor, other, node.Location)
+		truth, errTruth = leftSide.IsGreaterThanOrEqual(self.Executor, other, node.Base.Location)
 	case LessThan:
-		truth, errTruth = leftSide.IsLessThan(self.Executor, other, node.Location)
+		truth, errTruth = leftSide.IsLessThan(self.Executor, other, node.Base.Location)
 	case LessThanOrEqual:
-		truth, errTruth = leftSide.IsLessThanOrEqual(self.Executor, other, node.Location)
+		truth, errTruth = leftSide.IsLessThanOrEqual(self.Executor, other, node.Base.Location)
 	default:
 		panic("unreachable")
 	}
@@ -201,7 +201,7 @@ func (self *Interpreter) visitNotExpr(node NotExpr) (interpreter.Value, *error.E
 		return nil, err
 	}
 	if node.Negated {
-		truth, err := base.IsTrue(self.Executor)
+		truth, err := base.IsTrue(self.Executor, node.Location)
 		if err != nil {
 			return nil, err
 		}
@@ -239,7 +239,7 @@ func (self *Interpreter) visitAtom(node Atom) (interpreter.Value, *error.Error) 
 			)
 		}
 		if value.Type() == interpreter.Variable {
-			result, err = value.(interpreter.ValueVariable).Callback(self.Executor)
+			result, err = value.(interpreter.ValueVariable).Callback(self.Executor, node.(AtomIdentifier).Location)
 		} else {
 			result = value
 		}
@@ -258,7 +258,7 @@ func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, *error.Err
 	if err != nil {
 		return nil, err
 	}
-	truth, errTruth := condition.IsTrue(self.Executor)
+	truth, errTruth := condition.IsTrue(self.Executor, node.Location)
 	if errTruth != nil {
 		return nil, errTruth
 	}

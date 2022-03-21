@@ -167,7 +167,6 @@ func (self *Parser) eqExpr() (EqExpr, *error.Error) {
 }
 
 func (self *Parser) relExpr() (RelExpr, *error.Error) {
-	location := self.CurrentToken.Location
 	base, err := self.notExpr()
 	if err != nil {
 		return RelExpr{}, err
@@ -193,17 +192,16 @@ func (self *Parser) relExpr() (RelExpr, *error.Error) {
 				TokenType: operator,
 				NotExpr:   other,
 			},
-			Location: location,
 		}, nil
 	}
 	return RelExpr{
-		Base:     base,
-		Other:    nil,
-		Location: location,
+		Base:  base,
+		Other: nil,
 	}, nil
 }
 
 func (self *Parser) notExpr() (NotExpr, *error.Error) {
+	location := self.CurrentToken.Location
 	negated := false
 	if self.isType(Not) {
 		negated = true
@@ -214,8 +212,9 @@ func (self *Parser) notExpr() (NotExpr, *error.Error) {
 		return NotExpr{}, err
 	}
 	return NotExpr{
-		Negated: negated,
-		Base:    atom,
+		Negated:  negated,
+		Base:     atom,
+		Location: location,
 	}, nil
 }
 
@@ -317,6 +316,7 @@ func (self *Parser) callExpr(name string, location error.Location) (CallExpr, *e
 }
 
 func (self *Parser) ifExpr() (IfExpr, *error.Error) {
+	location := self.CurrentToken.Location
 	self.advance()
 	condition, err := self.expression()
 	if err != nil {
@@ -344,12 +344,14 @@ func (self *Parser) ifExpr() (IfExpr, *error.Error) {
 			Condition: condition,
 			Body:      ifBody,
 			ElseBody:  elseBody,
+			Location:  location,
 		}, nil
 	}
 	return IfExpr{
 		Condition: condition,
 		Body:      ifBody,
 		ElseBody:  nil,
+		Location:  location,
 	}, nil
 }
 

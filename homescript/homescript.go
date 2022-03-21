@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/MikMuellerDev/homescript/homescript/error"
+	customError "github.com/MikMuellerDev/homescript/homescript/error"
 	"github.com/MikMuellerDev/homescript/homescript/interpreter"
 )
 
@@ -21,17 +21,17 @@ func (self DummyExecutor) Print(args ...string) {
 	}
 	fmt.Println(output)
 }
-func (self DummyExecutor) SwitchOn(name string) (bool, *error.Error) {
+func (self DummyExecutor) SwitchOn(name string) (bool, error) {
 	if name == "s3" {
 		return true, nil
 	}
 	return false, nil
 }
-func (self DummyExecutor) Switch(name string, on bool) *error.Error {
+func (self DummyExecutor) Switch(name string, on bool) error {
 	fmt.Printf("Turning switch '%s' %t\n", name, on)
 	return nil
 }
-func (self DummyExecutor) Play(server string, mode string) *error.Error {
+func (self DummyExecutor) Play(server string, mode string) error {
 	fmt.Printf("Playing '%s' on server '%s'\n", mode, server)
 	return nil
 }
@@ -39,7 +39,7 @@ func (self DummyExecutor) Notify(
 	title string,
 	description string,
 	level interpreter.LogLevel,
-) *error.Error {
+) error {
 	fmt.Printf("Sending notification with level %d '%s' -- '%s'\n", level, title, description)
 	return nil
 }
@@ -47,17 +47,17 @@ func (self DummyExecutor) Log(
 	title string,
 	description string,
 	level interpreter.LogLevel,
-) *error.Error {
+) error {
 	fmt.Printf("Logging '%s' -- '%s' with level %d\n", title, description, level)
 	return nil
 }
 func (self DummyExecutor) GetUser() string {
 	return "admin"
 }
-func (self DummyExecutor) GetWeather() (string, *error.Error) {
+func (self DummyExecutor) GetWeather() (string, error) {
 	return "rainy", nil
 }
-func (self DummyExecutor) GetTemperature() (int, *error.Error) {
+func (self DummyExecutor) GetTemperature() (int, error) {
 	return 42, nil
 }
 func (self DummyExecutor) GetDate() (int, int, int, int, int, int) {
@@ -67,7 +67,7 @@ func (self DummyExecutor) GetDate() (int, int, int, int, int, int) {
 
 // Runs a provided homescript file given the source code
 // Returns an error slice
-func Run(executor interpreter.Executor, filename string, code string) (int, []error.Error) {
+func Run(executor interpreter.Executor, filename string, code string) (int, []customError.Error) {
 	parser := NewParser(NewLexer(filename, code))
 	ast, err := parser.Parse()
 	if err != nil && len(err) > 0 {
@@ -76,7 +76,7 @@ func Run(executor interpreter.Executor, filename string, code string) (int, []er
 	homeScriptInterpreter := NewInterpreter(ast, executor)
 	exitCode, errRuntime := homeScriptInterpreter.Run()
 	if errRuntime != nil {
-		return 1, []error.Error{*errRuntime}
+		return 1, []customError.Error{*errRuntime}
 	}
 	return exitCode, nil
 }

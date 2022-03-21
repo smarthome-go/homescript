@@ -39,7 +39,7 @@ func printError(err error.Error, program string) {
 }
 
 func main() {
-	program := "print(a'aaaa)"
+	program := "print('hi')\nswitch('s1', on)\nprint('hallo')"
 	code, errors := homescript.Run(homescript.DummyExecutor{}, "<demo>", program)
 	if errors != nil {
 		for _, err := range errors {
