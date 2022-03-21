@@ -221,7 +221,7 @@ func (self *Parser) notExpr() (NotExpr, *error.Error) {
 func (self *Parser) atom() (Atom, *error.Error) {
 	if self.isType(Number) {
 		// TODO: handle possible errors
-		value, _ := strconv.Atoi(self.CurrentToken.Value)
+		value, _ := strconv.ParseFloat(self.CurrentToken.Value, 64)
 		self.advance()
 		return AtomNumber{
 			Num: value,

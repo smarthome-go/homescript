@@ -154,6 +154,14 @@ func (self *Lexer) makeNumber() Token {
 		value += string(*self.CurrentChar)
 		self.advance()
 	}
+	if self.CurrentChar != nil && *self.CurrentChar == '.' {
+		value += string(*self.CurrentChar)
+		self.advance()
+		for self.CurrentChar != nil && isDigit(*self.CurrentChar) {
+			value += string(*self.CurrentChar)
+			self.advance()
+		}
+	}
 	return Token{
 		TokenType: Number,
 		Value:     value,

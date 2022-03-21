@@ -2,6 +2,7 @@ package interpreter
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/MikMuellerDev/homescript/homescript/error"
@@ -23,7 +24,15 @@ func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 		), nil
 	}
 	code := args[0].(ValueNumber).Value
-	return nil, &code
+	if code == float64(int(math.Round(code))) {
+		code := int(math.Round(code))
+		return nil, &code
+	}
+	return error.NewError(
+		error.ValueError,
+		location,
+		"First argument of function 'exit' has to be an integer",
+	), nil
 }
 
 func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
@@ -178,6 +187,13 @@ func Notify(executor Executor, location error.Location, args ...Value) (Value, *
 	title := args[0].(ValueString).Value
 	description := args[1].(ValueString).Value
 	rawLevel := args[2].(ValueNumber).Value
+	if rawLevel != float64(int(math.Round(rawLevel))) {
+		return nil, error.NewError(
+			error.ValueError,
+			location,
+			"Third argument of function 'notify' has to be an integer",
+		)
+	}
 	var level LogLevel
 	switch rawLevel {
 	case 1:
@@ -190,7 +206,7 @@ func Notify(executor Executor, location error.Location, args ...Value) (Value, *
 		return nil, error.NewError(
 			error.ValueError,
 			location,
-			fmt.Sprintf("Notification level has to be one of 1, 2, or 3, got %d", rawLevel),
+			fmt.Sprintf("Notification level has to be one of 1, 2, or 3, got %d", int(math.Round(rawLevel))),
 		)
 	}
 	err := executor.Notify(title, description, level)
@@ -232,6 +248,13 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 	title := args[0].(ValueString).Value
 	description := args[1].(ValueString).Value
 	rawLevel := args[2].(ValueNumber).Value
+	if rawLevel != float64(int(math.Round(rawLevel))) {
+		return nil, error.NewError(
+			error.ValueError,
+			location,
+			"Third argument of function 'log' has to be an integer",
+		)
+	}
 	var level LogLevel
 	switch rawLevel {
 	case 0:
@@ -250,7 +273,7 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 		return nil, error.NewError(
 			error.ValueError,
 			location,
-			fmt.Sprintf("Log level has to be one of 0, 1, 2, 3, 4, or 5 got %d", rawLevel),
+			fmt.Sprintf("Log level has to be one of 0, 1, 2, 3, 4, or 5 got %d", int(math.Round(rawLevel))),
 		)
 	}
 	err := executor.Log(title, description, level)
@@ -278,37 +301,37 @@ func GetTemperature(executor Executor, location error.Location) (Value, *error.E
 	if err != nil {
 		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
-	return ValueNumber{Value: val}, nil
+	return ValueNumber{Value: float64(val)}, nil
 }
 
 func GetCurrentYear(executor Executor, _ error.Location) (Value, *error.Error) {
 	year, _, _, _, _, _ := executor.GetDate()
-	return ValueNumber{Value: year}, nil
+	return ValueNumber{Value: float64(year)}, nil
 }
 
 func GetCurrentMonth(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, month, _, _, _, _ := executor.GetDate()
-	return ValueNumber{Value: month}, nil
+	return ValueNumber{Value: float64(month)}, nil
 }
 
 func GetCurrentDay(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, _, day, _, _, _ := executor.GetDate()
-	return ValueNumber{Value: day}, nil
+	return ValueNumber{Value: float64(day)}, nil
 }
 
 func GetCurrentHour(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, _, _, hour, _, _ := executor.GetDate()
-	return ValueNumber{Value: hour}, nil
+	return ValueNumber{Value: float64(hour)}, nil
 }
 
 func GetCurrentMinute(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, _, _, _, minute, _ := executor.GetDate()
-	return ValueNumber{Value: minute}, nil
+	return ValueNumber{Value: float64(minute)}, nil
 }
 
 func GetCurrentSecond(executor Executor, _ error.Location) (Value, *error.Error) {
 	_, _, _, _, _, second := executor.GetDate()
-	return ValueNumber{Value: second}, nil
+	return ValueNumber{Value: float64(second)}, nil
 }
 
 func GetDebugInfo(executor Executor, location error.Location) (Value, *error.Error) {

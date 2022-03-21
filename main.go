@@ -40,11 +40,12 @@ func printError(err error.Error, program string) {
 
 func main() {
 	program := `
-		print('hello\nthere')
-		switch('s1', on)
-		exit(0)
-		print('unreachable')
-		`
+print('hello\nthere')
+switch('s1', on)
+print(3.14)
+exit(0)
+print('unreachable')
+`
 	code, errors := homescript.Run(homescript.DummyExecutor{}, "<demo>", program)
 	if errors != nil {
 		for _, err := range errors {

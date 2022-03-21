@@ -18,7 +18,7 @@ CallExpr    = identifier , '(' , [ Expression , { ',' , Expression } ] , ')' ;
 
 (* Tokens *)
 eol         = ? line break ? ;
-number      = DIGIT , { DIGIT } ;
+number      = DIGIT , { DIGIT } , [ '.' , DIGIT , { DIGIT } ] ;
 string      = '"' , { CHAR - '"' - '\' | escape_seq } , '"'
             | "'" , { CHAR - "'" - '\' | escape_seq } , "'" ;
 escape_seq  = '\' , ( ESCAPE_CHAR

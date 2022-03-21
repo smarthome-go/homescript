@@ -44,7 +44,7 @@ func (self ValueVoid) IsEqual(_ Executor, _ error.Location, other Value) (bool, 
 	return other.Type() == Void, nil
 }
 
-type ValueNumber struct{ Value int }
+type ValueNumber struct{ Value float64 }
 
 func (self ValueNumber) Type() ValueType  { return Number }
 func (self ValueNumber) TypeName() string { return "Number" }

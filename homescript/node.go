@@ -55,7 +55,7 @@ type Atom interface {
 }
 
 // Number
-type AtomNumber struct{ Num int }
+type AtomNumber struct{ Num float64 }
 
 func (self AtomNumber) Kind() AtomKind { return AtomNumberKind }
 
