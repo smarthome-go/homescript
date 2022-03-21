@@ -32,6 +32,7 @@ func NewInterpreter(startNode Expressions, executor interpreter.Executor) Interp
 		"currentHour":   interpreter.ValueVariable{Callback: interpreter.GetCurrentHour},
 		"currentMinute": interpreter.ValueVariable{Callback: interpreter.GetCurrentMinute},
 		"currentSecond": interpreter.ValueVariable{Callback: interpreter.GetCurrentSecond},
+		"debugInfo":     interpreter.ValueVariable{Callback: interpreter.GetDebugInfo},
 	}
 	return Interpreter{
 		StartNode: startNode,
