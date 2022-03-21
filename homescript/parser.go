@@ -1,34 +1,39 @@
 package homescript
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
+
+	"github.com/MikMuellerDev/homescript/homescript/error"
 )
 
 type Parser struct {
 	Lexer        Lexer
 	CurrentToken Token
-	Errors       []error
+	Errors       []error.Error
 }
 
 func NewParser(lexer Lexer) Parser {
 	return Parser{
 		Lexer:        lexer,
 		CurrentToken: Token{},
-		Errors:       make([]error, 0),
+		Errors:       make([]error.Error, 0),
 	}
 }
 
-func (self *Parser) Parse() (Expressions, []error) {
+func (self *Parser) Parse() (Expressions, []error.Error) {
 	self.advance()
 	expressions, err := self.expressions()
 	if err != nil {
-		self.Errors = append(self.Errors, err)
+		self.Errors = append(self.Errors, *err)
 		return nil, self.Errors
 	}
 	if self.CurrentToken.TokenType != EOF {
-		self.Errors = append(self.Errors, fmt.Errorf("Expected EOF, got %s", self.CurrentToken.Value))
+		self.Errors = append(self.Errors, *error.NewError(
+			error.SyntaxError,
+			self.CurrentToken.Location,
+			fmt.Sprintf("Expected EOF, got %s", self.CurrentToken.Value),
+		))
 	}
 	if len(self.Errors) > 0 {
 		return nil, self.Errors
@@ -38,7 +43,9 @@ func (self *Parser) Parse() (Expressions, []error) {
 
 func (self *Parser) expect(tokenType TokenType, name string) {
 	if self.CurrentToken.TokenType != tokenType {
-		self.Errors = append(self.Errors, errors.New(
+		self.Errors = append(self.Errors, *error.NewError(
+			error.SyntaxError,
+			self.CurrentToken.Location,
 			fmt.Sprintf("Expected %s, found '%s'", name, self.CurrentToken.Value),
 		))
 	}
@@ -57,7 +64,7 @@ func (self *Parser) isOfTypes(tokenTypes ...TokenType) bool {
 	return false
 }
 
-func (self *Parser) expressions() (Expressions, error) {
+func (self *Parser) expressions() (Expressions, *error.Error) {
 	for self.isType(EOL) {
 		self.advance()
 	}
@@ -90,7 +97,7 @@ func (self *Parser) expressions() (Expressions, error) {
 	return make(Expressions, 0), nil
 }
 
-func (self *Parser) expression() (Expression, error) {
+func (self *Parser) expression() (Expression, *error.Error) {
 	base, err := self.andExpression()
 	if err != nil {
 		return Expression{}, err
@@ -110,7 +117,7 @@ func (self *Parser) expression() (Expression, error) {
 	}, nil
 }
 
-func (self *Parser) andExpression() (AndExpr, error) {
+func (self *Parser) andExpression() (AndExpr, *error.Error) {
 	base, err := self.eqExpr()
 	if err != nil {
 		return AndExpr{}, err
@@ -130,7 +137,7 @@ func (self *Parser) andExpression() (AndExpr, error) {
 	}, nil
 }
 
-func (self *Parser) eqExpr() (EqExpr, error) {
+func (self *Parser) eqExpr() (EqExpr, *error.Error) {
 	base, err := self.relExpr()
 	if err != nil {
 		return EqExpr{}, err
@@ -159,7 +166,8 @@ func (self *Parser) eqExpr() (EqExpr, error) {
 	}, nil
 }
 
-func (self *Parser) relExpr() (RelExpr, error) {
+func (self *Parser) relExpr() (RelExpr, *error.Error) {
+	location := self.CurrentToken.Location
 	base, err := self.notExpr()
 	if err != nil {
 		return RelExpr{}, err
@@ -185,15 +193,17 @@ func (self *Parser) relExpr() (RelExpr, error) {
 				TokenType: operator,
 				NotExpr:   other,
 			},
+			Location: location,
 		}, nil
 	}
 	return RelExpr{
-		Base:  base,
-		Other: nil,
+		Base:     base,
+		Other:    nil,
+		Location: location,
 	}, nil
 }
 
-func (self *Parser) notExpr() (NotExpr, error) {
+func (self *Parser) notExpr() (NotExpr, *error.Error) {
 	negated := false
 	if self.isType(Not) {
 		negated = true
@@ -209,7 +219,7 @@ func (self *Parser) notExpr() (NotExpr, error) {
 	}, nil
 }
 
-func (self *Parser) atom() (Atom, error) {
+func (self *Parser) atom() (Atom, *error.Error) {
 	if self.isType(Number) {
 		// TODO: handle possible errors
 		value, _ := strconv.Atoi(self.CurrentToken.Value)
@@ -254,10 +264,11 @@ func (self *Parser) atom() (Atom, error) {
 		}, nil
 	}
 	if self.isType(Identifier) {
+		location := self.CurrentToken.Location
 		name := self.CurrentToken.Value
 		self.advance()
 		if self.isType(LeftParenthesis) {
-			callExpr, err := self.callExpr(name)
+			callExpr, err := self.callExpr(name, location)
 			if err != nil {
 				return nil, err
 			}
@@ -266,13 +277,18 @@ func (self *Parser) atom() (Atom, error) {
 			}, nil
 		}
 		return AtomIdentifier{
-			Name: name,
+			Name:     name,
+			Location: location,
 		}, nil
 	}
-	return nil, errors.New(fmt.Sprintf("Expected expression, found '%s'", self.CurrentToken.Value))
+	return nil, error.NewError(
+		error.SyntaxError,
+		self.CurrentToken.Location,
+		fmt.Sprintf("Expected expression, found '%s'", self.CurrentToken.Value),
+	)
 }
 
-func (self *Parser) callExpr(name string) (CallExpr, error) {
+func (self *Parser) callExpr(name string, location error.Location) (CallExpr, *error.Error) {
 	self.advance()
 	args := make(Expressions, 0)
 	if !self.isType(RightParenthesis) {
@@ -296,10 +312,11 @@ func (self *Parser) callExpr(name string) (CallExpr, error) {
 	return CallExpr{
 		Name:      name,
 		Arguments: args,
+		Location:  location,
 	}, nil
 }
 
-func (self *Parser) ifExpr() (IfExpr, error) {
+func (self *Parser) ifExpr() (IfExpr, *error.Error) {
 	self.advance()
 	condition, err := self.expression()
 	if err != nil {
@@ -339,7 +356,7 @@ func (self *Parser) ifExpr() (IfExpr, error) {
 func (self *Parser) advance() {
 	token, err := self.Lexer.Scan()
 	if err != nil {
-		self.Errors = append(self.Errors, err)
+		self.Errors = append(self.Errors, *err)
 	}
 	self.CurrentToken = token
 }

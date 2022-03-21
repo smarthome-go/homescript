@@ -1,5 +1,7 @@
 package homescript
 
+import "github.com/MikMuellerDev/homescript/homescript/error"
+
 type Expressions []Expression
 
 type Expression struct {
@@ -26,6 +28,7 @@ type RelExpr struct {
 		TokenType
 		NotExpr
 	}
+	Location error.Location
 }
 
 type NotExpr struct {
@@ -67,7 +70,10 @@ type AtomBoolean struct{ Value bool }
 func (self AtomBoolean) Kind() AtomKind { return AtomBooleanKind }
 
 // Identifier
-type AtomIdentifier struct{ Name string }
+type AtomIdentifier struct {
+	Name     string
+	Location error.Location
+}
 
 func (self AtomIdentifier) Kind() AtomKind { return AtomIdentifierKind }
 
@@ -97,4 +103,5 @@ type IfExpr struct {
 type CallExpr struct {
 	Name      string
 	Arguments []Expression
+	Location  error.Location
 }

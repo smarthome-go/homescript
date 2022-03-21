@@ -1,5 +1,7 @@
 package homescript
 
+import "github.com/MikMuellerDev/homescript/homescript/error"
+
 type TokenType uint8
 
 const (
@@ -31,16 +33,16 @@ const (
 	False              // false | off
 )
 
-// TODO: Add positions to tokens and errors
-// type Position struct {
-// 	Filename string
-// 	Index    uint32
-// 	Line     uint32
-// 	Column   int32
-// }
-
 type Token struct {
 	TokenType TokenType
 	Value     string
-	// Position  Position
+	Location  error.Location
+}
+
+func UnknownToken(location error.Location) Token {
+	return Token{
+		TokenType: Unknown,
+		Value:     "Unknown",
+		Location:  location,
+	}
 }

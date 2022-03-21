@@ -1,5 +1,7 @@
 package interpreter
 
+import "github.com/MikMuellerDev/homescript/homescript/error"
+
 type LogLevel uint8
 
 const (
@@ -14,15 +16,15 @@ const (
 type Executor interface {
 	Exit(code int)
 	Print(args ...string)
-	SwitchOn(name string) (bool, error)
-	Switch(name string, on bool) error
-	Play(server string, mode string) error
-	Notify(title string, description string, level LogLevel) error
-	Log(title string, description string, level LogLevel) error
+	SwitchOn(name string) (bool, *error.Error)
+	Switch(name string, on bool) *error.Error
+	Play(server string, mode string) *error.Error
+	Notify(title string, description string, level LogLevel) *error.Error
+	Log(title string, description string, level LogLevel) *error.Error
 
 	// Builtin variables
 	GetUser() string
-	GetWeather() (string, error)
-	GetTemperature() (int, error)
+	GetWeather() (string, *error.Error)
+	GetTemperature() (int, *error.Error)
 	GetDate() (int, int, int, int, int, int)
 }

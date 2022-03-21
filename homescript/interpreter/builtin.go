@@ -3,32 +3,50 @@ package interpreter
 import (
 	"fmt"
 	"time"
+
+	"github.com/MikMuellerDev/homescript/homescript/error"
 )
 
-func Exit(executor Executor, args ...Value) (Value, error) {
+func Exit(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if len(args) != 1 {
-		return nil, fmt.Errorf("Function 'exit' takes 1 argument but %d were given", len(args))
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Function 'exit' takes 1 argument but %d were given", len(args)),
+		)
 	}
 	if args[0].Type() != Number {
-		return nil, fmt.Errorf("First argument of function 'exit' has to be of type Number")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("First argument of function 'exit' has to be of type Number"),
+		)
 	}
 	executor.Exit(args[0].(ValueNumber).Value)
 	return ValueVoid{}, nil
 }
 
-func Sleep(_ Executor, args ...Value) (Value, error) {
+func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if len(args) != 1 {
-		return nil, fmt.Errorf("Function 'sleep' takes 1 argument but %d were given", len(args))
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Function 'sleep' takes 1 argument but %d were given", len(args)),
+		)
 	}
 	if args[0].Type() != Number {
-		return nil, fmt.Errorf("First argument of function 'sleep' has to be of type Number")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("First argument of function 'sleep' has to be of type Number"),
+		)
 	}
 	seconds := args[0].(ValueNumber).Value
 	time.Sleep(time.Second * time.Duration(seconds))
 	return ValueVoid{}, nil
 }
 
-func Print(executor Executor, args ...Value) (Value, error) {
+func Print(executor Executor, _ error.Location, args ...Value) (Value, *error.Error) {
 	msgs := make([]string, 0)
 	for _, arg := range args {
 		res, err := arg.ToString(executor)
@@ -41,12 +59,20 @@ func Print(executor Executor, args ...Value) (Value, error) {
 	return ValueVoid{}, nil
 }
 
-func SwitchOn(executor Executor, args ...Value) (Value, error) {
+func SwitchOn(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if len(args) != 1 {
-		return nil, fmt.Errorf("Function 'switchOn' takes 1 argument but %d were given", len(args))
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Function 'switchOn' takes 1 argument but %d were given", len(args)),
+		)
 	}
 	if args[0].Type() != String {
-		return nil, fmt.Errorf("First argument of function 'switchOn' has to be of type String")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("First argument of function 'switchOn' has to be of type String"),
+		)
 	}
 	name := args[0].(ValueString).Value
 	value, err := executor.SwitchOn(name)
@@ -58,15 +84,27 @@ func SwitchOn(executor Executor, args ...Value) (Value, error) {
 	}, nil
 }
 
-func Switch(executor Executor, args ...Value) (Value, error) {
+func Switch(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if len(args) != 2 {
-		return nil, fmt.Errorf("Function 'switch' takes 2 arguments but %d were given", len(args))
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Function 'switch' takes 2 arguments but %d were given", len(args)),
+		)
 	}
 	if args[0].Type() != String {
-		return nil, fmt.Errorf("First argument of function 'switch' has to be of type String")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("First argument of function 'switch' has to be of type String"),
+		)
 	}
 	if args[1].Type() != Boolean {
-		return nil, fmt.Errorf("Second argument of function 'switch' has to be of type Boolean")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Second argument of function 'switch' has to be of type Boolean"),
+		)
 	}
 	name := args[0].(ValueString).Value
 	on := args[1].(ValueBoolean).Value
@@ -77,15 +115,27 @@ func Switch(executor Executor, args ...Value) (Value, error) {
 	return ValueVoid{}, nil
 }
 
-func Play(executor Executor, args ...Value) (Value, error) {
+func Play(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if len(args) != 2 {
-		return nil, fmt.Errorf("Function 'play' takes 2 arguments but %d were given", len(args))
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Function 'play' takes 2 arguments but %d were given", len(args)),
+		)
 	}
 	if args[0].Type() != String {
-		return nil, fmt.Errorf("First argument of function 'play' has to be of type String")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("First argument of function 'play' has to be of type String"),
+		)
 	}
 	if args[1].Type() != String {
-		return nil, fmt.Errorf("Second argument of function 'play' has to be of type String")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Second argument of function 'play' has to be of type String"),
+		)
 	}
 	server := args[0].(ValueString).Value
 	mode := args[1].(ValueString).Value
@@ -96,18 +146,34 @@ func Play(executor Executor, args ...Value) (Value, error) {
 	return ValueVoid{}, nil
 }
 
-func Notify(executor Executor, args ...Value) (Value, error) {
+func Notify(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if len(args) != 3 {
-		return nil, fmt.Errorf("Function 'notify' takes 3 arguments but %d were given", len(args))
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Function 'notify' takes 3 arguments but %d were given", len(args)),
+		)
 	}
 	if args[0].Type() != String {
-		return nil, fmt.Errorf("First argument of function 'notify' has to be of type String")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("First argument of function 'notify' has to be of type String"),
+		)
 	}
 	if args[1].Type() != String {
-		return nil, fmt.Errorf("Second argument of function 'notify' has to be of type String")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Second argument of function 'notify' has to be of type String"),
+		)
 	}
 	if args[2].Type() != Number {
-		return nil, fmt.Errorf("Third argument of function 'notify' has to be of type Number")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Third argument of function 'notify' has to be of type Number"),
+		)
 	}
 	title := args[0].(ValueString).Value
 	description := args[1].(ValueString).Value
@@ -121,7 +187,11 @@ func Notify(executor Executor, args ...Value) (Value, error) {
 	case 3:
 		level = LevelError
 	default:
-		return nil, fmt.Errorf("Notification level has to be one of 1, 2, or 3, got %d", rawLevel)
+		return nil, error.NewError(
+			error.ValueError,
+			location,
+			fmt.Sprintf("Notification level has to be one of 1, 2, or 3, got %d", rawLevel),
+		)
 	}
 	err := executor.Notify(title, description, level)
 	if err != nil {
@@ -130,18 +200,34 @@ func Notify(executor Executor, args ...Value) (Value, error) {
 	return ValueVoid{}, nil
 }
 
-func Log(executor Executor, args ...Value) (Value, error) {
+func Log(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if len(args) != 3 {
-		return nil, fmt.Errorf("Function 'log' takes 3 arguments but %d were given", len(args))
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Function 'log' takes 3 arguments but %d were given", len(args)),
+		)
 	}
 	if args[0].Type() != String {
-		return nil, fmt.Errorf("First argument of function 'log' has to be of type String")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("First argument of function 'log' has to be of type String"),
+		)
 	}
 	if args[1].Type() != String {
-		return nil, fmt.Errorf("Second argument of function 'log' has to be of type String")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Second argument of function 'log' has to be of type String"),
+		)
 	}
 	if args[2].Type() != Number {
-		return nil, fmt.Errorf("Third argument of function 'log' has to be of type Number")
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			fmt.Sprintf("Third argument of function 'log' has to be of type Number"),
+		)
 	}
 	title := args[0].(ValueString).Value
 	description := args[1].(ValueString).Value
@@ -161,7 +247,11 @@ func Log(executor Executor, args ...Value) (Value, error) {
 	case 5:
 		level = LevelFatal
 	default:
-		return nil, fmt.Errorf("Notification level has to be one of 0, 1, 2, 3, 4, or 5 got %d", rawLevel)
+		return nil, error.NewError(
+			error.ValueError,
+			location,
+			fmt.Sprintf("Log level has to be one of 0, 1, 2, 3, 4, or 5 got %d", rawLevel),
+		)
 	}
 	err := executor.Log(title, description, level)
 	if err != nil {
@@ -171,11 +261,11 @@ func Log(executor Executor, args ...Value) (Value, error) {
 }
 
 ////////////// Variables //////////////
-func GetUser(executor Executor) (Value, error) {
+func GetUser(executor Executor) (Value, *error.Error) {
 	return ValueString{Value: executor.GetUser()}, nil
 }
 
-func GetWeather(executor Executor) (Value, error) {
+func GetWeather(executor Executor) (Value, *error.Error) {
 	val, err := executor.GetWeather()
 	if err != nil {
 		return nil, err
@@ -183,7 +273,7 @@ func GetWeather(executor Executor) (Value, error) {
 	return ValueString{Value: val}, nil
 }
 
-func GetTemperature(executor Executor) (Value, error) {
+func GetTemperature(executor Executor) (Value, *error.Error) {
 	val, err := executor.GetTemperature()
 	if err != nil {
 		return nil, err
@@ -191,32 +281,32 @@ func GetTemperature(executor Executor) (Value, error) {
 	return ValueNumber{Value: val}, nil
 }
 
-func GetCurrentYear(executor Executor) (Value, error) {
+func GetCurrentYear(executor Executor) (Value, *error.Error) {
 	year, _, _, _, _, _ := executor.GetDate()
 	return ValueNumber{Value: year}, nil
 }
 
-func GetCurrentMonth(executor Executor) (Value, error) {
+func GetCurrentMonth(executor Executor) (Value, *error.Error) {
 	_, month, _, _, _, _ := executor.GetDate()
 	return ValueNumber{Value: month}, nil
 }
 
-func GetCurrentDay(executor Executor) (Value, error) {
+func GetCurrentDay(executor Executor) (Value, *error.Error) {
 	_, _, day, _, _, _ := executor.GetDate()
 	return ValueNumber{Value: day}, nil
 }
 
-func GetCurrentHour(executor Executor) (Value, error) {
+func GetCurrentHour(executor Executor) (Value, *error.Error) {
 	_, _, _, hour, _, _ := executor.GetDate()
 	return ValueNumber{Value: hour}, nil
 }
 
-func GetCurrentMinute(executor Executor) (Value, error) {
+func GetCurrentMinute(executor Executor) (Value, *error.Error) {
 	_, _, _, _, minute, _ := executor.GetDate()
 	return ValueNumber{Value: minute}, nil
 }
 
-func GetCurrentSecond(executor Executor) (Value, error) {
+func GetCurrentSecond(executor Executor) (Value, *error.Error) {
 	_, _, _, _, _, second := executor.GetDate()
 	return ValueNumber{Value: second}, nil
 }

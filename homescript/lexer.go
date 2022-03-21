@@ -1,17 +1,19 @@
 package homescript
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/MikMuellerDev/homescript/homescript/error"
 )
 
 type Lexer struct {
 	CurrentChar  *rune
-	CurrentIndex uint32
+	CurrentIndex uint
 	Input        []rune
+	Location     error.Location
 }
 
-func NewLexer(input string) Lexer {
+func NewLexer(filename string, input string) Lexer {
 	var currentChar *rune
 	if input == "" {
 		currentChar = nil
@@ -22,10 +24,11 @@ func NewLexer(input string) Lexer {
 		CurrentChar:  currentChar,
 		CurrentIndex: 0,
 		Input:        []rune(input),
+		Location:     error.NewLocation(filename),
 	}
 }
 
-func (self *Lexer) Scan() (Token, error) {
+func (self *Lexer) Scan() (Token, *error.Error) {
 	for self.CurrentChar != nil {
 		switch *self.CurrentChar {
 		case ' ':
@@ -71,16 +74,22 @@ func (self *Lexer) Scan() (Token, error) {
 			if isLetter(*self.CurrentChar) {
 				return self.makeName(), nil
 			}
-			return Token{}, errors.New(fmt.Sprintf("Illegal character: %c", *self.CurrentChar))
+			return UnknownToken(self.Location), error.NewError(
+				error.SyntaxError,
+				self.Location,
+				fmt.Sprintf("Illegal character: %c", *self.CurrentChar),
+			)
 		}
 	}
 	return Token{
 		TokenType: EOF,
 		Value:     "EOF",
+		Location:  self.Location,
 	}, nil
 }
 
 func (self *Lexer) makeName() Token {
+	location := self.Location
 	value := string(*self.CurrentChar)
 	self.advance()
 	for self.CurrentChar != nil && isLetter(*self.CurrentChar) {
@@ -107,11 +116,13 @@ func (self *Lexer) makeName() Token {
 	return Token{
 		TokenType: tokenType,
 		Value:     value,
+		Location:  location,
 	}
 
 }
 
 func (self *Lexer) makeNumber() Token {
+	location := self.Location
 	value := string(*self.CurrentChar)
 	self.advance()
 	for self.CurrentChar != nil && isDigit(*self.CurrentChar) {
@@ -121,10 +132,12 @@ func (self *Lexer) makeNumber() Token {
 	return Token{
 		TokenType: Number,
 		Value:     value,
+		Location:  location,
 	}
 }
 
 func (self *Lexer) makeOptionalEquals(standardTokenType TokenType, withEqualTokenType TokenType) Token {
+	location := self.Location
 	char := *self.CurrentChar
 	self.advance()
 	if self.CurrentChar != nil && *self.CurrentChar == '=' {
@@ -132,36 +145,47 @@ func (self *Lexer) makeOptionalEquals(standardTokenType TokenType, withEqualToke
 		return Token{
 			TokenType: withEqualTokenType,
 			Value:     string(char) + "=",
+			Location:  location,
 		}
 	}
 	return Token{
 		TokenType: standardTokenType,
 		Value:     string(char),
+		Location:  location,
 	}
 }
 
-func (self *Lexer) makeDoubleChar(char rune, tokenType TokenType) (Token, error) {
+func (self *Lexer) makeDoubleChar(char rune, tokenType TokenType) (Token, *error.Error) {
+	location := self.Location
 	self.advance()
 	if self.CurrentChar == nil || *self.CurrentChar != char {
-		return Token{}, errors.New(fmt.Sprintf("Expected character: %c, found: %c", char, *self.CurrentChar))
+		return UnknownToken(location), error.NewError(
+			error.SyntaxError,
+			location,
+			fmt.Sprintf("Expected character: %c, found: %c", char, *self.CurrentChar),
+		)
 	}
 	self.advance()
 	return Token{
 		TokenType: tokenType,
 		Value:     string(char) + string(char),
+		Location:  location,
 	}, nil
 }
 
 func (self *Lexer) makeSingleChar(tokenType TokenType) Token {
+	location := self.Location
 	char := *self.CurrentChar
 	self.advance()
 	return Token{
 		TokenType: tokenType,
 		Value:     string(char),
+		Location:  location,
 	}
 }
 
-func (self *Lexer) makeString() (Token, error) {
+func (self *Lexer) makeString() (Token, *error.Error) {
+	location := self.Location
 	startQuote := *self.CurrentChar
 	var value string
 
@@ -176,13 +200,14 @@ func (self *Lexer) makeString() (Token, error) {
 
 	// Check for closing quote
 	if self.CurrentChar == nil {
-		return Token{}, errors.New("String literal never closed")
+		return UnknownToken(location), error.NewError(error.SyntaxError, location, "String literal never closed")
 	}
 
 	self.advance() // Skip closing quote
 	return Token{
 		TokenType: String,
 		Value:     value,
+		Location:  location,
 	}, nil
 }
 
@@ -194,8 +219,9 @@ func (self *Lexer) skipComment() {
 }
 
 func (self *Lexer) advance() {
+	self.Location.Advance(self.CurrentChar != nil && *self.CurrentChar == '\n')
 	self.CurrentIndex += 1
-	if self.CurrentIndex >= uint32(len(self.Input)) {
+	if self.CurrentIndex >= uint(len(self.Input)) {
 		self.CurrentChar = nil
 		return
 	}

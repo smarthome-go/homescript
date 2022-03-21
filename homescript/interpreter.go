@@ -3,6 +3,7 @@ package homescript
 import (
 	"fmt"
 
+	"github.com/MikMuellerDev/homescript/homescript/error"
 	"github.com/MikMuellerDev/homescript/homescript/interpreter"
 )
 
@@ -39,14 +40,14 @@ func NewInterpreter(startNode Expressions, executor interpreter.Executor) Interp
 	}
 }
 
-func (self *Interpreter) Run() error {
+func (self *Interpreter) Run() (int, *error.Error) {
 	_, err := self.visitExpressions(self.StartNode)
-	return err
+	return 0, err
 }
 
-func (self *Interpreter) visitExpressions(node Expressions) (interpreter.Value, error) {
+func (self *Interpreter) visitExpressions(node Expressions) (interpreter.Value, *error.Error) {
 	var value interpreter.Value = interpreter.ValueVoid{}
-	var err error
+	var err *error.Error
 	for _, expr := range node {
 		value, err = self.visitExpression(expr)
 		if err != nil {
@@ -56,7 +57,7 @@ func (self *Interpreter) visitExpressions(node Expressions) (interpreter.Value, 
 	return value, nil
 }
 
-func (self *Interpreter) visitExpression(node Expression) (interpreter.Value, error) {
+func (self *Interpreter) visitExpression(node Expression) (interpreter.Value, *error.Error) {
 	base, err := self.visitAndExpr(node.Base)
 	if err != nil {
 		return nil, err
@@ -87,7 +88,7 @@ func (self *Interpreter) visitExpression(node Expression) (interpreter.Value, er
 	return interpreter.ValueBoolean{Value: false}, nil
 }
 
-func (self *Interpreter) visitAndExpr(node AndExpr) (interpreter.Value, error) {
+func (self *Interpreter) visitAndExpr(node AndExpr) (interpreter.Value, *error.Error) {
 	base, err := self.visitEqExpr(node.Base)
 	if err != nil {
 		return nil, err
@@ -118,7 +119,7 @@ func (self *Interpreter) visitAndExpr(node AndExpr) (interpreter.Value, error) {
 	return interpreter.ValueBoolean{Value: true}, nil
 }
 
-func (self *Interpreter) visitEqExpr(node EqExpr) (interpreter.Value, error) {
+func (self *Interpreter) visitEqExpr(node EqExpr) (interpreter.Value, *error.Error) {
 	base, err := self.visitRelExpr(node.Base)
 	if err != nil {
 		return nil, err
@@ -148,7 +149,7 @@ func (self *Interpreter) visitEqExpr(node EqExpr) (interpreter.Value, error) {
 	}
 }
 
-func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, error) {
+func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, *error.Error) {
 	base, err := self.visitNotExpr(node.Base)
 	if err != nil {
 		return nil, err
@@ -166,19 +167,23 @@ func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, error) {
 	} else if base.Type() == interpreter.Variable {
 		leftSide = base.(interpreter.ValueVariable)
 	} else {
-		return nil, fmt.Errorf("Cannot compare %s type with %s type", base.TypeName(), other.TypeName())
+		return nil, error.NewError(
+			error.TypeError,
+			node.Location,
+			fmt.Sprintf("Cannot compare %s type with %s type", base.TypeName(), other.TypeName()),
+		)
 	}
 	var truth bool
-	var errTruth error
+	var errTruth *error.Error
 	switch node.Other.TokenType {
 	case GreaterThan:
-		truth, errTruth = leftSide.IsGreaterThan(self.Executor, other)
+		truth, errTruth = leftSide.IsGreaterThan(self.Executor, other, node.Location)
 	case GreaterThanOrEqual:
-		truth, errTruth = leftSide.IsGreaterThanOrEqual(self.Executor, other)
+		truth, errTruth = leftSide.IsGreaterThanOrEqual(self.Executor, other, node.Location)
 	case LessThan:
-		truth, errTruth = leftSide.IsLessThan(self.Executor, other)
+		truth, errTruth = leftSide.IsLessThan(self.Executor, other, node.Location)
 	case LessThanOrEqual:
-		truth, errTruth = leftSide.IsLessThanOrEqual(self.Executor, other)
+		truth, errTruth = leftSide.IsLessThanOrEqual(self.Executor, other, node.Location)
 	default:
 		panic("unreachable")
 	}
@@ -190,7 +195,7 @@ func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, error) {
 	}, nil
 }
 
-func (self *Interpreter) visitNotExpr(node NotExpr) (interpreter.Value, error) {
+func (self *Interpreter) visitNotExpr(node NotExpr) (interpreter.Value, *error.Error) {
 	base, err := self.visitAtom(node.Base)
 	if err != nil {
 		return nil, err
@@ -207,9 +212,9 @@ func (self *Interpreter) visitNotExpr(node NotExpr) (interpreter.Value, error) {
 	return base, nil
 }
 
-func (self *Interpreter) visitAtom(node Atom) (interpreter.Value, error) {
+func (self *Interpreter) visitAtom(node Atom) (interpreter.Value, *error.Error) {
 	var result interpreter.Value
-	var err error
+	var err *error.Error
 	switch node.Kind() {
 	case AtomNumberKind:
 		result = interpreter.ValueNumber{
@@ -227,7 +232,11 @@ func (self *Interpreter) visitAtom(node Atom) (interpreter.Value, error) {
 		name := node.(AtomIdentifier).Name
 		value, exists := self.Scope[name]
 		if !exists {
-			return nil, fmt.Errorf("Variable or function '%s' does not exists", name)
+			return nil, error.NewError(
+				error.ReferenceError,
+				node.(AtomIdentifier).Location,
+				fmt.Sprintf("Variable or function '%s' does not exists", name),
+			)
 		}
 		if value.Type() == interpreter.Variable {
 			result, err = value.(interpreter.ValueVariable).Callback(self.Executor)
@@ -244,7 +253,7 @@ func (self *Interpreter) visitAtom(node Atom) (interpreter.Value, error) {
 	return result, err
 }
 
-func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, error) {
+func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, *error.Error) {
 	condition, err := self.visitExpression(node.Condition)
 	if err != nil {
 		return nil, err
@@ -262,13 +271,21 @@ func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, error) {
 	return self.visitExpressions(node.ElseBody)
 }
 
-func (self *Interpreter) visitCallExpr(node CallExpr) (interpreter.Value, error) {
+func (self *Interpreter) visitCallExpr(node CallExpr) (interpreter.Value, *error.Error) {
 	value, exists := self.Scope[node.Name]
 	if !exists {
-		return nil, fmt.Errorf("Variable or function '%s' does not exists", node.Name)
+		return nil, error.NewError(
+			error.ReferenceError,
+			node.Location,
+			fmt.Sprintf("Variable or function '%s' does not exists", node.Name),
+		)
 	}
 	if value.Type() != interpreter.Function {
-		return nil, fmt.Errorf("Type %s is not callable", value.TypeName())
+		return nil, error.NewError(
+			error.TypeError,
+			node.Location,
+			fmt.Sprintf("Type %s is not callable", value.TypeName()),
+		)
 	}
 	arguments := make([]interpreter.Value, 0)
 	for _, argument := range node.Arguments {
@@ -278,5 +295,5 @@ func (self *Interpreter) visitCallExpr(node CallExpr) (interpreter.Value, error)
 		}
 		arguments = append(arguments, val)
 	}
-	return value.(interpreter.ValueFunction).Callback(self.Executor, arguments...)
+	return value.(interpreter.ValueFunction).Callback(self.Executor, node.Location, arguments...)
 }
