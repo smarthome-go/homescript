@@ -2,18 +2,33 @@ package homescript
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/MikMuellerDev/homescript/homescript/error"
 )
 
-func isDigit(char rune) bool {
-	intChar := int(char)
-	return intChar >= 48 && intChar <= 57
+type runeRange struct {
+	min int
+	max int
 }
 
-func isLetter(char rune) bool {
+func isRuneInRange(char rune, ranges ...runeRange) bool {
 	intChar := int(char)
-	return intChar >= 65 && intChar <= 90 || intChar >= 97 && intChar <= 122
+	for _, ran := range ranges {
+		if intChar >= ran.min && intChar <= ran.max {
+			return true
+		}
+	}
+	return false
+}
+
+func isDigit(char rune) bool      { return isRuneInRange(char, runeRange{min: 48, max: 57}) }
+func isOctalDigit(char rune) bool { return isRuneInRange(char, runeRange{min: 48, max: 55}) }
+func isHexDigit(char rune) bool {
+	return isRuneInRange(char, runeRange{min: 48, max: 57}, runeRange{min: 65, max: 70}, runeRange{min: 97, max: 102})
+}
+func isLetter(char rune) bool {
+	return isRuneInRange(char, runeRange{min: 65, max: 90}, runeRange{min: 97, max: 122})
 }
 
 type Lexer struct {
@@ -204,8 +219,16 @@ func (self *Lexer) makeString() (Token, *error.Error) {
 		if *self.CurrentChar == startQuote {
 			break
 		}
-		value += string(*self.CurrentChar)
-		self.advance()
+		if *self.CurrentChar == '\\' {
+			char, err := self.makeEscapeSequence()
+			if err != nil {
+				return UnknownToken(location), err
+			}
+			value += string(char)
+		} else {
+			value += string(*self.CurrentChar)
+			self.advance()
+		}
 	}
 
 	// Check for closing quote
@@ -219,6 +242,72 @@ func (self *Lexer) makeString() (Token, *error.Error) {
 		Value:     value,
 		Location:  location,
 	}, nil
+}
+
+func (self *Lexer) makeEscapeSequence() (rune, *error.Error) {
+	location := self.Location
+	self.advance()
+	if self.CurrentChar == nil {
+		return ' ', error.NewError(error.SyntaxError, location, "Unfinished escape sequence")
+	}
+
+	var char rune
+	var err *error.Error
+	switch *self.CurrentChar {
+	case '\\':
+		char = '\\'
+		self.advance()
+	case '\'':
+		char = '\''
+		self.advance()
+	case '"':
+		char = '"'
+		self.advance()
+	case 'b':
+		char = '\b'
+		self.advance()
+	case 'n':
+		char = '\n'
+		self.advance()
+	case 'r':
+		char = '\r'
+		self.advance()
+	case 't':
+		char = '\t'
+		self.advance()
+	case 'x':
+		char, err = self.escapePart("", location, 16, 2)
+	case 'u':
+		char, err = self.escapePart("", location, 16, 4)
+	case 'U':
+		char, err = self.escapePart("", location, 16, 8)
+	default:
+		if isOctalDigit(*self.CurrentChar) {
+			char, err = self.escapePart(string(*self.CurrentChar), location, 8, 2)
+		} else {
+			err = error.NewError(error.SyntaxError, location, "Invalid escape sequence")
+		}
+	}
+	return char, err
+}
+
+func (self *Lexer) escapePart(esc string, location error.Location, radix int, digits uint8) (rune, *error.Error) {
+	self.advance()
+	var digitFun func(rune) bool
+	if radix == 16 {
+		digitFun = isHexDigit
+	} else {
+		digitFun = isOctalDigit
+	}
+	for i := 0; i < int(digits); i++ {
+		if self.CurrentChar == nil || !digitFun(*self.CurrentChar) {
+			return ' ', error.NewError(error.SyntaxError, location, "Invalid escape sequence")
+		}
+		esc += string(*self.CurrentChar)
+		self.advance()
+	}
+	code, _ := strconv.ParseInt(esc, radix, 32)
+	return rune(code), nil
 }
 
 func (self *Lexer) skipComment() {

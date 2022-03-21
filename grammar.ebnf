@@ -19,8 +19,13 @@ CallExpr    = identifier , '(' , [ Expression , { ',' , Expression } ] , ')' ;
 (* Tokens *)
 eol         = ? line break ? ;
 number      = DIGIT , { DIGIT } ;
-string      = '"' , { CHAR - '"' } , '"'
-            | "'" , { CHAR - "'" } , "'" ;
+string      = '"' , { CHAR - '"' - '\' | escape_seq } , '"'
+            | "'" , { CHAR - "'" - '\' | escape_seq } , "'" ;
+escape_seq  = '\' , ( ESCAPE_CHAR
+                    | OCTAL , OCTAL , OCTAL
+                    | 'x' , HEX , HEX
+                    | 'u' , HEX , HEX , HEX , HEX
+                    | 'U' , HEX , HEX , HEX , HEX , HEX , HEX , HEX , HEX ) ;
 bool        = 'true' | 'false' | 'on' | 'off' ;
 identifier  = LETTER , { LETTER } ;
 
@@ -32,4 +37,9 @@ LETTER      = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J'
             | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x'
             | 'y' | 'z' ;
 DIGIT       = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
+OCTAL       = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' ;
+HEX         = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+            | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'a' | 'b' | 'c' | 'd'
+            | 'e' | 'f' ;
 CHAR        = ? any UTF8 character ? ;
+ESCAPE_CHAR = '\' | "'" | '"' | 'b' | 'n' | 'r' | 't' ;
