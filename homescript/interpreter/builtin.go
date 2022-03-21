@@ -8,20 +8,40 @@ import (
 	"github.com/MikMuellerDev/homescript/homescript/error"
 )
 
-func Exit(location error.Location, args ...Value) (*error.Error, *int) {
-	if len(args) != 1 {
+var numberNames = [...]string{
+	"First",
+	"Second",
+	"Third",
+}
+
+func checkArgs(name string, location error.Location, args []Value, types ...ValueType) *error.Error {
+	if len(args) != len(types) {
+		s := ""
+		if len(types) != 1 {
+			s = "s"
+		}
 		return error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Function 'exit' takes 1 argument but %d were given", len(args)),
-		), nil
+			fmt.Sprintf("Function '%s' takes %d argument%s but %d were given", name, len(types), s, len(args)),
+		)
 	}
-	if args[0].Type() != Number {
-		return error.NewError(
-			error.TypeError,
-			location,
-			"First argument of function 'exit' has to be of type Number",
-		), nil
+	for i, typ := range types {
+		if args[i].Type() != typ {
+			return error.NewError(
+				error.TypeError,
+				location,
+				fmt.Sprintf("%s argument of function '%s' has to be of type %s", numberNames[i], name, typ.Name()),
+			)
+		}
+	}
+	return nil
+}
+
+func Exit(location error.Location, args ...Value) (*error.Error, *int) {
+	err := checkArgs("exit", location, args, Number)
+	if err != nil {
+		return err, nil
 	}
 	code := args[0].(ValueNumber).Value
 	if code == float64(int(math.Round(code))) {
@@ -36,19 +56,9 @@ func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 }
 
 func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if len(args) != 1 {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			fmt.Sprintf("Function 'sleep' takes 1 argument but %d were given", len(args)),
-		)
-	}
-	if args[0].Type() != Number {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"First argument of function 'sleep' has to be of type Number",
-		)
+	err := checkArgs("sleep", location, args, Number)
+	if err != nil {
+		return nil, err
 	}
 	seconds := args[0].(ValueNumber).Value
 	time.Sleep(time.Second * time.Duration(seconds))
@@ -69,24 +79,14 @@ func Print(executor Executor, location error.Location, args ...Value) (Value, *e
 }
 
 func SwitchOn(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if len(args) != 1 {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			fmt.Sprintf("Function 'switchOn' takes 1 argument but %d were given", len(args)),
-		)
-	}
-	if args[0].Type() != String {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"First argument of function 'switchOn' has to be of type String",
-		)
+	err := checkArgs("switchOn", location, args, String)
+	if err != nil {
+		return nil, err
 	}
 	name := args[0].(ValueString).Value
-	value, err := executor.SwitchOn(name)
+	value, execErr := executor.SwitchOn(name)
 	if err != nil {
-		return nil, error.NewError(error.RuntimeError, location, err.Error())
+		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
 	}
 	return ValueBoolean{
 		Value: value,
@@ -94,95 +94,37 @@ func SwitchOn(executor Executor, location error.Location, args ...Value) (Value,
 }
 
 func Switch(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if len(args) != 2 {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			fmt.Sprintf("Function 'switch' takes 2 arguments but %d were given", len(args)),
-		)
-	}
-	if args[0].Type() != String {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"First argument of function 'switch' has to be of type String",
-		)
-	}
-	if args[1].Type() != Boolean {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"Second argument of function 'switch' has to be of type Boolean",
-		)
+	err := checkArgs("switch", location, args, String, Boolean)
+	if err != nil {
+		return nil, err
 	}
 	name := args[0].(ValueString).Value
 	on := args[1].(ValueBoolean).Value
-	err := executor.Switch(name, on)
-	if err != nil {
-		return nil, error.NewError(error.RuntimeError, location, err.Error())
+	execErr := executor.Switch(name, on)
+	if execErr != nil {
+		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
 	}
 	return ValueVoid{}, nil
 }
 
 func Play(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if len(args) != 2 {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			fmt.Sprintf("Function 'play' takes 2 arguments but %d were given", len(args)),
-		)
-	}
-	if args[0].Type() != String {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"First argument of function 'play' has to be of type String",
-		)
-	}
-	if args[1].Type() != String {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"Second argument of function 'play' has to be of type String",
-		)
+	err := checkArgs("play", location, args, String, String)
+	if err != nil {
+		return nil, err
 	}
 	server := args[0].(ValueString).Value
 	mode := args[1].(ValueString).Value
-	err := executor.Play(server, mode)
+	execErr := executor.Play(server, mode)
 	if err != nil {
-		return nil, error.NewError(error.RuntimeError, location, err.Error())
+		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
 	}
 	return ValueVoid{}, nil
 }
 
 func Notify(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if len(args) != 3 {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			fmt.Sprintf("Function 'notify' takes 3 arguments but %d were given", len(args)),
-		)
-	}
-	if args[0].Type() != String {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"First argument of function 'notify' has to be of type String",
-		)
-	}
-	if args[1].Type() != String {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"Second argument of function 'notify' has to be of type String",
-		)
-	}
-	if args[2].Type() != Number {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"Third argument of function 'notify' has to be of type Number",
-		)
+	err := checkArgs("notify", location, args, String, String, Number)
+	if err != nil {
+		return nil, err
 	}
 	title := args[0].(ValueString).Value
 	description := args[1].(ValueString).Value
@@ -209,41 +151,17 @@ func Notify(executor Executor, location error.Location, args ...Value) (Value, *
 			fmt.Sprintf("Notification level has to be one of 1, 2, or 3, got %d", int(math.Round(rawLevel))),
 		)
 	}
-	err := executor.Notify(title, description, level)
+	execErr := executor.Notify(title, description, level)
 	if err != nil {
-		return nil, error.NewError(error.RuntimeError, location, err.Error())
+		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
 	}
 	return ValueVoid{}, nil
 }
 
 func Log(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if len(args) != 3 {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			fmt.Sprintf("Function 'log' takes 3 arguments but %d were given", len(args)),
-		)
-	}
-	if args[0].Type() != String {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"First argument of function 'log' has to be of type String",
-		)
-	}
-	if args[1].Type() != String {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"Second argument of function 'log' has to be of type String",
-		)
-	}
-	if args[2].Type() != Number {
-		return nil, error.NewError(
-			error.TypeError,
-			location,
-			"Third argument of function 'log' has to be of type Number",
-		)
+	err := checkArgs("log", location, args, String, String, Number)
+	if err != nil {
+		return nil, err
 	}
 	title := args[0].(ValueString).Value
 	description := args[1].(ValueString).Value
@@ -276,9 +194,9 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 			fmt.Sprintf("Log level has to be one of 0, 1, 2, 3, 4, or 5 got %d", int(math.Round(rawLevel))),
 		)
 	}
-	err := executor.Log(title, description, level)
+	execErr := executor.Log(title, description, level)
 	if err != nil {
-		return nil, error.NewError(error.RuntimeError, location, err.Error())
+		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
 	}
 	return ValueVoid{}, nil
 }

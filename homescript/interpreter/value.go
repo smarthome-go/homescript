@@ -17,9 +17,27 @@ const (
 	Variable
 )
 
+func (self ValueType) Name() string {
+	switch self {
+	case Void:
+		return "Void"
+	case Number:
+		return "Number"
+	case String:
+		return "String"
+	case Boolean:
+		return "Boolean"
+	case Function:
+		return "Function"
+	case Variable:
+		return "Variable"
+	default:
+		panic(0)
+	}
+}
+
 type Value interface {
 	Type() ValueType
-	TypeName() string
 	ToString(executor Executor, location error.Location) (string, *error.Error)
 	IsTrue(executor Executor, location error.Location) (bool, *error.Error)
 	IsEqual(executor Executor, location error.Location, other Value) (bool, *error.Error)
@@ -34,8 +52,7 @@ type ValueRelational interface {
 
 type ValueVoid struct{}
 
-func (self ValueVoid) Type() ValueType  { return Void }
-func (self ValueVoid) TypeName() string { return "Void" }
+func (self ValueVoid) Type() ValueType { return Void }
 func (self ValueVoid) ToString(_ Executor, _ error.Location) (string, *error.Error) {
 	return "void", nil
 }
@@ -46,8 +63,7 @@ func (self ValueVoid) IsEqual(_ Executor, _ error.Location, other Value) (bool, 
 
 type ValueNumber struct{ Value float64 }
 
-func (self ValueNumber) Type() ValueType  { return Number }
-func (self ValueNumber) TypeName() string { return "Number" }
+func (self ValueNumber) Type() ValueType { return Number }
 func (self ValueNumber) ToString(_ Executor, _ error.Location) (string, *error.Error) {
 	return fmt.Sprint(self.Value), nil
 }
@@ -72,7 +88,7 @@ func (self ValueNumber) IsLessThan(executor Executor, other Value, location erro
 		return false, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Cannot compare %s type with %s type", self.TypeName(), val.TypeName()),
+			fmt.Sprintf("Cannot compare %s type with %s type", self.Type().Name(), val.Type().Name()),
 		)
 	}
 	return self.Value < val.(ValueNumber).Value, nil
@@ -92,7 +108,7 @@ func (self ValueNumber) IsLessThanOrEqual(executor Executor, other Value, locati
 		return false, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Cannot compare %s type with %s type", self.TypeName(), val.TypeName()),
+			fmt.Sprintf("Cannot compare %s type with %s type", self.Type().Name(), val.Type().Name()),
 		)
 	}
 	return self.Value <= val.(ValueNumber).Value, nil
@@ -112,7 +128,7 @@ func (self ValueNumber) IsGreaterThan(executor Executor, other Value, location e
 		return false, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Cannot compare %s type with %s type", self.TypeName(), val.TypeName()),
+			fmt.Sprintf("Cannot compare %s type with %s type", self.Type().Name(), val.Type().Name()),
 		)
 	}
 	return self.Value > val.(ValueNumber).Value, nil
@@ -132,7 +148,7 @@ func (self ValueNumber) IsGreaterThanOrEqual(executor Executor, other Value, loc
 		return false, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Cannot compare %s type with %s type", self.TypeName(), val.TypeName()),
+			fmt.Sprintf("Cannot compare %s type with %s type", self.Type().Name(), val.Type().Name()),
 		)
 	}
 	return self.Value >= val.(ValueNumber).Value, nil
@@ -140,8 +156,7 @@ func (self ValueNumber) IsGreaterThanOrEqual(executor Executor, other Value, loc
 
 type ValueString struct{ Value string }
 
-func (self ValueString) Type() ValueType  { return String }
-func (self ValueString) TypeName() string { return "String" }
+func (self ValueString) Type() ValueType { return String }
 func (self ValueString) ToString(_ Executor, _ error.Location) (string, *error.Error) {
 	return self.Value, nil
 }
@@ -154,8 +169,7 @@ func (self ValueString) IsEqual(_ Executor, _ error.Location, other Value) (bool
 
 type ValueBoolean struct{ Value bool }
 
-func (self ValueBoolean) Type() ValueType  { return Boolean }
-func (self ValueBoolean) TypeName() string { return "Boolean" }
+func (self ValueBoolean) Type() ValueType { return Boolean }
 func (self ValueBoolean) ToString(_ Executor, _ error.Location) (string, *error.Error) {
 	return fmt.Sprintf("%t", self.Value), nil
 }
@@ -170,8 +184,7 @@ type ValueFunction struct {
 	Callback func(executor Executor, location error.Location, args ...Value) (Value, *error.Error)
 }
 
-func (self ValueFunction) Type() ValueType  { return Function }
-func (self ValueFunction) TypeName() string { return "Function" }
+func (self ValueFunction) Type() ValueType { return Function }
 func (self ValueFunction) ToString(_ Executor, _ error.Location) (string, *error.Error) {
 	return "<function>", nil
 }
@@ -186,8 +199,7 @@ type ValueVariable struct {
 	Callback func(executor Executor, location error.Location) (Value, *error.Error)
 }
 
-func (self ValueVariable) Type() ValueType  { return Variable }
-func (self ValueVariable) TypeName() string { return "Variable" }
+func (self ValueVariable) Type() ValueType { return Variable }
 func (self ValueVariable) ToString(executor Executor, location error.Location) (string, *error.Error) {
 	val, err := self.Callback(executor, location)
 	if err != nil {
@@ -221,7 +233,7 @@ func (self ValueVariable) IsLessThan(executor Executor, other Value, location er
 		return false, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Cannot compare %s type with %s type", val.TypeName(), other.TypeName()),
+			fmt.Sprintf("Cannot compare %s type with %s type", val.Type().Name(), other.Type().Name()),
 		)
 	}
 	return val.(ValueNumber).IsLessThan(executor, other, location)
@@ -235,7 +247,7 @@ func (self ValueVariable) IsLessThanOrEqual(executor Executor, other Value, loca
 		return false, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Cannot compare %s type with %s type", val.TypeName(), other.TypeName()),
+			fmt.Sprintf("Cannot compare %s type with %s type", val.Type().Name(), other.Type().Name()),
 		)
 	}
 	return val.(ValueNumber).IsLessThanOrEqual(executor, other, location)
@@ -249,7 +261,7 @@ func (self ValueVariable) IsGreaterThan(executor Executor, other Value, location
 		return false, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Cannot compare %s type with %s type", val.TypeName(), other.TypeName()),
+			fmt.Sprintf("Cannot compare %s type with %s type", val.Type().Name(), other.Type().Name()),
 		)
 	}
 	return val.(ValueNumber).IsGreaterThan(executor, other, location)
@@ -263,7 +275,7 @@ func (self ValueVariable) IsGreaterThanOrEqual(executor Executor, other Value, l
 		return false, error.NewError(
 			error.TypeError,
 			location,
-			fmt.Sprintf("Cannot compare %s type with %s type", val.TypeName(), other.TypeName()),
+			fmt.Sprintf("Cannot compare %s type with %s type", val.Type().Name(), other.Type().Name()),
 		)
 	}
 	return val.(ValueNumber).IsGreaterThanOrEqual(executor, other, location)

@@ -176,7 +176,7 @@ func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, *error.E
 		return nil, error.NewError(
 			error.TypeError,
 			node.Base.Location,
-			fmt.Sprintf("Cannot compare %s type with %s type", base.TypeName(), other.TypeName()),
+			fmt.Sprintf("Cannot compare %s type with %s type", base.Type().Name(), other.Type().Name()),
 		), nil
 	}
 	var truth bool
@@ -291,7 +291,7 @@ func (self *Interpreter) visitCallExpr(node CallExpr) (interpreter.Value, *error
 		return nil, error.NewError(
 			error.TypeError,
 			node.Location,
-			fmt.Sprintf("Type %s is not callable", value.TypeName()),
+			fmt.Sprintf("Type %s is not callable", value.Type().Name()),
 		), nil
 	}
 	arguments := make([]interpreter.Value, 0)
