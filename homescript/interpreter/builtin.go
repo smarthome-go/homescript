@@ -7,23 +7,23 @@ import (
 	"github.com/MikMuellerDev/homescript/homescript/error"
 )
 
-func Exit(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 	if len(args) != 1 {
-		return nil, error.NewError(
+		return error.NewError(
 			error.TypeError,
 			location,
 			fmt.Sprintf("Function 'exit' takes 1 argument but %d were given", len(args)),
-		)
+		), nil
 	}
 	if args[0].Type() != Number {
-		return nil, error.NewError(
+		return error.NewError(
 			error.TypeError,
 			location,
 			fmt.Sprintf("First argument of function 'exit' has to be of type Number"),
-		)
+		), nil
 	}
-	executor.Exit(args[0].(ValueNumber).Value)
-	return ValueVoid{}, nil
+	code := args[0].(ValueNumber).Value
+	return nil, &code
 }
 
 func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {

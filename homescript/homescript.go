@@ -2,7 +2,6 @@ package homescript
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	customError "github.com/MikMuellerDev/homescript/homescript/error"
@@ -11,9 +10,6 @@ import (
 
 type DummyExecutor struct{}
 
-func (self DummyExecutor) Exit(code int) {
-	os.Exit(code)
-}
 func (self DummyExecutor) Print(args ...string) {
 	output := ""
 	for _, arg := range args {

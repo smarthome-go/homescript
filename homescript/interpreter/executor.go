@@ -12,7 +12,6 @@ const (
 )
 
 type Executor interface {
-	Exit(code int)
 	Print(args ...string)
 	SwitchOn(name string) (bool, error)
 	Switch(name string, on bool) error
