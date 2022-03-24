@@ -191,6 +191,23 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 	return ValueVoid{}, nil
 }
 
+// Launches a Homescript based on the provided script Id
+// If no valid script could be found or the user lacks permission to execute it, an error is returned
+func Exec(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	var output string
+	if err := checkArgs("exec", location, args, String); err != nil {
+		return nil, err
+	}
+	homescriptId := args[0].(ValueString).Value
+	output, err := executor.Exec(homescriptId)
+	if err != nil {
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
+	}
+	return ValueString{
+		Value: output,
+	}, nil
+}
+
 ////////////// Variables //////////////
 func GetUser(executor Executor, _ error.Location) (Value, *error.Error) {
 	return ValueString{Value: executor.GetUser()}, nil

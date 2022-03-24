@@ -47,6 +47,10 @@ func (self DummyExecutor) Log(
 	fmt.Printf("Logging '%s' -- '%s' with level %d\n", title, description, level)
 	return nil
 }
+func (self DummyExecutor) Exec(homescriptId string) (string, error) {
+	fmt.Printf("Executing script: '%s'\n", homescriptId)
+	return "", nil
+}
 func (self DummyExecutor) GetUser() string {
 	return "admin"
 }

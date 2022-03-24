@@ -18,6 +18,7 @@ type Executor interface {
 	Play(server string, mode string) error
 	Notify(title string, description string, level LogLevel) error
 	Log(title string, description string, level LogLevel) error
+	Exec(homescriptId string) (string, error)
 
 	// Builtin variables
 	GetUser() string
