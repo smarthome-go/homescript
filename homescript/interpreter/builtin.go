@@ -81,9 +81,9 @@ func SwitchOn(executor Executor, location error.Location, args ...Value) (Value,
 		return nil, err
 	}
 	name := args[0].(ValueString).Value
-	value, execErr := executor.SwitchOn(name)
-	if execErr != nil {
-		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
+	value, err := executor.SwitchOn(name)
+	if err != nil {
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueBoolean{
 		Value: value,
@@ -103,8 +103,7 @@ func Switch(executor Executor, location error.Location, args ...Value) (Value, *
 }
 
 func Play(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	err := checkArgs("play", location, args, String, String)
-	if err != nil {
+	if err := checkArgs("play", location, args, String, String); err != nil {
 		return nil, err
 	}
 	server := args[0].(ValueString).Value

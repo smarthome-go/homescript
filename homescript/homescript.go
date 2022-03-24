@@ -65,7 +65,7 @@ func (self DummyExecutor) GetDebugInfo() (string, error) {
 ―――――――――――――――――――――――――――――――――――――――――――――
  Smarthome Server Version:      │ v0.0.5
  Database Online:               │ YES
- Compiled with:                 │ go1.18          
+ Compiled with:                 │ go1.18
  CPU Cores:                     │ 12
  Current Goroutines:            │ 8
  Current Memory Usage:          │ 0
@@ -79,14 +79,14 @@ func (self DummyExecutor) GetDebugInfo() (string, error) {
 // Returns an error slice
 func Run(executor interpreter.Executor, filename string, code string) (int, []customError.Error) {
 	parser := NewParser(NewLexer(filename, code))
-	ast, err := parser.Parse()
-	if err != nil && len(err) > 0 {
-		return 1, err
+	ast, errs := parser.Parse()
+	if errs != nil && len(errs) > 0 {
+		return 1, errs
 	}
 	homeScriptInterpreter := NewInterpreter(ast, executor)
-	exitCode, errRuntime := homeScriptInterpreter.Run()
-	if errRuntime != nil {
-		return 1, []customError.Error{*errRuntime}
+	exitCode, err := homeScriptInterpreter.Run()
+	if err != nil {
+		return 1, []customError.Error{*err}
 	}
 	return exitCode, nil
 }

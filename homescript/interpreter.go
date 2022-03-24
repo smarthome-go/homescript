@@ -180,21 +180,20 @@ func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, *error.E
 		), nil
 	}
 	var truth bool
-	var errTruth *error.Error
 	switch node.Other.TokenType {
 	case GreaterThan:
-		truth, errTruth = leftSide.IsGreaterThan(self.Executor, other, node.Base.Location)
+		truth, err = leftSide.IsGreaterThan(self.Executor, other, node.Base.Location)
 	case GreaterThanOrEqual:
-		truth, errTruth = leftSide.IsGreaterThanOrEqual(self.Executor, other, node.Base.Location)
+		truth, err = leftSide.IsGreaterThanOrEqual(self.Executor, other, node.Base.Location)
 	case LessThan:
-		truth, errTruth = leftSide.IsLessThan(self.Executor, other, node.Base.Location)
+		truth, err = leftSide.IsLessThan(self.Executor, other, node.Base.Location)
 	case LessThanOrEqual:
-		truth, errTruth = leftSide.IsLessThanOrEqual(self.Executor, other, node.Base.Location)
+		truth, err = leftSide.IsLessThanOrEqual(self.Executor, other, node.Base.Location)
 	default:
 		panic("unreachable")
 	}
-	if errTruth != nil {
-		return nil, errTruth, nil
+	if err != nil {
+		return nil, err, nil
 	}
 	return interpreter.ValueBoolean{
 		Value: truth,
@@ -265,9 +264,9 @@ func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, *error.Err
 	if err != nil || code != nil {
 		return nil, err, code
 	}
-	truth, errTruth := condition.IsTrue(self.Executor, node.Location)
-	if errTruth != nil {
-		return nil, errTruth, nil
+	truth, err := condition.IsTrue(self.Executor, node.Location)
+	if err != nil {
+		return nil, err, nil
 	}
 	if truth {
 		return self.visitExpressions(node.Body)
