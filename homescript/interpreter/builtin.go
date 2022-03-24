@@ -14,6 +14,7 @@ var numberNames = [...]string{
 	"Third",
 }
 
+// helper function which checks the validity of args provided to builtin functions
 func checkArgs(name string, location error.Location, args []Value, types ...ValueType) *error.Error {
 	if len(args) != len(types) {
 		s := ""
@@ -38,6 +39,8 @@ func checkArgs(name string, location error.Location, args []Value, types ...Valu
 	return nil
 }
 
+// Terminates the execution of the current Homescript
+// Exit code `0` indicates success, other can be used for different purposes
 func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 	if err := checkArgs("exit", location, args, Number); err != nil {
 		return err, nil
@@ -54,6 +57,7 @@ func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 	), nil
 }
 
+// Pauses the execution of the current script for a given amount of seconds
 func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("sleep", location, args, Number); err != nil {
 		return nil, err
@@ -63,6 +67,7 @@ func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Er
 	return ValueVoid{}, nil
 }
 
+// Outputs a string
 func Print(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	msgs := make([]string, 0)
 	for _, arg := range args {
@@ -76,6 +81,7 @@ func Print(executor Executor, location error.Location, args ...Value) (Value, *e
 	return ValueVoid{}, nil
 }
 
+// Retrieves the current power state of the provided switch
 func SwitchOn(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("switchOn", location, args, String); err != nil {
 		return nil, err
@@ -90,6 +96,7 @@ func SwitchOn(executor Executor, location error.Location, args ...Value) (Value,
 	}, nil
 }
 
+// Used to interact with switches and change power states
 func Switch(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("switch", location, args, String, Boolean); err != nil {
 		return nil, err
@@ -102,6 +109,7 @@ func Switch(executor Executor, location error.Location, args ...Value) (Value, *
 	return ValueVoid{}, nil
 }
 
+// Sends a mode request to a given radigo server via its url
 func Play(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("play", location, args, String, String); err != nil {
 		return nil, err
@@ -115,6 +123,7 @@ func Play(executor Executor, location error.Location, args ...Value) (Value, *er
 	return ValueVoid{}, nil
 }
 
+// If a notification system is provided in the runtime environment a notification is sent to the current user
 func Notify(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("notify", location, args, String, String, Number); err != nil {
 		return nil, err
@@ -150,6 +159,7 @@ func Notify(executor Executor, location error.Location, args ...Value) (Value, *
 	return ValueVoid{}, nil
 }
 
+// Adds a event to the logging system
 func Log(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("log", location, args, String, String, Number); err != nil {
 		return nil, err
