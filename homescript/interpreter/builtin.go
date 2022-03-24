@@ -39,8 +39,7 @@ func checkArgs(name string, location error.Location, args []Value, types ...Valu
 }
 
 func Exit(location error.Location, args ...Value) (*error.Error, *int) {
-	err := checkArgs("exit", location, args, Number)
-	if err != nil {
+	if err := checkArgs("exit", location, args, Number); err != nil {
 		return err, nil
 	}
 	code := args[0].(ValueNumber).Value
@@ -56,8 +55,7 @@ func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 }
 
 func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	err := checkArgs("sleep", location, args, Number)
-	if err != nil {
+	if err := checkArgs("sleep", location, args, Number); err != nil {
 		return nil, err
 	}
 	seconds := args[0].(ValueNumber).Value
@@ -79,13 +77,12 @@ func Print(executor Executor, location error.Location, args ...Value) (Value, *e
 }
 
 func SwitchOn(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	err := checkArgs("switchOn", location, args, String)
-	if err != nil {
+	if err := checkArgs("switchOn", location, args, String); err != nil {
 		return nil, err
 	}
 	name := args[0].(ValueString).Value
 	value, execErr := executor.SwitchOn(name)
-	if err != nil {
+	if execErr != nil {
 		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
 	}
 	return ValueBoolean{
@@ -94,15 +91,13 @@ func SwitchOn(executor Executor, location error.Location, args ...Value) (Value,
 }
 
 func Switch(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	err := checkArgs("switch", location, args, String, Boolean)
-	if err != nil {
+	if err := checkArgs("switch", location, args, String, Boolean); err != nil {
 		return nil, err
 	}
 	name := args[0].(ValueString).Value
 	on := args[1].(ValueBoolean).Value
-	execErr := executor.Switch(name, on)
-	if execErr != nil {
-		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
+	if err := executor.Switch(name, on); err != nil {
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueVoid{}, nil
 }
@@ -114,16 +109,15 @@ func Play(executor Executor, location error.Location, args ...Value) (Value, *er
 	}
 	server := args[0].(ValueString).Value
 	mode := args[1].(ValueString).Value
-	execErr := executor.Play(server, mode)
-	if err != nil {
-		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
+
+	if err := executor.Play(server, mode); err != nil {
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueVoid{}, nil
 }
 
 func Notify(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	err := checkArgs("notify", location, args, String, String, Number)
-	if err != nil {
+	if err := checkArgs("notify", location, args, String, String, Number); err != nil {
 		return nil, err
 	}
 	title := args[0].(ValueString).Value
@@ -151,16 +145,14 @@ func Notify(executor Executor, location error.Location, args ...Value) (Value, *
 			fmt.Sprintf("Notification level has to be one of 1, 2, or 3, got %d", int(math.Round(rawLevel))),
 		)
 	}
-	execErr := executor.Notify(title, description, level)
-	if err != nil {
-		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
+	if err := executor.Notify(title, description, level); err != nil {
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueVoid{}, nil
 }
 
 func Log(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	err := checkArgs("log", location, args, String, String, Number)
-	if err != nil {
+	if err := checkArgs("log", location, args, String, String, Number); err != nil {
 		return nil, err
 	}
 	title := args[0].(ValueString).Value
@@ -194,9 +186,8 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 			fmt.Sprintf("Log level has to be one of 0, 1, 2, 3, 4, or 5 got %d", int(math.Round(rawLevel))),
 		)
 	}
-	execErr := executor.Log(title, description, level)
-	if err != nil {
-		return nil, error.NewError(error.RuntimeError, location, execErr.Error())
+	if err := executor.Log(title, description, level); err != nil {
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueVoid{}, nil
 }
