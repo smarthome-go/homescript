@@ -63,7 +63,7 @@ func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Er
 		return nil, err
 	}
 	seconds := args[0].(ValueNumber).Value
-	time.Sleep(time.Second * time.Duration(seconds))
+	time.Sleep(time.Millisecond * time.Duration(seconds*1000))
 	return ValueVoid{}, nil
 }
 
