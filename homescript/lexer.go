@@ -56,15 +56,9 @@ func NewLexer(filename string, input string) Lexer {
 func (self *Lexer) Scan() (Token, *error.Error) {
 	for self.CurrentChar != nil {
 		switch *self.CurrentChar {
-		case ' ':
-			fallthrough
-		case '\t':
-			fallthrough
-		case '\r':
+		case ' ', '\t', '\r':
 			self.advance()
-		case '"':
-			fallthrough
-		case '\'':
+		case '\'', '"':
 			return self.makeString()
 		case '#':
 			self.skipComment()
@@ -90,7 +84,7 @@ func (self *Lexer) Scan() (Token, *error.Error) {
 			return self.makeSingleChar(RightCurlyBrace), nil
 		case ',':
 			return self.makeSingleChar(Comma), nil
-		case '\n':
+		case '\n', ';':
 			return self.makeSingleChar(EOL), nil
 		default:
 			if isDigit(*self.CurrentChar) {

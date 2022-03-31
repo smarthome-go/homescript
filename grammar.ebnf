@@ -17,7 +17,7 @@ IfExpr      = 'if' , Expression , '{' , Expressions , '}' , [ 'else' , '{' , Exp
 CallExpr    = identifier , '(' , [ Expression , { ',' , Expression } ] , ')' ;
 
 (* Tokens *)
-eol         = ? line break ? ;
+eol         = ? line break ? | ';' ;
 number      = DIGIT , { DIGIT } , [ '.' , DIGIT , { DIGIT } ] ;
 string      = '"' , { CHAR - '"' - '\' | escape_seq } , '"'
             | "'" , { CHAR - "'" - '\' | escape_seq } , "'" ;
