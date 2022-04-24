@@ -268,13 +268,3 @@ func GetCurrentSecond(executor Executor, _ error.Location) (Value, *error.Error)
 	_, _, _, _, _, second := executor.GetDate()
 	return ValueNumber{Value: float64(second)}, nil
 }
-
-func GetDebugInfo(executor Executor, location error.Location) (Value, *error.Error) {
-	value, err := executor.GetDebugInfo()
-	if err != nil {
-		return nil, error.NewError(error.RuntimeError, location, err.Error())
-	}
-	return ValueString{
-		Value: value,
-	}, nil
-}

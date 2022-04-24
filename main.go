@@ -48,11 +48,9 @@ exit(0);
 print('unreachable');
 `
 	code, errors := homescript.Run(homescript.DummyExecutor{}, "<demo>", program)
-	if errors != nil {
-		for _, err := range errors {
-			printError(err, program)
-			fmt.Println()
-		}
+	for _, err := range errors {
+		printError(err, program)
+		fmt.Println()
 	}
 	os.Exit(code)
 }
