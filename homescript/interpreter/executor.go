@@ -25,5 +25,4 @@ type Executor interface {
 	GetWeather() (string, error)
 	GetTemperature() (int, error)
 	GetDate() (int, int, int, int, int, int)
-	GetDebugInfo() (string, error)
 }
