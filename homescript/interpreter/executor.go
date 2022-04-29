@@ -19,6 +19,10 @@ type Executor interface {
 	Notify(title string, description string, level LogLevel) error
 	Log(title string, description string, level LogLevel) error
 	Exec(homescriptId string) (string, error)
+	AddUser(username string, password string, forename string, surname string) error
+	DelUser(username string) error
+	AddPerm(username string, permission string) error
+	DelPerm(username string, permission string) error
 
 	// Builtin variables
 	GetUser() string

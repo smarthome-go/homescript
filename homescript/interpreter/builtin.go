@@ -218,6 +218,55 @@ func Exec(executor Executor, location error.Location, args ...Value) (Value, *er
 	}, nil
 }
 
+// Creates a new user unless the username is already taken
+func AddUser(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("exec", location, args, String, String, String, String); err != nil {
+		return nil, err
+	}
+	if err := executor.AddUser(
+		args[0].(ValueString).Value,
+		args[1].(ValueString).Value,
+		args[2].(ValueString).Value,
+		args[3].(ValueString).Value,
+	); err != nil {
+		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
+	}
+	return ValueVoid{}, nil
+}
+
+// Deletes an arbitrary user
+func DelUser(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("delUser", location, args, String); err != nil {
+		return nil, err
+	}
+	if err := executor.DelUser(args[0].(ValueString).Value); err != nil {
+		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
+	}
+	return ValueVoid{}, nil
+}
+
+// Adds a permission to an arbitrary user
+func AddPerm(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("addPerm", location, args, String, String); err != nil {
+		return nil, err
+	}
+	if err := executor.AddPerm(args[0].(ValueString).Value, args[1].(ValueString).Value); err != nil {
+		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
+	}
+	return ValueVoid{}, nil
+}
+
+// Deletes an existing permission from arbitrary user
+func DelPerm(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("delPerm", location, args, String, String); err != nil {
+		return nil, err
+	}
+	if err := executor.DelPerm(args[0].(ValueString).Value, args[1].(ValueString).Value); err != nil {
+		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
+	}
+	return ValueVoid{}, nil
+}
+
 ////////////// Variables //////////////
 func GetUser(executor Executor, _ error.Location) (Value, *error.Error) {
 	return ValueString{Value: executor.GetUser()}, nil

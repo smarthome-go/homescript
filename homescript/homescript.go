@@ -51,6 +51,22 @@ func (self DummyExecutor) Exec(homescriptId string) (string, error) {
 	fmt.Printf("Executing script: '%s'\n", homescriptId)
 	return "", nil
 }
+func (self DummyExecutor) AddUser(username string, password string, forename string, surname string) error {
+	fmt.Printf("Created user '%s'.\n", username)
+	return nil
+}
+func (self DummyExecutor) DelUser(username string) error {
+	fmt.Printf("Deleted user '%s'.\n", username)
+	return nil
+}
+func (self DummyExecutor) AddPerm(username string, permission string) error {
+	fmt.Printf("Added permission '%s' to user '%s'.\n", permission, username)
+	return nil
+}
+func (self DummyExecutor) DelPerm(username string, permission string) error {
+	fmt.Printf("Removed permission '%s' from user '%s'.\n", permission, username)
+	return nil
+}
 func (self DummyExecutor) GetUser() string {
 	return "admin"
 }
@@ -84,7 +100,7 @@ func (self DummyExecutor) GetDebugInfo() (string, error) {
 func Run(executor interpreter.Executor, filename string, code string) (int, []customError.Error) {
 	parser := NewParser(NewLexer(filename, code))
 	ast, errs := parser.Parse()
-	if errs != nil && len(errs) > 0 {
+	if len(errs) > 0 {
 		return 1, errs
 	}
 	homeScriptInterpreter := NewInterpreter(ast, executor)

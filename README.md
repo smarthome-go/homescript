@@ -77,6 +77,29 @@ Legal notification levels (*last parameter*) are:
 - 2 Warn
 - 3 Error
 
+#### Users
+##### Add User
+Creates a new user with included metadata
+```python
+addUser('username', 'password', 'forename', 'surname')
+```
+##### Delete User
+Deletes a user and all their data
+```python
+delUser('username')
+```
+##### Add Permission
+Adds an permission to an arbitrary user
+```python
+addPerm('username', 'permission')
+```
+
+##### Delete Permission
+Removes a permission from an arbitrary user
+```python
+delPerm('username', 'permission')
+```
+
 #### Logging
 ```python
 log("Log Title", "What happened?", 4)
@@ -104,9 +127,6 @@ exit(42)
 ```
 Exit stops execution of the running script with a provided exit code.
 Any non-0 exit code indicates a failure.
-
-However, due to limitations with goroutines, `exit()` currently only works for local testing and in the cli.
-
 ## A possible Homescript script
 
 ```python
@@ -139,6 +159,9 @@ sleep(1)
 
 # `notify` sends a notification to the current user, last parameter is the level (1..3)
 notify('title', 'description', 1)
+
+# `addUser` creates a new user
+addUser('username', 'password', 'forename', 'surname')
 
 # Allows Smarthome to communicate with RadiGo servers
 # https://github.com/MikMuellerDev/radiGo

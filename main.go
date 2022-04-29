@@ -44,6 +44,10 @@ print('hello\nthere');
 switch('s1', on);
 exec('coming_home');
 print(3.14);
+addUser('test','test','','')
+addPerm('test', 'test')
+delPerm('test', 'test')
+delUser('test')
 exit(0);
 print('unreachable');
 `
