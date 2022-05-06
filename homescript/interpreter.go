@@ -3,8 +3,8 @@ package homescript
 import (
 	"fmt"
 
-	"github.com/MikMuellerDev/homescript/homescript/error"
-	"github.com/MikMuellerDev/homescript/homescript/interpreter"
+	"github.com/smarthome-go/homescript/homescript/error"
+	"github.com/smarthome-go/homescript/homescript/interpreter"
 )
 
 type Interpreter struct {

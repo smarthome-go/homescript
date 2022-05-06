@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	customError "github.com/MikMuellerDev/homescript/homescript/error"
-	"github.com/MikMuellerDev/homescript/homescript/interpreter"
+	customError "github.com/smarthome-go/homescript/homescript/error"
+	"github.com/smarthome-go/homescript/homescript/interpreter"
 )
 
 type DummyExecutor struct{}

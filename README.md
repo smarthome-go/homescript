@@ -1,6 +1,6 @@
 # The Homescript DSL
 
-Homescript is a fast and custom DSL (domain-specific language) for the  [Smarthome server](https://github.com/MikMuellerDev/smarthome) and the [Homescript CLI](https://github.com/MikMuellerDev/homescript-cli).
+Homescript is a fast and custom DSL (domain-specific language) for the  [Smarthome server](https://github.com/smarthome-go/smarthome) and the [Homescript CLI](https://github.com/smarthome-go/cli).
 It provides a scripting interface for Smarthome users in order to create customized routines and workflows.
 
 
@@ -131,7 +131,7 @@ Any non-0 exit code indicates a failure.
 
 ```python
 # This project was developed for Smarthome
-# https://github.com/MikMuellerDev/smarthome
+# https://github.com/smarthome-go/smarthome
 
 # `If` is an expression and can therefore be used inline
 switch(if temperature > 10 { 'switch1' } else { 'switch2' }, off)

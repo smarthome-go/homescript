@@ -3,7 +3,7 @@ package interpreter
 import (
 	"fmt"
 
-	"github.com/MikMuellerDev/homescript/homescript/error"
+	"github.com/smarthome-go/homescript/homescript/error"
 )
 
 type ValueType uint8

@@ -1,6 +1,6 @@
 package homescript
 
-import "github.com/MikMuellerDev/homescript/homescript/error"
+import "github.com/smarthome-go/homescript/homescript/error"
 
 type Expressions []Expression
 

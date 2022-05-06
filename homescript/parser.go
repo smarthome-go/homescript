@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/MikMuellerDev/homescript/homescript/error"
+	"github.com/smarthome-go/homescript/homescript/error"
 )
 
 type Parser struct {

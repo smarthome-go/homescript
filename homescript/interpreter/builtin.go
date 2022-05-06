@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/MikMuellerDev/homescript/homescript/error"
+	"github.com/smarthome-go/homescript/homescript/error"
 )
 
 var numberNames = [...]string{

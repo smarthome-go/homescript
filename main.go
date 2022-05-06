@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/MikMuellerDev/homescript/homescript"
-	"github.com/MikMuellerDev/homescript/homescript/error"
+	"github.com/smarthome-go/homescript/homescript"
+	"github.com/smarthome-go/homescript/homescript/error"
 )
 
 func printError(err error.Error, program string) {
