@@ -80,19 +80,12 @@ func (self DummyExecutor) GetDate() (int, int, int, int, int, int) {
 	now := time.Now()
 	return now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second()
 }
-func (self DummyExecutor) GetDebugInfo() (string, error) {
-	return `
-―――――――――――――――――――――――――――――――――――――――――――――
- Smarthome Server Version:      │ v0.0.5
- Database Online:               │ YES
- Compiled with:                 │ go1.18
- CPU Cores:                     │ 12
- Current Goroutines:            │ 8
- Current Memory Usage:          │ 0
- Current Power Jobs:            │ 0
- Last Power Job Error Count:    │ 0
-―――――――――――――――――――――――――――――――――――――――――――――
-`, nil
+func (self DummyExecutor) Get(url string) (string, error) {
+	return "response", nil
+}
+
+func (self DummyExecutor) Http(url string, method string, body string) (string, error) {
+	return "response", nil
 }
 
 // Runs a provided homescript file given the source code
