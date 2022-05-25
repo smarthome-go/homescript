@@ -14,7 +14,7 @@ Atom        = number
             | CallExpr
             | '(' , Expression , ')' ;
 IfExpr      = 'if' , Expression , '{' , Expressions , '}' , [ 'else' , '{' , Expressions , '}' ] ;
-CallExpr    = identifier , '(' , [ Expression , { ',' , Expression } ] , ')' ;
+CallExpr    = identifier , '(', { eol } , [ Expression , { ',' , { eol } , Expression } , [ ',' ] ] , { eol } , ')' ;
 
 (* Tokens *)
 eol         = ? line break ? | ';' ;
