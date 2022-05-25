@@ -124,7 +124,7 @@ If Smarthome is used with a [RadiGo](https://github.com/MikMuellerDev/radiGo) se
 #### HTTP
 ```python
 print(get('http://localhost:8082'))
-print(http('http://localhost:8082', 'POST', '{"id": 1}'))
+print(http('http://localhost:8082', 'POST', 'application/json', '{"id": 2}'))
 ```
 As of `v0.7.0-beta`, Homescript supports the use of generic http functions.
 The `get` function only accepts an arbitrary string as an url and returns the request response as a string.
