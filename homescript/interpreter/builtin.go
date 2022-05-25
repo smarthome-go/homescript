@@ -220,7 +220,7 @@ func Exec(executor Executor, location error.Location, args ...Value) (Value, *er
 
 // Creates a new user unless the username is already taken
 func AddUser(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if err := checkArgs("exec", location, args, String, String, String, String); err != nil {
+	if err := checkArgs("addUser", location, args, String, String, String, String); err != nil {
 		return nil, err
 	}
 	if err := executor.AddUser(
