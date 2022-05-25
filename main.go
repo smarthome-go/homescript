@@ -49,7 +49,7 @@ addPerm('test', 'test')
 delPerm('test', 'test')
 delUser('test')
 print(get('http://localhost:8082'))
-print(http('http://localhost:8082', 'POST', ''))
+print(http('http://localhost:8082', 'POST', '', ''))
 exit(0);
 print('unreachable');
 `

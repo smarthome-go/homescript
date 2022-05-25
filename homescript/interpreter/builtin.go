@@ -283,10 +283,10 @@ func Get(executor Executor, location error.Location, args ...Value) (Value, *err
 
 // Makes a network request using an arbitrary url, method, and body as plaintext
 func Http(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if err := checkArgs("http", location, args, String, String, String); err != nil {
+	if err := checkArgs("http", location, args, String, String, String, String); err != nil {
 		return nil, err
 	}
-	body, err := executor.Http(args[0].(ValueString).Value, args[1].(ValueString).Value, args[2].(ValueString).Value)
+	body, err := executor.Http(args[0].(ValueString).Value, args[1].(ValueString).Value, args[2].(ValueString).Value, args[3].(ValueString).Value)
 	if err != nil {
 		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
 	}

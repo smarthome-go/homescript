@@ -84,7 +84,7 @@ func (self DummyExecutor) Get(url string) (string, error) {
 	return "response", nil
 }
 
-func (self DummyExecutor) Http(url string, method string, body string) (string, error) {
+func (self DummyExecutor) Http(url string, method string, contentType string, body string) (string, error) {
 	return "response", nil
 }
 
