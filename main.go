@@ -41,22 +41,18 @@ func printError(err error.Error, program string) {
 func main() {
 	program := `
 print('hello\nthere');
-<<<<<<< HEAD
 switch('s1', on);
 exec('coming_home', mkArgs(mkArg('a', 'b'), mkArg('a', 'c')));
-=======
 switch(
 	's1',
 	on,
 );
 exec('coming_home');
->>>>>>> 3cf8a7d26d0716e75bb3b5a58ba53fdeb3b1a96d
 print(3.14);
 addUser('test','test','','')
 addPerm('test', 'test')
 delPerm('test', 'test')
 delUser('test')
-<<<<<<< HEAD
 print(num('1.11') < num('1.22'))
 print(num('+1.11'), ' | ', num('-1.22'))
 print(num(str(num('-1'))))
@@ -68,6 +64,8 @@ if checkArg('my_arg_identifier') {
 } else {
 	print('no such arg')
 }
+print(get('http://localhost:8082'))
+print(http('http://localhost:8082', 'POST', '', ''))
 print(getArg('ok'))
 exit(0);
 print('unreachable');

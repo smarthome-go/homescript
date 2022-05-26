@@ -232,7 +232,10 @@ addUser('username', 'password', 'forename', 'surname')
 # https://github.com/MikMuellerDev/radiGo
 play('server', 'mode')
 
-<<<<<<< HEAD
+# Make network requests using Homescript
+print(get('http://localhost:8082'))
+print(http('http://localhost:8082', 'POST', '{"id": 1}'))
+
 # The `checkArg` function can be used to validate that an expected argument was passed as a value
 # It is recommended to use this function before attempting to use `getArg('x')`
 if checkArg('identifer') {
