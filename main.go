@@ -48,6 +48,18 @@ addUser('test','test','','')
 addPerm('test', 'test')
 delPerm('test', 'test')
 delUser('test')
+print(num('1.11') < num('1.22'))
+print(num('+1.11'), ' | ', num('-1.22'))
+print(num(str(num('-1'))))
+print(str(1))
+print(str(switchOn('s2')))
+print(checkArg('my_arg_identifier'))
+if checkArg('my_arg_identifier') {
+	print(getArg('my_arg_identifier'))
+} else {
+	print('no such arg')
+}
+print(getArg('ok'))
 exit(0);
 print('unreachable');
 `

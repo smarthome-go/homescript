@@ -17,6 +17,18 @@ func (self DummyExecutor) Print(args ...string) {
 	}
 	fmt.Println(output)
 }
+
+func (self DummyExecutor) CheckArg(toCheck string) bool {
+	return toCheck == "ok"
+}
+
+func (self DummyExecutor) GetArg(toGet string) (string, error) {
+	if toGet == "ok" {
+		return "ok", nil
+	}
+	return "", fmt.Errorf("No such argument provided: the argument '%s' was not found", toGet)
+}
+
 func (self DummyExecutor) SwitchOn(name string) (bool, error) {
 	if name == "s3" {
 		return true, nil

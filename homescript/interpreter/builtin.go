@@ -3,6 +3,7 @@ package interpreter
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/smarthome-go/homescript/homescript/error"
@@ -57,6 +58,40 @@ func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 	), nil
 }
 
+// Parses a given string to an integer
+// If the string could not be parsed to an integer, an error is returned
+func Num(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("num", location, args, String); err != nil {
+		return nil, err
+	}
+	valueInt, err := strconv.ParseFloat(args[0].(ValueString).Value, 32)
+	if err != nil {
+		return nil, error.NewError(
+			error.ValueError,
+			location, fmt.Sprintf("Argument must be parseable to a number: %s", err.Error()),
+		)
+	}
+	return ValueNumber{
+		Value: float64(valueInt),
+	}, nil
+}
+
+// Converts an arbitrary value of any data type in Homescript to a textual representation
+// The output will be returned as a string
+func Str(self Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if len(args) != 1 {
+		return nil, error.NewError(error.ValueError, location,
+			fmt.Sprintf("Function 'str' requires exactly 1 argument but %d were given", len(args)))
+	}
+	res, err := args[0].ToString(self, location)
+	if err != nil {
+		return nil, err
+	}
+	return ValueString{
+		Value: res,
+	}, nil
+}
+
 // Pauses the execution of the current script for a given amount of seconds
 func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("sleep", location, args, Number); err != nil {
@@ -65,6 +100,35 @@ func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Er
 	seconds := args[0].(ValueNumber).Value
 	time.Sleep(time.Millisecond * time.Duration(seconds*1000))
 	return ValueVoid{}, nil
+}
+
+// Indicates whether a certain argument has been passed to this Homescript
+func CheckArg(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("checkArg", location, args, String); err != nil {
+		return nil, err
+	}
+	toCheck := args[0].(ValueString).Value
+	argProvided := executor.CheckArg(toCheck)
+	return ValueBoolean{
+		Value: argProvided,
+	}, nil
+}
+
+// Returns the argument's value as a string
+// If the argument was not passed, an error is returned
+// It is recommended to validate the existence of an argument with the `ceckArg` function
+func GetArg(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("getArg", location, args, String); err != nil {
+		return nil, err
+	}
+	toGet := args[0].(ValueString).Value
+	argValue, err := executor.GetArg(toGet)
+	if err != nil {
+		return nil, error.NewError(error.RuntimeError, location, err.Error())
+	}
+	return ValueString{
+		Value: argValue,
+	}, nil
 }
 
 // Outputs a string
