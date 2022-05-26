@@ -59,7 +59,7 @@ func (self DummyExecutor) Log(
 	fmt.Printf("Logging '%s' -- '%s' with level %d\n", title, description, level)
 	return nil
 }
-func (self DummyExecutor) Exec(homescriptId string) (string, error) {
+func (self DummyExecutor) Exec(homescriptId string, args map[string]string) (string, error) {
 	fmt.Printf("Executing script: '%s'\n", homescriptId)
 	return "", nil
 }
@@ -107,7 +107,7 @@ func (self DummyExecutor) GetDebugInfo() (string, error) {
 `, nil
 }
 
-// Runs a provided homescript file given the source code
+// Runs provided Homescript code given the source code
 // Returns an error slice
 func Run(executor interpreter.Executor, filename string, code string) (int, []customError.Error) {
 	parser := NewParser(NewLexer(filename, code))

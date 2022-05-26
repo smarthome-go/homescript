@@ -21,7 +21,7 @@ type Executor interface {
 	Play(server string, mode string) error
 	Notify(title string, description string, level LogLevel) error
 	Log(title string, description string, level LogLevel) error
-	Exec(homescriptId string) (string, error)
+	Exec(homescriptId string, args map[string]string) (string, error)
 	AddUser(username string, password string, forename string, surname string) error
 	DelUser(username string) error
 	AddPerm(username string, permission string) error

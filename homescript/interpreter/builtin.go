@@ -15,7 +15,7 @@ var numberNames = [...]string{
 	"Third",
 }
 
-// helper function which checks the validity of args provided to builtin functions
+// Helper function which checks the validity of args provided to builtin functions
 func checkArgs(name string, location error.Location, args []Value, types ...ValueType) *error.Error {
 	if len(args) != len(types) {
 		s := ""
@@ -89,6 +89,49 @@ func Str(self Executor, location error.Location, args ...Value) (Value, *error.E
 	}
 	return ValueString{
 		Value: res,
+	}, nil
+}
+
+// Acts like a factory for the `Arg` type
+// Requires two arguments: mkArg(key, value)
+// The first argument is the key, the second one is the value
+func MkArg(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("mkArg", location, args, String, String); err != nil {
+		return nil, err
+	}
+	return ValueArg{
+		Value: struct {
+			Key   string
+			Value string
+		}{
+			Key:   args[0].(ValueString).Value,
+			Value: args[1].(ValueString).Value,
+		},
+	}, nil
+}
+func MkArgs(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	finalArgs := make([]ValueArg, 0)
+	for argPos, arg := range args {
+		if arg.Type() != Arg {
+			return nil, error.NewError(
+				error.TypeError,
+				location,
+				fmt.Sprintf("Argument %d of function 'mkArgs' has to be of type %s, you can use mkArg to create an Arg", argPos+1, Arg.Name()),
+			)
+		}
+		for checkArgPos, checkArg := range finalArgs {
+			if checkArg.Value.Key == arg.(ValueArg).Value.Key {
+				return nil, error.NewError(
+					error.TypeError,
+					location,
+					fmt.Sprintf("Argument %d of function 'mkArgs' has duplicate key entry '%s', first registered as argument %d", argPos+1, arg.(ValueArg).Value.Key, checkArgPos+1),
+				)
+			}
+		}
+		finalArgs = append(finalArgs, arg.(ValueArg))
+	}
+	return ValueArgs{
+		Value: finalArgs,
 	}, nil
 }
 
@@ -269,11 +312,17 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 // If no valid script could be found or the user lacks permission to execute it, an error is returned
 func Exec(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	var output string
-	if err := checkArgs("exec", location, args, String); err != nil {
+	if err := checkArgs("exec", location, args, String, Args); err != nil {
 		return nil, err
 	}
 	homescriptId := args[0].(ValueString).Value
-	output, err := executor.Exec(homescriptId)
+
+	callArgs := args[1].(ValueArgs).Value
+	callArgsFinal := make(map[string]string, 0)
+	for _, arg := range callArgs {
+		callArgsFinal[arg.Value.Key] = arg.Value.Value
+	}
+	output, err := executor.Exec(homescriptId, callArgsFinal)
 	if err != nil {
 		return nil, error.NewError(error.RuntimeError, location, err.Error())
 	}

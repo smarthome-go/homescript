@@ -15,6 +15,8 @@ const (
 	Boolean
 	Function
 	Variable
+	Args
+	Arg
 )
 
 func (self ValueType) Name() string {
@@ -31,7 +33,12 @@ func (self ValueType) Name() string {
 		return "Function"
 	case Variable:
 		return "Variable"
+	case Args:
+		return "Arguments"
+	case Arg:
+		return "Argument"
 	default:
+		// Unreachable
 		panic(0)
 	}
 }
@@ -279,4 +286,41 @@ func (self ValueVariable) IsGreaterThanOrEqual(executor Executor, other Value, l
 		)
 	}
 	return val.(ValueNumber).IsGreaterThanOrEqual(executor, other, location)
+}
+
+type ValueArg struct {
+	Value struct {
+		Key   string
+		Value string
+	}
+}
+
+func (self ValueArg) Type() ValueType { return Arg }
+func (self ValueArg) ToString(_ Executor, _ error.Location) (string, *error.Error) {
+	return "<argument>", nil
+}
+func (self ValueArg) IsTrue(_ Executor, _ error.Location) (bool, *error.Error) {
+	return false, nil
+}
+func (self ValueArg) IsEqual(_ Executor, _ error.Location, other Value) (bool, *error.Error) {
+	if other.Type() != Arg {
+		return false, nil
+	}
+	vOther := other.(ValueArg).Value
+	return self.Value.Key == vOther.Key && self.Value.Value == vOther.Value, nil
+}
+
+type ValueArgs struct {
+	Value []ValueArg
+}
+
+func (self ValueArgs) Type() ValueType { return Args }
+func (self ValueArgs) ToString(_ Executor, _ error.Location) (string, *error.Error) {
+	return "<arguments>", nil
+}
+func (self ValueArgs) IsTrue(_ Executor, _ error.Location) (bool, *error.Error) {
+	return false, nil
+}
+func (self ValueArgs) IsEqual(_ Executor, _ error.Location, other Value) (bool, *error.Error) {
+	return other.Type() == Args && fmt.Sprintf("%v", self.Value) == fmt.Sprintf("%v", other.(ValueArgs).Value), nil
 }

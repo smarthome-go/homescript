@@ -42,7 +42,7 @@ func main() {
 	program := `
 print('hello\nthere');
 switch('s1', on);
-exec('coming_home');
+exec('coming_home', mkArgs(mkArg('a', 'b'), mkArg('a', 'c')));
 print(3.14);
 addUser('test','test','','')
 addPerm('test', 'test')
