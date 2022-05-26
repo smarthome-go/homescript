@@ -333,7 +333,7 @@ func Exec(executor Executor, location error.Location, args ...Value) (Value, *er
 
 // Creates a new user unless the username is already taken
 func AddUser(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if err := checkArgs("exec", location, args, String, String, String, String); err != nil {
+	if err := checkArgs("addUser", location, args, String, String, String, String); err != nil {
 		return nil, err
 	}
 	if err := executor.AddUser(
@@ -378,6 +378,34 @@ func DelPerm(executor Executor, location error.Location, args ...Value) (Value, 
 		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueVoid{}, nil
+}
+
+// Makes a get-request to an arbitrary url and returns the result as plaintext
+func Get(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("get", location, args, String); err != nil {
+		return nil, err
+	}
+	body, err := executor.Get(args[0].(ValueString).Value)
+	if err != nil {
+		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
+	}
+	return ValueString{
+		Value: body,
+	}, nil
+}
+
+// Makes a network request using an arbitrary url, method, and body as plaintext
+func Http(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("http", location, args, String, String, String, String); err != nil {
+		return nil, err
+	}
+	body, err := executor.Http(args[0].(ValueString).Value, args[1].(ValueString).Value, args[2].(ValueString).Value, args[3].(ValueString).Value)
+	if err != nil {
+		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
+	}
+	return ValueString{
+		Value: body,
+	}, nil
 }
 
 ////////////// Variables //////////////

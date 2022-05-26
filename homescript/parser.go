@@ -291,6 +291,10 @@ func (self *Parser) callExpr(name string, location error.Location) (CallExpr, *e
 	self.advance()
 	args := make(Expressions, 0)
 	if !self.isType(RightParenthesis) {
+		for self.isType(EOL) {
+			self.advance()
+		}
+
 		argument, err := self.expression()
 		if err != nil {
 			return CallExpr{}, err
@@ -299,11 +303,21 @@ func (self *Parser) callExpr(name string, location error.Location) (CallExpr, *e
 
 		for self.isType(Comma) {
 			self.advance()
+
+			for self.isType(EOL) {
+				self.advance()
+			}
+			if self.isType(RightParenthesis) {
+				break
+			}
 			argument, err := self.expression()
 			if err != nil {
 				return CallExpr{}, err
 			}
 			args = append(args, argument)
+		}
+		if self.isType(Comma) {
+			self.advance()
 		}
 	}
 	self.expect(RightParenthesis, "')'")

@@ -26,6 +26,8 @@ type Executor interface {
 	DelUser(username string) error
 	AddPerm(username string, permission string) error
 	DelPerm(username string, permission string) error
+	Get(url string) (string, error)
+	Http(url string, method string, contentType string, body string) (string, error)
 
 	// Builtin variables
 	GetUser() string

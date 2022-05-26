@@ -120,6 +120,16 @@ play("server id", "mode id")
 ```
 If Smarthome is used with a [RadiGo](https://github.com/MikMuellerDev/radiGo) server, Homescript can change the modes.
 
+#### HTTP
+```python
+print(get('http://localhost:8082'))
+print(http('http://localhost:8082', 'POST', 'application/json', '{"id": 2}'))
+```
+As of `v0.7.0-beta`, Homescript supports the use of generic http functions.
+The `get` function only accepts an arbitrary string as an url and returns the request response as a string.
+
+The `http` function is generic: given an url, a request-method, a `Content-Type`, and a body, a response will be returned as string
+
 #### Exit
 ```python
 exit(42)
@@ -222,6 +232,7 @@ addUser('username', 'password', 'forename', 'surname')
 # https://github.com/MikMuellerDev/radiGo
 play('server', 'mode')
 
+<<<<<<< HEAD
 # The `checkArg` function can be used to validate that an expected argument was passed as a value
 # It is recommended to use this function before attempting to use `getArg('x')`
 if checkArg('identifer') {

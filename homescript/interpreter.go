@@ -35,6 +35,8 @@ func NewInterpreter(startNode Expressions, executor interpreter.Executor) Interp
 		"delUser":       interpreter.ValueFunction{Callback: interpreter.DelUser},
 		"addPerm":       interpreter.ValueFunction{Callback: interpreter.AddPerm},
 		"delPerm":       interpreter.ValueFunction{Callback: interpreter.DelPerm},
+		"get":           interpreter.ValueFunction{Callback: interpreter.Get},
+		"http":          interpreter.ValueFunction{Callback: interpreter.Http},
 		"user":          interpreter.ValueVariable{Callback: interpreter.GetUser},
 		"weather":       interpreter.ValueVariable{Callback: interpreter.GetWeather},
 		"temperature":   interpreter.ValueVariable{Callback: interpreter.GetTemperature},
