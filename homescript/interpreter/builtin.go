@@ -9,10 +9,11 @@ import (
 	"github.com/smarthome-go/homescript/homescript/error"
 )
 
-var numberNames = [...]string{
+var numberNames = []string{
 	"First",
 	"Second",
 	"Third",
+	"Fourth",
 }
 
 // Helper function which checks the validity of args provided to builtin functions
