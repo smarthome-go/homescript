@@ -116,12 +116,6 @@ Legal log levels (*last parameter*) are:
 - 4 Error
 - 5 Fatal
 
-### RadiGo
-```python
-play("server id", "mode id")
-```
-If Smarthome is used with a [RadiGo](https://github.com/MikMuellerDev/radiGo) server, Homescript can change the modes.
-
 ### HTTP
 ```python
 print(get('http://localhost:8082'))

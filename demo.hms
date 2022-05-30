@@ -60,10 +60,6 @@ notify('title', 'description', 1)
 # `addUser` creates a new user
 addUser('username', 'password', 'forename', 'surname')
 
-# Allows Smarthome to communicate with RadiGo servers
-# https://github.com/MikMuellerDev/radiGo
-play('server', 'mode')
-
 # Make network requests using Homescript
 print(get('http://localhost:8082'))
 print(http('http://localhost:8082', 'POST', 'application/json', '{id": 1}'))

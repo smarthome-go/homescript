@@ -220,20 +220,6 @@ func Switch(executor Executor, location error.Location, args ...Value) (Value, *
 	return ValueVoid{}, nil
 }
 
-// Sends a mode request to a given radigo server via its url
-func Play(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if err := checkArgs("play", location, args, String, String); err != nil {
-		return nil, err
-	}
-	server := args[0].(ValueString).Value
-	mode := args[1].(ValueString).Value
-
-	if err := executor.Play(server, mode); err != nil {
-		return nil, error.NewError(error.RuntimeError, location, err.Error())
-	}
-	return ValueVoid{}, nil
-}
-
 // If a notification system is provided in the runtime environment a notification is sent to the current user
 func Notify(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("notify", location, args, String, String, Number); err != nil {

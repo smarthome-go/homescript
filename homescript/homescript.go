@@ -39,10 +39,6 @@ func (self DummyExecutor) Switch(name string, on bool) error {
 	fmt.Printf("Turning switch '%s' %t\n", name, on)
 	return nil
 }
-func (self DummyExecutor) Play(server string, mode string) error {
-	fmt.Printf("Playing '%s' on server '%s'\n", mode, server)
-	return nil
-}
 func (self DummyExecutor) Notify(
 	title string,
 	description string,

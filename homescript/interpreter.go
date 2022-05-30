@@ -26,7 +26,6 @@ func NewInterpreter(startNode Expressions, executor interpreter.Executor) Interp
 		"print":         interpreter.ValueFunction{Callback: interpreter.Print},
 		"switchOn":      interpreter.ValueFunction{Callback: interpreter.SwitchOn},
 		"switch":        interpreter.ValueFunction{Callback: interpreter.Switch},
-		"play":          interpreter.ValueFunction{Callback: interpreter.Play},
 		"notify":        interpreter.ValueFunction{Callback: interpreter.Notify},
 		"log":           interpreter.ValueFunction{Callback: interpreter.Log},
 		"exec":          interpreter.ValueFunction{Callback: interpreter.Exec},

@@ -18,7 +18,6 @@ type Executor interface {
 	Print(args ...string)
 	SwitchOn(name string) (bool, error)
 	Switch(name string, on bool) error
-	Play(server string, mode string) error
 	Notify(title string, description string, level LogLevel) error
 	Log(title string, description string, level LogLevel) error
 	Exec(homescriptId string, args map[string]string) (string, error)
