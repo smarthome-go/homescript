@@ -110,6 +110,8 @@ func MkArg(_ Executor, location error.Location, args ...Value) (Value, *error.Er
 		},
 	}, nil
 }
+
+/**
 func MkArgs(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	finalArgs := make([]ValueArg, 0)
 	for argPos, arg := range args {
@@ -135,6 +137,7 @@ func MkArgs(_ Executor, location error.Location, args ...Value) (Value, *error.E
 		Value: finalArgs,
 	}, nil
 }
+*/
 
 // Pauses the execution of the current script for a given amount of seconds
 func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
@@ -313,16 +316,45 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 // If no valid script could be found or the user lacks permission to execute it, an error is returned
 func Exec(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	var output string
-	if err := checkArgs("exec", location, args, String, Args); err != nil {
-		return nil, err
+	// Validate that at least one argument was provided
+	if len(args) == 0 {
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			"Function 'exec' takes 1 or more arguments  but 0 were given",
+		)
 	}
-	homescriptId := args[0].(ValueString).Value
-
-	callArgs := args[1].(ValueArgs).Value
+	// Validate that the first argument is of type string
+	if args[0].Type() != String {
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			"First argument of function 'exec' has to be of type String",
+		)
+	}
+	// Create call arguments from other args
 	callArgsFinal := make(map[string]string, 0)
-	for _, arg := range callArgs {
-		callArgsFinal[arg.Value.Key] = arg.Value.Value
+	for indexArg, arg := range args[1:] {
+		if arg.Type() != Arg {
+			return nil, error.NewError(
+				error.TypeError,
+				location,
+				fmt.Sprintf("Argument %d of function 'exec' has to be of type Argument", indexArg),
+			)
+		}
+		_, alreadyExists := callArgsFinal[arg.(ValueArg).Value.Key]
+		if alreadyExists {
+			return nil, error.NewError(
+				error.TypeError,
+				location,
+				fmt.Sprintf("Call argument %d of function 'exec' has duplicate key entry '%s'", indexArg+2, arg.(ValueArg).Value.Key),
+			)
+		}
+		// Add the argument to the argument map
+		callArgsFinal[arg.(ValueArg).Value.Key] = arg.(ValueArg).Value.Value
 	}
+	// Execute Homescript
+	homescriptId := args[0].(ValueString).Value
 	output, err := executor.Exec(homescriptId, callArgsFinal)
 	if err != nil {
 		return nil, error.NewError(error.RuntimeError, location, err.Error())

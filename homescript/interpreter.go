@@ -20,7 +20,6 @@ func NewInterpreter(startNode Expressions, executor interpreter.Executor) Interp
 		"num":           interpreter.ValueFunction{Callback: interpreter.Num},
 		"str":           interpreter.ValueFunction{Callback: interpreter.Str},
 		"mkArg":         interpreter.ValueFunction{Callback: interpreter.MkArg},
-		"mkArgs":        interpreter.ValueFunction{Callback: interpreter.MkArgs},
 		"checkArg":      interpreter.ValueFunction{Callback: interpreter.CheckArg},
 		"getArg":        interpreter.ValueFunction{Callback: interpreter.GetArg},
 		"sleep":         interpreter.ValueFunction{Callback: interpreter.Sleep},
