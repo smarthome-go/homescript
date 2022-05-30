@@ -67,7 +67,7 @@ print(switchOn("switchName"))
 ```
 
 The code above should return the power state of the requested switch as a boolean value.
-#### Sending Notifications
+### Notifications
 ```python
 notify("Notification Title", "An interesting description", 1)
 ```
