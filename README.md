@@ -5,9 +5,9 @@ Homescript is a fast and custom DSL (domain-specific language) for the  [Smartho
 It provides a scripting interface for Smarthome users in order to create customized routines and workflows.
 
 
-## Feature Documentation
-### Builtin variables
-#### Weather
+# Feature Documentation
+## Builtin variables
+### Weather
 ```python
 print(weather)
 ```
@@ -21,7 +21,7 @@ Possible weather types should be:
 Like any other builtin, the functionality must be provided by the host-software.
 
 *Note: This means that variable values may change*
-#### Temperature
+### Temperature
 ```python
 print(temperature)
 ```
@@ -29,7 +29,7 @@ The current temperature in the area of the Smarthome-server can be queried with 
 
 *Note: the temperature's measurement unit is dependent on the host implementation*
 
-#### Time
+### Time
 ```python
 print(currentYear)
 print(currentMonth)
@@ -40,16 +40,16 @@ print(currentSecond)
 ```
 Returns the values matching the local time of the Smarthome-server
 
-#### User
+### User
 ```python
 print(user)
 ```
 Prints the username of the user currently running the script
 
-### Builtin Functions
+## Builtin Functions
 
-#### Switch
-##### Changing power of a switch
+### Switch
+#### Changing power of a switch
 ```python
 switch("switchName", on)
 switch("switchName", true)
@@ -61,10 +61,11 @@ A real implementation should check following things
 - The user's permissions for the switch
 - The validity of the switch
 
-##### Querying power of a switch
+#### Querying power of a switch
 ```python
 print(switchOn("switchName"))
 ```
+
 The code above should return the power state of the requested switch as a boolean value.
 #### Sending Notifications
 ```python
@@ -78,29 +79,29 @@ Legal notification levels (*last parameter*) are:
 - 2 Warn
 - 3 Error
 
-#### Users
-##### Add User
+### Users
+#### Add User
 Creates a new user with included metadata
 ```python
 addUser('username', 'password', 'forename', 'surname')
 ```
-##### Delete User
+#### Delete User
 Deletes a user and all their data
 ```python
 delUser('username')
 ```
-##### Add Permission
+#### Add Permission
 Adds a permission to an arbitrary user
 ```python
 addPerm('username', 'permission')
 ```
-##### Delete Permission
+#### Delete Permission
 Removes a permission from an arbitrary user
 ```python
 delPerm('username', 'permission')
 ```
 
-#### Logging
+### Logging
 ```python
 log("Log Title", "What happened?", 4)
 ```
@@ -115,35 +116,35 @@ Legal log levels (*last parameter*) are:
 - 4 Error
 - 5 Fatal
 
-#### RadiGo
+### RadiGo
 ```python
 play("server id", "mode id")
 ```
 If Smarthome is used with a [RadiGo](https://github.com/MikMuellerDev/radiGo) server, Homescript can change the modes.
 
-#### HTTP
+### HTTP
 ```python
 print(get('http://localhost:8082'))
 print(http('http://localhost:8082', 'POST', 'application/json', '{"id": 2}'))
 ```
 As of `v0.7.0-beta`, Homescript supports the use of generic http functions.
-The `get` function only accepts an arbitrary string as an url and returns the request response as a string.
+The `get` function only accepts an arbitrary string as a url and returns the request response as a string.
 
 The `http` function is generic: given a URL, a request-method, a `Content-Type`, and a body, a response will be returned as string
 
-#### Exit
+### Exit
 ```python
 exit(42)
 ```
 Exit stops execution of the running script with a provided exit code.
 Any non-0 exit code indicates a failure.
 
-#### Arguments
+### Arguments
 Call arguments can be used to control the behaviour of a Homescript dynamically 
 Before accessing the value of an expected argument, it is recommended to validate that this argument
 has been provided to the Homescript runtime
 
-##### Check Arg 
+#### Check Arg 
 For this, the *checkArg* function can be used
 The `checkArg` function returns a boolean based on whether the argument has been found or not
 ```python
@@ -152,7 +153,7 @@ if checkArg('indentifier') {
 }
 ```
 
-##### Get Arg
+#### Get Arg
 After validating the existence of an arbitrary argument, it can be accessed using the `getArg` function
 Just like the `checkArg` function, this one requires the identifier of the argument to be retrieved
 If the argument does not exist, this function will throw an error
@@ -165,7 +166,7 @@ if checkArg('indentifier') {
     print(getArg('identifier'))
 }
 ```
-##### Provide Args to Homescript call
+#### Provide Args to Homescript call
 It is common to call other Homescripts from the current code.
 Sometimes you may also want to provide arguments to the Homescript to be executed.
 After the required first parameter `homescript_id` of the `exec` function, additional arguments can be used as call args for the Homescript.
@@ -201,5 +202,5 @@ print(str(false))
 print(str(switchOn('s2')))
 ```
 
-### Full example
+## Full example
 A full example program can be found in the [`demo.hms`](./demo.hms) file
