@@ -1,7 +1,24 @@
-# This is a test
+
+# This project was developed for Smarthome
+# https://github.com/smarthome-go/smarthome
+
+# All built-ins are provided by Smarthome, allowing interaction between Homescript and Smarthome
+# Changes power for said outlet, on / off are aliases for true / false
+switch('switch3', true)
+
+# There are some built-in variables which are also provided by Smarthome during runtime:
+# Simple concatenation in print is supported
+
+print("The current temperature is ", temperature, " degrees.")
+print(weather)
+print(currentHour)
+print(user)
+
+# `If` is an expression and can therefore be used inline
 switch(if temperature > 10 { 'switch1' } else { 'switch2' }, off)
 
 # Changes power for said outlet, on / off are aliases for true / false
+
 # All builtins are later provided via callback
 switch('switch', on)
 
@@ -11,16 +28,71 @@ if switchOn('s3')  {
     print("switch is off: s2")
 }
 
-# Sleep takes the amount of seconds to sleep
+## Sleep takes the amount of seconds to sleep
 sleep(1)
 
-# Print prints to a specified callback (console + output of hms)
+## Print prints to a specified callback (console + output of hms)
 print('message')
 
 # Sends a notification to the current user, last parameter is the level (1..3)
 notify('title', 'description', 1)
 
-# Sends last paramerter (mode) to first parameter (radigo server)
+print(num('1'))
+print(num('-1'))
+print(num('+1'))
+print(num('0.1'))
+
+# Will thrown an error
+# print(num('NaN'))
+# `switchOn` can be used to query the power state of a given switch
+if switchOn('switch3')  {
+    print("switch is on.")
+} else {
+    print("switch is off.")
+}
+
+# `sleep` pauses the execution of the current script for the given amount of seconds
+sleep(1)
+
+# `notify` sends a notification to the current user, last parameter is the level (1..3)
+notify('title', 'description', 1)
+
+# `addUser` creates a new user
+addUser('username', 'password', 'forename', 'surname')
+
+# Allows Smarthome to communicate with RadiGo servers
+# https://github.com/MikMuellerDev/radiGo
 play('server', 'mode')
 
-exit(42)
+# Make network requests using Homescript
+print(get('http://localhost:8082'))
+print(http('http://localhost:8082', 'POST', 'application/json', '{id": 1}'))
+
+# The `checkArg` function can be used to validate that an expected argument was passed as a value
+# It is recommended to use this function before attempting to use `getArg('x')`
+if checkArg('identifer') {
+    print(checkArg('identifer'))
+    print(getArg('identifier'))
+}
+
+# Exec can be used to trigger the execution of another Homescript
+exec('homescript_id')
+
+# If a Homescript should be called using arguments, they can be included as optional args
+# the exec function will use arguments after the first argument as call-args for the Homescript to be executed
+# When using call args, please avoid duplicate key entries, otherwise, the function will cause an error
+exec('homescript_id', mkArg('key', 'value'))
+
+# The mkArg function can be used to create an argument value for the exec function
+# The reason for this function's existence is to create a visual and semantic separator between each call argument
+print(mkArg('key', 'value'))
+
+# The `getArg` function attempts to return the value of a given argument identifier
+# If the argument does not exist, an error is returned
+# Due to this, it is best practice to use `checkArg('x')` before using `getArg`
+print(getArg('ok'))
+
+# Exit terminates execution
+exit(0)
+
+print("Unreachable code.")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -39,40 +40,13 @@ func printError(err error.Error, program string) {
 }
 
 func main() {
-	program := `
-print('hello\nthere');
-switch('s1', on);
-exec('coming_home', mkArgs(mkArg('a', 'b'), mkArg('a', 'c')));
-switch(
-	's1',
-	on,
-);
-exec('coming_home');
-print(3.14);
-addUser('test','test','','')
-addPerm('test', 'test')
-delPerm('test', 'test')
-delUser('test')
-print(num('1.11') < num('1.22'))
-print(num('+1.11'), ' | ', num('-1.22'))
-print(num(str(num('-1'))))
-print(str(1))
-print(str(switchOn('s2')))
-print(checkArg('my_arg_identifier'))
-if checkArg('my_arg_identifier') {
-	print(getArg('my_arg_identifier'))
-} else {
-	print('no such arg')
-}
-print(get('http://localhost:8082'))
-print(http('http://localhost:8082', 'POST', '', ''))
-print(getArg('ok'))
-exit(0);
-print('unreachable');
-`
-	code, errors := homescript.Run(homescript.DummyExecutor{}, "<demo>", program)
+	program, err := ioutil.ReadFile("demo.hms")
+	if err != nil {
+		panic(err.Error())
+	}
+	code, errors := homescript.Run(homescript.DummyExecutor{}, "<demo>", string(program))
 	for _, err := range errors {
-		printError(err, program)
+		printError(err, string(program))
 		fmt.Println()
 	}
 	os.Exit(code)
