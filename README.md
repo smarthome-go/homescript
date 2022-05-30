@@ -4,7 +4,7 @@ Homescript is a fast and custom DSL (domain-specific language) for the  [Smartho
 It provides a scripting interface for Smarthome users in order to create customized routines and workflows.
 
 
-## Documentation
+## Feature Documentation
 ### Builtin variables
 #### Weather
 ```python
@@ -136,7 +136,6 @@ exit(42)
 ```
 Exit stops execution of the running script with a provided exit code.
 Any non-0 exit code indicates a failure.
-## A possible Homescript script
 
 #### Arguments
 Call arguments can be used to control the behaviour of a Homescript dynamically 
@@ -201,5 +200,5 @@ print(str(false))
 print(str(switchOn('s2')))
 ```
 
-## Full example
+### Full example
 A full example program can be found in the [`demo.hms`](./) file
