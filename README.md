@@ -201,4 +201,4 @@ print(str(switchOn('s2')))
 ```
 
 ### Full example
-A full example program can be found in the [`demo.hms`](https://github.com/smarthome-go/homescript/blob/main/demo.hms) file
+A full example program can be found in the [`demo.hms`](./demo.hms) file
