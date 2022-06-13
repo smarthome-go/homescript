@@ -89,6 +89,7 @@ print(mkArg('key', 'value'))
 print(getArg('ok'))
 
 # Exit terminates execution
+panic("This is a panic, it was caused intentionally.")
 exit(0)
 
 print("Unreachable code.")

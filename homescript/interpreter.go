@@ -17,6 +17,7 @@ func NewInterpreter(startNode Expressions, executor interpreter.Executor) Interp
 	scope := map[string]interpreter.Value{
 		// special case `exit` implemented below
 		"exit":          interpreter.ValueFunction{},
+		"panic":         interpreter.ValueFunction{Callback: interpreter.Panic},
 		"num":           interpreter.ValueFunction{Callback: interpreter.Num},
 		"str":           interpreter.ValueFunction{Callback: interpreter.Str},
 		"mkArg":         interpreter.ValueFunction{Callback: interpreter.MkArg},

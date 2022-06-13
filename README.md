@@ -133,6 +133,13 @@ exit(42)
 Exit stops execution of the running script with a provided exit code.
 Any non-0 exit code indicates a failure.
 
+### Panic
+```python
+panic("message")
+```
+Panic stops execution of the running script with a provided error-message.
+It is meant to be used as a way to signal the failure of a script using a known reason, for example missing arguments.
+
 ### Arguments
 Call arguments can be used to control the behaviour of a Homescript dynamically 
 Before accessing the value of an expected argument, it is recommended to validate that this argument

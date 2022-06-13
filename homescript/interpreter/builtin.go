@@ -59,6 +59,18 @@ func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 	), nil
 }
 
+// Terminates the execution of the current Homescript using an error
+func Panic(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("panic", location, args, String); err != nil {
+		return nil, err
+	}
+	return nil, error.NewError(
+		error.Panic,
+		location,
+		args[0].(ValueString).Value,
+	)
+}
+
 // Parses a given string to an integer
 // If the string could not be parsed to an integer, an error is returned
 func Num(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {

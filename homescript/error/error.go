@@ -15,6 +15,8 @@ const (
 	ReferenceError
 	ValueError
 	RuntimeError
+	// Panic is an intentional error invoked by the `panic` function
+	Panic
 )
 
 func NewError(errorType ErrorType, location Location, message string) *Error {
@@ -30,6 +32,8 @@ func NewError(errorType ErrorType, location Location, message string) *Error {
 		typeName = "ValueError"
 	case RuntimeError:
 		typeName = "RuntimeError"
+	case Panic:
+		typeName = "Panic"
 	default:
 		panic(0)
 	}
