@@ -40,7 +40,7 @@ func printError(err error.Error, program string) {
 }
 
 func main() {
-	program, err := ioutil.ReadFile("./demo.hms")
+	program, err := ioutil.ReadFile("./tests/demo.hms")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -59,7 +59,7 @@ func main() {
 
 	/* SIGTERM TEST */
 
-	sigTermProgram, err := ioutil.ReadFile("./sigTerm.hms")
+	sigTermProgram, err := ioutil.ReadFile("./tests/sigTerm.hms")
 	if err != nil {
 		panic(err.Error())
 	}
