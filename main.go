@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"strings"
+	"time"
 
 	"github.com/smarthome-go/homescript/homescript"
 	"github.com/smarthome-go/homescript/homescript/error"
@@ -40,14 +40,43 @@ func printError(err error.Error, program string) {
 }
 
 func main() {
-	program, err := ioutil.ReadFile("demo.hms")
+	program, err := ioutil.ReadFile("./demo.hms")
 	if err != nil {
 		panic(err.Error())
 	}
-	code, errors := homescript.Run(homescript.DummyExecutor{}, "<demo>", string(program))
+	sigTerm := make(chan int)
+	code, errors := homescript.Run(
+		homescript.DummyExecutor{},
+		"<demo>",
+		string(program),
+		&sigTerm,
+	)
 	for _, err := range errors {
 		printError(err, string(program))
 		fmt.Println()
 	}
-	os.Exit(code)
+	fmt.Printf("Exit code: %d\n", code)
+
+	/* SIGTERM TEST */
+
+	sigTermProgram, err := ioutil.ReadFile("./sigTerm.hms")
+	if err != nil {
+		panic(err.Error())
+	}
+	sigTerm2 := make(chan int)
+	go func() {
+		time.Sleep(3 * time.Second)
+		sigTerm2 <- 99
+	}()
+	sigTermCode, errorsSigterm := homescript.Run(
+		homescript.DummyExecutor{},
+		"<sigterm>",
+		string(sigTermProgram),
+		&sigTerm2,
+	)
+	for _, err := range errorsSigterm {
+		printError(err, string(sigTermProgram))
+		fmt.Println()
+	}
+	fmt.Printf("Exit code: %d\n", sigTermCode)
 }

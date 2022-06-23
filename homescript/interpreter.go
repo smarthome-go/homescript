@@ -11,9 +11,12 @@ type Interpreter struct {
 	StartNode Expressions
 	Executor  interpreter.Executor
 	Scope     map[string]interpreter.Value
+
+	// Can be used to terminate the script at any point in time
+	SigTerm *chan int
 }
 
-func NewInterpreter(startNode Expressions, executor interpreter.Executor) Interpreter {
+func NewInterpreter(startNode Expressions, executor interpreter.Executor, sigTerm *chan int) Interpreter {
 	scope := map[string]interpreter.Value{
 		// special case `exit` implemented below
 		"exit":          interpreter.ValueFunction{},
@@ -50,6 +53,21 @@ func NewInterpreter(startNode Expressions, executor interpreter.Executor) Interp
 		StartNode: startNode,
 		Executor:  executor,
 		Scope:     scope,
+		SigTerm:   sigTerm,
+	}
+}
+
+// Utility function used at the beginning of any AST node's logic
+// Is used to allow the abort of a running script at any point in time
+// => Checks if a sigTerm has been received
+// If this is the case, the code is returned as int, alongside with a bool indicating that a signal has been received
+// If no sigTerm has been received, 0 and false are returned
+func (self *Interpreter) checkSigTerm() (int, bool) {
+	select {
+	case code := <-*self.SigTerm:
+		return code, true
+	default:
+		return 0, false
 	}
 }
 
@@ -75,6 +93,16 @@ func (self *Interpreter) visitExpressions(node Expressions) (interpreter.Value, 
 }
 
 func (self *Interpreter) visitExpression(node Expression) (interpreter.Value, *error.Error, *int) {
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
+	// Normal node-specific logic begins here
+
 	base, err, code := self.visitAndExpr(node.Base)
 	if err != nil || code != nil {
 		return nil, err, code
@@ -106,6 +134,16 @@ func (self *Interpreter) visitExpression(node Expression) (interpreter.Value, *e
 }
 
 func (self *Interpreter) visitAndExpr(node AndExpr) (interpreter.Value, *error.Error, *int) {
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
+	// Normal node-specific logic begins here
+
 	base, err, code := self.visitEqExpr(node.Base)
 	if err != nil || code != nil {
 		return nil, err, code
@@ -137,6 +175,16 @@ func (self *Interpreter) visitAndExpr(node AndExpr) (interpreter.Value, *error.E
 }
 
 func (self *Interpreter) visitEqExpr(node EqExpr) (interpreter.Value, *error.Error, *int) {
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
+	// Normal node-specific logic begins here
+
 	base, err, code := self.visitRelExpr(node.Base)
 	if err != nil || code != nil {
 		return nil, err, code
@@ -167,6 +215,16 @@ func (self *Interpreter) visitEqExpr(node EqExpr) (interpreter.Value, *error.Err
 }
 
 func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, *error.Error, *int) {
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
+	// Normal node-specific logic begins here
+
 	base, err, code := self.visitNotExpr(node.Base)
 	if err != nil || code != nil {
 		return nil, err, code
@@ -212,6 +270,16 @@ func (self *Interpreter) visitRelExpr(node RelExpr) (interpreter.Value, *error.E
 }
 
 func (self *Interpreter) visitNotExpr(node NotExpr) (interpreter.Value, *error.Error, *int) {
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
+	// Normal node-specific logic begins here
+
 	base, err, code := self.visitAtom(node.Base)
 	if err != nil || code != nil {
 		return nil, err, code
@@ -229,6 +297,16 @@ func (self *Interpreter) visitNotExpr(node NotExpr) (interpreter.Value, *error.E
 }
 
 func (self *Interpreter) visitAtom(node Atom) (interpreter.Value, *error.Error, *int) {
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
+	// Normal node-specific logic begins here
+
 	var result interpreter.Value
 	var err *error.Error
 	var code *int
@@ -271,6 +349,16 @@ func (self *Interpreter) visitAtom(node Atom) (interpreter.Value, *error.Error, 
 }
 
 func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, *error.Error, *int) {
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
+	// Normal node-specific logic begins here
+
 	condition, err, code := self.visitExpression(node.Condition)
 	if err != nil || code != nil {
 		return nil, err, code
@@ -289,6 +377,16 @@ func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, *error.Err
 }
 
 func (self *Interpreter) visitCallExpr(node CallExpr) (interpreter.Value, *error.Error, *int) {
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
+	// Normal node-specific logic begins here
+
 	value, exists := self.Scope[node.Name]
 	if !exists {
 		return nil, error.NewError(

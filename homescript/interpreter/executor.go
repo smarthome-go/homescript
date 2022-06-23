@@ -15,6 +15,7 @@ type Executor interface {
 	CheckArg(identifier string) bool
 	GetArg(indentifier string) (string, error)
 
+	Sleep(float64)
 	Print(args ...string)
 	SwitchOn(name string) (bool, error)
 	Switch(name string, on bool) error

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"time"
 
 	"github.com/smarthome-go/homescript/homescript/error"
 )
@@ -123,41 +122,14 @@ func MkArg(_ Executor, location error.Location, args ...Value) (Value, *error.Er
 	}, nil
 }
 
-/**
-func MkArgs(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	finalArgs := make([]ValueArg, 0)
-	for argPos, arg := range args {
-		if arg.Type() != Arg {
-			return nil, error.NewError(
-				error.TypeError,
-				location,
-				fmt.Sprintf("Argument %d of function 'mkArgs' has to be of type %s, you can use mkArg to create an Arg", argPos+1, Arg.Name()),
-			)
-		}
-		for checkArgPos, checkArg := range finalArgs {
-			if checkArg.Value.Key == arg.(ValueArg).Value.Key {
-				return nil, error.NewError(
-					error.TypeError,
-					location,
-					fmt.Sprintf("Argument %d of function 'mkArgs' has duplicate key entry '%s', first registered as argument %d", argPos+1, arg.(ValueArg).Value.Key, checkArgPos+1),
-				)
-			}
-		}
-		finalArgs = append(finalArgs, arg.(ValueArg))
-	}
-	return ValueArgs{
-		Value: finalArgs,
-	}, nil
-}
-*/
-
 // Pauses the execution of the current script for a given amount of seconds
-func Sleep(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
+func Sleep(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("sleep", location, args, Number); err != nil {
 		return nil, err
 	}
 	seconds := args[0].(ValueNumber).Value
-	time.Sleep(time.Millisecond * time.Duration(seconds*1000))
+	// The sleep function has been migrated to the executor in order to allow better linting / dry run without delays
+	executor.Sleep(seconds)
 	return ValueVoid{}, nil
 }
 

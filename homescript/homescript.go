@@ -10,6 +10,10 @@ import (
 
 type DummyExecutor struct{}
 
+func (self DummyExecutor) Sleep(seconds float64) {
+	time.Sleep(time.Millisecond * time.Duration(1000*seconds))
+}
+
 func (self DummyExecutor) Print(args ...string) {
 	output := ""
 	for _, arg := range args {
@@ -97,14 +101,16 @@ func (self DummyExecutor) Http(url string, method string, contentType string, bo
 }
 
 // Runs provided Homescript code given the source code
+// The `sigTerm` variable is used to terminate the script at any point in time
+// The value passed into the channel is used as an exit-code to terminate the script
 // Returns an error slice
-func Run(executor interpreter.Executor, filename string, code string) (int, []customError.Error) {
+func Run(executor interpreter.Executor, filename string, code string, sigTerm *chan int) (int, []customError.Error) {
 	parser := NewParser(NewLexer(filename, code))
 	ast, errs := parser.Parse()
 	if len(errs) > 0 {
 		return 1, errs
 	}
-	homeScriptInterpreter := NewInterpreter(ast, executor)
+	homeScriptInterpreter := NewInterpreter(ast, executor, sigTerm)
 	exitCode, err := homeScriptInterpreter.Run()
 	if err != nil {
 		return 1, []customError.Error{*err}
