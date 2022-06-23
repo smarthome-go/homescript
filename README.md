@@ -203,5 +203,5 @@ print(str(false))
 print(str(switchOn('s2')))
 ```
 
-## Full example
+## Full example script
 A full example program can be found in the [`demo.hms`](./demo.hms) file
