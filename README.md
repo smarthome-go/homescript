@@ -4,7 +4,6 @@ Homescript is a fast and custom DSL (domain-specific language) for the  [Smartho
 
 It provides a scripting interface for Smarthome users in order to create customized routines and workflows.
 
-
 # Feature Documentation
 ## Builtin variables
 ### Weather
@@ -141,11 +140,11 @@ Panic stops execution of the running script with a provided error-message.
 It is meant to be used as a way to signal the failure of a script using a known reason, for example missing arguments.
 
 ### Arguments
-Call arguments can be used to control the behaviour of a Homescript dynamically 
+Call arguments can be used to control the behaviour of a Homescript dynamically
 Before accessing the value of an expected argument, it is recommended to validate that this argument
 has been provided to the Homescript runtime
 
-#### Check Arg 
+#### Check Arg
 For this, the *checkArg* function can be used
 The `checkArg` function returns a boolean based on whether the argument has been found or not
 ```python
@@ -161,7 +160,8 @@ If the argument does not exist, this function will throw an error
 Due to this, it is recommended to use the `checkArg` function from above
 
 Warning: this function will always return a string because the argument type must be generic.
-If the function's return value is required as an integer, it can be parsed using `num(getArg('number'))` 
+If the function's return value is required as an integer, it can be parsed using `num(getArg('number'))`
+
 ```python
 if checkArg('indentifier') {
     print(getArg('identifier'))
@@ -205,3 +205,94 @@ print(str(switchOn('s2')))
 
 ## Full example script
 A full example program can be found in the [`demo.hms`](./demo.hms) file
+
+# Usage Documentation
+
+## Implementing a Custom Executor
+Due to Homescript's nature of being extensible, every function call (and some variable getters) need to be implemented by the host software.
+To get started, an executor has to be implemented.
+The executor acts like an interface between Homescript and the host software, proving **all** features of the language.
+
+### Structure
+The executor's signature has to match following declaration.
+For a better understanding, visit the [executor](./homescript/interpreter/executor.go) source code.
+
+```go
+package interpreter
+
+type LogLevel uint8
+
+const (
+    LevelTrace LogLevel = iota
+    LevelDebug
+    LevelInfo
+    LevelWarn
+    LevelError
+    LevelFatal
+)
+
+type Executor interface {
+    CheckArg(identifier string) bool
+    GetArg(indentifier string) (string, error)
+
+    Sleep(float64)
+    Print(args ...string)
+    SwitchOn(name string) (bool, error)
+    Switch(name string, on bool) error
+    Notify(title string, description string, level LogLevel) error
+    Log(title string, description string, level LogLevel) error
+    Exec(homescriptId string, args map[string]string) (string, error)
+    AddUser(username string, password string, forename string, surname string) error
+    DelUser(username string) error
+    AddPerm(username string, permission string) error
+    DelPerm(username string, permission string) error
+    Get(url string) (string, error)
+    Http(url string, method string, contentType string, body string) (string, error)
+
+    // Builtin variables
+    GetUser() string
+    GetWeather() (string, error)
+    GetTemperature() (int, error)
+    GetDate() (int, int, int, int, int, int)
+}
+```
+
+### Example implementation
+
+```go
+type DummyExecutor struct{}
+
+func (self DummyExecutor) Sleep(seconds float64) {
+    time.Sleep(time.Millisecond * time.Duration(1000*seconds))
+}
+
+func (self DummyExecutor) Print(args ...string) {
+    output := ""
+    for _, arg := range args {
+        output += arg
+    }
+    fmt.Println(output)
+}
+
+// More functions need to be implemented
+```
+
+## Using the Run Function
+The `Run` function is used in order to start the execution of a script.
+- The first argument describes the executor's definition (refer to previous)
+### Example
+The sample was taken from [`./main.go`](./main.go).
+```go
+sigTerm := make(chan int)
+code, errors := homescript.Run(
+    homescript.DummyExecutor{},
+    "<demo>",
+    "print('hello world!')"
+    &sigTerm,
+)
+for _, err := range errors {
+    // Handle the errors this way
+    fmt.Println(err.Error())
+}
+fmt.Printf("Exit code: %d\n", code)
+```
