@@ -204,7 +204,7 @@ print(str(switchOn('s2')))
 ```
 
 ## Full example script
-A full example program can be found in the [`demo.hms`](./demo.hms) file
+A full example program can be found in the [`demo.hms`](./tests/demo.hms) file
 
 # Usage Documentation
 
