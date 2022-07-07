@@ -121,9 +121,9 @@ print(get('http://localhost:8082'))
 print(http('http://localhost:8082', 'POST', 'application/json', '{"id": 2}'))
 ```
 As of `v0.7.0-beta`, Homescript supports the use of generic http functions.
-The `get` function only accepts an arbitrary string as a url and returns the request response as a string.
+The `get` function only accepts an arbitrary string as a url and returns the request response body as a string.
 
-The `http` function is generic: given a URL, a request-method, a `Content-Type`, and a body, a response will be returned as string
+The `http` function is more generic: given a URL, a request-method, a `Content-Type`, and a body, a response body will be returned as a string.
 
 ### Exit
 ```python
