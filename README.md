@@ -106,7 +106,7 @@ log("Log Title", "What happened?", 4)
 ```
 Logs a message to the server's console and to the internal logging system.
 
-Depending on the implementation, this should only be allowed to the admin user.
+Depending on the implementation, this should only be usable by admin users.
 Legal log levels (*last parameter*) are:
 - 0 Trace
 - 1 Debug
