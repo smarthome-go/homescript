@@ -22,7 +22,7 @@ Like any other builtin, the functionality must be provided by the host-software.
 *Note: This means that variable values may change*
 ### Temperature
 ```python
-print(temperature) q
+print(temperature)
 ```
 The current temperature in the area of the Smarthome-server can be queried with the code above.
 
