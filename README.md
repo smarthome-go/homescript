@@ -178,7 +178,7 @@ exec('homescript_arg', mkArg('key', 'value'), mkArg('another_key', 'another_valu
 
 ### Type Conversion
 #### Parse to Number
-Sometimes, for example when processing arguments, it is required to parse a string value to a number
+Sometimes, for example when processing arguments. it is required to parse a string value to a number
 For this, the `num` function should be used.
 The function requires one argument of type string which will then be used to attempt the type conversion
 If the function's input can not be parsed to a number, an error is thrown
