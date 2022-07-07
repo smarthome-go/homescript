@@ -180,8 +180,8 @@ exec('homescript_arg', mkArg('key', 'value'), mkArg('another_key', 'another_valu
 #### Parse to Number
 Sometimes, for example when processing arguments, it is required to parse a string value to a number.
 In this case the `num` function should be used.
-The function requires one argument of type string which will then be used to attempt the type conversion
-If the function's input can not be parsed to a number, an error is thrown
+The function requires one argument of type string which will then be used to attempt the type conversion.
+If the function's input can not be parsed to a number, an error is returned.
 
 ```python
 print(num('1'))
