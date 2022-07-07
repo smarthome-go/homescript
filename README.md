@@ -211,7 +211,7 @@ A full example program can be found in the [`demo.hms`](./demo.hms) file
 ## Implementing a Custom Executor
 Due to Homescript's nature of being extensible, every function call (and some variable getters) need to be implemented by the host software.
 To get started, an executor has to be implemented.
-The executor acts like an interface between Homescript and the host software, proving **all** features of the language.
+The executor acts like an interface between Homescript and the host software, providing **all** features of the language.
 
 ### Structure
 The executor's signature has to match following declaration.
