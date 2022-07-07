@@ -188,7 +188,7 @@ print(num('1'))
 print(num('-1'))
 print(num('+1'))
 print(num('0.1'))
-# Will thrown an error
+# Will return an error
 # print(num('NaN'))
 ```
 
