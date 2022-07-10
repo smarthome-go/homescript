@@ -52,7 +52,7 @@ func Exit(location error.Location, args ...Value) (*error.Error, *int) {
 		return nil, &code
 	}
 	return error.NewError(
-		error.ValueError,
+		error.TypeError,
 		location,
 		"First argument of function 'exit' has to be an integer",
 	), nil
@@ -102,6 +102,26 @@ func Str(self Executor, location error.Location, args ...Value) (Value, *error.E
 	return ValueString{
 		Value: res,
 	}, nil
+}
+
+// Concatonates the provided strings, forming a large string
+func Concat(self Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if len(args) < 2 {
+		return nil, error.NewError(error.ValueError, location,
+			fmt.Sprintf("Function 'concat' requires at least 2 argument but %d were given", len(args)))
+	}
+	output := ""
+	for argIndex, arg := range args {
+		if arg.Type() != String {
+			return nil, error.NewError(
+				error.TypeError,
+				location,
+				fmt.Sprintf("Argument %d of function 'concat' has to be a string", argIndex+1),
+			)
+		}
+		output += arg.(ValueString).Value
+	}
+	return ValueString{Value: output}, nil
 }
 
 // Pauses the execution of the current script for a given amount of seconds
@@ -196,7 +216,7 @@ func Notify(executor Executor, location error.Location, args ...Value) (Value, *
 	rawLevel := args[2].(ValueNumber).Value
 	if rawLevel != float64(int(math.Round(rawLevel))) {
 		return nil, error.NewError(
-			error.ValueError,
+			error.TypeError,
 			location,
 			"Third argument of function 'notify' has to be an integer",
 		)
@@ -232,7 +252,7 @@ func Log(executor Executor, location error.Location, args ...Value) (Value, *err
 	rawLevel := args[2].(ValueNumber).Value
 	if rawLevel != float64(int(math.Round(rawLevel))) {
 		return nil, error.NewError(
-			error.ValueError,
+			error.TypeError,
 			location,
 			"Third argument of function 'log' has to be an integer",
 		)
@@ -273,7 +293,7 @@ func Exec(executor Executor, location error.Location, args ...Value) (Value, *er
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			"Function 'exec' takes 1 or more arguments  but 0 were given",
+			"Function 'exec' takes 1 or more arguments but 0 were given",
 		)
 	}
 	// Validate that the first argument is of type string
@@ -415,7 +435,7 @@ func Http(executor Executor, location error.Location, args ...Value) (Value, *er
 		_, alreadyExists := headers[header.(ValuePair).Value.Key]
 		if alreadyExists {
 			return nil, error.NewError(
-				error.TypeError,
+				error.ValueError,
 				location,
 				fmt.Sprintf("Header entry (value pair) %d of function 'http' has duplicate key entry '%s'", headerIndex+4, header.(ValuePair).Value.Key),
 			)

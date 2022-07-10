@@ -217,6 +217,19 @@ print(str(false))
 print(str(switchOn('s2')))
 ```
 
+#### Creating a long string using concatenation
+A common problem is to form a formatted string using smaller parts to assemble the final string.
+In order to solve this problem, Homescript implements the `concat` function.
+The function accepts an arbitrary amount of strings and returns a final string, which contains all substrings after another.
+```python
+print(concat(
+	'Hello ',
+	"World",
+	"!"
+))
+# "Hello " + "World" + "!" => "Hello World!"
+```
+
 #### Creating a Pair from Strings
 Some functions, such as `exec` or `http` require special arguments of the type `pair`.
 A pair acts like a `map` which is limited to one *key* and a matching *value*, thus providing a semantic and syntactical indication of grouped value pairs.

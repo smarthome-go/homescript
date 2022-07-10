@@ -28,10 +28,13 @@ if switchOn('s3')  {
     print("switch is off: s2")
 }
 
-## Sleep takes the amount of seconds to sleep
+# Concatonate an arbitrary amount of strings to form a long string
+print(concat('hello', 'world', '!'))
+
+# Sleep takes the amount of seconds to sleep
 sleep(1)
 
-## Print prints to a specified callback (console + output of hms)
+# Print prints to a specified callback (console + output of hms)
 print('message')
 
 # Sends a notification to the current user, last parameter is the level (1..3)
