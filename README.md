@@ -22,7 +22,7 @@ Like any other builtin, the functionality must be provided by the host-software.
 *Note: This means that variable values may change*
 ### Temperature
 ```python
-print(temperature) q
+print(temperature)
 ```
 The current temperature in the area of the Smarthome-server can be queried with the code above.
 
@@ -106,7 +106,7 @@ log("Log Title", "What happened?", 4)
 ```
 Logs a message to the server's console and to the internal logging system.
 
-Depending on the implementation, this should only be allowed to the admin user.
+Depending on the implementation, this should only be usable by admin users.
 Legal log levels (*last parameter*) are:
 - 0 Trace
 - 1 Debug
@@ -133,7 +133,6 @@ However, the function can fail due to several reasons:
 - Response codes which indicate failure (depends on the host implementation)
 - Abundant access permission (permission for the `http` function)
 
-
 ### Exit
 ```python
 exit(42)
@@ -149,13 +148,13 @@ Panic stops execution of the running script with a provided error-message.
 It is meant to be used as a way to signal the failure of a script using a known reason, for example missing arguments.
 
 ### Arguments
-Call arguments can be used to control the behaviour of a Homescript dynamically
+Call arguments can be used to control the behaviour of a Homescript dynamically.
 Before accessing the value of an expected argument, it is recommended to validate that this argument
-has been provided to the Homescript runtime
+has been provided to the Homescript runtime.
 
 #### Check Arg
-For this, the *checkArg* function can be used
-The `checkArg` function returns a boolean based on whether the argument has been found or not
+For this, the *checkArg* function can be used.
+The `checkArg` function returns a boolean based on whether the argument has been found or not.
 ```python
 if checkArg('indentifier') {
     # Do something, for example accessing the argument
@@ -163,10 +162,10 @@ if checkArg('indentifier') {
 ```
 
 #### Get Arg
-After validating the existence of an arbitrary argument, it can be accessed using the `getArg` function
-Just like the `checkArg` function, this one requires the identifier of the argument to be retrieved
-If the argument does not exist, this function will throw an error
-Due to this, it is recommended to use the `checkArg` function from above
+After validating the existence of an arbitrary argument, it can be accessed using the `getArg` function.
+Just like the `checkArg` function, this requires the identifier of the desired argument.
+If the argument does not exist, this function will return an error.
+Due to this, it is recommended to use the `checkArg` function beforehand.
 
 Warning: this function will always return a string because the argument type must be generic.
 If the function's return value is required as an integer, it can be parsed using `num(getArg('number'))`
@@ -193,17 +192,17 @@ exec(
 
 ### Type Conversion
 #### Parsing a String to a Number
-Sometimes, for example when processing arguments, it is required to parse a string value to a number
+Sometimes, for example when processing arguments, it is required to parse a string value to a number.
 For this, the `num` function should be used.
-The function requires one argument of type string which will then be used to attempt the type conversion
-If the function's input can not be parsed to a number, an error is thrown
+The function requires one argument of type string which will then be used to attempt the type conversion.
+If the function's input can not be parsed to a number, an error is returned.
 
 ```python
 print(num('1'))
 print(num('-1'))
 print(num('+1'))
 print(num('0.1'))
-# Will thrown an error
+# Will return an error
 # print(num('NaN'))
 ```
 
@@ -233,14 +232,14 @@ print(pair('k', 'v'))
 ```
 
 ## Full example script
-A full example program can be found in the [`demo.hms`](./demo.hms) file
+A full example program can be found in the [`demo.hms`](./tests/demo.hms) file
 
 # Usage Documentation
 
 ## Implementing a Custom Executor
 Due to Homescript's nature of being extensible, every function call (and some variable getters) need to be implemented by the host software.
 To get started, an executor has to be implemented.
-The executor acts like an interface between Homescript and the host software, proving **all** features of the language.
+The executor acts like an interface between Homescript and the host software, providing **all** features of the language.
 
 ### Structure
 The executor's signature has to match following declaration.
