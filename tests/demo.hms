@@ -62,7 +62,7 @@ addUser('username', 'password', 'forename', 'surname')
 
 # Make network requests using Homescript
 print(get('http://localhost:8082'))
-print(http('http://localhost:8082', 'POST', 'application/json', '{id": 1}'))
+print(http('http://localhost:8082', 'POST', '{id": 1}', pair('Content-Type', 'application/json')))
 
 # The `checkArg` function can be used to validate that an expected argument was passed as a value
 # It is recommended to use this function before attempting to use `getArg('x')`
@@ -76,12 +76,12 @@ exec('homescript_id')
 
 # If a Homescript should be called using arguments, they can be included as optional args
 # the exec function will use arguments after the first argument as call-args for the Homescript to be executed
-# When using call args, please avoid duplicate key entries, otherwise, the function will cause an error
-exec('homescript_id', mkArg('key', 'value'))
+# When using call args, please avoid duplicate key entries, otherwise, the function will return an error
+exec('homescript_id', pair('key', 'value'))
 
-# The mkArg function can be used to create an argument value for the exec function
-# The reason for this function's existence is to create a visual and semantic separator between each call argument
-print(mkArg('key', 'value'))
+# The pair function can be used to create a generic value pair (here used as call-arguments for the exec function)
+# The reason for this function's usage is to create a visual and semantic separator between each call argument
+print(pair('key', 'value'))
 
 # The `getArg` function attempts to return the value of a given argument identifier
 # If the argument does not exist, an error is returned

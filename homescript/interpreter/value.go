@@ -16,7 +16,7 @@ const (
 	Function
 	Variable
 	Args
-	Arg
+	PairType
 )
 
 func (self ValueType) Name() string {
@@ -35,8 +35,8 @@ func (self ValueType) Name() string {
 		return "Variable"
 	case Args:
 		return "Arguments"
-	case Arg:
-		return "Argument"
+	case PairType:
+		return "Pair"
 	default:
 		// Unreachable
 		panic(0)
@@ -288,30 +288,30 @@ func (self ValueVariable) IsGreaterThanOrEqual(executor Executor, other Value, l
 	return val.(ValueNumber).IsGreaterThanOrEqual(executor, other, location)
 }
 
-type ValueArg struct {
+type ValuePair struct {
 	Value struct {
 		Key   string
 		Value string
 	}
 }
 
-func (self ValueArg) Type() ValueType { return Arg }
-func (self ValueArg) ToString(_ Executor, _ error.Location) (string, *error.Error) {
-	return "<argument>", nil
+func (self ValuePair) Type() ValueType { return PairType }
+func (self ValuePair) ToString(_ Executor, _ error.Location) (string, *error.Error) {
+	return fmt.Sprintf("<pair(%s:%s)>", self.Value.Key, self.Value.Value), nil
 }
-func (self ValueArg) IsTrue(_ Executor, _ error.Location) (bool, *error.Error) {
-	return false, nil
+func (self ValuePair) IsTrue(_ Executor, _ error.Location) (bool, *error.Error) {
+	return self.Value.Key != "" && self.Value.Value != "", nil
 }
-func (self ValueArg) IsEqual(_ Executor, _ error.Location, other Value) (bool, *error.Error) {
-	if other.Type() != Arg {
+func (self ValuePair) IsEqual(_ Executor, _ error.Location, other Value) (bool, *error.Error) {
+	if other.Type() != PairType {
 		return false, nil
 	}
-	vOther := other.(ValueArg).Value
+	vOther := other.(ValuePair).Value
 	return self.Value.Key == vOther.Key && self.Value.Value == vOther.Value, nil
 }
 
 type ValueArgs struct {
-	Value []ValueArg
+	Value []ValuePair
 }
 
 func (self ValueArgs) Type() ValueType { return Args }

@@ -118,12 +118,21 @@ Legal log levels (*last parameter*) are:
 ### HTTP
 ```python
 print(get('http://localhost:8082'))
-print(http('http://localhost:8082', 'POST', 'application/json', '{"id": 2}'))
+print(http('http://localhost:8082', 'POST', '{"id": 2}', pair('Content-Type', 'application/json')))
 ```
 As of `v0.7.0-beta`, Homescript supports the use of generic http functions.
-The `get` function only accepts an arbitrary string as a url and returns the request response as a string.
+The `get` function only accepts an arbitrary string as a URL and returns the request response as a string.
 
-The `http` function is generic: given a URL, a request-method, a `Content-Type`, and a body, a response will be returned as string
+The `http` function is generic: given a URL, a request-method, a body, and optional header pairs, a response will be returned as string.
+The returned response is the response body in its plaintext form.
+The optional header pairs have to be of the type *pair*, which can be created using the `pair` function.
+It is to be noted that I recommend using a permission which *explicitly* allows the use of networking inside HMS.
+
+However, the function can fail due to several reasons:
+- Networking issues
+- Response codes which indicate failure (depends on the host implementation)
+- Abundant access permission (permission for the `http` function)
+
 
 ### Exit
 ```python
@@ -170,14 +179,20 @@ if checkArg('indentifier') {
 #### Provide Args to Homescript call
 It is common to call other Homescripts from the current code.
 Sometimes you may also want to provide arguments to the Homescript to be executed.
-After the required first parameter `homescript_id` of the `exec` function, additional arguments can be used as call args for the Homescript.
+After the required first parameter `homescript_id` of the `exec` function, additional arguments can be used as call arguments for the target Homescript.
 When providing arguments to a Homescript call, make sure to avoid duplicate key entries in order to avoid errors.
+The call arguments have to be the *pair* type, which can be created using the `pair` function.
+
 ```python
-exec('homescript_arg', mkArg('key', 'value'), mkArg('another_key', 'another_value'))
+exec(
+    'homescript_arg',
+    pair('key', 'value'),
+    pair('another_key', 'another_value'),
+)
 ```
 
 ### Type Conversion
-#### Parse to Number
+#### Parsing a String to a Number
 Sometimes, for example when processing arguments, it is required to parse a string value to a number
 For this, the `num` function should be used.
 The function requires one argument of type string which will then be used to attempt the type conversion
@@ -192,7 +207,7 @@ print(num('0.1'))
 # print(num('NaN'))
 ```
 
-#### Convert to String
+#### Convert any to String
 The ability to convert a value of any type to a textual representation or a string is just as useful as the other way around.
 For this, the `str` function should be used.
 The only time the `str` function can return an error is when used in conjunction with a pseudo-variable (e.g. `weather`)
@@ -201,6 +216,20 @@ The only time the `str` function can return an error is when used in conjunction
 print(str(1))
 print(str(false))
 print(str(switchOn('s2')))
+```
+
+#### Creating a Pair from Strings
+Some functions, such as `exec` or `http` require special arguments of the type `pair`.
+A pair acts like a `map` which is limited to one *key* and a matching *value*, thus providing a semantic and syntactical indication of grouped value pairs.
+It can be created using the `pair` function.
+Note: the `pair` type is only able to store strings, both as the key and value.
+
+→ If you need to store other value types, use the according type-conversion functions discussed earlier in this section.
+
+```python
+pair('unique_key', 'a string value')
+print(pair('k', 'v'))
+# <pair(k:v)>
 ```
 
 ## Full example script
@@ -223,37 +252,37 @@ package interpreter
 type LogLevel uint8
 
 const (
-    LevelTrace LogLevel = iota
-    LevelDebug
-    LevelInfo
-    LevelWarn
-    LevelError
-    LevelFatal
+	LevelTrace LogLevel = iota
+	LevelDebug
+	LevelInfo
+	LevelWarn
+	LevelError
+	LevelFatal
 )
 
 type Executor interface {
-    CheckArg(identifier string) bool
-    GetArg(indentifier string) (string, error)
+	CheckArg(identifier string) bool
+	GetArg(indentifier string) (string, error)
 
-    Sleep(float64)
-    Print(args ...string)
-    SwitchOn(name string) (bool, error)
-    Switch(name string, on bool) error
-    Notify(title string, description string, level LogLevel) error
-    Log(title string, description string, level LogLevel) error
-    Exec(homescriptId string, args map[string]string) (string, error)
-    AddUser(username string, password string, forename string, surname string) error
-    DelUser(username string) error
-    AddPerm(username string, permission string) error
-    DelPerm(username string, permission string) error
-    Get(url string) (string, error)
-    Http(url string, method string, contentType string, body string) (string, error)
+	Sleep(float64)
+	Print(args ...string)
+	SwitchOn(name string) (bool, error)
+	Switch(name string, on bool) error
+	Notify(title string, description string, level LogLevel) error
+	Log(title string, description string, level LogLevel) error
+	Exec(homescriptId string, args map[string]string) (string, error)
+	AddUser(username string, password string, forename string, surname string) error
+	DelUser(username string) error
+	AddPerm(username string, permission string) error
+	DelPerm(username string, permission string) error
+	Get(url string) (string, error)
+	Http(url string, method string, body string, headers map[string]string) (string, error)
 
-    // Builtin variables
-    GetUser() string
-    GetWeather() (string, error)
-    GetTemperature() (int, error)
-    GetDate() (int, int, int, int, int, int)
+	// Builtin variables
+	GetUser() string
+	GetWeather() (string, error)
+	GetTemperature() (int, error)
+	GetDate() (int, int, int, int, int, int)
 }
 ```
 

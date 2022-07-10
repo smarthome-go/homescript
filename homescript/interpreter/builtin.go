@@ -104,24 +104,6 @@ func Str(self Executor, location error.Location, args ...Value) (Value, *error.E
 	}, nil
 }
 
-// Acts like a factory for the `Arg` type
-// Requires two arguments: mkArg(key, value)
-// The first argument is the key, the second one is the value
-func MkArg(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if err := checkArgs("mkArg", location, args, String, String); err != nil {
-		return nil, err
-	}
-	return ValueArg{
-		Value: struct {
-			Key   string
-			Value string
-		}{
-			Key:   args[0].(ValueString).Value,
-			Value: args[1].(ValueString).Value,
-		},
-	}, nil
-}
-
 // Pauses the execution of the current script for a given amount of seconds
 func Sleep(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("sleep", location, args, Number); err != nil {
@@ -305,23 +287,23 @@ func Exec(executor Executor, location error.Location, args ...Value) (Value, *er
 	// Create call arguments from other args
 	callArgsFinal := make(map[string]string, 0)
 	for indexArg, arg := range args[1:] {
-		if arg.Type() != Arg {
+		if arg.Type() != PairType {
 			return nil, error.NewError(
 				error.TypeError,
 				location,
-				fmt.Sprintf("Argument %d of function 'exec' has to be of type Argument", indexArg),
+				fmt.Sprintf("Argument %d of function 'exec' has to be of type Pair\nhint: you can create a value pair using `pair('key', 'value')`", indexArg),
 			)
 		}
-		_, alreadyExists := callArgsFinal[arg.(ValueArg).Value.Key]
+		_, alreadyExists := callArgsFinal[arg.(ValuePair).Value.Key]
 		if alreadyExists {
 			return nil, error.NewError(
 				error.TypeError,
 				location,
-				fmt.Sprintf("Call argument %d of function 'exec' has duplicate key entry '%s'", indexArg+2, arg.(ValueArg).Value.Key),
+				fmt.Sprintf("Call argument (value pair) %d of function 'exec' has duplicate key entry '%s'", indexArg+2, arg.(ValuePair).Value.Key),
 			)
 		}
 		// Add the argument to the argument map
-		callArgsFinal[arg.(ValueArg).Value.Key] = arg.(ValueArg).Value.Value
+		callArgsFinal[arg.(ValuePair).Value.Key] = arg.(ValuePair).Value.Value
 	}
 	// Execute Homescript
 	homescriptId := args[0].(ValueString).Value
@@ -397,17 +379,79 @@ func Get(executor Executor, location error.Location, args ...Value) (Value, *err
 	}, nil
 }
 
-// Makes a network request using an arbitrary url, method, and body as plaintext
+// Makes a network request using an arbitrary URL, method, body and headers (as plaintext)
 func Http(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	if err := checkArgs("http", location, args, String, String, String, String); err != nil {
-		return nil, err
+	// Validate that at least three arguments were provided
+	if len(args) == 0 {
+		return nil, error.NewError(
+			error.TypeError,
+			location,
+			"Function 'http' takes four or more arguments but 0 were given",
+		)
 	}
-	body, err := executor.Http(args[0].(ValueString).Value, args[1].(ValueString).Value, args[2].(ValueString).Value, args[3].(ValueString).Value)
+	// Validate that the first three arguments are of type string
+	for argIndex, arg := range args {
+		if arg.Type() != String {
+			return nil, error.NewError(
+				error.TypeError,
+				location,
+				fmt.Sprintf("%s argument of function 'http' has to be of type String", numberNames[argIndex]),
+			)
+		}
+		if argIndex == 2 {
+			break
+		}
+	}
+	// Create header values from remaining args
+	headers := make(map[string]string, 0)
+	for headerIndex, header := range args[3:] {
+		if header.Type() != PairType {
+			return nil, error.NewError(
+				error.TypeError,
+				location,
+				fmt.Sprintf("Argument %d of function 'http' has to be of type Pair.\nhint: you can create a value pair using `pair('key', 'value')`", headerIndex+4),
+			)
+		}
+		_, alreadyExists := headers[header.(ValuePair).Value.Key]
+		if alreadyExists {
+			return nil, error.NewError(
+				error.TypeError,
+				location,
+				fmt.Sprintf("Header entry (value pair) %d of function 'http' has duplicate key entry '%s'", headerIndex+4, header.(ValuePair).Value.Key),
+			)
+		}
+		// Add the argument to the argument map
+		headers[header.(ValuePair).Value.Key] = header.(ValuePair).Value.Value
+	}
+	body, err := executor.Http(
+		args[0].(ValueString).Value,
+		args[1].(ValueString).Value,
+		args[2].(ValueString).Value,
+		headers,
+	)
 	if err != nil {
 		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
 	}
 	return ValueString{
 		Value: body,
+	}, nil
+}
+
+// Acts like a factory for the `pair` type
+// Requires two arguments: pair(key, value)
+// The first argument is the key, the second one is the value
+func Pair(_ Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("pair", location, args, String, String); err != nil {
+		return nil, err
+	}
+	return ValuePair{
+		Value: struct {
+			Key   string
+			Value string
+		}{
+			Key:   args[0].(ValueString).Value,
+			Value: args[1].(ValueString).Value,
+		},
 	}, nil
 }
 

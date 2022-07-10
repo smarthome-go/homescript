@@ -60,7 +60,11 @@ func (self DummyExecutor) Log(
 	return nil
 }
 func (self DummyExecutor) Exec(homescriptId string, args map[string]string) (string, error) {
-	fmt.Printf("Executing script: '%s'\n", homescriptId)
+	argsFmt := ""
+	for key, value := range args {
+		argsFmt += fmt.Sprintf("\n		%s : %s", key, value)
+	}
+	fmt.Printf("=== exec debug===\n	homescriptId: %s,\n	arguments: %s\n=== end exec ===\n", homescriptId, argsFmt)
 	return "", nil
 }
 func (self DummyExecutor) AddUser(username string, password string, forename string, surname string) error {
@@ -96,7 +100,12 @@ func (self DummyExecutor) Get(url string) (string, error) {
 	return "response", nil
 }
 
-func (self DummyExecutor) Http(url string, method string, contentType string, body string) (string, error) {
+func (self DummyExecutor) Http(url string, method string, body string, headers map[string]string) (string, error) {
+	headersFmt := ""
+	for key, value := range headers {
+		headersFmt += fmt.Sprintf("\n		%s : %s", key, value)
+	}
+	fmt.Printf("=== http debug===\n	url: %s,\n	method: %s,\n	body: %s,\n	headers: %s\n=== end http ===\n", url, method, body, headersFmt)
 	return "response", nil
 }
 
