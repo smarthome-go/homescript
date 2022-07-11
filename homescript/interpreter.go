@@ -374,6 +374,19 @@ func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, *error.Err
 	if node.ElseBody == nil {
 		return interpreter.ValueVoid{}, nil, nil
 	}
+
+	/*
+		SIGTERM catching
+		Post-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function's return value will be using the provided exit-code
+		This post-execution check is required in order to display the correct exit-code.
+		Note: this is only required in the event that a function which is implemented in the `executor`
+		detects and forwards the sigTerm
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
+
 	return self.visitExpressions(node.ElseBody)
 }
 
@@ -415,6 +428,22 @@ func (self *Interpreter) visitCallExpr(node CallExpr) (interpreter.Value, *error
 		err, code := interpreter.Exit(node.Location, arguments...)
 		return interpreter.ValueVoid{}, err, code
 	}
-	val, err := value.(interpreter.ValueFunction).Callback(self.Executor, node.Location, arguments...)
+	// Invoke the callback here
+	val, err := value.(interpreter.ValueFunction).Callback(
+		self.Executor,
+		node.Location,
+		arguments...,
+	)
+	/*
+		SIGTERM catching
+		Post-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function's return value will be using the provided exit-code
+		This post-execution check is required in order to display the correct exit-code.
+		Note: this is only required in the event that a function which is implemented in the `executor`
+		detects and forwards the sigTerm
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return interpreter.ValueVoid{}, nil, &code
+	}
 	return val, err, nil
 }
