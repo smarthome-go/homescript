@@ -95,6 +95,7 @@ Atom       = number
            | WhileExpr
            | LoopExpr
            | FnExpr
+           | TryExpr
            | '(' , Expression , ')' ;
 (*
   A <PairExpr> creates a value of type `Pair` given a <string> as the key and an
@@ -154,6 +155,11 @@ LoopExpr   = 'loop' , Block ;
   ```
 *)
 FnExpr     = 'fn' , identifier , ArgNames , Block ;
+(*
+  A <TryExpr> executes some block of code and catches any error that might occur.
+  The thrown error is then assigned to the <identifier> and the catch block is run.
+*)
+TryExpr    = 'try' , Block , 'catch' , identifier , Block ;
 
 Args     = '(' , [ Expression , { ',' , Expression } , [ ',' ] ] , ')' ;
 ArgNames = '(' , [ identifier , { ',' , identifier } , [ ',' ] ] , ')' ;
