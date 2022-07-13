@@ -22,7 +22,9 @@
 *)
 Statements = { Statement , ';' } ;
 
-(* ----- STATEMENTS ----- *)
+(**************************)
+(******* STATEMENTS *******)
+(**************************)
 Statement    = LetStmt
              | BreakStmt
              | ContinueStmt
@@ -49,7 +51,9 @@ ContinueStmt = 'continue' ;
 *)
 ReturnStmt   = 'return' , [ Expression ] ;
 
-(* ----- EXPRESSIONS ----- *)
+(***************************)
+(******* EXPRESSIONS *******)
+(***************************)
 Expression = AssignExpr ;
 (*
   Assignments, defined by <AssignExpr>, mutate an existing value by assigning
@@ -164,7 +168,9 @@ TryExpr    = 'try' , Block , 'catch' , identifier , Block ;
 Args     = '(' , [ Expression , { ',' , Expression } , [ ',' ] ] , ')' ;
 ArgNames = '(' , [ identifier , { ',' , identifier } , [ ',' ] ] , ')' ;
 
-(* ----- NONTERMINAL TOKENS ----- *)
+(**********************************)
+(******* NONTERMINAL TOKENS *******)
+(**********************************)
 number      = DIGIT , { DIGIT } , [ '.' , DIGIT , { DIGIT } ] ;
 string      = '"' , { CHAR - ( '"' | '\' ) | escape_seq } , '"'
             | "'" , { CHAR - ( "'" | '\' ) | escape_seq } , "'" ;
@@ -176,7 +182,9 @@ escape_seq  = '\' , ( ESCAPE_CHAR
 bool        = 'true' | 'false' | 'on' | 'off' ;
 identifier  = LETTER , { LETTER } ;
 
-(* ----- TERMINAL SYMBOL SETS ----- *)
+(************************************)
+(******* TERMINAL SYMBOL SETS *******)
+(************************************)
 LETTER      = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J'
             | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T'
             | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z'
