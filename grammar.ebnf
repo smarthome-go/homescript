@@ -20,7 +20,7 @@
   Start symbol <Statements>:
   Program consists of any amount of <Statement>s sepereated by semicolons
 *)
-Statements = [ Statement , { ';' , Statement } , [ ';' ] ] ;
+Statements = { Statement , ';' } ;
 
 (* ----- STATEMENTS ----- *)
 Statement    = LetStmt
@@ -111,10 +111,10 @@ Atom       = number
 PairExpr   = string , '=>' , Expression ;
 (*
   A <Block> always creates a new scope for variables. It contains a sequence
-  of <Statement>s and returns the result of the last one if that is not followed
-  by a semicolon, otherwise `null`.
+  of <Statement>s and returns the result of the optional <Expression> at the
+  end, or `null` otherwise.
 *)
-Block      = '{' , Statements , '}' ;
+Block      = '{' , Statements , [ Expression ] , '}' ;
 (*
   An <IfExpr> checks a condition and executes code based on whether that condition
   evaluates to `true` or `false`. The resulting value is the result of the executed
