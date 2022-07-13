@@ -62,7 +62,7 @@ BitXorExpr = BitAndExpr , { '^' , BitAndExpr } ;
 BitAndExpr = EqExpr , { '&' , EqExpr } ;
 EqExpr     = RelExpr , [ ( '==' | '!=' ) , RelExpr ] ;
 RelExpr    = ShiftExpr , [ ( '<' | '>' | '<=' | '>=' ) , ShiftExpr ] ;
-ShiftExpr  = AddExpr , [ ( '<<' | '>>' ) , AddExpr ] ;
+ShiftExpr  = AddExpr , { ( '<<' | '>>' ) , AddExpr } ;
 AddExpr    = MulExpr , { ( '+' | '-' ) , MulExpr } ;
 MulExpr    = CastExpr , { ( '*' | '/' | '%' ) , CastExpr } ;
 CastExpr   = UnaryExpr , [ 'as' , type ] ;
