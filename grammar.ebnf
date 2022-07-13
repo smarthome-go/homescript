@@ -72,7 +72,8 @@ EqExpr     = RelExpr , [ ( '==' | '!=' ) , RelExpr ] ;
 RelExpr    = ShiftExpr , [ ( '<' | '>' | '<=' | '>=' ) , ShiftExpr ] ;
 ShiftExpr  = AddExpr , [ ( '<<' | '>>' ) , AddExpr ] ;
 AddExpr    = MulExpr , { ( '+' | '-' ) , MulExpr } ;
-MulExpr    = UnaryExpr , { ( '*' | '/' | '%' ) , UnaryExpr } ;
+MulExpr    = CastExpr , { ( '*' | '/' | '%' ) , CastExpr } ;
+CastExpr   = UnaryExpr , [ 'as' , type ] ;
 UnaryExpr  = ( '+' | '-' | '!' ) , UnaryExpr
            | ExpExpr ;
 ExpExpr    = CallExpr , [ '**' , UnaryExpr ] ;
@@ -180,7 +181,8 @@ escape_seq  = '\' , ( ESCAPE_CHAR
                     | 'u' , 4 * HEX
                     | 'U' , 8 * HEX ) ;
 bool        = 'true' | 'false' | 'on' | 'off' ;
-identifier  = LETTER , { LETTER } ;
+type        = 'str' | 'bool' | 'num' | 'null' ;
+identifier  = ( LETTER , { LETTER } ) - ( bool | type | ? any keyword ? ) ;
 
 (************************************)
 (******* TERMINAL SYMBOL SETS *******)
