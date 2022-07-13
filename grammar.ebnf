@@ -55,14 +55,6 @@ ReturnStmt   = 'return' , [ Expression ] ;
 (******* EXPRESSIONS *******)
 (***************************)
 Expression = AssignExpr ;
-(*
-  Assignments, defined by <AssignExpr>, mutate an existing value by assigning
-  a new value to it. The new value is also the result of this expression.
-*)
-AssignExpr = identifier , ASSIGN_OPERATOR , Expression
-           | OrExpr ;
-ASSING_OPERATOR = '=' | '*=' | '/=' | '%=' | '+=' | '-=' | '<<=' | '>>='
-                | '&=' | '^=' | '|=' ;
 OrExpr     = AndExpr , { '||' , AndExpr } ;
 AndExpr    = BitOrExpr , { '&&' , BitOrExpr } ;
 BitOrExpr  = BitXorExpr , { '|' , BitXorExpr } ;
@@ -76,7 +68,14 @@ MulExpr    = CastExpr , { ( '*' | '/' | '%' ) , CastExpr } ;
 CastExpr   = UnaryExpr , [ 'as' , type ] ;
 UnaryExpr  = ( '+' | '-' | '!' ) , UnaryExpr
            | ExpExpr ;
-ExpExpr    = CallExpr , [ '**' , UnaryExpr ] ;
+ExpExpr    = AssignExpr , [ '**' , UnaryExpr ] ;
+(*
+  Assignments, defined by <AssignExpr>, mutate an existing value by assigning
+  a new value to it. The new value is also the result of this expression.
+*)
+AssignExpr = CallExpr , [ ASSIGN_OPERATOR , Expression ] ;
+ASSING_OPERATOR = '=' | '*=' | '/=' | '%=' | '+=' | '-=' | '<<=' | '>>='
+                | '&=' | '^=' | '|=' | '**=' ;
 (*
   A <CallExpr> tries to call the given value as a function with supplied arguments.
   The result is the return value of the called function.
