@@ -131,7 +131,17 @@ IfExpr     = 'if' , Expression , Block , [ 'else' , ( IfExpr | Block ) ] ;
   A <ForExpr> loops over the given (inclusive) range of numbers, assigning the current
   number to the given <identifier> inside the <Block> for each iterations.
   The resulting value is set by a <BreakStmt> inside the loop, or `null` if no
-  <BreakStmt> was encountered.
+  <BreakStmt> was encountered. An example might look like the following:
+
+  ```
+  for i in 3..5 {
+      print(i);
+  };
+  # output:
+  # 3
+  # 4
+  # 5
+  ```
 *)
 ForExpr    = 'for' , identifier , 'in' , Expression , '..' , Expression , Block ;
 (*
