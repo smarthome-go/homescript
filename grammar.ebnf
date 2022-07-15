@@ -17,10 +17,10 @@
 *)
 
 (*
-  Start symbol <Statements>:
-  Program consists of any amount of <Statement>s sepereated by semicolons
+  Start symbol:
+  Program consists of any amount of <Statement>s each followed by a ';'
 *)
-Statements = { Statement , ';' } ;
+Program = { Statement , ';' } ;
 
 (**************************)
 (******* STATEMENTS *******)
@@ -116,10 +116,10 @@ Atom       = number
 PairExpr   = string , '=>' , Expression ;
 (*
   A <Block> always creates a new scope for variables. It contains a sequence
-  of <Statement>s and returns the result of the optional <Expression> at the
-  end, or `null` otherwise.
+  of <Statement>s and returns the result of the one after the last semicolon,
+  or `null` otherwise.
 *)
-Block      = '{' , Statements , [ Expression ] , '}' ;
+Block      = '{' , [ Statement , { ';' , Statement } , [ ';' ] ] , '}' ;
 (*
   An <IfExpr> checks a condition and executes code based on whether that condition
   evaluates to `true` or `false`. The resulting value is the result of the executed
