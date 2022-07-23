@@ -16,7 +16,11 @@ type Interpreter struct {
 	SigTerm *chan int
 }
 
-func NewInterpreter(startNode Expressions, executor interpreter.Executor, sigTerm *chan int) Interpreter {
+func NewInterpreter(
+	startNode Expressions,
+	executor interpreter.Executor,
+	sigTerm *chan int,
+) Interpreter {
 	scope := map[string]interpreter.Value{
 		// special case `exit` implemented below
 		"exit":          interpreter.ValueFunction{},
@@ -374,19 +378,6 @@ func (self *Interpreter) visitIfExpr(node IfExpr) (interpreter.Value, *error.Err
 	if node.ElseBody == nil {
 		return interpreter.ValueVoid{}, nil, nil
 	}
-
-	/*
-		SIGTERM catching
-		Post-execution validation of potential sigTerm checks if the function has to be aborted
-		If a signal is received, the current function's return value will be using the provided exit-code
-		This post-execution check is required in order to display the correct exit-code.
-		Note: this is only required in the event that a function which is implemented in the `executor`
-		detects and forwards the sigTerm
-	*/
-	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
-		return interpreter.ValueVoid{}, nil, &code
-	}
-
 	return self.visitExpressions(node.ElseBody)
 }
 
