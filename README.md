@@ -1,5 +1,8 @@
 # The Homescript DSL
 
+[![Go Build](https://github.com/smarthome-go/homescript/actions/workflows/go.yml/badge.svg)](https://github.com/smarthome-go/homescript/actions/workflows/go.yml)
+[![Typo Check](https://github.com/smarthome-go/homescript/actions/workflows/typos.yml/badge.svg)](https://github.com/smarthome-go/homescript/actions/workflows/typos.yml)
+
 Homescript is a fast and custom DSL (domain-specific language) for the  [Smarthome server](https://github.com/smarthome-go/smarthome) and the [Homescript CLI](https://github.com/smarthome-go/cli).
 
 It provides a scripting interface for Smarthome users in order to create customized routines and workflows.
