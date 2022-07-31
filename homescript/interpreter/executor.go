@@ -13,7 +13,7 @@ const (
 
 type Executor interface {
 	CheckArg(identifier string) bool
-	GetArg(indentifier string) (string, error)
+	GetArg(identifier string) (string, error)
 
 	Sleep(float64)
 	Print(args ...string)

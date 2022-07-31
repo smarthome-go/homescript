@@ -159,7 +159,7 @@ has been provided to the Homescript runtime.
 For this, the *checkArg* function can be used.
 The `checkArg` function returns a boolean based on whether the argument has been found or not.
 ```python
-if checkArg('indentifier') {
+if checkArg('identifier') {
     # Do something, for example accessing the argument
 }
 ```
@@ -174,7 +174,7 @@ Warning: this function will always return a string because the argument type mus
 If the function's return value is required as an integer, it can be parsed using `num(getArg('number'))`
 
 ```python
-if checkArg('indentifier') {
+if checkArg('identifier') {
     print(getArg('identifier'))
 }
 ```
@@ -277,7 +277,7 @@ const (
 
 type Executor interface {
 	CheckArg(identifier string) bool
-	GetArg(indentifier string) (string, error)
+	GetArg(identifier string) (string, error)
 
 	Sleep(float64)
 	Print(args ...string)

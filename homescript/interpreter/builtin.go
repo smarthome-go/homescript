@@ -104,7 +104,7 @@ func Str(self Executor, location error.Location, args ...Value) (Value, *error.E
 	}, nil
 }
 
-// Concatonates the provided strings, forming a large string
+// Concatenates the provided strings, forming a large string
 func Concat(self Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if len(args) < 2 {
 		return nil, error.NewError(error.ValueError, location,
@@ -149,7 +149,7 @@ func CheckArg(executor Executor, location error.Location, args ...Value) (Value,
 
 // Returns the argument's value as a string
 // If the argument was not passed, an error is returned
-// It is recommended to validate the existence of an argument with the `ceckArg` function
+// It is recommended to validate the existence of an argument with the `checkArg` function
 func GetArg(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("getArg", location, args, String); err != nil {
 		return nil, err

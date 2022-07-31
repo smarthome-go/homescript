@@ -28,7 +28,7 @@ if switchOn('s3')  {
     print("switch is off: s2")
 }
 
-# Concatonate an arbitrary amount of strings to form a long string
+# Concatenate an arbitrary amount of strings to form a long string
 print(concat('hello', 'world', '!'))
 
 # Sleep takes the amount of seconds to sleep
@@ -74,8 +74,8 @@ print(http(
 
 # The `checkArg` function can be used to validate that an expected argument was passed as a value
 # It is recommended to use this function before attempting to use `getArg('x')`
-if checkArg('identifer') {
-    print(checkArg('identifer'))
+if checkArg('identifier') {
+    print(checkArg('identifier'))
     print(getArg('identifier'))
 }
 
