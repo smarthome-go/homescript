@@ -399,14 +399,14 @@ func Get(executor Executor, location error.Location, args ...Value) (Value, *err
 	}, nil
 }
 
-// Makes a network request using an arbitrary URL, method, body and headers (as plaintext)
+// Makes a network request using an arbitrary URL, method , body (as plaintext), (and optionally headers)
 func Http(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
-	// Validate that at least three arguments were provided
-	if len(args) == 0 {
+	// Validate that at least three arguments are provided
+	if len(args) < 3 {
 		return nil, error.NewError(
 			error.TypeError,
 			location,
-			"Function 'http' takes four or more arguments but 0 were given",
+			fmt.Sprintf("Function 'http' takes three or more arguments but %d were given", len(args)),
 		)
 	}
 	// Validate that the first three arguments are of type string
