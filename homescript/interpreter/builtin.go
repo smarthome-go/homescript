@@ -124,6 +124,16 @@ func Concat(self Executor, location error.Location, args ...Value) (Value, *erro
 	return ValueString{Value: output}, nil
 }
 
+// Checks if the provided number is even
+func Even(self Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("even", location, args, Number); err != nil {
+		return nil, err
+	}
+	return ValueBoolean{
+		Value: int(args[0].(ValueNumber).Value)%2 == 0,
+	}, nil
+}
+
 // Pauses the execution of the current script for a given amount of seconds
 func Sleep(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("sleep", location, args, Number); err != nil {
@@ -475,7 +485,7 @@ func Pair(_ Executor, location error.Location, args ...Value) (Value, *error.Err
 	}, nil
 }
 
-////////////// Variables //////////////
+// //////////// Variables //////////////
 func GetUser(executor Executor, _ error.Location) (Value, *error.Error) {
 	return ValueString{Value: executor.GetUser()}, nil
 }
@@ -497,31 +507,36 @@ func GetTemperature(executor Executor, location error.Location) (Value, *error.E
 }
 
 func GetCurrentYear(executor Executor, _ error.Location) (Value, *error.Error) {
-	year, _, _, _, _, _ := executor.GetDate()
+	year, _, _, _, _, _, _ := executor.GetDate()
 	return ValueNumber{Value: float64(year)}, nil
 }
 
 func GetCurrentMonth(executor Executor, _ error.Location) (Value, *error.Error) {
-	_, month, _, _, _, _ := executor.GetDate()
+	_, month, _, _, _, _, _ := executor.GetDate()
 	return ValueNumber{Value: float64(month)}, nil
 }
 
+func GetCurrentWeek(executor Executor, _ error.Location) (Value, *error.Error) {
+	_, _, week, _, _, _, _ := executor.GetDate()
+	return ValueNumber{Value: float64(week)}, nil
+}
+
 func GetCurrentDay(executor Executor, _ error.Location) (Value, *error.Error) {
-	_, _, day, _, _, _ := executor.GetDate()
+	_, _, _, day, _, _, _ := executor.GetDate()
 	return ValueNumber{Value: float64(day)}, nil
 }
 
 func GetCurrentHour(executor Executor, _ error.Location) (Value, *error.Error) {
-	_, _, _, hour, _, _ := executor.GetDate()
+	_, _, _, _, hour, _, _ := executor.GetDate()
 	return ValueNumber{Value: float64(hour)}, nil
 }
 
 func GetCurrentMinute(executor Executor, _ error.Location) (Value, *error.Error) {
-	_, _, _, _, minute, _ := executor.GetDate()
+	_, _, _, _, _, minute, _ := executor.GetDate()
 	return ValueNumber{Value: float64(minute)}, nil
 }
 
 func GetCurrentSecond(executor Executor, _ error.Location) (Value, *error.Error) {
-	_, _, _, _, _, second := executor.GetDate()
+	_, _, _, _, _, _, second := executor.GetDate()
 	return ValueNumber{Value: float64(second)}, nil
 }

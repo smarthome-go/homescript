@@ -33,5 +33,5 @@ type Executor interface {
 	GetUser() string
 	GetWeather() (string, error)
 	GetTemperature() (int, error)
-	GetDate() (int, int, int, int, int, int)
+	GetDate() (int, int, int, int, int, int, int)
 }
