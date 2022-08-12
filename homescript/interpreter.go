@@ -43,6 +43,7 @@ func NewInterpreter(
 		"delUser":       interpreter.ValueFunction{Callback: interpreter.DelUser},
 		"addPerm":       interpreter.ValueFunction{Callback: interpreter.AddPerm},
 		"delPerm":       interpreter.ValueFunction{Callback: interpreter.DelPerm},
+		"ping":          interpreter.ValueFunction{Callback: interpreter.Ping},
 		"get":           interpreter.ValueFunction{Callback: interpreter.Get},
 		"http":          interpreter.ValueFunction{Callback: interpreter.Http},
 		"user":          interpreter.ValueVariable{Callback: interpreter.GetUser},

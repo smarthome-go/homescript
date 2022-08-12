@@ -395,6 +395,21 @@ func DelPerm(executor Executor, location error.Location, args ...Value) (Value, 
 	return ValueVoid{}, nil
 }
 
+// Sends ICMP Echo Request to the target IP and checks for a response
+// The first parameter specifies the host, the second the timeOut
+func Ping(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
+	if err := checkArgs("ping", location, args, String, Number); err != nil {
+		return nil, err
+	}
+	hostAlive, err := executor.Ping(args[0].(ValueString).Value, args[1].(ValueNumber).Value)
+	if err != nil {
+		return ValueVoid{}, error.NewError(error.RuntimeError, location, err.Error())
+	}
+	return ValueBoolean{
+		Value: hostAlive,
+	}, nil
+}
+
 // Makes a get-request to an arbitrary url and returns the result as plaintext
 func Get(executor Executor, location error.Location, args ...Value) (Value, *error.Error) {
 	if err := checkArgs("get", location, args, String); err != nil {

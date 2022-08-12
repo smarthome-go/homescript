@@ -26,6 +26,7 @@ type Executor interface {
 	DelUser(username string) error
 	AddPerm(username string, permission string) error
 	DelPerm(username string, permission string) error
+	Ping(ip string, timeoutSecs float64) (bool, error)
 	Get(url string) (string, error)
 	Http(url string, method string, body string, headers map[string]string) (string, error)
 

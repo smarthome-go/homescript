@@ -97,10 +97,12 @@ func (self DummyExecutor) GetDate() (int, int, int, int, int, int, int) {
 	_, week := now.ISOWeek()
 	return now.Year(), int(now.Month()), week, now.Day(), now.Hour(), now.Minute(), now.Second()
 }
+func (self DummyExecutor) Ping(ip string, timeoutSecs float64) (bool, error) {
+	return false, nil
+}
 func (self DummyExecutor) Get(url string) (string, error) {
 	return "response", nil
 }
-
 func (self DummyExecutor) Http(url string, method string, body string, headers map[string]string) (string, error) {
 	headersFmt := ""
 	for key, value := range headers {
