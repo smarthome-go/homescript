@@ -35,6 +35,7 @@ The current temperature in the area of the Smarthome-server can be queried with 
 ```python
 print(currentYear)
 print(currentMonth)
+print(currentWeek)
 print(currentDay)
 print(currentHour)
 print(currentMinute)
@@ -245,6 +246,17 @@ Note: the `pair` type is only able to store strings, both as the key and value.
 pair('unique_key', 'a string value')
 print(pair('k', 'v'))
 # <pair(k:v)>
+```
+
+### Check if Number is Even
+If you want to only run a script when the current week number is even, you can do so by using the `even` function.
+```python
+print(even(2))
+# true
+print(even(1))
+# false
+print(event(currentWeek))
+# true or false
 ```
 
 ## Full example script

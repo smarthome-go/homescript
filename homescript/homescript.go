@@ -92,9 +92,10 @@ func (self DummyExecutor) GetWeather() (string, error) {
 func (self DummyExecutor) GetTemperature() (int, error) {
 	return 42, nil
 }
-func (self DummyExecutor) GetDate() (int, int, int, int, int, int) {
+func (self DummyExecutor) GetDate() (int, int, int, int, int, int, int) {
 	now := time.Now()
-	return now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second()
+	_, week := now.ISOWeek()
+	return now.Year(), int(now.Month()), week, now.Day(), now.Hour(), now.Minute(), now.Second()
 }
 func (self DummyExecutor) Get(url string) (string, error) {
 	return "response", nil

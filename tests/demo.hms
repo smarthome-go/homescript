@@ -31,6 +31,10 @@ if switchOn('s3')  {
 # Concatenate an arbitrary amount of strings to form a long string
 print(concat('hello', 'world', '!'))
 
+# Checks if the supplied number is even or odd
+print(even(1))
+print(even(2))
+
 # Sleep takes the amount of seconds to sleep
 sleep(1)
 
@@ -96,7 +100,6 @@ print(pair('key', 'value'))
 # Due to this, it is best practice to use `checkArg('x')` before using `getArg`
 print(getArg('ok'))
 
-# Exit terminates execution
 panic("This is a panic, it was caused intentionally.")
 exit(0)
 
