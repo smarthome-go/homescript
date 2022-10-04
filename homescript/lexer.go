@@ -1,0 +1,667 @@
+package homescript
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// Rune range helper functions
+type runeRange struct {
+	min int
+	max int
+}
+
+func isRuneInRange(char rune, ranges ...runeRange) bool {
+	intChar := int(char)
+	for _, ran := range ranges {
+		if intChar >= ran.min && intChar <= ran.max {
+			return true
+		}
+	}
+	return false
+}
+
+func isDigit(char rune) bool      { return isRuneInRange(char, runeRange{min: 48, max: 57}) }
+func isOctalDigit(char rune) bool { return isRuneInRange(char, runeRange{min: 48, max: 55}) }
+func isHexDigit(char rune) bool {
+	return isRuneInRange(char, runeRange{min: 48, max: 57}, runeRange{min: 65, max: 70}, runeRange{min: 97, max: 102})
+}
+func isLetter(char rune) bool {
+	return isRuneInRange(char, runeRange /* capital letters */ {min: 65, max: 90}, runeRange /* lowercase letters */ {min: 97, max: 122}, runeRange /* underscore */ {min: 95, max: 95})
+}
+
+// end rune range helper functions
+
+type lexer struct {
+	currentIndex int
+	currentChar  *rune
+	nextChar     *rune
+	program      []rune
+	location     Location
+}
+
+func newLexer(filename string, program_source string) lexer {
+	program := []rune(program_source)
+	programLen := len(program)
+	var currentChar *rune
+	var nextChar *rune
+
+	if programLen == 0 {
+		currentChar = nil
+		nextChar = nil
+	} else if programLen == 1 {
+		currentChar = &program[0]
+		nextChar = nil
+	} else {
+		currentChar = &program[0]
+		nextChar = &program[1]
+	}
+	lexer := lexer{
+		currentIndex: 0,
+		currentChar:  currentChar,
+		nextChar:     nextChar,
+		program:      program,
+		location: Location{
+			Line:   1,
+			Column: 1,
+			Index:  0,
+		},
+	}
+	return lexer
+}
+
+func (self *lexer) advance() {
+	// Advance current & next char
+	self.currentIndex++
+	programLen := len(self.program)
+
+	if int(self.currentIndex) >= programLen {
+		self.currentChar = nil
+	} else {
+		self.currentChar = &self.program[self.currentIndex]
+	}
+
+	if int(self.currentIndex+1) >= programLen {
+		self.nextChar = nil
+	} else {
+		self.nextChar = &self.program[self.currentIndex+1]
+	}
+
+	// Advance location
+	self.location.Index++
+	if self.currentChar != nil && *self.currentChar == '\n' {
+		self.location.Line++
+		self.location.Column = 0
+	} else {
+		self.location.Column++
+	}
+}
+
+func (self *lexer) makeString() (Token, *Error) {
+	startLocation := self.location
+	startQuote := *self.currentChar
+	var value_buf []rune
+	self.advance() // Skip opening quote
+	for self.currentChar != nil {
+		if *self.currentChar == startQuote {
+			break
+		}
+		if *self.currentChar == '\\' {
+			char, err := self.makeEscapeSequence()
+			if err != nil {
+				return unknownToken(startLocation), err
+			}
+			value_buf = append(value_buf, char)
+		} else {
+			value_buf = append(value_buf, *self.currentChar)
+			self.advance()
+		}
+	}
+	// Check for closing quote
+	if self.currentChar == nil {
+		return unknownToken(startLocation), newError(startLocation, self.location, "String literal never closed", SyntaxError)
+	}
+	self.advance() // Skip closing quote
+	return Token{
+		Kind:          String,
+		Value:         string(value_buf),
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}, nil
+}
+
+func (self *lexer) makeEscapeSequence() (rune, *Error) {
+	startLocation := self.location
+	self.advance()
+	if self.currentChar == nil {
+		return ' ', newError(startLocation, startLocation, "Unfinished escape sequence", SyntaxError)
+	}
+
+	var char rune
+	var err *Error
+	switch *self.currentChar {
+	case '\\':
+		char = '\\'
+		self.advance()
+	case '\'':
+		char = '\''
+		self.advance()
+	case '"':
+		char = '"'
+		self.advance()
+	case 'b':
+		char = '\b'
+		self.advance()
+	case 'n':
+		char = '\n'
+		self.advance()
+	case 'r':
+		char = '\r'
+		self.advance()
+	case 't':
+		char = '\t'
+		self.advance()
+	case 'x':
+		char, err = self.escapePart("", startLocation, 16, 2)
+	case 'u':
+		char, err = self.escapePart("", startLocation, 16, 4)
+	case 'U':
+		char, err = self.escapePart("", startLocation, 16, 8)
+	default:
+		if isOctalDigit(*self.currentChar) {
+			char, err = self.escapePart(string(*self.currentChar), startLocation, 8, 2)
+		} else {
+			err = newError(startLocation, self.location, "Invalid escape sequence", SyntaxError)
+		}
+	}
+	return char, err
+}
+
+func (self *lexer) escapePart(esc string, location Location, radix int, digits uint8) (rune, *Error) {
+	self.advance()
+	var digitFun func(rune) bool
+	if radix == 16 {
+		digitFun = isHexDigit
+	} else {
+		digitFun = isOctalDigit
+	}
+	for i := 0; i < int(digits); i++ {
+		if self.currentChar == nil || !digitFun(*self.currentChar) {
+			return ' ', newError(location, self.location, "Invalid escape sequence", SyntaxError)
+		}
+		esc += string(*self.currentChar)
+		self.advance()
+	}
+	code, _ := strconv.ParseInt(esc, radix, 32)
+	return rune(code), nil
+}
+
+func (self *lexer) makeNumber() Token {
+	startLocation := self.location
+	value := string(*self.currentChar)
+
+	self.advance()
+
+	for self.currentChar != nil && isDigit(*self.currentChar) {
+		value += string(*self.currentChar)
+		self.advance()
+	}
+
+	if self.currentChar != nil && *self.currentChar == '.' {
+		value += string(*self.currentChar)
+		self.advance()
+		for self.currentChar != nil && isDigit(*self.currentChar) {
+			value += string(*self.currentChar)
+			self.advance()
+		}
+	}
+	return Token{
+		Kind:          Number,
+		Value:         value,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+}
+
+func (self *lexer) makeSingleChar(kind TokenKind, value rune) Token {
+	token := Token{
+		Kind:          kind,
+		Value:         string(value),
+		StartLocation: self.location,
+		EndLocation:   self.location,
+	}
+	self.advance()
+	return token
+}
+
+func (self *lexer) makeDots() Token {
+	startLocation := self.location
+
+	var tokenKind TokenKind
+	var tokenKindValue string
+
+	if self.nextChar != nil && *self.nextChar == '.' {
+		tokenKind = Range
+		tokenKindValue = ".."
+		self.advance()
+	} else {
+		tokenKind = Dot
+		tokenKindValue = "."
+	}
+	token := Token{
+		Kind:          tokenKind,
+		Value:         tokenKindValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+	self.advance()
+	return token
+}
+
+func (self *lexer) makeEquals() Token {
+	startLocation := self.location
+	self.advance()
+
+	tokenKind := Assign
+	tokenValue := "="
+
+	if self.currentChar != nil {
+		switch *self.currentChar {
+		case '=':
+			tokenKind = Equal
+			tokenValue = "=="
+		case '>':
+			tokenKind = Arrow
+			tokenValue = "=>"
+		}
+		token := Token{
+			Kind:          tokenKind,
+			Value:         tokenValue,
+			StartLocation: startLocation,
+			EndLocation:   self.location,
+		}
+		self.advance()
+		return token
+	}
+
+	return Token{
+		Kind:          tokenKind,
+		Value:         tokenValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+}
+
+func (self *lexer) makeOr() (Token, *Error) {
+	startLocation := self.location
+	self.advance()
+
+	if self.currentChar != nil && *self.currentChar == '|' {
+		token := Token{
+			Kind:          Or,
+			Value:         "||",
+			StartLocation: startLocation,
+			EndLocation:   self.location,
+		}
+		self.advance()
+		return token, nil
+	}
+
+	foundChar := "EOF"
+	if self.currentChar != nil {
+		foundChar = string(*self.currentChar)
+	}
+	return unknownToken(self.location), &Error{
+		Start:   self.location,
+		End:     self.location,
+		Kind:    SyntaxError,
+		Message: fmt.Sprintf("Expected '|', found %s", foundChar),
+	}
+}
+
+func (self *lexer) makeAnd() (Token, *Error) {
+	startLocation := self.location
+	self.advance()
+
+	if self.currentChar != nil && *self.currentChar == '&' {
+		token := Token{
+			Kind:          Or,
+			Value:         "&&",
+			StartLocation: startLocation,
+			EndLocation:   self.location,
+		}
+		self.advance()
+		return token, nil
+	}
+
+	foundChar := "EOF"
+	if self.currentChar != nil {
+		foundChar = string(*self.currentChar)
+	}
+	return unknownToken(self.location), &Error{
+		Start:   self.location,
+		End:     self.location,
+		Kind:    SyntaxError,
+		Message: fmt.Sprintf("Expected '&', found %s", foundChar),
+	}
+}
+
+func (self *lexer) makeNot() Token {
+	startLocation := self.location
+
+	tokenKind := Not
+	tokenValue := "!"
+
+	if self.nextChar != nil && *self.nextChar == '=' {
+		tokenKind = NotEqual
+		tokenValue = "!="
+		self.advance()
+	}
+
+	token := Token{
+		Kind:          tokenKind,
+		Value:         tokenValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+	self.advance()
+	return token
+}
+
+func (self *lexer) makeLess() Token {
+	startLocation := self.location
+
+	tokenKind := LessThan
+	tokenValue := "<"
+
+	if self.nextChar != nil && *self.nextChar == '=' {
+		tokenKind = LessThanEqual
+		tokenValue = "<="
+		self.advance()
+	}
+
+	token := Token{
+		Kind:          tokenKind,
+		Value:         tokenValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+	self.advance()
+	return token
+}
+
+func (self *lexer) makeGreater() Token {
+	startLocation := self.location
+
+	tokenKind := GreaterThan
+	tokenValue := ">"
+
+	if self.nextChar != nil && *self.nextChar == '=' {
+		tokenKind = GreaterThanEqual
+		tokenValue = ">="
+		self.advance()
+	}
+
+	token := Token{
+		Kind:          tokenKind,
+		Value:         tokenValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+	self.advance()
+	return token
+}
+
+func (self *lexer) makePlus() Token {
+	startLocation := self.location
+	self.advance()
+
+	tokenKind := Plus
+	tokenValue := "+"
+
+	if self.currentChar != nil && *self.currentChar == '=' {
+		tokenKind = PlusAssign
+		tokenValue = "+="
+		self.advance()
+	}
+
+	return Token{
+		Kind:          tokenKind,
+		Value:         tokenValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+}
+
+func (self *lexer) makeMinus() Token {
+	startLocation := self.location
+	self.advance()
+
+	tokenKind := Minus
+	tokenValue := "-"
+
+	if self.currentChar != nil && *self.currentChar == '=' {
+		tokenKind = MinusAssign
+		tokenValue = "-="
+		self.advance()
+	}
+
+	return Token{
+		Kind:          tokenKind,
+		Value:         tokenValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+}
+
+func (self *lexer) makeStar() Token {
+	startLocation := self.location
+	self.advance()
+
+	if self.currentChar != nil {
+		if *self.currentChar == '=' {
+			token := Token{
+				Kind:          MultiplyAssign,
+				Value:         "*=",
+				StartLocation: startLocation,
+				EndLocation:   self.location,
+			}
+			self.advance()
+			return token
+		}
+		if *self.currentChar == '*' {
+			if *self.nextChar == '=' {
+				self.advance()
+				self.advance()
+				return Token{
+					Kind:          PowerAssign,
+					Value:         "**=",
+					StartLocation: startLocation,
+					EndLocation:   self.location,
+				}
+			}
+			token := Token{
+				Kind:          Power,
+				Value:         "**",
+				StartLocation: startLocation,
+				EndLocation:   self.location,
+			}
+			self.advance()
+			return token
+		}
+	}
+	return Token{
+		Kind:          Multiply,
+		Value:         "*",
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+}
+
+func (self *lexer) makeDiv() Token {
+	startLocation := self.location
+	self.advance()
+
+	tokenKind := Divide
+	tokenValue := "/"
+
+	if self.currentChar != nil && *self.currentChar == '=' {
+		tokenKind = DivideAssign
+		tokenValue = "/="
+		self.advance()
+	}
+
+	return Token{
+		Kind:          tokenKind,
+		Value:         tokenValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+}
+
+func (self *lexer) makeReminder() Token {
+	startLocation := self.location
+
+	tokenKind := Reminder
+	tokenValue := "%"
+
+	if self.nextChar != nil && *self.nextChar == '=' {
+		tokenKind = ReminderAssign
+		tokenValue = "%="
+		self.advance()
+	}
+
+	token := Token{
+		Kind:          tokenKind,
+		Value:         tokenValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+	self.advance()
+	return token
+}
+
+func (self *lexer) makeName() Token {
+	startLocation := self.location
+	value := string(*self.currentChar)
+	self.advance()
+	for self.currentChar != nil && isLetter(*self.currentChar) {
+		value += string(*self.currentChar)
+		if self.nextChar != nil && !isLetter(*self.nextChar) {
+			break
+		}
+		self.advance()
+	}
+	var tokenKind TokenKind
+	switch value {
+	case "true":
+		tokenKind = True
+	case "on":
+		tokenKind = True
+	case "false":
+		tokenKind = False
+	case "off":
+		tokenKind = False
+	case "fn":
+		tokenKind = Fn
+	case "if":
+		tokenKind = If
+	case "else":
+		tokenKind = Else
+	case "try":
+		tokenKind = Try
+	case "catch":
+		tokenKind = Catch
+	case "for":
+		tokenKind = For
+	case "while":
+		tokenKind = While
+	case "loop":
+		tokenKind = Loop
+	case "break":
+		tokenKind = Break
+	case "continue":
+		tokenKind = Continue
+	case "return":
+		tokenKind = Return
+	case "str":
+		tokenKind = StringType
+	case "num":
+		tokenKind = NumberType
+	case "bool":
+		tokenKind = BooleanType
+	case "null":
+		tokenKind = NullType
+	default:
+		tokenKind = Identifier
+	}
+	token := Token{
+		Kind:          tokenKind,
+		Value:         value,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+	self.advance()
+	return token
+}
+
+func (self *lexer) nextToken() (Token, *Error) {
+	for self.currentChar != nil {
+		switch *self.currentChar {
+		case ' ', '\n', '\t':
+			self.advance()
+		case '\'', '"':
+			return self.makeString()
+		case ';':
+			return self.makeSingleChar(Semicolon, ';'), nil
+		case ',':
+			return self.makeSingleChar(Comma, ','), nil
+		case '.':
+			return self.makeDots(), nil
+		case '=':
+			return self.makeEquals(), nil
+		case '(':
+			return self.makeSingleChar(LParen, '('), nil
+		case ')':
+			return self.makeSingleChar(RParen, ')'), nil
+		case '{':
+			return self.makeSingleChar(LCurly, '{'), nil
+		case '}':
+			return self.makeSingleChar(RCurly, '}'), nil
+		case '|':
+			return self.makeOr()
+		case '&':
+			return self.makeAnd()
+		case '!':
+			return self.makeNot(), nil
+		case '<':
+			return self.makeLess(), nil
+		case '>':
+			return self.makeGreater(), nil
+		case '+':
+			return self.makePlus(), nil
+		case '-':
+			return self.makeMinus(), nil
+		case '*':
+			return self.makeStar(), nil
+		case '/':
+			return self.makeDiv(), nil
+		case '%':
+			return self.makeReminder(), nil
+		default:
+			if isDigit(*self.currentChar) {
+				return self.makeNumber(), nil
+			}
+			if isLetter(*self.currentChar) {
+				return self.makeName(), nil
+			}
+			return unknownToken(self.location), newError(self.location, self.location, fmt.Sprintf("Illegal characer: %c", *self.currentChar), SyntaxError)
+		}
+	}
+	return Token{
+		Kind:          EOF,
+		Value:         "EOF",
+		StartLocation: self.location,
+		EndLocation:   self.location,
+	}, nil
+}
