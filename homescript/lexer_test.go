@@ -6,12 +6,7 @@ import (
 )
 
 func TestLexer(t *testing.T) {
-	program := `
-|| && == !=
-< <= > >= !
-if else try catch
-test_identifier
-`
+	program := "* *= ** **="
 	lexer := newLexer("testing", program)
 	fmt.Printf("::INPUT::\n%s\n", program)
 

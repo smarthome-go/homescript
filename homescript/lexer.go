@@ -91,7 +91,7 @@ func (self *lexer) advance() {
 	self.location.Index++
 	if self.currentChar != nil && *self.currentChar == '\n' {
 		self.location.Line++
-		self.location.Column = 0
+		self.location.Column = 1
 	} else {
 		self.location.Column++
 	}
@@ -414,7 +414,6 @@ func (self *lexer) makeGreater() Token {
 
 func (self *lexer) makePlus() Token {
 	startLocation := self.location
-	self.advance()
 
 	tokenKind := Plus
 	tokenValue := "+"
@@ -425,17 +424,18 @@ func (self *lexer) makePlus() Token {
 		self.advance()
 	}
 
-	return Token{
+	token := Token{
 		Kind:          tokenKind,
 		Value:         tokenValue,
 		StartLocation: startLocation,
 		EndLocation:   self.location,
 	}
+	self.advance()
+	return token
 }
 
 func (self *lexer) makeMinus() Token {
 	startLocation := self.location
-	self.advance()
 
 	tokenKind := Minus
 	tokenValue := "-"
@@ -446,12 +446,14 @@ func (self *lexer) makeMinus() Token {
 		self.advance()
 	}
 
-	return Token{
+	token := Token{
 		Kind:          tokenKind,
 		Value:         tokenValue,
 		StartLocation: startLocation,
 		EndLocation:   self.location,
 	}
+	self.advance()
+	return token
 }
 
 func (self *lexer) makeStar() Token {
@@ -470,15 +472,16 @@ func (self *lexer) makeStar() Token {
 			return token
 		}
 		if *self.currentChar == '*' {
-			if *self.nextChar == '=' {
+			if self.nextChar != nil && *self.nextChar == '=' {
 				self.advance()
-				self.advance()
-				return Token{
+				token := Token{
 					Kind:          PowerAssign,
 					Value:         "**=",
 					StartLocation: startLocation,
 					EndLocation:   self.location,
 				}
+				self.advance()
+				return token
 			}
 			token := Token{
 				Kind:          Power,
@@ -490,12 +493,14 @@ func (self *lexer) makeStar() Token {
 			return token
 		}
 	}
-	return Token{
+	token := Token{
 		Kind:          Multiply,
 		Value:         "*",
 		StartLocation: startLocation,
-		EndLocation:   self.location,
+		EndLocation:   startLocation,
 	}
+	self.advance()
+	return token
 }
 
 func (self *lexer) makeDiv() Token {
