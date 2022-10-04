@@ -1,0 +1,19 @@
+; , . .. =>
+( ) {  }
+|| && == != !
+< <= > >=
++ - * / % **
+= += -= *= /= **= %=
+fn return
+if else
+try catch
+for while loop
+break continue
+str num bool null
+true on false off
+"foo string" "c" ""
+'foo string' 'c' ''
+1 1.1 42 42.69 3.14159265
+
+
+

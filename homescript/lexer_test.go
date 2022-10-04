@@ -2,12 +2,16 @@ package homescript
 
 import (
 	"fmt"
+	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLexer(t *testing.T) {
-	program := "* *= ** **="
-	lexer := newLexer("testing", program)
+	program, err := os.ReadFile("lexer_test.hms")
+	assert.NoError(t, err)
+	lexer := newLexer("testing", string(program))
 	fmt.Printf("::INPUT::\n%s\n", program)
 
 	for {

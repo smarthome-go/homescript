@@ -70,8 +70,6 @@ const (
 
 	True  // true
 	False // false
-	On    // on
-	Off   // off
 
 	String     // "foo" (token includes quotes whilst content excludes quotes)
 	Number     // 42
@@ -190,10 +188,6 @@ func (self TokenKind) String() string {
 		display = "true"
 	case False:
 		display = "false"
-	case On:
-		display = "on"
-	case Off:
-		display = "off"
 	case String:
 		display = "string"
 	case Number:

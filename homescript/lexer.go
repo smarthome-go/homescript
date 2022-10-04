@@ -260,17 +260,18 @@ func (self *lexer) makeDots() Token {
 
 func (self *lexer) makeEquals() Token {
 	startLocation := self.location
-	self.advance()
 
-	tokenKind := Assign
-	tokenValue := "="
+	if self.nextChar != nil {
+		tokenKind := Assign
+		tokenValue := "="
 
-	if self.currentChar != nil {
-		switch *self.currentChar {
+		switch *self.nextChar {
 		case '=':
+			self.advance()
 			tokenKind = Equal
 			tokenValue = "=="
 		case '>':
+			self.advance()
 			tokenKind = Arrow
 			tokenValue = "=>"
 		}
@@ -285,10 +286,10 @@ func (self *lexer) makeEquals() Token {
 	}
 
 	return Token{
-		Kind:          tokenKind,
-		Value:         tokenValue,
+		Kind:          Assign,
+		Value:         "=",
 		StartLocation: startLocation,
-		EndLocation:   self.location,
+		EndLocation:   startLocation,
 	}
 }
 
@@ -418,7 +419,7 @@ func (self *lexer) makePlus() Token {
 	tokenKind := Plus
 	tokenValue := "+"
 
-	if self.currentChar != nil && *self.currentChar == '=' {
+	if self.nextChar != nil && *self.nextChar == '=' {
 		tokenKind = PlusAssign
 		tokenValue = "+="
 		self.advance()
@@ -440,7 +441,7 @@ func (self *lexer) makeMinus() Token {
 	tokenKind := Minus
 	tokenValue := "-"
 
-	if self.currentChar != nil && *self.currentChar == '=' {
+	if self.nextChar != nil && *self.nextChar == '=' {
 		tokenKind = MinusAssign
 		tokenValue = "-="
 		self.advance()
@@ -505,23 +506,24 @@ func (self *lexer) makeStar() Token {
 
 func (self *lexer) makeDiv() Token {
 	startLocation := self.location
-	self.advance()
 
 	tokenKind := Divide
 	tokenValue := "/"
 
-	if self.currentChar != nil && *self.currentChar == '=' {
+	if self.nextChar != nil && *self.nextChar == '=' {
 		tokenKind = DivideAssign
 		tokenValue = "/="
 		self.advance()
 	}
 
-	return Token{
+	token := Token{
 		Kind:          tokenKind,
 		Value:         tokenValue,
 		StartLocation: startLocation,
 		EndLocation:   self.location,
 	}
+	self.advance()
+	return token
 }
 
 func (self *lexer) makeReminder() Token {
