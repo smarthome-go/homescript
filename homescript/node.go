@@ -139,9 +139,9 @@ type ExpExpression struct {
 // Assign expression
 type AssignExpression struct {
 	Base  CallExpression
-	Other struct {
+	Other *struct {
 		Operator   AssignOperator
-		Expression *AssignExpression // Pointer must be used in order to prevent a recursive type
+		Expression AssignExpression
 	}
 }
 
@@ -160,7 +160,7 @@ const (
 // Call expression
 type CallExpression struct {
 	Base  MemberExpression
-	Other struct {
+	Other *struct {
 		Args  []AssignExpression
 		Parts []CallExprPart // Allows chaining of member expressions like `a.b.c()`
 	}
