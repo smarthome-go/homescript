@@ -1,5 +1,11 @@
 package homescript
 
+// All ranges inclusive
+type Span struct {
+	Start Location
+	End   Location
+}
+
 type Location struct {
 	Line   uint
 	Column uint
