@@ -91,7 +91,7 @@ func (self *lexer) advance() {
 	self.location.Index++
 	if self.currentChar != nil && *self.currentChar == '\n' {
 		self.location.Line++
-		self.location.Column = 1
+		self.location.Column = 0
 	} else {
 		self.location.Column++
 	}
@@ -121,13 +121,14 @@ func (self *lexer) makeString() (Token, *Error) {
 	if self.currentChar == nil {
 		return unknownToken(startLocation), newError(startLocation, self.location, "String literal never closed", SyntaxError)
 	}
-	self.advance() // Skip closing quote
-	return Token{
+	token := Token{
 		Kind:          String,
 		Value:         string(value_buf),
 		StartLocation: startLocation,
 		EndLocation:   self.location,
-	}, nil
+	}
+	self.advance() // Skip closing quote
+	return token, nil
 }
 
 func (self *lexer) makeEscapeSequence() (rune, *Error) {
@@ -550,8 +551,8 @@ func (self *lexer) makeReminder() Token {
 
 func (self *lexer) makeName() Token {
 	startLocation := self.location
-	value := string(*self.currentChar)
-	self.advance()
+	var value string
+
 	for self.currentChar != nil && isLetter(*self.currentChar) {
 		value += string(*self.currentChar)
 		if self.nextChar != nil && !isLetter(*self.nextChar) {
@@ -559,6 +560,7 @@ func (self *lexer) makeName() Token {
 		}
 		self.advance()
 	}
+
 	var tokenKind TokenKind
 	switch value {
 	case "true":
