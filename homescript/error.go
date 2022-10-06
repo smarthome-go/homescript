@@ -13,10 +13,9 @@ type Location struct {
 }
 
 type Error struct {
-	Start   Location
-	End     Location
 	Kind    ErrorKind
 	Message string
+	Span    Span
 }
 
 type ErrorKind uint8
@@ -25,10 +24,9 @@ const (
 	SyntaxError ErrorKind = iota
 )
 
-func newError(start Location, end Location, message string, kind ErrorKind) *Error {
+func newError(span Span, message string, kind ErrorKind) *Error {
 	return &Error{
-		Start:   start,
-		End:     end,
+		Span:    span,
 		Message: message,
 		Kind:    kind,
 	}
