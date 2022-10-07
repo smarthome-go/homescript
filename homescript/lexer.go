@@ -617,6 +617,12 @@ func (self *lexer) makeName() Token {
 		tokenKind = BooleanType
 	case "null":
 		tokenKind = NullType
+	case "import":
+		tokenKind = Import
+	case "as":
+		tokenKind = As
+	case "from":
+		tokenKind = From
 	default:
 		tokenKind = Identifier
 	}

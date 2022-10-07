@@ -34,8 +34,6 @@ const (
 	GreaterThanEqual // >=
 	Not              // !
 
-	// TODO: continue here
-
 	Plus     // +
 	Minus    // -
 	Multiply // *
@@ -51,6 +49,9 @@ const (
 	PowerAssign    // **=
 	ReminderAssign // %=
 
+	Import   // import
+	As       // as
+	From     // from
 	Fn       // fn
 	If       // if
 	Else     // else
