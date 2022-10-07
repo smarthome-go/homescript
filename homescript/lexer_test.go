@@ -28,6 +28,9 @@ func TestLexer(t *testing.T) {
 		if current.Kind == EOF {
 			break
 		}
+		if current.Kind == Unknown {
+			t.Errorf("Found unknown token %v", current.StartLocation)
+		}
 	}
 	fmt.Printf("Lex: %v\n", time.Since(start))
 }

@@ -1,6 +1,8 @@
 package homescript
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // A list of possible tokens which can start an expression
 var firstExpr = []TokenKind{
@@ -47,10 +49,169 @@ func (self *parser) advance() *Error {
 	return nil
 }
 
+func (self *parser) expression() (Expression, *Error) {
+	startLocation := self.currToken.StartLocation
+	base, err := self.andExpr()
+	if err != nil {
+		return Expression{}, nil
+	}
+
+	following := make([]AndExpression, 0)
+	for self.currToken.Kind == Or {
+		followingExpr, err := self.andExpr()
+		if err != nil {
+			return Expression{}, err
+		}
+		following = append(following, followingExpr)
+	}
+
+	expr := Expression{
+		Base:      base,
+		Following: following,
+		Span: Span{
+			Start: startLocation,
+			End:   self.currToken.EndLocation,
+		},
+	}
+	if err := self.advance(); err != nil {
+		return Expression{}, err
+	}
+	return expr, nil
+}
+
+func (self *parser) andExpr() (AndExpression, *Error) {
+	startLocation := self.currToken.StartLocation
+	base, err := self.eqExpr()
+	if err != nil {
+		return AndExpression{}, err
+	}
+
+	following := make([]EqExpression, 0)
+	for self.currToken.Kind == And {
+		followingExpr, err := self.eqExpr()
+		if err != nil {
+			return AndExpression{}, err
+		}
+		following = append(following, followingExpr)
+	}
+
+	andExpr := AndExpression{
+		Base:      base,
+		Following: following,
+		Span: Span{
+			Start: startLocation,
+			End:   self.currToken.EndLocation,
+		},
+	}
+	if err := self.advance(); err != nil {
+		return AndExpression{}, err
+	}
+	return andExpr, nil
+}
+
+func (self *parser) eqExpr() (EqExpression, *Error) {
+	startLocation := self.currToken.StartLocation
+	base, err := self.relExpr()
+	if err != nil {
+		return EqExpression{}, err
+	}
+	if self.currToken.Kind == Equal || self.currToken.Kind == NotEqual {
+		isInverted := self.currToken.Kind == NotEqual
+		if err := self.advance(); err != nil {
+			return EqExpression{}, err
+		}
+		other, err := self.relExpr()
+		if err != nil {
+			return EqExpression{}, err
+		}
+		eqExpr := EqExpression{
+			Base: RelExpression{},
+			Other: &struct {
+				Inverted bool
+				Other    RelExpression
+			}{
+				Inverted: isInverted,
+				Other:    other,
+			},
+			Span: Span{
+				Start: startLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+		if err := self.advance(); err != nil {
+			return EqExpression{}, err
+		}
+		return eqExpr, nil
+	}
+	eqExpr := EqExpression{
+		Base:  RelExpression{},
+		Other: nil,
+		Span: Span{
+			Start: startLocation,
+			End:   self.currToken.EndLocation,
+		},
+	}
+	if err := self.advance(); err != nil {
+		return EqExpression{}, err
+	}
+	return eqExpr, nil
+}
+
+func (self *parser) relExpr() (RelExpression, *Error) {
+	startLocation := self.currToken.StartLocation
+	base, err := self.addExpr()
+	if err != nil {
+		return RelExpression{}, err
+	}
+
+	var otherOp RelOperator
+
+	switch self.currToken.Kind {
+	case LessThan:
+		otherOp = RelLessThan
+	case LessThanEqual:
+		otherOp = RelLessOrEqual
+	case GreaterThan:
+		otherOp = RelGreaterThan
+	case GreaterThanEqual:
+		otherOp = RelGreaterOrEqual
+	default:
+		return RelExpression{
+			Base:  base,
+			Other: nil,
+			Span: Span{
+				Start: startLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}, nil
+	}
+	other, err := self.addExpr()
+	if err != nil {
+		return RelExpression{}, err
+	}
+	return RelExpression{
+		Base: AddExpression{},
+		Other: &struct {
+			RelOperator RelOperator
+			Other       AddExpression
+		}{
+			RelOperator: otherOp,
+			Other:       other,
+		},
+		Span: Span{},
+	}, nil
+}
+
+func (self *parser) addExpr() (AddExpression, *Error) {
+	return AddExpression{}, nil
+}
+
 func (self *parser) letStmt() (LetStmt, *Error) {
 	startLocation := self.currToken.StartLocation
 	// Skip the `let`
-	self.advance()
+	if err := self.advance(); err != nil {
+		return LetStmt{}, err
+	}
 
 	if self.currToken.Kind != Identifier {
 		return LetStmt{}, &Error{
@@ -64,7 +225,9 @@ func (self *parser) letStmt() (LetStmt, *Error) {
 	}
 	// Copy the assignment identifier name
 	assignIdentifier := self.currToken.Value
-	self.advance()
+	if err := self.advance(); err != nil {
+		return LetStmt{}, err
+	}
 	if self.currToken.Kind != Assign {
 		return LetStmt{}, &Error{
 			Kind:    SyntaxError,
@@ -75,7 +238,9 @@ func (self *parser) letStmt() (LetStmt, *Error) {
 			},
 		}
 	}
-	self.advance()
+	if err := self.advance(); err != nil {
+		return LetStmt{}, err
+	}
 	assignExpression, err := self.expression()
 	if err != nil {
 		return LetStmt{}, err
@@ -88,14 +253,19 @@ func (self *parser) letStmt() (LetStmt, *Error) {
 			End:   self.currToken.EndLocation,
 		},
 	}
-	self.advance()
+	// TODO: does this belong here?
+	if err := self.advance(); err != nil {
+		return ImportStmt{}, err
+	}
 	return letStmt, nil
 }
 
 func (self *parser) importStmt() (ImportStmt, *Error) {
 	startLocation := self.currToken.StartLocation
 	// Skip the `import`
-	self.advance()
+	if err := self.advance(); err != nil {
+		return ImportStmt{}, err
+	}
 
 	if self.currToken.Kind != Identifier {
 		return ImportStmt{}, &Error{
@@ -108,11 +278,15 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 		}
 	}
 	functionName := self.currToken.Value
-	self.advance()
+	if err := self.advance(); err != nil {
+		return ImportStmt{}, err
+	}
 
 	var rewriteName *string
 	if self.currToken.Kind == As {
-		self.advance()
+		if err := self.advance(); err != nil {
+			return ImportStmt{}, err
+		}
 		if self.currToken.Kind != Identifier {
 			return ImportStmt{}, &Error{
 				Kind:    SyntaxError,
@@ -124,7 +298,9 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 			}
 		}
 		rewriteName = &self.currToken.Value
-		self.advance()
+		if err := self.advance(); err != nil {
+			return ImportStmt{}, err
+		}
 	}
 
 	if self.currToken.Kind != From {
@@ -137,7 +313,9 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 			},
 		}
 	}
-	self.advance()
+	if err := self.advance(); err != nil {
+		return ImportStmt{}, err
+	}
 	if self.currToken.Kind != Identifier {
 		return ImportStmt{}, &Error{
 			Kind:    SyntaxError,
@@ -157,14 +335,18 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 			End:   self.currToken.EndLocation,
 		},
 	}
-	self.advance()
+	if err := self.advance(); err != nil {
+		return ImportStmt{}, err
+	}
 	return importStmt, nil
 }
 
 func (self *parser) breakStmt() (BreakStmt, *Error) {
 	startLocation := self.currToken.StartLocation
 	// Skip the break
-	self.advance()
+	if err := self.advance(); err != nil {
+		return BreakStmt{}, err
+	}
 	// Check for an additional expression
 	shouldMakeAdditionExpr := false
 	for _, possible := range firstExpr {
@@ -175,10 +357,11 @@ func (self *parser) breakStmt() (BreakStmt, *Error) {
 	}
 	var additionalExpr *Expression
 	if shouldMakeAdditionExpr {
-		additionalExpr, err := self.expression()
+		additionalExprTemp, err := self.expression()
 		if err != nil {
 			return BreakStmt{}, err
 		}
+		additionalExpr = &additionalExprTemp
 	}
 	breakStmt := BreakStmt{
 		Expression: additionalExpr,
@@ -187,7 +370,9 @@ func (self *parser) breakStmt() (BreakStmt, *Error) {
 			End:   self.currToken.EndLocation,
 		},
 	}
-	self.advance()
+	if err := self.advance(); err != nil {
+		return BreakStmt{}, err
+	}
 	return breakStmt, nil
 }
 
@@ -198,13 +383,17 @@ func (self *parser) continueStmt() (ContinueStmt, *Error) {
 			End:   self.currToken.EndLocation,
 		},
 	}
-	self.advance()
+	if err := self.advance(); err != nil {
+		return ContinueStmt{}, err
+	}
 	return continueStmt, nil
 }
 
 func (self *parser) returnStmt() (ReturnStmt, *Error) {
 	startLocation := self.currToken.StartLocation
-	self.advance()
+	if err := self.advance(); err != nil {
+		return ReturnStmt{}, err
+	}
 	// Check for an additional expression
 	shouldMakeAdditionExpr := false
 	for _, possible := range firstExpr {
@@ -215,10 +404,11 @@ func (self *parser) returnStmt() (ReturnStmt, *Error) {
 	}
 	var additionalExpr *Expression
 	if shouldMakeAdditionExpr {
-		additionalExpr, err := self.expression()
+		additionalExprTemp, err := self.expression()
 		if err != nil {
 			return ReturnStmt{}, err
 		}
+		additionalExpr = &additionalExprTemp
 	}
 	returnStmt := ReturnStmt{
 		Expression: additionalExpr,
@@ -227,7 +417,9 @@ func (self *parser) returnStmt() (ReturnStmt, *Error) {
 			End:   self.currToken.EndLocation,
 		},
 	}
-	self.advance()
+	if err := self.advance(); err != nil {
+		return ReturnStmt{}, err
+	}
 	return returnStmt, nil
 }
 
@@ -244,6 +436,23 @@ func (self *parser) statement() (Statement, *Error) {
 	case Return:
 		return self.returnStmt()
 	default:
+		canBeExpr := false
+		for _, possible := range firstExpr {
+			if self.currToken.Kind == possible {
+				canBeExpr = true
+				break
+			}
+		}
+		if canBeExpr {
+			expr, err := self.expression()
+			if err != nil {
+				return nil, err
+			}
+			return ExpressionStmt{
+				Expression: expr,
+				Range:      expr.Span,
+			}, nil
+		}
 		return nil, &Error{
 			Kind:    SyntaxError,
 			Message: fmt.Sprintf("Expected one of the tokens 'let', 'import', 'break', 'continue', 'return', found %v", self.currToken.Kind),
@@ -277,12 +486,18 @@ func (self *parser) block() (Block, *Error) {
 			}
 		}
 		// Advance to the next statement
-		self.advance()
+		if err := self.advance(); err != nil {
+			return nil, err
+		}
 	}
 	return statements, nil
 }
 
 func (self *parser) parse() (Block, []Error) {
+	if err := self.advance(); err != nil {
+		self.errors = append(self.errors, *err)
+		return nil, self.errors
+	}
 	block, err := self.block()
 	if err != nil {
 		self.errors = append(self.errors, *err)

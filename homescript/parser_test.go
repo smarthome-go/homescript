@@ -9,8 +9,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestParserLexer(t *testing.T) {
+	program, err := os.ReadFile("parser_test.hms")
+	assert.NoError(t, err)
+
+	start := time.Now()
+
+	lexer := newLexer("testing", string(program))
+
+	for {
+		current, err := lexer.nextToken()
+		if err != nil {
+			t.Error(err.Message)
+			return
+		}
+		fmt.Printf("(%d:%d--%d:%d) ==> %v(%v)\n", current.StartLocation.Line, current.StartLocation.Column, current.EndLocation.Line, current.EndLocation.Column, current.Kind, current.Value)
+		if current.Kind == EOF {
+			break
+		}
+		if current.Kind == Unknown {
+			t.Errorf("Found unknown token %v", current.StartLocation)
+		}
+	}
+	fmt.Printf("Lex: %v\n", time.Since(start))
+}
+
 func TestParser(t *testing.T) {
-	program, err := os.ReadFile("lexer_test.hms")
+	program, err := os.ReadFile("parser_test.hms")
 	assert.NoError(t, err)
 
 	start := time.Now()
@@ -22,6 +47,7 @@ func TestParser(t *testing.T) {
 		for _, err := range errors {
 			fmt.Printf("%v: (l:%d c: %d) - (l:%d c: %d): %s", err.Kind, err.Span.Start.Line, err.Span.Start.Column, err.Span.End.Line, err.Span.End.Column, err.Message)
 		}
+		t.Error("Parsing failed")
 		return
 	}
 

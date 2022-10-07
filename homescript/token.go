@@ -198,6 +198,12 @@ func (self TokenKind) String() string {
 		display = "identifier"
 	case Let:
 		display = "let"
+	case Import:
+		display = "import"
+	case As:
+		display = "as"
+	case From:
+		display = "from"
 	}
 	return display
 }
