@@ -52,6 +52,7 @@ const (
 	Import   // import
 	As       // as
 	From     // from
+	Let      // let
 	Fn       // fn
 	If       // if
 	Else     // else
@@ -195,6 +196,8 @@ func (self TokenKind) String() string {
 		display = "number"
 	case Identifier:
 		display = "identifier"
+	case Let:
+		display = "let"
 	}
 	return display
 }

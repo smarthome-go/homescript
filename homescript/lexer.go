@@ -623,6 +623,8 @@ func (self *lexer) makeName() Token {
 		tokenKind = As
 	case "from":
 		tokenKind = From
+	case "let":
+		tokenKind = Let
 	default:
 		tokenKind = Identifier
 	}

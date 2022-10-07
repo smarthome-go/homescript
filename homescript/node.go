@@ -2,22 +2,65 @@ package homescript
 
 type Block []Statement
 
-// Is either a statement of kind [...] or an expression
-// If kind = nil, then this will be an expression
-// otherwise, if expression = nil, this is a statement of kind [...]
-type Statement struct {
-	Kind       *StatementKind
-	Expression *AssignExpression
-}
-
+/////// Statements ///////
 type StatementKind uint8
 
 const (
-	LetStmt StatementKind = iota
-	BreakStmt
-	ContinueStmt
-	ReturnStmt
+	LetStmtKind StatementKind = iota
+	ImportStmtKind
+	BreakStmtKind
+	ContinueStmtKind
+	ReturnStmtKind
 )
+
+type Statement interface {
+	Kind() StatementKind
+	Span() Span
+}
+
+type LetStmt struct {
+	Left  string
+	Right Expression
+	Range Span
+}
+
+func (self LetStmt) Kind() StatementKind { return LetStmtKind }
+func (self LetStmt) Span() Span          { return self.Range }
+
+type ImportStmt struct {
+	Function   string  // import `foo`
+	RewriteAs  *string // as `bar`
+	FromModule string  // from `baz`
+	Range      Span
+}
+
+func (self ImportStmt) Kind() StatementKind { return ImportStmtKind }
+func (self ImportStmt) Span() Span          { return self.Range }
+
+type BreakStmt struct {
+	Expression *Expression // Can be the return value of the loop
+	Range      Span
+}
+
+func (self BreakStmt) Kind() StatementKind { return BreakStmtKind }
+func (self BreakStmt) Span() Span          { return self.Range }
+
+type ContinueStmt struct {
+	Range Span
+}
+
+func (self ContinueStmt) Kind() StatementKind { return ContinueStmtKind }
+func (self ContinueStmt) Span() Span          { return self.Range }
+
+type ReturnStmt struct {
+	Expression *Expression // Can be the return value of the function
+	Range      Span
+}
+
+func (self ReturnStmt) Kind() StatementKind { return ReturnStmtKind }
+func (self ReturnStmt) Span() Span          { return self.Range }
+
+/////// Expressions ///////
 
 // Expression
 type Expression OrExpression

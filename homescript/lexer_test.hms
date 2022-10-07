@@ -16,3 +16,4 @@ true on false off
 1 1.1 42 42.69 3.14159265
 import foo from bar;
 import foo as bar from baz;
+let foo = bar;
