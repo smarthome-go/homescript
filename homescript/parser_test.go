@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,6 +54,6 @@ func TestParser(t *testing.T) {
 
 	fmt.Printf("Lex + Parse: %v\n", time.Since(start))
 
-	fmt.Printf("%v\n", ast)
+	spew.Dump(ast)
 
 }

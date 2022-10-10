@@ -2,7 +2,7 @@ package homescript
 
 type Block []Statement
 
-/////// Statements ///////
+// ///// Statements ///////
 type StatementKind uint8
 
 const (
@@ -139,8 +139,8 @@ const (
 type MulExpression struct {
 	Base      CastExpression
 	Following []struct {
-		MulOperator
-		Other CastExpression
+		MulOperator MulOperator
+		Other       CastExpression
 	}
 	Span Span
 }
@@ -156,7 +156,7 @@ const (
 // Cast expression
 type CastExpression struct {
 	Base  UnaryExpression
-	Other TypeName
+	Other *TypeName // Casting is optional, otherwise, just the base is used
 	Span  Span
 }
 
@@ -202,7 +202,7 @@ type AssignExpression struct {
 	Base  CallExpression
 	Other *struct {
 		Operator   AssignOperator
-		Expression AssignExpression
+		Expression Expression
 	}
 	Span Span
 }
@@ -222,26 +222,24 @@ const (
 // Call expression
 type CallExpression struct {
 	Base  MemberExpression
-	Other *struct {
-		Args  []AssignExpression
-		Parts []CallExprPart // Allows chaining of member expressions like `a.b.c()`
-	}
-	Span Span
+	Args  []Expression
+	Parts []CallExprPart // Allows chaining of function calls ( like foo()()() )
+	Span  Span
 }
 
 // If member expr part is nil, args is used
 // if args is nil, member expr part is used
 type CallExprPart struct {
-	MemberExpressionPart *string             // Optional: `.identifier`
-	Args                 *[]AssignExpression // Optional: (arg1, arg2) to call the function
+	MemberExpressionPart *string       // Optional: `.identifier`
+	Args                 *[]Expression // Optional: (arg1, arg2) to call the function
 	Span                 Span
 }
 
 // Member expression
 type MemberExpression struct {
-	Base  Atom
-	Parts []Atom // Each part is an atom (identifier) 'foo.bar.baz' where `foo` is the base and `bar` and `baz` are the parts
-	Span  Span
+	Base    Atom
+	Members []string // Each member is an identifier 'foo.bar.baz' where `foo` is the base and `bar` and `baz` are the members
+	Span    Span
 }
 
 ///////////// ATOM /////////////
@@ -308,9 +306,9 @@ func (self AtomIdentifier) Span() Span     { return self.Range }
 
 // Pair
 type AtomPair struct {
-	Key   string
-	Value Atom
-	Range Span
+	Key       string
+	ValueExpr Expression
+	Range     Span
 }
 
 func (self AtomPair) Kind() AtomKind { return AtomKindPair }
@@ -321,6 +319,16 @@ type AtomNull struct{}
 
 func (self AtomNull) Kind() AtomKind { return AtomKindNull }
 func (self AtomNull) Span() Span     { return Span{} }
+
+type IfExpr struct {
+	Condition Expression
+	Block     Block  // To be executed if condition is true
+	ElseBlock *Block // Optional
+	Range     Span
+}
+
+func (self IfExpr) Kind() AtomKind { return AtomKindIfExpr }
+func (self IfExpr) Span() Span     { return self.Range }
 
 // For loop
 type AtomFor struct {
@@ -375,7 +383,7 @@ func (self AtomTry) Span() Span     { return self.Range }
 
 // Atom Expression
 type AtomExpression struct {
-	Expression AssignExpression
+	Expression Expression
 	Range      Span
 }
 
