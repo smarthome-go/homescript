@@ -321,10 +321,11 @@ func (self AtomNull) Kind() AtomKind { return AtomKindNull }
 func (self AtomNull) Span() Span     { return Span{} }
 
 type IfExpr struct {
-	Condition Expression
-	Block     Block  // To be executed if condition is true
-	ElseBlock *Block // Optional
-	Range     Span
+	Condition  Expression
+	Block      Block   // To be executed if condition is true
+	ElseBlock  *Block  // Optional (else {...})
+	ElseIfExpr *IfExpr // Optional (else if ... {...})
+	Range      Span
 }
 
 func (self IfExpr) Kind() AtomKind { return AtomKindIfExpr }

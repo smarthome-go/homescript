@@ -715,35 +715,17 @@ func (self *parser) atom() (Atom, *Error) {
 			},
 		}, nil
 	case If:
-		ifExpr, err := self.ifExpr()
-		if err != nil {
-			return nil, err
-		}
+		return self.ifExpr()
 	case For:
-		forExpr, err := self.forExpr()
-		if err != nil {
-			return nil, err
-		}
+		return self.forExpr()
 	case While:
-		whileExpr, err := self.whileExpr()
-		if err != nil {
-			return nil, err
-		}
+		return self.whileExpr()
 	case Loop:
-		loopExpr, err := self.loopExpr()
-		if err != nil {
-			return nil, err
-		}
+		return self.loopExpr()
 	case Fn:
-		fnExpr, err := self.fnExpr()
-		if err != nil {
-			return nil, err
-		}
+		return self.fnExpr()
 	case Try:
-		tryExpr, err := self.tryExpr()
-		if err != nil {
-			return nil, err
-		}
+		return self.tryExpr()
 	case LParen:
 		nestedExpr, err := self.expression()
 		if err != nil {
@@ -789,17 +771,56 @@ func (self *parser) ifExpr() (IfExpr, *Error) {
 		return IfExpr{}, err
 	}
 
-	// TODO handle else
-	else here
+	// Handle else block
+	if self.currToken.Kind == Else {
+		if err := self.advance(); err != nil {
+			return IfExpr{}, err
+		}
 
+		// Handle else if using recursion here
+		if self.currToken.Kind == If {
+			elseIfExpr, err := self.ifExpr()
+			if err != nil {
+				return IfExpr{}, err
+			}
 
+			return IfExpr{
+				Condition:  conditionExpr,
+				Block:      block,
+				ElseBlock:  nil,
+				ElseIfExpr: &elseIfExpr,
+				Range: Span{
+					Start: startLocation,
+					End:   self.currToken.EndLocation,
+				},
+			}, nil
+		}
+
+		// Handle normal else block here
+		elseBlock, err := self.curlyBlock()
+		if err != nil {
+			return IfExpr{}, err
+		}
+		return IfExpr{
+			Condition:  conditionExpr,
+			Block:      block,
+			ElseBlock:  &elseBlock,
+			ElseIfExpr: nil,
+			Range: Span{
+				Start: startLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}, nil
+	}
+	// If without else block
 	return IfExpr{
-		Condition: conditionExpr,
-		Block:     block,
-		ElseBlock: nil,
+		Condition:  conditionExpr,
+		Block:      block,
+		ElseBlock:  nil,
+		ElseIfExpr: nil,
 		Range: Span{
 			Start: startLocation,
-			End: self.currToken.EndLocation,
+			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
