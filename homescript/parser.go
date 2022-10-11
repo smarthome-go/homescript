@@ -66,18 +66,14 @@ func (self *parser) expression() (Expression, *Error) {
 		following = append(following, followingExpr)
 	}
 
-	expr := Expression{
+	return Expression{
 		Base:      base,
 		Following: following,
 		Span: Span{
 			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			End:   self.prevToken.EndLocation,
 		},
-	}
-	if err := self.advance(); err != nil {
-		return Expression{}, err
-	}
-	return expr, nil
+	}, nil
 }
 
 func (self *parser) andExpr() (AndExpression, *Error) {
@@ -96,18 +92,14 @@ func (self *parser) andExpr() (AndExpression, *Error) {
 		following = append(following, followingExpr)
 	}
 
-	andExpr := AndExpression{
+	return AndExpression{
 		Base:      base,
 		Following: following,
 		Span: Span{
 			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			End:   self.prevToken.EndLocation,
 		},
-	}
-	if err := self.advance(); err != nil {
-		return AndExpression{}, err
-	}
-	return andExpr, nil
+	}, nil
 }
 
 func (self *parser) eqExpr() (EqExpression, *Error) {
@@ -125,7 +117,7 @@ func (self *parser) eqExpr() (EqExpression, *Error) {
 		if err != nil {
 			return EqExpression{}, err
 		}
-		eqExpr := EqExpression{
+		return EqExpression{
 			Base: base,
 			Other: &struct {
 				Inverted bool
@@ -136,26 +128,18 @@ func (self *parser) eqExpr() (EqExpression, *Error) {
 			},
 			Span: Span{
 				Start: startLocation,
-				End:   self.currToken.EndLocation,
+				End:   self.prevToken.EndLocation,
 			},
-		}
-		if err := self.advance(); err != nil {
-			return EqExpression{}, err
-		}
-		return eqExpr, nil
+		}, nil
 	}
-	eqExpr := EqExpression{
+	return EqExpression{
 		Base:  RelExpression{},
 		Other: nil,
 		Span: Span{
 			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			End:   self.prevToken.EndLocation,
 		},
-	}
-	if err := self.advance(); err != nil {
-		return EqExpression{}, err
-	}
-	return eqExpr, nil
+	}, nil
 }
 
 func (self *parser) relExpr() (RelExpression, *Error) {
@@ -185,6 +169,9 @@ func (self *parser) relExpr() (RelExpression, *Error) {
 				End:   self.currToken.EndLocation,
 			},
 		}, nil
+	}
+	if err := self.advance(); err != nil {
+		return RelExpression{}, err
 	}
 	other, err := self.addExpr()
 	if err != nil {
@@ -271,6 +258,10 @@ func (self *parser) mulExpr() (MulExpression, *Error) {
 			mulOp = MullOpReminder
 		}
 
+		if err := self.advance(); err != nil {
+			return MulExpression{}, err
+		}
+
 		other, err := self.castExpr()
 		if err != nil {
 			return MulExpression{}, err
@@ -325,6 +316,9 @@ func (self *parser) castExpr() (CastExpression, *Error) {
 					End:   self.currToken.EndLocation,
 				},
 			}
+		}
+		if err := self.advance(); err != nil {
+			return CastExpression{}, err
 		}
 		return CastExpression{
 			Base:  base,
@@ -495,9 +489,6 @@ func (self *parser) callExpr() (CallExpression, *Error) {
 	var callArgs []Expression = nil
 	var optParts []CallExprPart = nil
 	if self.currToken.Kind == LParen {
-		if err := self.advance(); err != nil {
-			return CallExpression{}, err
-		}
 		argsTemp, err := self.args()
 		if err != nil {
 			return CallExpression{}, err
@@ -569,7 +560,7 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *Error) {
 				return nil, err
 			}
 		default:
-			break
+			return parts, nil
 		}
 	}
 	return parts, nil
@@ -577,21 +568,36 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *Error) {
 
 func (self *parser) args() ([]Expression, *Error) {
 	callArgs := make([]Expression, 0)
+	// Skip opening brace
 	if err := self.advance(); err != nil {
 		return nil, err
 	}
-	for self.currToken.Kind != RParen {
-		argExpr, err := self.expression()
+	// Return early if no args follow
+	if self.currToken.Kind == RParen {
+		return callArgs, nil
+	}
+	// Consume first expression
+	expr, err := self.expression()
+	if err != nil {
+		return nil, err
+	}
+	callArgs = append(callArgs, expr)
+
+	// Consume more expressions
+	for self.currToken.Kind == Comma {
+		if err := self.advance(); err != nil {
+			return nil, err
+		}
+		if self.currToken.Kind == RParen {
+			break
+		}
+		expr, err := self.expression()
 		if err != nil {
 			return nil, err
 		}
-		callArgs = append(callArgs, argExpr)
-		if self.currToken.Kind == Comma {
-			if err := self.advance(); err != nil {
-				return nil, err
-			}
-		}
+		callArgs = append(callArgs, expr)
 	}
+
 	if self.currToken.Kind != RParen {
 		return nil, &Error{
 			Kind:    SyntaxError,
@@ -630,7 +636,6 @@ func (self *parser) memberExpr() (MemberExpression, *Error) {
 		if err := self.advance(); err != nil {
 			return MemberExpression{}, err
 		}
-
 	}
 	return MemberExpression{
 		Base:    base,
@@ -825,6 +830,241 @@ func (self *parser) ifExpr() (IfExpr, *Error) {
 	}, nil
 }
 
+func (self *parser) forExpr() (AtomFor, *Error) {
+	startLocation := self.currToken.StartLocation
+	if err := self.advance(); err != nil {
+		return AtomFor{}, err
+	}
+	if self.currToken.Kind != Identifier {
+		return AtomFor{}, &Error{
+			Kind:    SyntaxError,
+			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
+			Span: Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+	headIdentifier := self.currToken.Value
+	if err := self.advance(); err != nil {
+		return AtomFor{}, err
+	}
+
+	// Make in
+	if self.currToken.Kind != In {
+		return AtomFor{}, &Error{
+			Kind:    SyntaxError,
+			Message: fmt.Sprintf("Expected %v, found %v", In, self.currToken.Kind),
+			Span: Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+	if err := self.advance(); err != nil {
+		return AtomFor{}, err
+	}
+
+	// Make range
+	rangeLowerExpr, err := self.expression()
+	if err != nil {
+		return AtomFor{}, err
+	}
+	if self.currToken.Kind != Range {
+		return AtomFor{}, &Error{
+			Kind:    SyntaxError,
+			Message: fmt.Sprintf("Expected range (%v), found %v", Range, self.currToken.Kind),
+			Span: Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+	if err := self.advance(); err != nil {
+		return AtomFor{}, err
+	}
+	rangeUpperExpr, err := self.expression()
+	if err != nil {
+		return AtomFor{}, err
+	}
+
+	iterationBlock, err := self.curlyBlock()
+	if err != nil {
+		return AtomFor{}, err
+	}
+
+	return AtomFor{
+		HeadIdentifier: headIdentifier,
+		RangeLowerExpr: rangeLowerExpr,
+		RangeUpperExpr: rangeUpperExpr,
+		IterationCode:  iterationBlock,
+		Range: Span{
+			Start: startLocation,
+			End:   self.currToken.EndLocation,
+		},
+	}, nil
+}
+
+func (self *parser) whileExpr() (AtomWhile, *Error) {
+	startLocation := self.currToken.StartLocation
+	if err := self.advance(); err != nil {
+		return AtomWhile{}, err
+	}
+	conditionExpr, err := self.expression()
+	if err != nil {
+		return AtomWhile{}, err
+	}
+
+	iterationBlock, err := self.curlyBlock()
+	if err != nil {
+		return AtomWhile{}, err
+	}
+
+	return AtomWhile{
+		HeadCondition: conditionExpr,
+		IterationCode: iterationBlock,
+		Range: Span{
+			Start: startLocation,
+			End:   self.currToken.EndLocation,
+		},
+	}, nil
+}
+
+func (self *parser) loopExpr() (AtomLoop, *Error) {
+	startLocation := self.currToken.StartLocation
+	if err := self.advance(); err != nil {
+		return AtomLoop{}, err
+	}
+	iterationBlock, err := self.curlyBlock()
+	if err != nil {
+		return AtomLoop{}, err
+	}
+	return AtomLoop{
+		IterationCode: iterationBlock,
+		Range: Span{
+			Start: startLocation,
+			End:   self.currToken.EndLocation,
+		},
+	}, nil
+}
+
+func (self *parser) fnExpr() (AtomFunction, *Error) {
+	startLocation := self.currToken.StartLocation
+	if err := self.advance(); err != nil {
+		return AtomFunction{}, err
+	}
+	args := make([]string, 0)
+
+	// Make args
+	if self.currToken.Kind != LParen {
+		if err := self.advance(); err != nil {
+			return AtomFunction{}, err
+		}
+		// Only make args if there is no immediate closing bracket
+		if self.currToken.Kind != RParen {
+			if self.currToken.Kind != Identifier {
+				return AtomFunction{}, &Error{
+					Kind:    SyntaxError,
+					Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
+					Span: Span{
+						Start: self.currToken.StartLocation,
+						End:   self.currToken.EndLocation,
+					},
+				}
+			}
+			args = append(args, self.currToken.Value)
+
+			for self.currToken.Kind == Comma {
+				if err := self.advance(); err != nil {
+					return AtomFunction{}, err
+				}
+				if self.currToken.Kind != Identifier {
+					return AtomFunction{}, &Error{
+						Kind:    SyntaxError,
+						Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
+						Span: Span{
+							Start: self.currToken.StartLocation,
+							End:   self.currToken.EndLocation,
+						},
+					}
+				}
+				args = append(args, self.currToken.Value)
+				if self.currToken.Kind == RParen {
+					break
+				}
+			}
+
+			if self.currToken.Kind != RParen {
+				return AtomFunction{}, &Error{
+					Kind:    SyntaxError,
+					Message: fmt.Sprintf("Expected %v, found %v", RParen, self.currToken.Kind),
+					Span: Span{
+						Start: self.currToken.StartLocation,
+						End:   self.currToken.EndLocation,
+					},
+				}
+			}
+			if err := self.advance(); err != nil {
+				return AtomFunction{}, err
+			}
+		}
+	}
+	// Make function body
+	functionBlock, err := self.curlyBlock()
+	if err != nil {
+		return AtomFunction{}, err
+	}
+	return AtomFunction{
+		ArgIdentifiers: args,
+		Body:           functionBlock,
+		Range: Span{
+			Start: startLocation,
+			End:   self.currToken.EndLocation,
+		},
+	}, nil
+}
+
+func (self *parser) tryExpr() (AtomTry, *Error) {
+	startLocation := self.currToken.StartLocation
+	if err := self.advance(); err != nil {
+		return AtomTry{}, err
+	}
+	tryBlock, err := self.curlyBlock()
+	if err != nil {
+		return AtomTry{}, err
+	}
+	if self.currToken.Kind != Catch {
+		return AtomTry{}, &Error{
+			Kind:    SyntaxError,
+			Message: fmt.Sprintf("Expected %v, found %v", Catch, self.currToken.Kind),
+			Span: Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+	if err := self.advance(); err != nil {
+		return AtomTry{}, err
+	}
+	catchIdentifier := self.currToken.Value
+	if err := self.advance(); err != nil {
+		return AtomTry{}, err
+	}
+	catchBlock, err := self.curlyBlock()
+	if err != nil {
+		return AtomTry{}, err
+	}
+	return AtomTry{
+		TryBlock:        tryBlock,
+		ErrorIdentifier: catchIdentifier,
+		CatchBlock:      catchBlock,
+		Range: Span{
+			Start: startLocation,
+			End:   self.currToken.EndLocation,
+		},
+	}, nil
+}
+
 func (self *parser) letStmt() (LetStmt, *Error) {
 	startLocation := self.currToken.StartLocation
 	// Skip the `let`
@@ -847,6 +1087,7 @@ func (self *parser) letStmt() (LetStmt, *Error) {
 	if err := self.advance(); err != nil {
 		return LetStmt{}, err
 	}
+
 	if self.currToken.Kind != Assign {
 		return LetStmt{}, &Error{
 			Kind:    SyntaxError,
@@ -860,23 +1101,20 @@ func (self *parser) letStmt() (LetStmt, *Error) {
 	if err := self.advance(); err != nil {
 		return LetStmt{}, err
 	}
+
 	assignExpression, err := self.expression()
 	if err != nil {
 		return LetStmt{}, err
 	}
-	letStmt := LetStmt{
+
+	return LetStmt{
 		Left:  assignIdentifier,
 		Right: assignExpression,
 		Range: Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
-	}
-	// TODO: does this belong here?
-	if err := self.advance(); err != nil {
-		return LetStmt{}, err
-	}
-	return letStmt, nil
+	}, nil
 }
 
 func (self *parser) importStmt() (ImportStmt, *Error) {
@@ -1021,7 +1259,7 @@ func (self *parser) returnStmt() (ReturnStmt, *Error) {
 			break
 		}
 	}
-	var additionalExpr *Expression
+	var additionalExpr *Expression = nil
 	if shouldMakeAdditionExpr {
 		additionalExprTemp, err := self.expression()
 		if err != nil {
@@ -1074,7 +1312,7 @@ func (self *parser) statement() (Statement, *Error) {
 		}
 		return nil, &Error{
 			Kind:    SyntaxError,
-			Message: fmt.Sprintf("Expected one of the tokens 'let', 'import', 'break', 'continue', 'return', found %v", self.currToken.Kind),
+			Message: fmt.Sprintf("Invalid expression: expected one of the tokens 'let', 'import', 'break', 'continue', 'return', found %v", self.currToken.Kind),
 			Span: Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
@@ -1083,17 +1321,26 @@ func (self *parser) statement() (Statement, *Error) {
 	}
 }
 
-func (self *parser) block() (Block, *Error) {
+func (self *parser) statements() ([]Statement, *Error) {
 	statements := make([]Statement, 0)
 
-	for self.currToken.Kind != EOF {
+	// If statements is invoked in an empty block or at the end of the file, quit immediately
+	if self.currToken.Kind == EOF || self.currToken.Kind == RCurly {
+		return statements, nil
+	}
+
+	// Make additional statements
+	for {
+		if self.currToken.Kind == RCurly || self.currToken.Kind == EOF {
+			break
+		}
+
 		statement, err := self.statement()
 		if err != nil {
 			return nil, err
 		}
 		statements = append(statements, statement)
 
-		// Check for semicolon after a statement
 		if self.currToken.Kind != Semicolon {
 			return nil, &Error{
 				Kind:    SyntaxError,
@@ -1104,16 +1351,16 @@ func (self *parser) block() (Block, *Error) {
 				},
 			}
 		}
-		// Advance to the next statement
-		if err := self.advance(); err != nil {
+
+		if self.advance(); err != nil {
 			return nil, err
 		}
 	}
+
 	return statements, nil
 }
 
 func (self *parser) curlyBlock() (Block, *Error) {
-	startLocation := self.currToken.StartLocation
 	if self.currToken.Kind != LCurly {
 		return nil, &Error{
 			Kind:    SyntaxError,
@@ -1127,7 +1374,7 @@ func (self *parser) curlyBlock() (Block, *Error) {
 	if err := self.advance(); err != nil {
 		return nil, err
 	}
-	block, err := self.block()
+	statements, err := self.statements()
 	if err != nil {
 		return nil, err
 	}
@@ -1144,18 +1391,18 @@ func (self *parser) curlyBlock() (Block, *Error) {
 	if err := self.advance(); err != nil {
 		return nil, err
 	}
-	return block, nil
+	return statements, nil
 }
 
-func (self *parser) parse() (Block, []Error) {
+func (self *parser) parse() ([]Statement, []Error) {
 	if err := self.advance(); err != nil {
 		self.errors = append(self.errors, *err)
 		return nil, self.errors
 	}
-	block, err := self.block()
+	statements, err := self.statements()
 	if err != nil {
 		self.errors = append(self.errors, *err)
 		return nil, self.errors
 	}
-	return block, nil
+	return statements, nil
 }

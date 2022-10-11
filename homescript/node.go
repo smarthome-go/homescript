@@ -14,6 +14,25 @@ const (
 	ExpressionStmtKind
 )
 
+func (self StatementKind) String() string {
+	var value string
+	switch self {
+	case LetStmtKind:
+		value = "let statement"
+	case ImportStmtKind:
+		value = "import statement"
+	case BreakStmtKind:
+		value = "break statement"
+	case ContinueStmtKind:
+		value = "continue statement"
+	case ReturnStmtKind:
+		value = "return statement"
+	case ExpressionStmtKind:
+		value = "expression statement"
+	}
+	return value
+}
+
 type Statement interface {
 	Kind() StatementKind
 	Span() Span
@@ -66,7 +85,7 @@ type ExpressionStmt struct {
 	Range      Span
 }
 
-func (self ExpressionStmt) Kind() StatementKind { return ReturnStmtKind }
+func (self ExpressionStmt) Kind() StatementKind { return ExpressionStmtKind }
 func (self ExpressionStmt) Span() Span          { return self.Range }
 
 /////// Expressions ///////
@@ -333,10 +352,11 @@ func (self IfExpr) Span() Span     { return self.Range }
 
 // For loop
 type AtomFor struct {
-	HeadIdentifier     string
-	IterationSpecifier AssignExpression
-	IterationCode      Block
-	Range              Span
+	HeadIdentifier string
+	RangeLowerExpr Expression
+	RangeUpperExpr Expression
+	IterationCode  Block
+	Range          Span
 }
 
 func (self AtomFor) Kind() AtomKind { return AtomKindForExpr }
@@ -344,7 +364,7 @@ func (self AtomFor) Span() Span     { return self.Range }
 
 // While loop
 type AtomWhile struct {
-	HeadCondition AssignExpression
+	HeadCondition Expression
 	IterationCode Block
 	Range         Span
 }

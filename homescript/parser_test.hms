@@ -1,2 +1,11 @@
-import foo as bar from baz;
-import foo from bar;
+for i in 0..10 {
+
+};
+
+while {
+
+};
+
+loop {
+
+};
