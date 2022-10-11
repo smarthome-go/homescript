@@ -220,7 +220,7 @@ func (self *lexer) makeNumber() Token {
 		self.advance()
 	}
 
-	if self.currentChar != nil && *self.currentChar == '.' {
+	if self.currentChar != nil && *self.currentChar == '.' && self.nextChar != nil && isDigit(*self.nextChar) {
 		value += string(*self.currentChar)
 		self.advance()
 		for self.currentChar != nil && isDigit(*self.currentChar) {
@@ -258,6 +258,7 @@ func (self *lexer) makeDots() Token {
 		tokenKindValue = ".."
 		self.advance()
 	} else {
+		fmt.Printf("NEXT: %c\n", *self.nextChar)
 		tokenKind = Dot
 		tokenKindValue = "."
 	}
@@ -625,6 +626,8 @@ func (self *lexer) makeName() Token {
 		tokenKind = From
 	case "let":
 		tokenKind = Let
+	case "in":
+		tokenKind = In
 	default:
 		tokenKind = Identifier
 	}

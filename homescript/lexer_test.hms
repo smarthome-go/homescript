@@ -17,3 +17,5 @@ true on false off
 import foo from bar;
 import foo as bar from baz;
 let foo = bar;
+for i in 0..10
+..
