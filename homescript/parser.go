@@ -1190,6 +1190,8 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 		return ImportStmt{}, err
 	}
 
+	// Make the import function name
+	functionName := self.currToken.Value
 	if self.currToken.Kind != Identifier {
 		return ImportStmt{}, &Error{
 			Kind:    SyntaxError,
@@ -1200,11 +1202,11 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 			},
 		}
 	}
-	functionName := self.currToken.Value
 	if err := self.advance(); err != nil {
 		return ImportStmt{}, err
 	}
 
+	// Make optional name rewrite
 	var rewriteName *string
 	if self.currToken.Kind == As {
 		if err := self.advance(); err != nil {
@@ -1239,6 +1241,8 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 	if err := self.advance(); err != nil {
 		return ImportStmt{}, err
 	}
+
+	// Make target module name
 	if self.currToken.Kind != Identifier {
 		return ImportStmt{}, &Error{
 			Kind:    SyntaxError,
@@ -1249,19 +1253,18 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 			},
 		}
 	}
-	importStmt := ImportStmt{
-		Function:   functionName,
-		RewriteAs:  rewriteName,
-		FromModule: self.currToken.Value,
-		Range: Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
-		},
-	}
 	if err := self.advance(); err != nil {
 		return ImportStmt{}, err
 	}
-	return importStmt, nil
+	return ImportStmt{
+		Function:   functionName,
+		RewriteAs:  rewriteName,
+		FromModule: self.prevToken.Value,
+		Range: Span{
+			Start: startLocation,
+			End:   self.prevToken.EndLocation,
+		},
+	}, nil
 }
 
 func (self *parser) breakStmt() (BreakStmt, *Error) {
