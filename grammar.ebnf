@@ -171,7 +171,7 @@ LoopExpr   = 'loop' , Block ;
   the following:
 
   ```
-  let add_one = fn(x) {
+  fn add_one (x) {
       x + 1
   };
   assert(add_one(3) == 4);
