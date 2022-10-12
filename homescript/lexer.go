@@ -568,13 +568,12 @@ func (self *lexer) makeReminder() Token {
 
 func (self *lexer) makeName() Token {
 	startLocation := self.location
-	var value string
 
-	for self.currentChar != nil && isLetter(*self.currentChar) {
+	value := string(*self.currentChar)
+	self.advance()
+
+	for self.currentChar != nil && (isLetter(*self.currentChar) || isDigit(*self.currentChar)) {
 		value += string(*self.currentChar)
-		if self.nextChar != nil && !isLetter(*self.nextChar) {
-			break
-		}
 		self.advance()
 	}
 
@@ -637,7 +636,6 @@ func (self *lexer) makeName() Token {
 		StartLocation: startLocation,
 		EndLocation:   self.location,
 	}
-	self.advance()
 	return token
 }
 
