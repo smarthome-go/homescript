@@ -54,7 +54,7 @@ func (self *parser) expression() (Expression, *Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.andExpr()
 	if err != nil {
-		return Expression{}, nil
+		return Expression{}, err
 	}
 
 	following := make([]AndExpression, 0)
@@ -574,8 +574,30 @@ func (self *parser) args() ([]Expression, *Error) {
 	}
 	// Return early if no args follow
 	if self.currToken.Kind == RParen {
+		if err := self.advance(); err != nil {
+			return nil, err
+		}
 		return callArgs, nil
 	}
+	makeExpr := false
+	for _, possible := range firstExpr {
+		if possible == self.currToken.Kind {
+			makeExpr = true
+			break
+		}
+	}
+
+	if !makeExpr {
+		return nil, &Error{
+			Kind:    SyntaxError,
+			Message: fmt.Sprintf("Unclosed function call: Expected %v, found %v", RParen, self.currToken.Kind),
+			Span: Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+
 	// Consume first expression
 	expr, err := self.expression()
 	if err != nil {
@@ -607,6 +629,9 @@ func (self *parser) args() ([]Expression, *Error) {
 				End:   self.currToken.EndLocation,
 			},
 		}
+	}
+	if err := self.advance(); err != nil {
+		return nil, err
 	}
 	return callArgs, nil
 }
