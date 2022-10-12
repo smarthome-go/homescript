@@ -1,11 +1,24 @@
-for i in 0..10 {
+import foo from bar;
+import foo as bar from baz;
 
-};
-
-while {
-
-};
+let a = 1;
+let b = "text";
 
 loop {
-
+    continue;
 };
+
+for i in 0..10 {
+    let c = 1;
+};
+
+while true {
+    break;
+};
+
+fn test(input) {
+    print(input);
+    return input;
+};
+
+test();
