@@ -28,8 +28,8 @@ test();
 
 fn test1() {
     return;
-}
+};
 test1();
 
 # Expressions
-test1()
+test1();
