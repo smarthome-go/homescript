@@ -16,9 +16,20 @@ while true {
     break;
 };
 
+while false {
+    break 1;
+};
+
 fn test(input) {
-    print(input);
-    return input;
+    print();
 };
 
 test();
+
+fn test1() {
+    return;
+}
+test1();
+
+# Expressions
+test1()
