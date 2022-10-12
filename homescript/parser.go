@@ -1227,9 +1227,6 @@ func (self *parser) breakStmt() (BreakStmt, *Error) {
 			End:   self.currToken.EndLocation,
 		},
 	}
-	if err := self.advance(); err != nil {
-		return BreakStmt{}, err
-	}
 	return breakStmt, nil
 }
 
