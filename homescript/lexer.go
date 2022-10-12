@@ -641,6 +641,13 @@ func (self *lexer) makeName() Token {
 	return token
 }
 
+func (self *lexer) skipComment() {
+	self.advance()
+	for self.currentChar != nil && *self.currentChar != '\n' {
+		self.advance()
+	}
+}
+
 func (self *lexer) nextToken() (Token, *Error) {
 	for self.currentChar != nil {
 		switch *self.currentChar {
@@ -684,6 +691,8 @@ func (self *lexer) nextToken() (Token, *Error) {
 			return self.makeDiv(), nil
 		case '%':
 			return self.makeReminder(), nil
+		case '#':
+			self.skipComment()
 		default:
 			if isDigit(*self.currentChar) {
 				return self.makeNumber(), nil
