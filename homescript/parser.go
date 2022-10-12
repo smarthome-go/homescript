@@ -1016,7 +1016,6 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 
 	// Only make args if there is no immediate closing bracket
 	if self.currToken.Kind != RParen {
-		fmt.Println("Making initial argument")
 		// Add initial argument
 		if self.currToken.Kind != Identifier {
 			return AtomFunction{}, &Error{
@@ -1029,7 +1028,6 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 			}
 		}
 		args = append(args, self.currToken.Value)
-
 		if err := self.advance(); err != nil {
 			return AtomFunction{}, err
 		}
@@ -1069,9 +1067,10 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 				},
 			}
 		}
-		if err := self.advance(); err != nil {
-			return AtomFunction{}, err
-		}
+	}
+	// Skip closing paranthesis
+	if err := self.advance(); err != nil {
+		return AtomFunction{}, err
 	}
 
 	// Make function body
@@ -1339,9 +1338,6 @@ func (self *parser) returnStmt() (ReturnStmt, *Error) {
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
-	}
-	if err := self.advance(); err != nil {
-		return ReturnStmt{}, err
 	}
 	return returnStmt, nil
 }
