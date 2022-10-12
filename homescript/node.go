@@ -383,6 +383,7 @@ func (self AtomLoop) Span() Span     { return self.Range }
 
 // Function declaration
 type AtomFunction struct {
+	Name           string
 	ArgIdentifiers []string
 	Body           Block
 	Range          Span

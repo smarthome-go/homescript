@@ -950,18 +950,70 @@ func (self *parser) loopExpr() (AtomLoop, *Error) {
 
 func (self *parser) fnExpr() (AtomFunction, *Error) {
 	startLocation := self.currToken.StartLocation
+	// Skip fn
 	if err := self.advance(); err != nil {
 		return AtomFunction{}, err
 	}
-	args := make([]string, 0)
+
+	// Make function identifier
+	if self.currToken.Kind != Identifier {
+		return AtomFunction{}, &Error{
+			Kind:    SyntaxError,
+			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
+			Span: Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+	functionName := self.currToken.Value
+	if err := self.advance(); err != nil {
+		return AtomFunction{}, err
+	}
+
+	// Expect Lparen (
+	if self.currToken.Kind != LParen {
+		return AtomFunction{}, &Error{
+			Kind:    SyntaxError,
+			Message: fmt.Sprintf("Expected (, found %v", self.currToken.Kind),
+			Span: Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+	if err := self.advance(); err != nil {
+		return AtomFunction{}, err
+	}
 
 	// Make args
-	if self.currToken.Kind != LParen {
+	args := make([]string, 0)
+
+	// Only make args if there is no immediate closing bracket
+	if self.currToken.Kind != RParen {
+		fmt.Println("Making initial argument")
+		// Add initial argument
+		if self.currToken.Kind != Identifier {
+			return AtomFunction{}, &Error{
+				Kind:    SyntaxError,
+				Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
+				Span: Span{
+					Start: self.currToken.StartLocation,
+					End:   self.currToken.EndLocation,
+				},
+			}
+		}
+		args = append(args, self.currToken.Value)
+
 		if err := self.advance(); err != nil {
 			return AtomFunction{}, err
 		}
-		// Only make args if there is no immediate closing bracket
-		if self.currToken.Kind != RParen {
+
+		// Add additional arguments
+		for self.currToken.Kind == Comma {
+			if err := self.advance(); err != nil {
+				return AtomFunction{}, err
+			}
 			if self.currToken.Kind != Identifier {
 				return AtomFunction{}, &Error{
 					Kind:    SyntaxError,
@@ -973,48 +1025,37 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 				}
 			}
 			args = append(args, self.currToken.Value)
-
-			for self.currToken.Kind == Comma {
-				if err := self.advance(); err != nil {
-					return AtomFunction{}, err
-				}
-				if self.currToken.Kind != Identifier {
-					return AtomFunction{}, &Error{
-						Kind:    SyntaxError,
-						Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-						Span: Span{
-							Start: self.currToken.StartLocation,
-							End:   self.currToken.EndLocation,
-						},
-					}
-				}
-				args = append(args, self.currToken.Value)
-				if self.currToken.Kind == RParen {
-					break
-				}
-			}
-
-			if self.currToken.Kind != RParen {
-				return AtomFunction{}, &Error{
-					Kind:    SyntaxError,
-					Message: fmt.Sprintf("Expected %v, found %v", RParen, self.currToken.Kind),
-					Span: Span{
-						Start: self.currToken.StartLocation,
-						End:   self.currToken.EndLocation,
-					},
-				}
-			}
 			if err := self.advance(); err != nil {
 				return AtomFunction{}, err
 			}
+			// Stop here if the current token is a )
+			if self.currToken.Kind == RParen {
+				break
+			}
+		}
+
+		if self.currToken.Kind != RParen {
+			return AtomFunction{}, &Error{
+				Kind:    SyntaxError,
+				Message: fmt.Sprintf("Expected %v, found %v", RParen, self.currToken.Kind),
+				Span: Span{
+					Start: self.currToken.StartLocation,
+					End:   self.currToken.EndLocation,
+				},
+			}
+		}
+		if err := self.advance(); err != nil {
+			return AtomFunction{}, err
 		}
 	}
+
 	// Make function body
 	functionBlock, err := self.curlyBlock()
 	if err != nil {
 		return AtomFunction{}, err
 	}
 	return AtomFunction{
+		Name:           functionName,
 		ArgIdentifiers: args,
 		Body:           functionBlock,
 		Range: Span{
