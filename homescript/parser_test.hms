@@ -31,5 +31,49 @@ fn test1() {
 };
 test1();
 
+fn test2(
+    long_a,
+    long_b,
+    long_c,
+) {
+    return long_a + long_b + long_c;
+};
+
+test2(
+    1,
+    2,
+    "key" => 3,
+);
+
+#weather().temp;
+#builtin.weather().temp.avg();
+
+# try {
+# throws_err();
+# } catch err {
+# print(err);
+# };
+
 # Expressions
-test1();
+# true || false; false || true;
+# true && false; true && true;
+ 1 == 1; 1 !== 2;
+ 1 < 2; 1 <= 2;
+ 3 > 2; 3 >= 2;
+ 1 + 1; 2 - 1;
+ 2 * 1; 2 / 1; 4 % 2;
+ 1 as str; 0 as bool; false as str;
+ -----1; +-+2;
+ 2 ** 3;
+ 1 * (-1 + 2) % 5;
+
+# Assignments
+let a = 1;
+a += 1;
+a -= 1;
+a *= 2;
+a /= 2;
+a **= 3;
+a %= 2;
+
+true && false;
