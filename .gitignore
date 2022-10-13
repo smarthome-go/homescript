@@ -15,4 +15,5 @@
 # vendor/
 
 # Test files for reviewing AST and token lists
-./test/*.json
+test/*.json
+test/*.tokens
