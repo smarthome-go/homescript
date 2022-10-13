@@ -757,6 +757,11 @@ func (self *parser) atom() (Atom, *Error) {
 	case Try:
 		return self.tryExpr()
 	case LParen:
+		// Skip paranthesis
+		if err := self.advance(); err != nil {
+			return nil, err
+		}
+
 		nestedExpr, err := self.expression()
 		if err != nil {
 			return nil, err
