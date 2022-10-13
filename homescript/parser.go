@@ -372,7 +372,7 @@ func (self *parser) unaryExpr() (UnaryExpression, *Error) {
 			ExpExpression: nil,
 			Span: Span{
 				Start: startLocation,
-				End:   self.currToken.EndLocation,
+				End:   self.prevToken.EndLocation,
 			},
 		}, nil
 	}
@@ -385,7 +385,7 @@ func (self *parser) unaryExpr() (UnaryExpression, *Error) {
 		ExpExpression:   &expr,
 		Span: Span{
 			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			End:   self.prevToken.EndLocation,
 		},
 	}, nil
 }
@@ -1412,7 +1412,7 @@ func (self *parser) statements() ([]Statement, *Error) {
 		if self.currToken.Kind != Semicolon {
 			return nil, &Error{
 				Kind:    SyntaxError,
-				Message: fmt.Sprintf("Expected semicolon, found %v", self.currToken.Kind),
+				Message: fmt.Sprintf("Missing semicolon: Expected ;, found %v", self.currToken.Kind),
 				Span: Span{
 					Start: self.currToken.StartLocation,
 					End:   self.currToken.EndLocation,
