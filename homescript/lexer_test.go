@@ -1,6 +1,7 @@
 package homescript
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestLexer(t *testing.T) {
-	program, err := os.ReadFile("lexer_test.hms")
+	program, err := os.ReadFile("../test/lexer_test.hms")
 	assert.NoError(t, err)
 
 	start := time.Now()
@@ -18,6 +19,7 @@ func TestLexer(t *testing.T) {
 	lexer := newLexer("testing", string(program))
 	fmt.Printf("::INPUT::\n%s\n", program)
 
+	tokens := make([]Token, 0)
 	for {
 		current, err := lexer.nextToken()
 		if err != nil {
@@ -31,6 +33,12 @@ func TestLexer(t *testing.T) {
 		if current.Kind == Unknown {
 			t.Errorf("Found unknown token %v", current.StartLocation)
 		}
+		tokens = append(tokens, current)
 	}
 	fmt.Printf("Lex: %v\n", time.Since(start))
+	// Dump results to json file
+	dump, err := json.MarshalIndent(tokens, "", "\t")
+	assert.NoError(t, err)
+	err = os.WriteFile("../test/lexer_test.json", dump, 0755)
+	assert.NoError(t, err)
 }

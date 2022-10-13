@@ -1,6 +1,7 @@
 package homescript
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestParserLexer(t *testing.T) {
-	program, err := os.ReadFile("parser_test.hms")
+	program, err := os.ReadFile("../test/parser_test.hms")
 	assert.NoError(t, err)
 
 	start := time.Now()
@@ -36,7 +37,7 @@ func TestParserLexer(t *testing.T) {
 }
 
 func TestParser(t *testing.T) {
-	program, err := os.ReadFile("parser_test.hms")
+	program, err := os.ReadFile("../test/parser_test.hms")
 	assert.NoError(t, err)
 
 	start := time.Now()
@@ -55,5 +56,9 @@ func TestParser(t *testing.T) {
 	fmt.Printf("Lex + Parse: %v\n", time.Since(start))
 
 	spew.Dump(ast)
-
+	// Dump results to json file
+	dump, err := json.MarshalIndent(ast, "", "\t")
+	assert.NoError(t, err)
+	err = os.WriteFile("../test/parser_test.json", dump, 0755)
+	assert.NoError(t, err)
 }
