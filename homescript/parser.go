@@ -1211,7 +1211,7 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 	}
 
 	// Make optional name rewrite
-	var rewriteName *string
+	var rewriteName string
 	if self.currToken.Kind == As {
 		if err := self.advance(); err != nil {
 			return ImportStmt{}, err
@@ -1226,7 +1226,7 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 				},
 			}
 		}
-		rewriteName = &self.currToken.Value
+		rewriteName = self.currToken.Value
 		if err := self.advance(); err != nil {
 			return ImportStmt{}, err
 		}
@@ -1262,7 +1262,7 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 	}
 	return ImportStmt{
 		Function:   functionName,
-		RewriteAs:  rewriteName,
+		RewriteAs:  &rewriteName,
 		FromModule: self.prevToken.Value,
 		Range: Span{
 			Start: startLocation,
