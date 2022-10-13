@@ -301,9 +301,9 @@ func (self *parser) castExpr() (CastExpression, *Error) {
 		switch self.currToken.Kind {
 		case NullType:
 			typeCast = NullTypeName
-		case Number:
+		case NumberType:
 			typeCast = NumberTypeName
-		case String:
+		case StringType:
 			typeCast = StringTypeName
 		case BooleanType:
 			typeCast = BoolTypeName
@@ -1041,6 +1041,10 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 		for self.currToken.Kind == Comma {
 			if err := self.advance(); err != nil {
 				return AtomFunction{}, err
+			}
+			// Allow trailing comma
+			if self.currToken.Kind == RParen {
+				break
 			}
 			if self.currToken.Kind != Identifier {
 				return AtomFunction{}, &Error{
