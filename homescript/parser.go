@@ -59,6 +59,10 @@ func (self *parser) expression() (Expression, *Error) {
 
 	following := make([]AndExpression, 0)
 	for self.currToken.Kind == Or {
+		// Skip the ||
+		if err := self.advance(); err != nil {
+			return Expression{}, err
+		}
 		followingExpr, err := self.andExpr()
 		if err != nil {
 			return Expression{}, err
