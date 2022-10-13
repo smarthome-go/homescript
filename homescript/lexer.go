@@ -258,7 +258,6 @@ func (self *lexer) makeDots() Token {
 		tokenKindValue = ".."
 		self.advance()
 	} else {
-		fmt.Printf("NEXT: %c\n", *self.nextChar)
 		tokenKind = Dot
 		tokenKindValue = "."
 	}
@@ -342,7 +341,7 @@ func (self *lexer) makeAnd() (Token, *Error) {
 
 	if self.currentChar != nil && *self.currentChar == '&' {
 		token := Token{
-			Kind:          Or,
+			Kind:          And,
 			Value:         "&&",
 			StartLocation: startLocation,
 			EndLocation:   self.location,

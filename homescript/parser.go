@@ -85,6 +85,10 @@ func (self *parser) andExpr() (AndExpression, *Error) {
 
 	following := make([]EqExpression, 0)
 	for self.currToken.Kind == And {
+		// Skip &&
+		if err := self.advance(); err != nil {
+			return AndExpression{}, err
+		}
 		followingExpr, err := self.eqExpr()
 		if err != nil {
 			return AndExpression{}, err
