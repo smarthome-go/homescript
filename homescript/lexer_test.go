@@ -1,9 +1,9 @@
 package homescript
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,26 +19,26 @@ func TestLexer(t *testing.T) {
 	lexer := newLexer("testing", string(program))
 	fmt.Printf("::INPUT::\n%s\n", program)
 
-	tokens := make([]Token, 0)
+	tokens := make([]string, 0)
 	for {
 		current, err := lexer.nextToken()
 		if err != nil {
 			t.Error(err.Message)
 			return
 		}
-		fmt.Printf("(%d:%d--%d:%d) ==> %v(%v)\n", current.StartLocation.Line, current.StartLocation.Column, current.EndLocation.Line, current.EndLocation.Column, current.Kind, current.Value)
+		repr := fmt.Sprintf("(%d:%d--%d:%d) ==> %v(%v)", current.StartLocation.Line, current.StartLocation.Column, current.EndLocation.Line, current.EndLocation.Column, current.Kind, current.Value)
+		fmt.Println(repr)
 		if current.Kind == EOF {
 			break
 		}
 		if current.Kind == Unknown {
 			t.Errorf("Found unknown token %v", current.StartLocation)
 		}
-		tokens = append(tokens, current)
+		tokens = append(tokens, repr)
 	}
 	fmt.Printf("Lex: %v\n", time.Since(start))
-	// Dump results to json file
-	dump, err := json.MarshalIndent(tokens, "", "\t")
-	assert.NoError(t, err)
-	err = os.WriteFile("../test/lexer_test.json", dump, 0755)
+
+	// Dump results to file
+	err = os.WriteFile("../test/lexer_test.tokens", []byte(strings.Join(tokens, "\n")), 0755)
 	assert.NoError(t, err)
 }

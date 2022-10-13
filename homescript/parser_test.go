@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,21 +20,28 @@ func TestParserLexer(t *testing.T) {
 
 	lexer := newLexer("testing", string(program))
 
+	tokens := make([]string, 0)
 	for {
 		current, err := lexer.nextToken()
 		if err != nil {
 			t.Error(err.Message)
 			return
 		}
-		fmt.Printf("(%d:%d--%d:%d) ==> %v(%v)\n", current.StartLocation.Line, current.StartLocation.Column, current.EndLocation.Line, current.EndLocation.Column, current.Kind, current.Value)
+		repr := fmt.Sprintf("(%d:%d--%d:%d) ==> %v(%v)", current.StartLocation.Line, current.StartLocation.Column, current.EndLocation.Line, current.EndLocation.Column, current.Kind, current.Value)
+		fmt.Println(repr)
 		if current.Kind == EOF {
 			break
 		}
 		if current.Kind == Unknown {
 			t.Errorf("Found unknown token %v", current.StartLocation)
 		}
+		tokens = append(tokens, repr)
 	}
 	fmt.Printf("Lex: %v\n", time.Since(start))
+
+	// Dump results to file
+	err = os.WriteFile("../test/parser_test.tokens", []byte(strings.Join(tokens, "\n")), 0755)
+	assert.NoError(t, err)
 }
 
 func TestParser(t *testing.T) {
@@ -59,6 +67,6 @@ func TestParser(t *testing.T) {
 	// Dump results to json file
 	dump, err := json.MarshalIndent(ast, "", "\t")
 	assert.NoError(t, err)
-	err = os.WriteFile("../test/parser_test.json", dump, 0755)
+	err = os.WriteFile("../test/parser_test_ast.json", dump, 0755)
 	assert.NoError(t, err)
 }
