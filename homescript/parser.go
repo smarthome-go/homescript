@@ -1424,7 +1424,7 @@ func (self *parser) statements() ([]Statement, *Error) {
 		if self.currToken.Kind != Semicolon {
 			return nil, &Error{
 				Kind:    SyntaxError,
-				Message: fmt.Sprintf("Missing semicolon: Expected ;, found %v", self.currToken.Kind),
+				Message: fmt.Sprintf("Expected semicolon, found %v (Hint: add ';' after previous statement)", self.currToken.Kind),
 				Span: Span{
 					Start: self.currToken.StartLocation,
 					End:   self.currToken.EndLocation,
