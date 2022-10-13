@@ -1,29 +1,41 @@
+# Imports
 import foo from bar;
 import foo as bar from baz;
 
-let a = 1;
-let b = "text";
+# Assignments and data types
+let a = 3.14159265;
+a += 1;
+a -= 1;
+a *= 2;
+a /= 2;
+a **= 3;
+a %= 2;
 
+let b = "text";
+let c = false;
+
+# Loops
 loop {
     continue;
 };
 
 for i in 0..10 {
     let c = 1;
+    break c;
 };
 
 while true {
     break;
 };
 
-while false {
+while 1 < 10 {
     break 1;
 };
 
+# Functions
 fn test(input) {
     print();
 };
-
 test();
 
 fn test1() {
@@ -38,42 +50,34 @@ fn test2(
 ) {
     return long_a + long_b + long_c;
 };
-
 test2(
     1,
     2,
     "key" => 3,
 );
 
-#weather().temp;
-#builtin.weather().temp.avg();
+# Members
+print(ARGS.key);
+weather.temp();
+builtin.weather().climate.into_human_readable();
 
-# try {
-# throws_err();
-# } catch err {
-# print(err);
-# };
+# Simple control flow
+try {
+    throws_err();
+} catch err {
+    print(err);
+};
 
-# Expressions
-# true || false; false || true;
-# true && false; true && true;
- 1 == 1; 1 !== 2;
- 1 < 2; 1 <= 2;
- 3 > 2; 3 >= 2;
- 1 + 1; 2 - 1;
- 2 * 1; 2 / 1; 4 % 2;
- 1 as str; 0 as bool; false as str;
- -----1; +-+2;
- 2 ** 3;
- 1 * (-1 + 2) % 5;
+# Different kinds of expressions
+true || false; false || true;      # Or expr
+true && false; true && true;       # And expr
+1 == 1; 1 !== 2;                   # Eq expr
+1 < 2; 1 <= 2;                     # Rel expr (less)
+3 > 2; 3 >= 2;                     # Rel expr (greater)
+1 + 1; 2 - 1;                      # Add expr
+2 * 1; 2 / 1; 4 % 2;               # Mul expr
+1 as str; 0 as bool; false as str; # Cast expr
+-----1; +-+2;                      # Unary expr
+2 ** 3;                            # Exp expr
 
-# Assignments
-let a = 1;
-a += 1;
-a -= 1;
-a *= 2;
-a /= 2;
-a **= 3;
-a %= 2;
-
-true && false;
+1 * (-1 + 2) % 5;                  # Combined
