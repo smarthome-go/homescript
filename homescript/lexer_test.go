@@ -17,7 +17,6 @@ func TestLexer(t *testing.T) {
 	start := time.Now()
 
 	lexer := newLexer("testing", string(program))
-	fmt.Printf("::INPUT::\n%s\n", program)
 
 	tokens := make([]string, 0)
 	for {
@@ -27,7 +26,6 @@ func TestLexer(t *testing.T) {
 			return
 		}
 		repr := fmt.Sprintf("(%d:%d--%d:%d) ==> %v(%v)", current.StartLocation.Line, current.StartLocation.Column, current.EndLocation.Line, current.EndLocation.Column, current.Kind, current.Value)
-		fmt.Println(repr)
 		if current.Kind == EOF {
 			break
 		}
