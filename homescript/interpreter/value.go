@@ -351,8 +351,7 @@ func (self ValueFunction) IsEqual(_ Executor, span errors.Span, other Value) (bo
 
 // Builtin function value
 type ValueBuiltinFunction struct {
-	Identifier string
-	Callback   func(executor Executor, span errors.Span, args ...Value) (Value, *errors.Error)
+	Callback func(executor Executor, span errors.Span, args ...Value) (Value, *errors.Error)
 }
 
 func (self ValueBuiltinFunction) Type() ValueType { return BuiltinFunction }
@@ -373,7 +372,7 @@ func (self ValueBuiltinFunction) IsEqual(executor Executor, span errors.Span, ot
 			errors.TypeError,
 		)
 	}
-	return self.Identifier == other.(ValueFunction).Identifier, nil
+	return false, nil
 }
 
 // Builtin variable value
