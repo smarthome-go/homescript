@@ -1,4 +1,4 @@
-package homescript
+package errors
 
 // All ranges inclusive
 type Span struct {
@@ -22,9 +22,13 @@ type ErrorKind uint8
 
 const (
 	SyntaxError ErrorKind = iota
+	TypeError
+	RuntimeError
+	ValueError
+	ThrowError
 )
 
-func newError(span Span, message string, kind ErrorKind) *Error {
+func NewError(span Span, message string, kind ErrorKind) *Error {
 	return &Error{
 		Span:    span,
 		Message: message,

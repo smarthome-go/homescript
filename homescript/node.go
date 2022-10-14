@@ -1,5 +1,7 @@
 package homescript
 
+import "github.com/smarthome-go/homescript/homescript/errors"
+
 type Block []Statement
 
 // ///// Statements ///////
@@ -35,58 +37,58 @@ func (self StatementKind) String() string {
 
 type Statement interface {
 	Kind() StatementKind
-	Span() Span
+	Span() errors.Span
 }
 
 type LetStmt struct {
 	Left  string
 	Right Expression
-	Range Span
+	Range errors.Span
 }
 
 func (self LetStmt) Kind() StatementKind { return LetStmtKind }
-func (self LetStmt) Span() Span          { return self.Range }
+func (self LetStmt) Span() errors.Span   { return self.Range }
 
 type ImportStmt struct {
 	Function   string  // import `foo`
 	RewriteAs  *string // as `bar`
 	FromModule string  // from `baz`
-	Range      Span
+	Range      errors.Span
 }
 
 func (self ImportStmt) Kind() StatementKind { return ImportStmtKind }
-func (self ImportStmt) Span() Span          { return self.Range }
+func (self ImportStmt) Span() errors.Span   { return self.Range }
 
 type BreakStmt struct {
 	Expression *Expression // Can be the return value of the loop
-	Range      Span
+	Range      errors.Span
 }
 
 func (self BreakStmt) Kind() StatementKind { return BreakStmtKind }
-func (self BreakStmt) Span() Span          { return self.Range }
+func (self BreakStmt) Span() errors.Span   { return self.Range }
 
 type ContinueStmt struct {
-	Range Span
+	Range errors.Span
 }
 
 func (self ContinueStmt) Kind() StatementKind { return ContinueStmtKind }
-func (self ContinueStmt) Span() Span          { return self.Range }
+func (self ContinueStmt) Span() errors.Span   { return self.Range }
 
 type ReturnStmt struct {
 	Expression *Expression // Can be the return value of the function
-	Range      Span
+	Range      errors.Span
 }
 
 func (self ReturnStmt) Kind() StatementKind { return ReturnStmtKind }
-func (self ReturnStmt) Span() Span          { return self.Range }
+func (self ReturnStmt) Span() errors.Span   { return self.Range }
 
 type ExpressionStmt struct {
 	Expression Expression
-	Range      Span
+	Range      errors.Span
 }
 
 func (self ExpressionStmt) Kind() StatementKind { return ExpressionStmtKind }
-func (self ExpressionStmt) Span() Span          { return self.Range }
+func (self ExpressionStmt) Span() errors.Span   { return self.Range }
 
 /////// Expressions ///////
 
@@ -97,14 +99,14 @@ type Expression OrExpression
 type OrExpression struct {
 	Base      AndExpression
 	Following []AndExpression
-	Span      Span
+	Span      errors.Span
 }
 
 // And expression
 type AndExpression struct {
 	Base      EqExpression
 	Following []EqExpression
-	Span      Span
+	Span      errors.Span
 }
 
 // Equality expression
@@ -115,7 +117,7 @@ type EqExpression struct {
 		Inverted bool
 		Other    RelExpression
 	}
-	Span Span
+	Span errors.Span
 }
 
 // Relational expression
@@ -125,7 +127,7 @@ type RelExpression struct {
 		RelOperator RelOperator
 		Other       AddExpression
 	}
-	Span Span
+	Span errors.Span
 }
 
 type RelOperator uint8
@@ -144,7 +146,7 @@ type AddExpression struct {
 		AddOperator AddOperator
 		Other       MulExpression
 	}
-	Span Span
+	Span errors.Span
 }
 
 type AddOperator uint8
@@ -161,7 +163,7 @@ type MulExpression struct {
 		MulOperator MulOperator
 		Other       CastExpression
 	}
-	Span Span
+	Span errors.Span
 }
 
 type MulOperator uint8
@@ -176,7 +178,7 @@ const (
 type CastExpression struct {
 	Base  UnaryExpression
 	Other *TypeName // Casting is optional, otherwise, just the base is used
-	Span  Span
+	Span  errors.Span
 }
 
 type TypeName uint8
@@ -198,7 +200,7 @@ type UnaryExpression struct {
 		UnaryExpression UnaryExpression
 	}
 	ExpExpression *ExpExpression
-	Span          Span
+	Span          errors.Span
 }
 
 type UnaryOp uint8
@@ -213,7 +215,7 @@ const (
 type ExpExpression struct {
 	Base  AssignExpression
 	Other *UnaryExpression
-	Span  Span
+	Span  errors.Span
 }
 
 // Assign expression
@@ -223,7 +225,7 @@ type AssignExpression struct {
 		Operator   AssignOperator
 		Expression Expression
 	}
-	Span Span
+	Span errors.Span
 }
 
 type AssignOperator uint8
@@ -243,7 +245,7 @@ type CallExpression struct {
 	Base  MemberExpression
 	Args  []Expression
 	Parts []CallExprPart // Allows chaining of function calls ( like foo()()() )
-	Span  Span
+	Span  errors.Span
 }
 
 // If member expr part is nil, args is used
@@ -251,14 +253,14 @@ type CallExpression struct {
 type CallExprPart struct {
 	MemberExpressionPart *string       // Optional: `.identifier`
 	Args                 *[]Expression // Optional: (arg1, arg2) to call the function
-	Span                 Span
+	Span                 errors.Span
 }
 
 // Member expression
 type MemberExpression struct {
 	Base    Atom
 	Members []string // Each member is an identifier 'foo.bar.baz' where `foo` is the base and `bar` and `baz` are the members
-	Span    Span
+	Span    errors.Span
 }
 
 ///////////// ATOM /////////////
@@ -284,71 +286,71 @@ const (
 
 type Atom interface {
 	Kind() AtomKind
-	Span() Span
+	Span() errors.Span
 }
 
 // Number
 type AtomNumber struct {
 	Num   float64
-	Range Span
+	Range errors.Span
 }
 
-func (self AtomNumber) Kind() AtomKind { return AtomKindNumber }
-func (self AtomNumber) Span() Span     { return self.Range }
+func (self AtomNumber) Kind() AtomKind    { return AtomKindNumber }
+func (self AtomNumber) Span() errors.Span { return self.Range }
 
 // String
 type AtomString struct {
 	Content string
-	Range   Span
+	Range   errors.Span
 }
 
-func (self AtomString) Kind() AtomKind { return AtomKindString }
-func (self AtomString) Span() Span     { return self.Range }
+func (self AtomString) Kind() AtomKind    { return AtomKindString }
+func (self AtomString) Span() errors.Span { return self.Range }
 
 // Boolean
 type AtomBoolean struct {
 	Value bool
-	Range Span
+	Range errors.Span
 }
 
-func (self AtomBoolean) Kind() AtomKind { return AtomKindBoolean }
-func (self AtomBoolean) Span() Span     { return self.Range }
+func (self AtomBoolean) Kind() AtomKind    { return AtomKindBoolean }
+func (self AtomBoolean) Span() errors.Span { return self.Range }
 
 // Identifier
 type AtomIdentifier struct {
 	Identifier string
-	Range      Span
+	Range      errors.Span
 }
 
-func (self AtomIdentifier) Kind() AtomKind { return AtomKindIdentifier }
-func (self AtomIdentifier) Span() Span     { return self.Range }
+func (self AtomIdentifier) Kind() AtomKind    { return AtomKindIdentifier }
+func (self AtomIdentifier) Span() errors.Span { return self.Range }
 
 // Pair
 type AtomPair struct {
 	Key       string
 	ValueExpr Expression
-	Range     Span
+	Range     errors.Span
 }
 
-func (self AtomPair) Kind() AtomKind { return AtomKindPair }
-func (self AtomPair) Span() Span     { return self.Range }
+func (self AtomPair) Kind() AtomKind    { return AtomKindPair }
+func (self AtomPair) Span() errors.Span { return self.Range }
 
 // Null
 type AtomNull struct{}
 
-func (self AtomNull) Kind() AtomKind { return AtomKindNull }
-func (self AtomNull) Span() Span     { return Span{} }
+func (self AtomNull) Kind() AtomKind    { return AtomKindNull }
+func (self AtomNull) Span() errors.Span { return errors.Span{} }
 
 type IfExpr struct {
 	Condition  Expression
 	Block      Block   // To be executed if condition is true
 	ElseBlock  *Block  // Optional (else {...})
 	ElseIfExpr *IfExpr // Optional (else if ... {...})
-	Range      Span
+	Range      errors.Span
 }
 
-func (self IfExpr) Kind() AtomKind { return AtomKindIfExpr }
-func (self IfExpr) Span() Span     { return self.Range }
+func (self IfExpr) Kind() AtomKind    { return AtomKindIfExpr }
+func (self IfExpr) Span() errors.Span { return self.Range }
 
 // For loop
 type AtomFor struct {
@@ -356,58 +358,58 @@ type AtomFor struct {
 	RangeLowerExpr Expression
 	RangeUpperExpr Expression
 	IterationCode  Block
-	Range          Span
+	Range          errors.Span
 }
 
-func (self AtomFor) Kind() AtomKind { return AtomKindForExpr }
-func (self AtomFor) Span() Span     { return self.Range }
+func (self AtomFor) Kind() AtomKind    { return AtomKindForExpr }
+func (self AtomFor) Span() errors.Span { return self.Range }
 
 // While loop
 type AtomWhile struct {
 	HeadCondition Expression
 	IterationCode Block
-	Range         Span
+	Range         errors.Span
 }
 
-func (self AtomWhile) Kind() AtomKind { return AtomKindWhileExpr }
-func (self AtomWhile) Span() Span     { return self.Range }
+func (self AtomWhile) Kind() AtomKind    { return AtomKindWhileExpr }
+func (self AtomWhile) Span() errors.Span { return self.Range }
 
 // Loop expression
 type AtomLoop struct {
 	IterationCode Block
-	Range         Span
+	Range         errors.Span
 }
 
-func (self AtomLoop) Kind() AtomKind { return AtomKindLoopExpr }
-func (self AtomLoop) Span() Span     { return self.Range }
+func (self AtomLoop) Kind() AtomKind    { return AtomKindLoopExpr }
+func (self AtomLoop) Span() errors.Span { return self.Range }
 
 // Function declaration
 type AtomFunction struct {
 	Name           string
 	ArgIdentifiers []string
 	Body           Block
-	Range          Span
+	Range          errors.Span
 }
 
-func (self AtomFunction) Kind() AtomKind { return AtomKindFnExpr }
-func (self AtomFunction) Span() Span     { return self.Range }
+func (self AtomFunction) Kind() AtomKind    { return AtomKindFnExpr }
+func (self AtomFunction) Span() errors.Span { return self.Range }
 
 // Try expression
 type AtomTry struct {
 	TryBlock        Block
 	ErrorIdentifier string
 	CatchBlock      Block
-	Range           Span
+	Range           errors.Span
 }
 
-func (self AtomTry) Kind() AtomKind { return AtomKindTryExpr }
-func (self AtomTry) Span() Span     { return self.Range }
+func (self AtomTry) Kind() AtomKind    { return AtomKindTryExpr }
+func (self AtomTry) Span() errors.Span { return self.Range }
 
 // Atom Expression
 type AtomExpression struct {
 	Expression Expression
-	Range      Span
+	Range      errors.Span
 }
 
-func (self AtomExpression) Kind() AtomKind { return AtomKindExpression }
-func (self AtomExpression) Span() Span     { return self.Range }
+func (self AtomExpression) Kind() AtomKind    { return AtomKindExpression }
+func (self AtomExpression) Span() errors.Span { return self.Range }

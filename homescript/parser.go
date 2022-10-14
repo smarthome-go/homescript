@@ -3,6 +3,8 @@ package homescript
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/smarthome-go/homescript/homescript/errors"
 )
 
 // A list of possible tokens which can start an expression
@@ -28,19 +30,19 @@ type parser struct {
 	lexer     lexer
 	prevToken Token
 	currToken Token
-	errors    []Error
+	errors    []errors.Error
 }
 
 func newParser(filename string, program string) parser {
 	return parser{
 		lexer:     newLexer(filename, program),
-		prevToken: unknownToken(Location{}),
-		currToken: unknownToken(Location{}),
-		errors:    make([]Error, 0),
+		prevToken: unknownToken(errors.Location{}),
+		currToken: unknownToken(errors.Location{}),
+		errors:    make([]errors.Error, 0),
 	}
 }
 
-func (self *parser) advance() *Error {
+func (self *parser) advance() *errors.Error {
 	next, err := self.lexer.nextToken()
 	if err != nil {
 		return err
@@ -50,7 +52,7 @@ func (self *parser) advance() *Error {
 	return nil
 }
 
-func (self *parser) expression() (Expression, *Error) {
+func (self *parser) expression() (Expression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.andExpr()
 	if err != nil {
@@ -73,14 +75,14 @@ func (self *parser) expression() (Expression, *Error) {
 	return Expression{
 		Base:      base,
 		Following: following,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.prevToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) andExpr() (AndExpression, *Error) {
+func (self *parser) andExpr() (AndExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.eqExpr()
 	if err != nil {
@@ -103,14 +105,14 @@ func (self *parser) andExpr() (AndExpression, *Error) {
 	return AndExpression{
 		Base:      base,
 		Following: following,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.prevToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) eqExpr() (EqExpression, *Error) {
+func (self *parser) eqExpr() (EqExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.relExpr()
 	if err != nil {
@@ -134,7 +136,7 @@ func (self *parser) eqExpr() (EqExpression, *Error) {
 				Inverted: isInverted,
 				Other:    other,
 			},
-			Span: Span{
+			Span: errors.Span{
 				Start: startLocation,
 				End:   self.prevToken.EndLocation,
 			},
@@ -143,14 +145,14 @@ func (self *parser) eqExpr() (EqExpression, *Error) {
 	return EqExpression{
 		Base:  RelExpression{},
 		Other: nil,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.prevToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) relExpr() (RelExpression, *Error) {
+func (self *parser) relExpr() (RelExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.addExpr()
 	if err != nil {
@@ -172,7 +174,7 @@ func (self *parser) relExpr() (RelExpression, *Error) {
 		return RelExpression{
 			Base:  base,
 			Other: nil,
-			Span: Span{
+			Span: errors.Span{
 				Start: startLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -194,11 +196,14 @@ func (self *parser) relExpr() (RelExpression, *Error) {
 			RelOperator: otherOp,
 			Other:       other,
 		},
-		Span: Span{},
+		Span: errors.Span{
+			Start: startLocation,
+			End:   self.prevToken.EndLocation,
+		},
 	}, nil
 }
 
-func (self *parser) addExpr() (AddExpression, *Error) {
+func (self *parser) addExpr() (AddExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.mulExpr()
 	if err != nil {
@@ -237,14 +242,14 @@ func (self *parser) addExpr() (AddExpression, *Error) {
 	return AddExpression{
 		Base:      base,
 		Following: following,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) mulExpr() (MulExpression, *Error) {
+func (self *parser) mulExpr() (MulExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.castExpr()
 	if err != nil {
@@ -287,14 +292,14 @@ func (self *parser) mulExpr() (MulExpression, *Error) {
 	return MulExpression{
 		Base:      base,
 		Following: following,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) castExpr() (CastExpression, *Error) {
+func (self *parser) castExpr() (CastExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.unaryExpr()
 	if err != nil {
@@ -316,10 +321,10 @@ func (self *parser) castExpr() (CastExpression, *Error) {
 		case BooleanType:
 			typeCast = BoolTypeName
 		default:
-			return CastExpression{}, &Error{
-				Kind:    SyntaxError,
+			return CastExpression{}, &errors.Error{
+				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Typecast requires a valid type: expected type name, found %v", self.currToken.Kind),
-				Span: Span{
+				Span: errors.Span{
 					Start: self.prevToken.StartLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -331,7 +336,7 @@ func (self *parser) castExpr() (CastExpression, *Error) {
 		return CastExpression{
 			Base:  base,
 			Other: &typeCast,
-			Span: Span{
+			Span: errors.Span{
 				Start: startLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -340,14 +345,14 @@ func (self *parser) castExpr() (CastExpression, *Error) {
 	return CastExpression{
 		Base:  base,
 		Other: nil,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) unaryExpr() (UnaryExpression, *Error) {
+func (self *parser) unaryExpr() (UnaryExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	// Make unary expr again (use prefix)
 	if self.currToken.Kind == Plus || self.currToken.Kind == Minus || self.currToken.Kind == Not {
@@ -378,7 +383,7 @@ func (self *parser) unaryExpr() (UnaryExpression, *Error) {
 				UnaryExpression: base,
 			},
 			ExpExpression: nil,
-			Span: Span{
+			Span: errors.Span{
 				Start: startLocation,
 				End:   self.prevToken.EndLocation,
 			},
@@ -391,14 +396,14 @@ func (self *parser) unaryExpr() (UnaryExpression, *Error) {
 	return UnaryExpression{
 		UnaryExpression: nil,
 		ExpExpression:   &expr,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.prevToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) expExpr() (ExpExpression, *Error) {
+func (self *parser) expExpr() (ExpExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.assignExpr()
 	if err != nil {
@@ -415,7 +420,7 @@ func (self *parser) expExpr() (ExpExpression, *Error) {
 		return ExpExpression{
 			Base:  base,
 			Other: &unary,
-			Span: Span{
+			Span: errors.Span{
 				Start: startLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -424,14 +429,14 @@ func (self *parser) expExpr() (ExpExpression, *Error) {
 	return ExpExpression{
 		Base:  base,
 		Other: nil,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) assignExpr() (AssignExpression, *Error) {
+func (self *parser) assignExpr() (AssignExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.callExpr()
 	if err != nil {
@@ -458,7 +463,7 @@ func (self *parser) assignExpr() (AssignExpression, *Error) {
 		return AssignExpression{
 			Base:  base,
 			Other: nil,
-			Span: Span{
+			Span: errors.Span{
 				Start: startLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -480,14 +485,14 @@ func (self *parser) assignExpr() (AssignExpression, *Error) {
 			Operator:   assignOp,
 			Expression: assignExpr,
 		},
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) callExpr() (CallExpression, *Error) {
+func (self *parser) callExpr() (CallExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.memberExpr()
 	if err != nil {
@@ -515,14 +520,14 @@ func (self *parser) callExpr() (CallExpression, *Error) {
 		Base:  base,
 		Args:  callArgs,
 		Parts: optParts,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) argsOrCallExprPart() ([]CallExprPart, *Error) {
+func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 	var parts []CallExprPart = nil
 	for self.currToken.Kind != EOF {
 		startLocation := self.currToken.StartLocation
@@ -536,7 +541,7 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *Error) {
 			parts = append(parts, CallExprPart{
 				MemberExpressionPart: nil,
 				Args:                 &argsItem,
-				Span: Span{
+				Span: errors.Span{
 					Start: startLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -547,10 +552,10 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *Error) {
 				return nil, err
 			}
 			if self.currToken.Kind != Identifier {
-				return nil, &Error{
-					Kind:    SyntaxError,
+				return nil, &errors.Error{
+					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-					Span: Span{
+					Span: errors.Span{
 						Start: self.currToken.StartLocation,
 						End:   self.currToken.EndLocation,
 					},
@@ -559,7 +564,7 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *Error) {
 			parts = append(parts, CallExprPart{
 				MemberExpressionPart: &self.currToken.Value,
 				Args:                 nil,
-				Span: Span{
+				Span: errors.Span{
 					Start: startLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -574,7 +579,7 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *Error) {
 	return parts, nil
 }
 
-func (self *parser) args() ([]Expression, *Error) {
+func (self *parser) args() ([]Expression, *errors.Error) {
 	callArgs := make([]Expression, 0)
 	// Skip opening brace
 	if err := self.advance(); err != nil {
@@ -596,10 +601,10 @@ func (self *parser) args() ([]Expression, *Error) {
 	}
 
 	if !makeExpr {
-		return nil, &Error{
-			Kind:    SyntaxError,
+		return nil, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Unclosed function call: Expected %v, found %v", RParen, self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -629,10 +634,10 @@ func (self *parser) args() ([]Expression, *Error) {
 	}
 
 	if self.currToken.Kind != RParen {
-		return nil, &Error{
-			Kind:    SyntaxError,
+		return nil, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Unclosed function call: Expected %v, found %v", RParen, self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -644,7 +649,7 @@ func (self *parser) args() ([]Expression, *Error) {
 	return callArgs, nil
 }
 
-func (self *parser) memberExpr() (MemberExpression, *Error) {
+func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	base, err := self.atom()
 	if err != nil {
@@ -656,10 +661,10 @@ func (self *parser) memberExpr() (MemberExpression, *Error) {
 			return MemberExpression{}, err
 		}
 		if self.currToken.Kind != Identifier {
-			return MemberExpression{}, &Error{
-				Kind:    SyntaxError,
+			return MemberExpression{}, &errors.Error{
+				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-				Span: Span{
+				Span: errors.Span{
 					Start: self.currToken.StartLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -673,14 +678,14 @@ func (self *parser) memberExpr() (MemberExpression, *Error) {
 	return MemberExpression{
 		Base:    base,
 		Members: members,
-		Span: Span{
+		Span: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) atom() (Atom, *Error) {
+func (self *parser) atom() (Atom, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	switch self.currToken.Kind {
 	case Number:
@@ -693,7 +698,7 @@ func (self *parser) atom() (Atom, *Error) {
 		}
 		return AtomNumber{
 			Num: float64(number),
-			Range: Span{
+			Range: errors.Span{
 				Start: startLocation,
 				End:   self.prevToken.EndLocation,
 			},
@@ -705,7 +710,7 @@ func (self *parser) atom() (Atom, *Error) {
 		}
 		return AtomBoolean{
 			Value: boolValue,
-			Range: Span{
+			Range: errors.Span{
 				Start: startLocation,
 				End:   self.prevToken.EndLocation,
 			},
@@ -727,7 +732,7 @@ func (self *parser) atom() (Atom, *Error) {
 			return AtomPair{
 				Key:       pairKey,
 				ValueExpr: pairValueExpr,
-				Range: Span{
+				Range: errors.Span{
 					Start: startLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -736,7 +741,7 @@ func (self *parser) atom() (Atom, *Error) {
 		// Atom is not a pair but a string
 		return AtomString{
 			Content: self.prevToken.Value,
-			Range: Span{
+			Range: errors.Span{
 				Start: startLocation,
 				End:   self.prevToken.EndLocation,
 			},
@@ -747,7 +752,7 @@ func (self *parser) atom() (Atom, *Error) {
 		}
 		return AtomIdentifier{
 			Identifier: self.prevToken.Value,
-			Range: Span{
+			Range: errors.Span{
 				Start: startLocation,
 				End:   self.prevToken.EndLocation,
 			},
@@ -776,10 +781,10 @@ func (self *parser) atom() (Atom, *Error) {
 		}
 		// Check and  skip closing paranthesis
 		if self.currToken.Kind != RParen {
-			return nil, &Error{
-				Kind:    SyntaxError,
+			return nil, &errors.Error{
+				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Unclosed nested expression: expected %v, found %v", RParen, self.currToken.Kind),
-				Span: Span{
+				Span: errors.Span{
 					Start: self.currToken.StartLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -790,7 +795,7 @@ func (self *parser) atom() (Atom, *Error) {
 		}
 		return AtomExpression{
 			Expression: nestedExpr,
-			Range: Span{
+			Range: errors.Span{
 				Start: startLocation,
 				End:   self.prevToken.EndLocation,
 			},
@@ -799,7 +804,7 @@ func (self *parser) atom() (Atom, *Error) {
 	return nil, nil
 }
 
-func (self *parser) ifExpr() (IfExpr, *Error) {
+func (self *parser) ifExpr() (IfExpr, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	if err := self.advance(); err != nil {
 		return IfExpr{}, err
@@ -832,7 +837,7 @@ func (self *parser) ifExpr() (IfExpr, *Error) {
 				Block:      block,
 				ElseBlock:  nil,
 				ElseIfExpr: &elseIfExpr,
-				Range: Span{
+				Range: errors.Span{
 					Start: startLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -849,7 +854,7 @@ func (self *parser) ifExpr() (IfExpr, *Error) {
 			Block:      block,
 			ElseBlock:  &elseBlock,
 			ElseIfExpr: nil,
-			Range: Span{
+			Range: errors.Span{
 				Start: startLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -861,23 +866,23 @@ func (self *parser) ifExpr() (IfExpr, *Error) {
 		Block:      block,
 		ElseBlock:  nil,
 		ElseIfExpr: nil,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) forExpr() (AtomFor, *Error) {
+func (self *parser) forExpr() (AtomFor, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	if err := self.advance(); err != nil {
 		return AtomFor{}, err
 	}
 	if self.currToken.Kind != Identifier {
-		return AtomFor{}, &Error{
-			Kind:    SyntaxError,
+		return AtomFor{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -890,10 +895,10 @@ func (self *parser) forExpr() (AtomFor, *Error) {
 
 	// Make in
 	if self.currToken.Kind != In {
-		return AtomFor{}, &Error{
-			Kind:    SyntaxError,
+		return AtomFor{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected %v, found %v", In, self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -909,10 +914,10 @@ func (self *parser) forExpr() (AtomFor, *Error) {
 		return AtomFor{}, err
 	}
 	if self.currToken.Kind != Range {
-		return AtomFor{}, &Error{
-			Kind:    SyntaxError,
+		return AtomFor{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected range (%v), found %v", Range, self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -936,14 +941,14 @@ func (self *parser) forExpr() (AtomFor, *Error) {
 		RangeLowerExpr: rangeLowerExpr,
 		RangeUpperExpr: rangeUpperExpr,
 		IterationCode:  iterationBlock,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) whileExpr() (AtomWhile, *Error) {
+func (self *parser) whileExpr() (AtomWhile, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	if err := self.advance(); err != nil {
 		return AtomWhile{}, err
@@ -961,14 +966,14 @@ func (self *parser) whileExpr() (AtomWhile, *Error) {
 	return AtomWhile{
 		HeadCondition: conditionExpr,
 		IterationCode: iterationBlock,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) loopExpr() (AtomLoop, *Error) {
+func (self *parser) loopExpr() (AtomLoop, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	if err := self.advance(); err != nil {
 		return AtomLoop{}, err
@@ -979,14 +984,14 @@ func (self *parser) loopExpr() (AtomLoop, *Error) {
 	}
 	return AtomLoop{
 		IterationCode: iterationBlock,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) fnExpr() (AtomFunction, *Error) {
+func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	// Skip fn
 	if err := self.advance(); err != nil {
@@ -995,10 +1000,10 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 
 	// Make function identifier
 	if self.currToken.Kind != Identifier {
-		return AtomFunction{}, &Error{
-			Kind:    SyntaxError,
+		return AtomFunction{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1011,10 +1016,10 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 
 	// Expect Lparen (
 	if self.currToken.Kind != LParen {
-		return AtomFunction{}, &Error{
-			Kind:    SyntaxError,
+		return AtomFunction{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected (, found %v", self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1031,10 +1036,10 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 	if self.currToken.Kind != RParen {
 		// Add initial argument
 		if self.currToken.Kind != Identifier {
-			return AtomFunction{}, &Error{
-				Kind:    SyntaxError,
+			return AtomFunction{}, &errors.Error{
+				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-				Span: Span{
+				Span: errors.Span{
 					Start: self.currToken.StartLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -1055,10 +1060,10 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 				break
 			}
 			if self.currToken.Kind != Identifier {
-				return AtomFunction{}, &Error{
-					Kind:    SyntaxError,
+				return AtomFunction{}, &errors.Error{
+					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-					Span: Span{
+					Span: errors.Span{
 						Start: self.currToken.StartLocation,
 						End:   self.currToken.EndLocation,
 					},
@@ -1075,10 +1080,10 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 		}
 
 		if self.currToken.Kind != RParen {
-			return AtomFunction{}, &Error{
-				Kind:    SyntaxError,
+			return AtomFunction{}, &errors.Error{
+				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Expected %v, found %v", RParen, self.currToken.Kind),
-				Span: Span{
+				Span: errors.Span{
 					Start: self.currToken.StartLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -1099,14 +1104,14 @@ func (self *parser) fnExpr() (AtomFunction, *Error) {
 		Name:           functionName,
 		ArgIdentifiers: args,
 		Body:           functionBlock,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) tryExpr() (AtomTry, *Error) {
+func (self *parser) tryExpr() (AtomTry, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	if err := self.advance(); err != nil {
 		return AtomTry{}, err
@@ -1116,10 +1121,10 @@ func (self *parser) tryExpr() (AtomTry, *Error) {
 		return AtomTry{}, err
 	}
 	if self.currToken.Kind != Catch {
-		return AtomTry{}, &Error{
-			Kind:    SyntaxError,
+		return AtomTry{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected %v, found %v", Catch, self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1140,14 +1145,14 @@ func (self *parser) tryExpr() (AtomTry, *Error) {
 		TryBlock:        tryBlock,
 		ErrorIdentifier: catchIdentifier,
 		CatchBlock:      catchBlock,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) letStmt() (LetStmt, *Error) {
+func (self *parser) letStmt() (LetStmt, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	// Skip the `let`
 	if err := self.advance(); err != nil {
@@ -1155,10 +1160,10 @@ func (self *parser) letStmt() (LetStmt, *Error) {
 	}
 
 	if self.currToken.Kind != Identifier {
-		return LetStmt{}, &Error{
-			Kind: SyntaxError,
+		return LetStmt{}, &errors.Error{
+			Kind: errors.SyntaxError,
 
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1171,10 +1176,10 @@ func (self *parser) letStmt() (LetStmt, *Error) {
 	}
 
 	if self.currToken.Kind != Assign {
-		return LetStmt{}, &Error{
-			Kind:    SyntaxError,
+		return LetStmt{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected assignment operator '=', found %v", self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1192,14 +1197,14 @@ func (self *parser) letStmt() (LetStmt, *Error) {
 	return LetStmt{
 		Left:  assignIdentifier,
 		Right: assignExpression,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) importStmt() (ImportStmt, *Error) {
+func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	// Skip the `import`
 	if err := self.advance(); err != nil {
@@ -1209,10 +1214,10 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 	// Make the import function name
 	functionName := self.currToken.Value
 	if self.currToken.Kind != Identifier {
-		return ImportStmt{}, &Error{
-			Kind:    SyntaxError,
+		return ImportStmt{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1229,10 +1234,10 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 			return ImportStmt{}, err
 		}
 		if self.currToken.Kind != Identifier {
-			return ImportStmt{}, &Error{
-				Kind:    SyntaxError,
+			return ImportStmt{}, &errors.Error{
+				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-				Span: Span{
+				Span: errors.Span{
 					Start: self.currToken.StartLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -1246,10 +1251,10 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 	}
 
 	if self.currToken.Kind != From {
-		return ImportStmt{}, &Error{
-			Kind:    SyntaxError,
+		return ImportStmt{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected 'from', found %v", self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1261,10 +1266,10 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 
 	// Make target module name
 	if self.currToken.Kind != Identifier {
-		return ImportStmt{}, &Error{
-			Kind:    SyntaxError,
+		return ImportStmt{}, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1277,14 +1282,14 @@ func (self *parser) importStmt() (ImportStmt, *Error) {
 		Function:   functionName,
 		RewriteAs:  rewriteName,
 		FromModule: self.prevToken.Value,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.prevToken.EndLocation,
 		},
 	}, nil
 }
 
-func (self *parser) breakStmt() (BreakStmt, *Error) {
+func (self *parser) breakStmt() (BreakStmt, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	// Skip the break
 	if err := self.advance(); err != nil {
@@ -1308,7 +1313,7 @@ func (self *parser) breakStmt() (BreakStmt, *Error) {
 	}
 	breakStmt := BreakStmt{
 		Expression: additionalExpr,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
@@ -1316,9 +1321,9 @@ func (self *parser) breakStmt() (BreakStmt, *Error) {
 	return breakStmt, nil
 }
 
-func (self *parser) continueStmt() (ContinueStmt, *Error) {
+func (self *parser) continueStmt() (ContinueStmt, *errors.Error) {
 	continueStmt := ContinueStmt{
-		Range: Span{
+		Range: errors.Span{
 			Start: self.currToken.StartLocation,
 			End:   self.currToken.EndLocation,
 		},
@@ -1329,7 +1334,7 @@ func (self *parser) continueStmt() (ContinueStmt, *Error) {
 	return continueStmt, nil
 }
 
-func (self *parser) returnStmt() (ReturnStmt, *Error) {
+func (self *parser) returnStmt() (ReturnStmt, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	if err := self.advance(); err != nil {
 		return ReturnStmt{}, err
@@ -1352,7 +1357,7 @@ func (self *parser) returnStmt() (ReturnStmt, *Error) {
 	}
 	returnStmt := ReturnStmt{
 		Expression: additionalExpr,
-		Range: Span{
+		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
@@ -1360,7 +1365,7 @@ func (self *parser) returnStmt() (ReturnStmt, *Error) {
 	return returnStmt, nil
 }
 
-func (self *parser) statement() (Statement, *Error) {
+func (self *parser) statement() (Statement, *errors.Error) {
 	switch self.currToken.Kind {
 	case Let:
 		return self.letStmt()
@@ -1390,10 +1395,10 @@ func (self *parser) statement() (Statement, *Error) {
 				Range:      expr.Span,
 			}, nil
 		}
-		return nil, &Error{
-			Kind:    SyntaxError,
+		return nil, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Invalid expression: expected one of the tokens 'let', 'import', 'break', 'continue', 'return', found %v", self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1401,7 +1406,7 @@ func (self *parser) statement() (Statement, *Error) {
 	}
 }
 
-func (self *parser) statements() ([]Statement, *Error) {
+func (self *parser) statements() ([]Statement, *errors.Error) {
 	statements := make([]Statement, 0)
 
 	// If statements is invoked in an empty block or at the end of the file, quit immediately
@@ -1422,10 +1427,10 @@ func (self *parser) statements() ([]Statement, *Error) {
 		statements = append(statements, statement)
 
 		if self.currToken.Kind != Semicolon {
-			return nil, &Error{
-				Kind:    SyntaxError,
+			return nil, &errors.Error{
+				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Expected semicolon, found %v (Hint: add ';' after previous statement)", self.currToken.Kind),
-				Span: Span{
+				Span: errors.Span{
 					Start: self.currToken.StartLocation,
 					End:   self.currToken.EndLocation,
 				},
@@ -1440,12 +1445,12 @@ func (self *parser) statements() ([]Statement, *Error) {
 	return statements, nil
 }
 
-func (self *parser) curlyBlock() (Block, *Error) {
+func (self *parser) curlyBlock() (Block, *errors.Error) {
 	if self.currToken.Kind != LCurly {
-		return nil, &Error{
-			Kind:    SyntaxError,
+		return nil, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Invalid block: expected %v, found %v", LCurly, self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1459,10 +1464,10 @@ func (self *parser) curlyBlock() (Block, *Error) {
 		return nil, err
 	}
 	if self.currToken.Kind != RCurly {
-		return nil, &Error{
-			Kind:    SyntaxError,
+		return nil, &errors.Error{
+			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Invalid block: expected %v, found %v", RCurly, self.currToken.Kind),
-			Span: Span{
+			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
 			},
@@ -1474,7 +1479,7 @@ func (self *parser) curlyBlock() (Block, *Error) {
 	return statements, nil
 }
 
-func (self *parser) parse() ([]Statement, []Error) {
+func (self *parser) parse() ([]Statement, []errors.Error) {
 	if err := self.advance(); err != nil {
 		self.errors = append(self.errors, *err)
 		return nil, self.errors

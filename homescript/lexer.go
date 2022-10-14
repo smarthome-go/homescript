@@ -3,6 +3,8 @@ package homescript
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/smarthome-go/homescript/homescript/errors"
 )
 
 // Rune range helper functions
@@ -37,7 +39,7 @@ type lexer struct {
 	currentChar  *rune
 	nextChar     *rune
 	program      []rune
-	location     Location
+	location     errors.Location
 }
 
 func newLexer(filename string, program_source string) lexer {
@@ -61,7 +63,7 @@ func newLexer(filename string, program_source string) lexer {
 		currentChar:  currentChar,
 		nextChar:     nextChar,
 		program:      program,
-		location: Location{
+		location: errors.Location{
 			Line:   1,
 			Column: 1,
 			Index:  0,
@@ -97,7 +99,7 @@ func (self *lexer) advance() {
 	}
 }
 
-func (self *lexer) makeString() (Token, *Error) {
+func (self *lexer) makeString() (Token, *errors.Error) {
 	startLocation := self.location
 	startQuote := *self.currentChar
 	var value_buf []rune
@@ -119,10 +121,10 @@ func (self *lexer) makeString() (Token, *Error) {
 	}
 	// Check for closing quote
 	if self.currentChar == nil {
-		return unknownToken(startLocation), newError(Span{
+		return unknownToken(startLocation), errors.NewError(errors.Span{
 			Start: startLocation,
 			End:   self.location,
-		}, "String literal never closed", SyntaxError)
+		}, "String literal never closed", errors.SyntaxError)
 	}
 	token := Token{
 		Kind:          String,
@@ -134,18 +136,18 @@ func (self *lexer) makeString() (Token, *Error) {
 	return token, nil
 }
 
-func (self *lexer) makeEscapeSequence() (rune, *Error) {
+func (self *lexer) makeEscapeSequence() (rune, *errors.Error) {
 	startLocation := self.location
 	self.advance()
 	if self.currentChar == nil {
-		return ' ', newError(Span{
+		return ' ', errors.NewError(errors.Span{
 			Start: startLocation,
 			End:   self.location,
-		}, "Unfinished escape sequence", SyntaxError)
+		}, "Unfinished escape sequence", errors.SyntaxError)
 	}
 
 	var char rune
-	var err *Error
+	var err *errors.Error
 	switch *self.currentChar {
 	case '\\':
 		char = '\\'
@@ -178,16 +180,16 @@ func (self *lexer) makeEscapeSequence() (rune, *Error) {
 		if isOctalDigit(*self.currentChar) {
 			char, err = self.escapePart(string(*self.currentChar), startLocation, 8, 2)
 		} else {
-			err = newError(Span{
+			err = errors.NewError(errors.Span{
 				Start: startLocation,
 				End:   self.location,
-			}, "Invalid escape sequence", SyntaxError)
+			}, "Invalid escape sequence", errors.SyntaxError)
 		}
 	}
 	return char, err
 }
 
-func (self *lexer) escapePart(esc string, startLocation Location, radix int, digits uint8) (rune, *Error) {
+func (self *lexer) escapePart(esc string, startLocation errors.Location, radix int, digits uint8) (rune, *errors.Error) {
 	self.advance()
 	var digitFun func(rune) bool
 	if radix == 16 {
@@ -197,10 +199,10 @@ func (self *lexer) escapePart(esc string, startLocation Location, radix int, dig
 	}
 	for i := 0; i < int(digits); i++ {
 		if self.currentChar == nil || !digitFun(*self.currentChar) {
-			return ' ', newError(Span{
+			return ' ', errors.NewError(errors.Span{
 				Start: startLocation,
 				End:   self.location,
-			}, "Invalid escape sequence", SyntaxError)
+			}, "Invalid escape sequence", errors.SyntaxError)
 		}
 		esc += string(*self.currentChar)
 		self.advance()
@@ -306,7 +308,7 @@ func (self *lexer) makeEquals() Token {
 	}
 }
 
-func (self *lexer) makeOr() (Token, *Error) {
+func (self *lexer) makeOr() (Token, *errors.Error) {
 	startLocation := self.location
 	self.advance()
 
@@ -325,17 +327,17 @@ func (self *lexer) makeOr() (Token, *Error) {
 	if self.currentChar != nil {
 		foundChar = string(*self.currentChar)
 	}
-	return unknownToken(self.location), &Error{
-		Span: Span{
+	return unknownToken(self.location), &errors.Error{
+		Span: errors.Span{
 			Start: self.location,
 			End:   self.location,
 		},
-		Kind:    SyntaxError,
+		Kind:    errors.SyntaxError,
 		Message: fmt.Sprintf("Expected '|', found %s", foundChar),
 	}
 }
 
-func (self *lexer) makeAnd() (Token, *Error) {
+func (self *lexer) makeAnd() (Token, *errors.Error) {
 	startLocation := self.location
 	self.advance()
 
@@ -354,12 +356,12 @@ func (self *lexer) makeAnd() (Token, *Error) {
 	if self.currentChar != nil {
 		foundChar = string(*self.currentChar)
 	}
-	return unknownToken(self.location), &Error{
-		Span: Span{
+	return unknownToken(self.location), &errors.Error{
+		Span: errors.Span{
 			Start: self.location,
 			End:   self.location,
 		},
-		Kind:    SyntaxError,
+		Kind:    errors.SyntaxError,
 		Message: fmt.Sprintf("Expected '&', found %s", foundChar),
 	}
 }
@@ -645,7 +647,7 @@ func (self *lexer) skipComment() {
 	}
 }
 
-func (self *lexer) nextToken() (Token, *Error) {
+func (self *lexer) nextToken() (Token, *errors.Error) {
 	for self.currentChar != nil {
 		switch *self.currentChar {
 		case ' ', '\n', '\t':
@@ -697,10 +699,10 @@ func (self *lexer) nextToken() (Token, *Error) {
 			if isLetter(*self.currentChar) {
 				return self.makeName(), nil
 			}
-			return unknownToken(self.location), newError(Span{
+			return unknownToken(self.location), errors.NewError(errors.Span{
 				Start: self.location,
 				End:   self.location,
-			}, fmt.Sprintf("Illegal characer: %c", *self.currentChar), SyntaxError)
+			}, fmt.Sprintf("Illegal characer: %c", *self.currentChar), errors.SyntaxError)
 		}
 	}
 	return Token{

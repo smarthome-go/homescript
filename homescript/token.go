@@ -1,10 +1,12 @@
 package homescript
 
+import "github.com/smarthome-go/homescript/homescript/errors"
+
 type Token struct {
 	Kind          TokenKind
 	Value         string
-	StartLocation Location
-	EndLocation   Location
+	StartLocation errors.Location
+	EndLocation   errors.Location
 }
 
 type TokenKind uint8
@@ -79,7 +81,7 @@ const (
 	Identifier // foobar
 )
 
-func unknownToken(location Location) Token {
+func unknownToken(location errors.Location) Token {
 	return Token{
 		Kind:          Unknown,
 		Value:         "unknown",
