@@ -1,6 +1,9 @@
 package homescript
 
-import "github.com/smarthome-go/homescript/homescript/errors"
+import (
+	"github.com/smarthome-go/homescript/homescript/errors"
+	"github.com/smarthome-go/homescript/homescript/interpreter"
+)
 
 type Block []Statement
 
@@ -31,6 +34,8 @@ func (self StatementKind) String() string {
 		value = "return statement"
 	case ExpressionStmtKind:
 		value = "expression statement"
+	default:
+		panic("BUG: A new statement kind was introduced without updating this code")
 	}
 	return value
 }
@@ -84,11 +89,11 @@ func (self ReturnStmt) Span() errors.Span   { return self.Range }
 
 type ExpressionStmt struct {
 	Expression Expression
-	Range      errors.Span
+	// Range ommitted because the expression is forwarded here
 }
 
 func (self ExpressionStmt) Kind() StatementKind { return ExpressionStmtKind }
-func (self ExpressionStmt) Span() errors.Span   { return self.Range }
+func (self ExpressionStmt) Span() errors.Span   { return errors.Span{} }
 
 /////// Expressions ///////
 
@@ -115,7 +120,7 @@ type EqExpression struct {
 	Other *struct {
 		// True corresponds to `!=` and false corresponds to `==`
 		Inverted bool
-		Other    RelExpression
+		Node     RelExpression
 	}
 	Span errors.Span
 }
@@ -125,7 +130,7 @@ type RelExpression struct {
 	Base  AddExpression
 	Other *struct {
 		RelOperator RelOperator
-		Other       AddExpression
+		Node        AddExpression
 	}
 	Span errors.Span
 }
@@ -177,18 +182,9 @@ const (
 // Cast expression
 type CastExpression struct {
 	Base  UnaryExpression
-	Other *TypeName // Casting is optional, otherwise, just the base is used
+	Other *interpreter.ValueType // Casting is optional, otherwise, just the base is used
 	Span  errors.Span
 }
-
-type TypeName uint8
-
-const (
-	NullTypeName TypeName = iota
-	NumberTypeName
-	StringTypeName
-	BoolTypeName
-)
 
 // Unary expression
 // Is either unary or exp expression
@@ -243,7 +239,6 @@ const (
 // Call expression
 type CallExpression struct {
 	Base  MemberExpression
-	Args  []Expression
 	Parts []CallExprPart // Allows chaining of function calls ( like foo()()() )
 	Span  errors.Span
 }

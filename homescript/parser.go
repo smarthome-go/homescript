@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/smarthome-go/homescript/homescript/errors"
+	"github.com/smarthome-go/homescript/homescript/interpreter"
 )
 
 // A list of possible tokens which can start an expression
@@ -131,10 +132,10 @@ func (self *parser) eqExpr() (EqExpression, *errors.Error) {
 			Base: base,
 			Other: &struct {
 				Inverted bool
-				Other    RelExpression
+				Node     RelExpression
 			}{
 				Inverted: isInverted,
-				Other:    other,
+				Node:     other,
 			},
 			Span: errors.Span{
 				Start: startLocation,
@@ -191,10 +192,10 @@ func (self *parser) relExpr() (RelExpression, *errors.Error) {
 		Base: AddExpression{},
 		Other: &struct {
 			RelOperator RelOperator
-			Other       AddExpression
+			Node        AddExpression
 		}{
 			RelOperator: otherOp,
-			Other:       other,
+			Node:        other,
 		},
 		Span: errors.Span{
 			Start: startLocation,
@@ -310,16 +311,16 @@ func (self *parser) castExpr() (CastExpression, *errors.Error) {
 		if err := self.advance(); err != nil {
 			return CastExpression{}, err
 		}
-		var typeCast TypeName
+		var typeCast interpreter.ValueType
 		switch self.currToken.Kind {
 		case NullType:
-			typeCast = NullTypeName
+			typeCast = interpreter.Null
 		case NumberType:
-			typeCast = NumberTypeName
+			typeCast = interpreter.Number
 		case StringType:
-			typeCast = StringTypeName
+			typeCast = interpreter.String
 		case BooleanType:
-			typeCast = BoolTypeName
+			typeCast = interpreter.Boolean
 		default:
 			return CastExpression{}, &errors.Error{
 				Kind:    errors.SyntaxError,
@@ -499,27 +500,19 @@ func (self *parser) callExpr() (CallExpression, *errors.Error) {
 		return CallExpression{}, err
 	}
 	// Arguments may follow
-	var callArgs []Expression = nil
-	var optParts []CallExprPart = nil
+	var parts []CallExprPart = nil
 	if self.currToken.Kind == LParen {
-		argsTemp, err := self.args()
+		// Make call expr parts (includes initial arguments)
+		partsTmp, err := self.argsOrCallExprPart()
 		if err != nil {
 			return CallExpression{}, err
 		}
-		callArgs = argsTemp
-
-		// Make optional call expr parts
-		optPartsTemp, err := self.argsOrCallExprPart()
-		if err != nil {
-			return CallExpression{}, err
-		}
-		optParts = optPartsTemp
+		parts = partsTmp
 	}
 
 	return CallExpression{
 		Base:  base,
-		Args:  callArgs,
-		Parts: optParts,
+		Parts: parts,
 		Span: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
@@ -1392,7 +1385,6 @@ func (self *parser) statement() (Statement, *errors.Error) {
 			}
 			return ExpressionStmt{
 				Expression: expr,
-				Range:      expr.Span,
 			}, nil
 		}
 		return nil, &errors.Error{

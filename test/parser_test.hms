@@ -85,3 +85,5 @@ true && false; true && true;       # And expr
 2 ** 3;                            # Exp expr
 
 1 * (-1 + 2) % 5;                  # Combined
+
+let abc = break;
