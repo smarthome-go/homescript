@@ -1,4 +1,4 @@
-package interpreter
+package homescript
 
 type LogLevel uint8
 

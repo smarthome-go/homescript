@@ -1,4 +1,4 @@
-package interpreter
+package homescript
 
 import (
 	"fmt"
@@ -42,7 +42,7 @@ func checkArgs(name string, span errors.Span, args []Value, types ...ValueType) 
 // Terminates the execution of the current Homescript
 // Exit code `0` indicates success, other values can be used for different purposes
 func Exit(span errors.Span, args ...Value) (*errors.Error, int) {
-	if err := checkArgs("exit", span, args, Number); err != nil {
+	if err := checkArgs("exit", span, args, TypeNumber); err != nil {
 		return err, 0
 	}
 	code := args[0].(ValueNumber).Value
@@ -59,7 +59,7 @@ func Exit(span errors.Span, args ...Value) (*errors.Error, int) {
 
 // Returns an intentional error
 func Throw(_ Executor, span errors.Span, args ...Value) (Value, *errors.Error) {
-	if err := checkArgs("throw", span, args, String); err != nil {
+	if err := checkArgs("throw", span, args, TypeString); err != nil {
 		return nil, err
 	}
 	return nil, errors.NewError(
@@ -71,7 +71,7 @@ func Throw(_ Executor, span errors.Span, args ...Value) (Value, *errors.Error) {
 
 // Pauses the execution of the current script for a given amount of seconds
 func Sleep(executor Executor, span errors.Span, args ...Value) (Value, *errors.Error) {
-	if err := checkArgs("sleep", span, args, Number); err != nil {
+	if err := checkArgs("sleep", span, args, TypeNumber); err != nil {
 		return nil, err
 	}
 	seconds := args[0].(ValueNumber).Value
@@ -96,7 +96,7 @@ func Print(executor Executor, span errors.Span, args ...Value) (Value, *errors.E
 
 // Retrieves the current power state of the provided switch
 func SwitchOn(executor Executor, span errors.Span, args ...Value) (Value, *errors.Error) {
-	if err := checkArgs("switchOn", span, args, String); err != nil {
+	if err := checkArgs("switchOn", span, args, TypeString); err != nil {
 		return nil, err
 	}
 	name := args[0].(ValueString).Value
@@ -111,7 +111,7 @@ func SwitchOn(executor Executor, span errors.Span, args ...Value) (Value, *error
 
 // Used to interact with switches and change power states
 func Switch(executor Executor, span errors.Span, args ...Value) (Value, *errors.Error) {
-	if err := checkArgs("switch", span, args, String, Boolean); err != nil {
+	if err := checkArgs("switch", span, args, TypeString, TypeBoolean); err != nil {
 		return nil, err
 	}
 	name := args[0].(ValueString).Value
@@ -124,7 +124,7 @@ func Switch(executor Executor, span errors.Span, args ...Value) (Value, *errors.
 
 // If a notification system is provided in the runtime environment a notification is sent to the current user
 func Notify(executor Executor, span errors.Span, args ...Value) (Value, *errors.Error) {
-	if err := checkArgs("notify", span, args, String, String, Number); err != nil {
+	if err := checkArgs("notify", span, args, TypeString, TypeString, TypeNumber); err != nil {
 		return nil, err
 	}
 	title := args[0].(ValueString).Value
@@ -160,7 +160,7 @@ func Notify(executor Executor, span errors.Span, args ...Value) (Value, *errors.
 
 // Adds a event to the logging system
 func Log(executor Executor, span errors.Span, args ...Value) (Value, *errors.Error) {
-	if err := checkArgs("log", span, args, String, String, Number); err != nil {
+	if err := checkArgs("log", span, args, TypeString, TypeString, TypeNumber); err != nil {
 		return nil, err
 	}
 	title := args[0].(ValueString).Value
@@ -212,7 +212,7 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *errors.Er
 		)
 	}
 	// Validate that the first argument is of type string
-	if args[0].Type() != String {
+	if args[0].Type() != TypeString {
 		return nil, errors.NewError(
 			span,
 			"First argument of function 'exec' has to be of type String",
@@ -222,7 +222,7 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *errors.Er
 	// Create call arguments from other args
 	callArgsFinal := make(map[string]string, 0)
 	for indexArg, arg := range args[1:] {
-		if arg.Type() != Pair {
+		if arg.Type() != TypePair {
 			return nil, errors.NewError(
 				span,
 				fmt.Sprintf("Argument %d of function 'exec' has to be of type Pair\nhint: you can create a value pair using `pair('key', 'value')`", indexArg),
@@ -264,7 +264,7 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *errors.Er
 
 // Makes a get-request to an arbitrary url and returns the result HTTP response
 func Get(executor Executor, span errors.Span, args ...Value) (Value, *errors.Error) {
-	if err := checkArgs("get", span, args, String); err != nil {
+	if err := checkArgs("get", span, args, TypeString); err != nil {
 		return nil, err
 	}
 	res, err := executor.Get(args[0].(ValueString).Value)
@@ -298,7 +298,7 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *errors.Er
 	}
 	// Validate that the first three arguments are of type string
 	for argIndex, arg := range args {
-		if arg.Type() != String {
+		if arg.Type() != TypeString {
 			return nil, errors.NewError(
 				span,
 				fmt.Sprintf("%s argument of function 'http' has to be of type String", numberNames[argIndex]),
@@ -312,7 +312,7 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *errors.Er
 	// Create header values from remaining args
 	headers := make(map[string]string, 0)
 	for headerIndex, header := range args[3:] {
-		if header.Type() != Pair {
+		if header.Type() != TypePair {
 			return nil, errors.NewError(
 				span,
 				fmt.Sprintf("Argument %d of function 'http' has to be of type Pair.\nhint: you can create a value pair using `pair('key', 'value')`", headerIndex+4),

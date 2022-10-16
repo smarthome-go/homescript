@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/smarthome-go/homescript/homescript/errors"
-	"github.com/smarthome-go/homescript/homescript/interpreter"
 )
 
 // A list of possible tokens which can start an expression
@@ -311,16 +310,16 @@ func (self *parser) castExpr() (CastExpression, *errors.Error) {
 		if err := self.advance(); err != nil {
 			return CastExpression{}, err
 		}
-		var typeCast interpreter.ValueType
+		var typeCast ValueType
 		switch self.currToken.Kind {
 		case NullType:
-			typeCast = interpreter.Null
+			typeCast = TypeNull
 		case NumberType:
-			typeCast = interpreter.Number
+			typeCast = TypeNumber
 		case StringType:
-			typeCast = interpreter.String
+			typeCast = TypeString
 		case BooleanType:
-			typeCast = interpreter.Boolean
+			typeCast = TypeBoolean
 		default:
 			return CastExpression{}, &errors.Error{
 				Kind:    errors.SyntaxError,

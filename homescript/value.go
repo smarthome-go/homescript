@@ -1,4 +1,4 @@
-package interpreter
+package homescript
 
 import (
 	"fmt"
@@ -12,34 +12,34 @@ import (
 type ValueType uint8
 
 const (
-	Null ValueType = iota
-	Number
-	Boolean
-	String
-	Pair
-	Object
-	Function
-	BuiltinFunction
-	BuiltinVariable
+	TypeNull ValueType = iota
+	TypeNumber
+	TypeBoolean
+	TypeString
+	TypePair
+	TypeObject
+	TypeFunction
+	TypeBuiltinFunction
+	TypeBuiltinVariable
 )
 
 func (self ValueType) String() string {
 	switch self {
-	case Null:
+	case TypeNull:
 		return "Null"
-	case Number:
+	case TypeNumber:
 		return "Number"
-	case Boolean:
+	case TypeBoolean:
 		return "Boolean"
-	case String:
+	case TypeString:
 		return "String"
-	case Pair:
+	case TypePair:
 		return "Pair"
-	case Object:
+	case TypeObject:
 		return "Object"
-	case Function | BuiltinFunction:
+	case TypeFunction | TypeBuiltinFunction:
 		return "Function"
-	case BuiltinVariable:
+	case TypeBuiltinVariable:
 		return "BuiltinVariable"
 	default:
 		// Unreachabel
@@ -76,7 +76,11 @@ type ValueAlg interface {
 // Null value
 type ValueNull struct{}
 
-func (self ValueNull) Type() ValueType { return Null }
+func makeNull() Value {
+	return ValueNull{}
+}
+
+func (self ValueNull) Type() ValueType { return TypeNull }
 func (self ValueNull) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "null", nil
 }
@@ -95,7 +99,7 @@ type ValueNumber struct {
 	Value float64
 }
 
-func (self ValueNumber) Type() ValueType { return Number }
+func (self ValueNumber) Type() ValueType { return TypeNumber }
 func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	return fmt.Sprintf("%f", self.Value), nil
 }
@@ -107,7 +111,7 @@ func (self ValueNumber) IsTrue(executor Executor, span errors.Span) (bool, *erro
 }
 func (self ValueNumber) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
 	if self.Type() != other.Type() {
-		if other.Type() == BuiltinVariable {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return false, err
@@ -123,8 +127,8 @@ func (self ValueNumber) IsEqual(executor Executor, span errors.Span, other Value
 	return self.Value == other.(ValueNumber).Value, nil
 }
 func (self ValueNumber) IsLessThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return false, err
@@ -136,8 +140,8 @@ func (self ValueNumber) IsLessThan(executor Executor, span errors.Span, other Va
 	return self.Value < other.(ValueNumber).Value, nil
 }
 func (self ValueNumber) IsLessThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return false, err
@@ -149,8 +153,8 @@ func (self ValueNumber) IsLessThanOrEqual(executor Executor, span errors.Span, o
 	return self.Value <= other.(ValueNumber).Value, nil
 }
 func (self ValueNumber) IsGreaterThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return false, err
@@ -162,8 +166,8 @@ func (self ValueNumber) IsGreaterThan(executor Executor, span errors.Span, other
 	return self.Value > other.(ValueNumber).Value, nil
 }
 func (self ValueNumber) IsGreaterThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return false, err
@@ -176,8 +180,8 @@ func (self ValueNumber) IsGreaterThanOrEqual(executor Executor, span errors.Span
 }
 
 func (self ValueNumber) Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return nil, err
@@ -191,8 +195,8 @@ func (self ValueNumber) Add(executor Executor, span errors.Span, other Value) (V
 	}, nil
 }
 func (self ValueNumber) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return nil, err
@@ -206,8 +210,8 @@ func (self ValueNumber) Sub(executor Executor, span errors.Span, other Value) (V
 	}, nil
 }
 func (self ValueNumber) Mul(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return nil, err
@@ -221,8 +225,8 @@ func (self ValueNumber) Mul(executor Executor, span errors.Span, other Value) (V
 	}, nil
 }
 func (self ValueNumber) Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return nil, err
@@ -236,8 +240,8 @@ func (self ValueNumber) Div(executor Executor, span errors.Span, other Value) (V
 	}, nil
 }
 func (self ValueNumber) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return nil, err
@@ -252,8 +256,8 @@ func (self ValueNumber) Rem(executor Executor, span errors.Span, other Value) (V
 }
 
 func (self ValueNumber) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	if other.Type() != Number {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return nil, err
@@ -272,7 +276,7 @@ type ValueBool struct {
 	Value bool
 }
 
-func (self ValueBool) Type() ValueType { return Boolean }
+func (self ValueBool) Type() ValueType { return TypeBoolean }
 func (self ValueBool) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return fmt.Sprintf("%t", self.Value), nil
 }
@@ -298,7 +302,7 @@ type ValueString struct {
 	Value string
 }
 
-func (self ValueString) Type() ValueType { return String }
+func (self ValueString) Type() ValueType { return TypeString }
 func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return self.Value, nil
 }
@@ -320,8 +324,8 @@ func (self ValueString) IsEqual(_ Executor, span errors.Span, other Value) (bool
 }
 
 func (self ValueString) Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	if other.Type() != String {
-		if other.Type() == BuiltinVariable {
+	if other.Type() != TypeString {
+		if other.Type() == TypeBuiltinVariable {
 			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
 			if err != nil {
 				return nil, err
@@ -354,7 +358,7 @@ type ValuePair struct {
 	Value Value
 }
 
-func (self ValuePair) Type() ValueType { return Pair }
+func (self ValuePair) Type() ValueType { return TypePair }
 func (self ValuePair) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	value, err := self.Value.Display(executor, span)
 	if err != nil {
@@ -396,7 +400,7 @@ type ValueObject struct {
 	Fields map[string]Value
 }
 
-func (self ValueObject) Type() ValueType { return Object }
+func (self ValueObject) Type() ValueType { return TypeObject }
 func (self ValueObject) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	fields := make([]string, 0)
 	for key, value := range self.Fields {
@@ -457,9 +461,11 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 // Function value
 type ValueFunction struct {
 	Identifier string
+	Args       []string
+	Body       []Statement
 }
 
-func (self ValueFunction) Type() ValueType { return Function }
+func (self ValueFunction) Type() ValueType { return TypeFunction }
 func (self ValueFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<function>", nil
 }
@@ -485,7 +491,7 @@ type ValueBuiltinFunction struct {
 	Callback func(executor Executor, span errors.Span, args ...Value) (Value, *errors.Error)
 }
 
-func (self ValueBuiltinFunction) Type() ValueType { return BuiltinFunction }
+func (self ValueBuiltinFunction) Type() ValueType { return TypeBuiltinFunction }
 func (self ValueBuiltinFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<builtin-function>", nil
 }
@@ -496,7 +502,7 @@ func (self ValueBuiltinFunction) IsTrue(_ Executor, _ errors.Span) (bool, *error
 	return true, nil
 }
 func (self ValueBuiltinFunction) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	if self.Type() != other.Type() && other.Type() != Function {
+	if self.Type() != other.Type() && other.Type() != TypeFunction {
 		return false, errors.NewError(
 			span,
 			fmt.Sprintf("Cannot compare %v to %v", self.Type(), other.Type()),
@@ -511,7 +517,7 @@ type ValueBuiltinVariable struct {
 	Callback func(executor Executor, span errors.Span) (Value, *errors.Error)
 }
 
-func (self ValueBuiltinVariable) Type() ValueType { return BuiltinVariable }
+func (self ValueBuiltinVariable) Type() ValueType { return TypeBuiltinVariable }
 func (self ValueBuiltinVariable) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<builtin-variable>", nil
 }
@@ -548,7 +554,7 @@ func (self ValueBuiltinVariable) IsLessThan(executor Executor, span errors.Span,
 	if err != nil {
 		return false, err
 	}
-	if value.Type() != Number {
+	if value.Type() != TypeNumber {
 		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", value.Type(), other.Type()), errors.TypeError)
 	}
 	return value.(ValueNumber).IsLessThan(executor, span, other)
@@ -558,7 +564,7 @@ func (self ValueBuiltinVariable) IsLessThanOrEqual(executor Executor, span error
 	if err != nil {
 		return false, err
 	}
-	if value.Type() != Number {
+	if value.Type() != TypeNumber {
 		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", value.Type(), other.Type()), errors.TypeError)
 	}
 	return value.(ValueNumber).IsLessThanOrEqual(executor, span, other)
@@ -568,7 +574,7 @@ func (self ValueBuiltinVariable) IsGreaterThan(executor Executor, span errors.Sp
 	if err != nil {
 		return false, err
 	}
-	if value.Type() != Number {
+	if value.Type() != TypeNumber {
 		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", value.Type(), other.Type()), errors.TypeError)
 	}
 	return value.(ValueNumber).IsGreaterThan(executor, span, other)
@@ -578,7 +584,7 @@ func (self ValueBuiltinVariable) IsGreaterThanOrEqual(executor Executor, span er
 	if err != nil {
 		return false, err
 	}
-	if value.Type() != Number {
+	if value.Type() != TypeNumber {
 		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", value.Type(), other.Type()), errors.TypeError)
 	}
 	return value.(ValueNumber).IsGreaterThanOrEqual(executor, span, other)
@@ -590,9 +596,9 @@ func (self ValueBuiltinVariable) Add(executor Executor, span errors.Span, other 
 		return nil, err
 	}
 	switch value.Type() {
-	case Number:
+	case TypeNumber:
 		return value.(ValueNumber).Add(executor, span, other)
-	case String:
+	case TypeString:
 		return value.(ValueString).Add(executor, span, other)
 	default:
 		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
@@ -604,9 +610,9 @@ func (self ValueBuiltinVariable) Sub(executor Executor, span errors.Span, other 
 		return nil, err
 	}
 	switch value.Type() {
-	case Number:
+	case TypeNumber:
 		return value.(ValueNumber).Sub(executor, span, other)
-	case String:
+	case TypeString:
 		return value.(ValueString).Sub(executor, span, other)
 	default:
 		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
@@ -618,9 +624,9 @@ func (self ValueBuiltinVariable) Mul(executor Executor, span errors.Span, other 
 		return nil, err
 	}
 	switch value.Type() {
-	case Number:
+	case TypeNumber:
 		return value.(ValueNumber).Mul(executor, span, other)
-	case String:
+	case TypeString:
 		return value.(ValueString).Mul(executor, span, other)
 	default:
 		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
@@ -632,9 +638,9 @@ func (self ValueBuiltinVariable) Div(executor Executor, span errors.Span, other 
 		return nil, err
 	}
 	switch value.Type() {
-	case Number:
+	case TypeNumber:
 		return value.(ValueNumber).Div(executor, span, other)
-	case String:
+	case TypeString:
 		return value.(ValueString).Div(executor, span, other)
 	default:
 		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
@@ -646,9 +652,9 @@ func (self ValueBuiltinVariable) Rem(executor Executor, span errors.Span, other 
 		return nil, err
 	}
 	switch value.Type() {
-	case Number:
+	case TypeNumber:
 		return value.(ValueNumber).Rem(executor, span, other)
-	case String:
+	case TypeString:
 		return value.(ValueString).Rem(executor, span, other)
 	default:
 		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
@@ -660,11 +666,23 @@ func (self ValueBuiltinVariable) Pow(executor Executor, span errors.Span, other 
 		return nil, err
 	}
 	switch value.Type() {
-	case Number:
+	case TypeNumber:
 		return value.(ValueNumber).Pow(executor, span, other)
-	case String:
+	case TypeString:
 		return value.(ValueString).Pow(executor, span, other)
 	default:
 		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
 	}
+}
+
+// Helper functions for values
+func getField(span errors.Span, self Value, fieldKey string) (Value, *errors.Error) {
+	if self.Type() != TypeObject {
+		return nil, errors.NewError(span, fmt.Sprintf("Cannot access fields of type %v", self.Type()), errors.TypeError)
+	}
+	fieldValue, exists := self.(ValueObject).Fields[fieldKey]
+	if !exists {
+		return nil, errors.NewError(span, fmt.Sprintf("Value has no member named %s", fieldKey), errors.TypeError)
+	}
+	return fieldValue, nil
 }

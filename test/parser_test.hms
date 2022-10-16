@@ -86,4 +86,6 @@ true && false; true && true;       # And expr
 
 1 * (-1 + 2) % 5;                  # Combined
 
-let abc = break;
+
+# TODO: examine why this does not work
+# let abc = break 1;

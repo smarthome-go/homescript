@@ -26,6 +26,8 @@ const (
 	RuntimeError
 	ValueError
 	ThrowError
+	StackOverflow
+	ReferenceError
 )
 
 func NewError(span Span, message string, kind ErrorKind) *Error {

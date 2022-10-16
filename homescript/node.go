@@ -2,7 +2,6 @@ package homescript
 
 import (
 	"github.com/smarthome-go/homescript/homescript/errors"
-	"github.com/smarthome-go/homescript/homescript/interpreter"
 )
 
 type Block []Statement
@@ -182,7 +181,7 @@ const (
 // Cast expression
 type CastExpression struct {
 	Base  UnaryExpression
-	Other *interpreter.ValueType // Casting is optional, otherwise, just the base is used
+	Other *ValueType // Casting is optional, otherwise, just the base is used
 	Span  errors.Span
 }
 
@@ -335,6 +334,8 @@ type AtomNull struct{}
 
 func (self AtomNull) Kind() AtomKind    { return AtomKindNull }
 func (self AtomNull) Span() errors.Span { return errors.Span{} }
+
+// If expression
 
 type IfExpr struct {
 	Condition  Expression
