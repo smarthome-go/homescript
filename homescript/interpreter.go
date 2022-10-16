@@ -690,11 +690,18 @@ func (self *Interpreter) visitAtom(node Atom) (*Value, *int, *errors.Error) {
 			return nil, code, err
 		}
 		value = valueTemp
-		// TODO: impl other atom kinds
+	case AtomKindForExpr:
+		valueTemp, code, err := self.visitForExpression(node.(AtomFor))
+		if code != nil || err != nil {
+			return nil, code, err
+		}
+		value = valueTemp
 	}
+	// TODO: mehr
 	return &value, nil, nil
 }
 
+// TODO: implement return functionality
 func (self *Interpreter) visitIfExpression(node IfExpr) (Value, *int, *errors.Error) {
 	conditionValue, code, err := self.visitExpression(node.Condition)
 	if code != nil || err != nil {
@@ -721,6 +728,128 @@ func (self *Interpreter) visitIfExpression(node IfExpr) (Value, *int, *errors.Er
 		// Return the value of the else block
 		return *value.Value, nil, nil
 	}
+}
+
+// TODO: implement return functionality
+func (self *Interpreter) visitForExpression(node AtomFor) (Value, *int, *errors.Error) {
+	// Make the value of the lower range
+	rangeLowerValue, code, err := self.visitExpression(node.RangeLowerExpr)
+	if code != nil || err != nil {
+		return nil, code, err
+	}
+	rangeLowerNumeric := 0.0 // Placeholder is later filled
+	// Assert that the value is of type number or builtin variable
+	switch rangeLowerValue.Type() {
+	case TypeNumber:
+		rangeLowerNumeric = rangeLowerValue.(ValueNumber).Value
+	case TypeBuiltinVariable:
+		callBackResult, err := rangeLowerValue.(ValueBuiltinVariable).Callback(self.executor, node.RangeLowerExpr.Span)
+		if err != nil {
+			return nil, nil, err
+		}
+		if callBackResult.Type() != TypeNumber {
+			return nil, nil, errors.NewError(
+				node.RangeLowerExpr.Span,
+				fmt.Sprintf("Cannot use value of type %v in a range", callBackResult.Type()),
+				errors.TypeError,
+			)
+		}
+		rangeLowerNumeric = callBackResult.(ValueNumber).Value
+	}
+
+	// Make the value of the upper range
+	rangeUpperValue, code, err := self.visitExpression(node.RangeUpperExpr)
+	if code != nil || err != nil {
+		return nil, code, err
+	}
+	rangeUpperNumeric := 0.0 // Placeholder is later filled
+	// Assert that the value is of type number or builtin variable
+	switch rangeUpperValue.Type() {
+	case TypeNumber:
+		rangeUpperNumeric = rangeUpperValue.(ValueNumber).Value
+	case TypeBuiltinVariable:
+		callBackResult, err := rangeUpperValue.(ValueBuiltinVariable).Callback(self.executor, node.RangeUpperExpr.Span)
+		if err != nil {
+			return nil, nil, err
+		}
+		if callBackResult.Type() != TypeNumber {
+			return nil, nil, errors.NewError(
+				node.RangeUpperExpr.Span,
+				fmt.Sprintf("Cannot use value of type %v in a range", callBackResult.Type()),
+				errors.TypeError,
+			)
+		}
+		rangeUpperNumeric = callBackResult.(ValueNumber).Value
+	}
+
+	// Check that both ranges are whole numbers
+	if rangeLowerNumeric != float64(int(rangeLowerNumeric)) || rangeUpperNumeric != float64(int(rangeUpperNumeric)) {
+		return nil, nil, errors.NewError(
+			errors.Span{
+				Start: node.RangeLowerExpr.Span.Start,
+				End:   node.RangeUpperExpr.Span.End,
+			},
+			"Range bounds have to be integers",
+			errors.ValueError,
+		)
+	}
+
+	// Performs the iteration code
+	for iteration := int(rangeLowerNumeric); iteration < int(rangeUpperNumeric); iteration++ {
+		// Add a new scope for the iteration
+		if err := self.pushScope(); err != nil {
+			return nil, nil, err
+		}
+		// Add the head identifier to the scope
+		self.addVar(node.HeadIdentifier, ValueNumber{Value: float64(iteration)})
+
+		value, code, err := self.visitLoopStatements(node.IterationCode)
+		if code != nil || err != nil {
+			return nil, code, err
+		}
+
+		if value.BreakValue != nil {
+			return *value, nil, nil
+		}
+
+		// Remove the scope again
+		self.popScope()
+	}
+	return nil, nil, nil
+}
+
+// Like visitStatements but enables the semantic use of break and continue statements
+func (self *Interpreter) visitLoopStatements(span errors.Span, statements []Statement) (Result, *int, *errors.Error) {
+	null := makeNull()
+	var lastResult Result = Result{
+		ShouldContinue: false,
+		ReturnValue:    nil,
+		BreakValue:     nil,
+		Value:          &null,
+	}
+	var code *int
+	var err *errors.Error
+	for _, statement := range statements {
+		lastResult, code, err = self.visitStatement(statement)
+		if code != nil || err != nil {
+			return Result{}, code, err
+		}
+		// Return early if nessecary
+		if lastResult.BreakValue != nil || lastResult.ReturnValue != nil {
+			return lastResult, nil, nil
+		}
+		// If continue is used, return null for this iteration
+		if lastResult.ShouldContinue {
+			null := makeNull()
+			lastResult = Result{
+				ShouldContinue: false,
+				ReturnValue:    nil,
+				BreakValue:     nil,
+				Value:          &null,
+			}
+		}
+	}
+	return lastResult, nil, nil
 }
 
 // Helper functions
