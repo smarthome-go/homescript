@@ -76,10 +76,6 @@ type ValueAlg interface {
 // Null value
 type ValueNull struct{}
 
-func makeNull() Value {
-	return ValueNull{}
-}
-
 func (self ValueNull) Type() ValueType { return TypeNull }
 func (self ValueNull) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "null", nil
@@ -685,4 +681,21 @@ func getField(span errors.Span, self Value, fieldKey string) (Value, *errors.Err
 		return nil, errors.NewError(span, fmt.Sprintf("Value has no member named %s", fieldKey), errors.TypeError)
 	}
 	return fieldValue, nil
+}
+
+// Helper factory functions
+func makeNull() Value {
+	return ValueNull{}
+}
+
+func makeBool(value bool) Value {
+	return ValueBool{Value: value}
+}
+
+func makeNum(value float64) Value {
+	return ValueNumber{Value: value}
+}
+
+func makeStr(value string) Value {
+	return ValueString{Value: value}
 }

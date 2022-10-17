@@ -21,6 +21,14 @@ type Interpreter struct {
 
 	// Can be used to terminate the script at any point in time
 	sigTerm *chan int
+
+	// If the interpreter is currently handling a loop
+	// Will unlock the use of the `break` and `continue` statements inside a statement list
+	inLoop bool
+
+	// If the Interpreter is currently handling a function
+	// Will unlock the use of the `return` statement inside a statement list
+	inFunction bool
 }
 
 func NewInterpreter(
@@ -54,6 +62,8 @@ func NewInterpreter(
 		scopes:     scopes,
 		stackLimit: stackLimit,
 		sigTerm:    sigTerm,
+		inLoop:     false,
+		inFunction: false,
 	}
 }
 
@@ -86,6 +96,38 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 		lastResult, code, err = self.visitStatement(statement)
 		if code != nil || err != nil {
 			return Result{}, code, err
+		}
+		// TODO: implement code which checks against an argument if the fn is called inside a function or loop to disallow certain statements conditially
+
+		// Handle potential break or return statements
+		if lastResult.BreakValue != nil {
+			// Check if the use of break is legal here
+			if !self.inLoop {
+				return Result{}, nil, errors.NewError(statement.Span(), fmt.Sprintf("Can only use the break statement inside loops"), errors.SyntaxError)
+			}
+			return lastResult, nil, nil
+		}
+		// Handle potential break or return statements
+		if lastResult.ReturnValue != nil {
+			// Check if the use of return is legal here
+			if !self.inFunction {
+				return Result{}, nil, errors.NewError(statement.Span(), fmt.Sprintf("Can only use the return statement inside function bodies"), errors.SyntaxError)
+			}
+			return lastResult, nil, nil
+		}
+		// If continue is used, return null for this iteration
+		if lastResult.ShouldContinue {
+			// Check if the use of continue is legal here
+			if !self.inLoop {
+				return Result{}, nil, errors.NewError(statement.Span(), fmt.Sprintf("Can only use the continue statement inside loops"), errors.SyntaxError)
+			}
+			null := makeNull()
+			lastResult = Result{
+				ShouldContinue: false,
+				ReturnValue:    nil,
+				BreakValue:     nil,
+				Value:          &null,
+			}
 		}
 	}
 	return lastResult, code, err
@@ -122,7 +164,7 @@ func (self *Interpreter) visitStatement(node Statement) (Result, *int, *errors.E
 			ShouldContinue: false,
 			ReturnValue:    nil,
 			BreakValue:     nil,
-			Value:          &value,
+			Value:          value.Value,
 		}, nil, nil
 	default:
 		panic("BUG: a new statement kind was introduced without updating this code")
@@ -146,7 +188,7 @@ func (self *Interpreter) visitBreakStatement(node BreakStmt) (Result, *int, *err
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		breakValue = value
+		breakValue = *value.Value
 	}
 	return Result{
 		ShouldContinue: false,
@@ -172,7 +214,7 @@ func (self *Interpreter) visitReturnStatement(node ReturnStmt) (Result, *int, *e
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		returnValue = value
+		returnValue = *value.Value
 	}
 	return Result{
 		ShouldContinue: false,
@@ -183,82 +225,90 @@ func (self *Interpreter) visitReturnStatement(node ReturnStmt) (Result, *int, *e
 }
 
 // Expressions
-func (self *Interpreter) visitExpression(node Expression) (Value, *int, *errors.Error) {
+// Expressions return
+
+func (self *Interpreter) visitExpression(node Expression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitAndExpression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// If there are no other expressions, just return the base value
 	if len(node.Following) == 0 {
 		return base, nil, nil
 	}
 	// If the base is already true, return true without looking at the other expressions
-	baseIsTrue, err := base.IsTrue(self.executor, node.Base.Span)
+	baseIsTrue, err := (*base.Value).IsTrue(self.executor, node.Base.Span)
 	if err != nil {
-		return nil, nil, err
+		return ReturnResult{}, nil, err
 	}
 	if baseIsTrue {
-		return ValueBool{Value: true}, nil, nil
+		returnValue := makeBool(true)
+		return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 	}
 	// Look at the other expressions
 	for _, following := range node.Following {
 		followingValue, code, err := self.visitAndExpression(following)
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
-		followingIsTrue, err := followingValue.IsTrue(self.executor, following.Span)
+		followingIsTrue, err := (*followingValue.Value).IsTrue(self.executor, following.Span)
 		if err != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
 		// If the current value is true, return true without looking at the other expressions
 		if followingIsTrue {
-			return ValueBool{Value: true}, nil, nil
+			returnValue := makeBool(true)
+			return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 		}
 	}
 	// If all values before where false, return false
-	return ValueBool{Value: false}, nil, nil
+	returnValue := makeBool(false)
+	return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 }
 
-func (self *Interpreter) visitAndExpression(node AndExpression) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitAndExpression(node AndExpression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitEqExpression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// If there are no other expressions, just return the base value
 	if len(node.Following) == 0 {
 		return base, nil, nil
 	}
 	// If the base is false, stop here and return false
-	baseIsTrue, err := base.IsTrue(self.executor, node.Base.Span)
+	baseIsTrue, err := (*base.Value).IsTrue(self.executor, node.Base.Span)
 	if err != nil {
-		return nil, nil, err
+		return ReturnResult{}, nil, err
 	}
 	if !baseIsTrue {
-		return ValueBool{Value: false}, nil, nil
+		returnValue := makeBool(false)
+		return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 	}
 	// Look at the other expressions
 	for _, following := range node.Following {
 		followingValue, code, err := self.visitEqExpression(following)
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
-		followingIsTrue, err := followingValue.IsTrue(self.executor, following.Span)
+		followingIsTrue, err := (*followingValue.Value).IsTrue(self.executor, following.Span)
 		if err != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
 		// Stop here if the value is false
 		if !followingIsTrue {
-			return ValueBool{Value: false}, nil, nil
+			returnValue := makeBool(false)
+			return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 		}
 	}
 	// If all values where true, return true
-	return ValueBool{Value: true}, nil, nil
+	returnValue := makeBool(true)
+	return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 }
 
-func (self *Interpreter) visitEqExpression(node EqExpression) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitEqExpression(node EqExpression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitRelExression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// If there is nothing to compare to, return the base value
 	if node.Other == nil {
@@ -266,25 +316,27 @@ func (self *Interpreter) visitEqExpression(node EqExpression) (Value, *int, *err
 	}
 	otherValue, code, err := self.visitRelExression(node.Other.Node)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// Finally, test for equality
-	isEqual, err := base.IsEqual(self.executor, node.Span, otherValue)
+	isEqual, err := (*base.Value).IsEqual(self.executor, node.Span, *otherValue.Value)
 	if err != nil {
-		return nil, nil, err
+		return ReturnResult{}, nil, err
 	}
 	// Check if the comparison should be inverted (using the != operator over the == operator)
 	if node.Other.Inverted {
-		return ValueBool{Value: !isEqual}, nil, nil
+		returnValue := makeBool(!isEqual)
+		return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 	}
 	// If the comparison was not inverted, return the normal result
-	return ValueBool{Value: isEqual}, nil, nil
+	returnValue := makeBool(isEqual)
+	return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 }
 
-func (self *Interpreter) visitRelExression(node RelExpression) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitRelExression(node RelExpression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitAddExression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// If there is nothing to compare to, return the base value
 	if node.Other == nil {
@@ -292,18 +344,18 @@ func (self *Interpreter) visitRelExression(node RelExpression) (Value, *int, *er
 	}
 	otherValue, code, err := self.visitAddExression(node.Other.Node)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 
 	// Check that the comparison involves a valid left hand side
 	var baseVal Value
-	switch base.Type() {
+	switch (*base.Value).Type() {
 	case TypeNumber:
-		baseVal = base.(ValueNumber)
+		baseVal = (*base.Value).(ValueNumber)
 	case TypeBuiltinVariable:
-		baseVal = base.(ValueBuiltinVariable)
+		baseVal = (*base.Value).(ValueBuiltinVariable)
 	default:
-		return nil, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot compare %v to %v", base.Type(), otherValue.Type()), errors.TypeError)
+		return ReturnResult{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot compare %v to %v", (*base.Value).Type(), (*otherValue.Value).Type()), errors.TypeError)
 	}
 
 	// Perform typecast so that comparison operators can be used
@@ -316,26 +368,27 @@ func (self *Interpreter) visitRelExression(node RelExpression) (Value, *int, *er
 	// Finally, compare the two values
 	switch node.Other.RelOperator {
 	case RelLessThan:
-		relConditionTrue, relError = baseComp.IsLessThan(self.executor, node.Span, otherValue)
+		relConditionTrue, relError = baseComp.IsLessThan(self.executor, node.Span, *otherValue.Value)
 	case RelLessOrEqual:
-		relConditionTrue, relError = baseComp.IsLessThanOrEqual(self.executor, node.Span, otherValue)
+		relConditionTrue, relError = baseComp.IsLessThanOrEqual(self.executor, node.Span, *otherValue.Value)
 	case RelGreaterThan:
-		relConditionTrue, relError = baseComp.IsGreaterThan(self.executor, node.Span, otherValue)
+		relConditionTrue, relError = baseComp.IsGreaterThan(self.executor, node.Span, *otherValue.Value)
 	case RelGreaterOrEqual:
-		relConditionTrue, relError = baseComp.IsGreaterThanOrEqual(self.executor, node.Span, otherValue)
+		relConditionTrue, relError = baseComp.IsGreaterThanOrEqual(self.executor, node.Span, *otherValue.Value)
 	default:
 		panic("BUG: a new rel operator was introduced without updating this code")
 	}
 	if relError != nil {
-		return nil, nil, err
+		return ReturnResult{}, nil, err
 	}
-	return ValueBool{Value: relConditionTrue}, nil, nil
+	returnValue := makeBool(relConditionTrue)
+	return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 }
 
-func (self *Interpreter) visitAddExression(node AddExpression) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitAddExression(node AddExpression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitMulExression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// If only the base is present, return its value
 	if len(node.Following) == 0 {
@@ -344,15 +397,15 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Value, *int, *er
 
 	// Check that the base holds a valid type to perform the requested operations
 	var baseVal Value
-	switch base.Type() {
+	switch (*base.Value).Type() {
 	case TypeNumber:
-		baseVal = base.(ValueNumber)
+		baseVal = (*base.Value).(ValueNumber)
 	case TypeBuiltinVariable:
-		baseVal = base.(ValueBuiltinVariable)
+		baseVal = (*base.Value).(ValueBuiltinVariable)
 	case TypeString:
-		baseVal = base.(ValueString)
+		baseVal = (*base.Value).(ValueString)
 	default:
-		return nil, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot apply operation on type %v", base.Type()), errors.TypeError)
+		return ReturnResult{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
 	}
 
 	// Performs typecase so that the algebraic functions are available on the base type
@@ -365,29 +418,30 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Value, *int, *er
 
 		followingValue, code, err := self.visitMulExression(following.Other)
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
 		switch following.AddOperator {
 		case AddOpPlus:
-			algResult, algError = baseAlg.Add(self.executor, node.Span, followingValue)
+			algResult, algError = baseAlg.Add(self.executor, node.Span, *followingValue.Value)
 		case AddOpMinus:
-			algResult, algError = baseAlg.Sub(self.executor, node.Span, followingValue)
+			algResult, algError = baseAlg.Sub(self.executor, node.Span, *followingValue.Value)
 		default:
 			panic("BUG: a new add operator has been added without updating this code")
 		}
 		if algError != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
 
 		// This is okay because the result of an algebraic operation should ALWAYS result in the same type
 		baseAlg = algResult.(ValueAlg)
 	}
-	return baseAlg.(Value), nil, nil
+	returnValue := baseAlg.(Value)
+	return ReturnResult{Value: &returnValue}, nil, nil
 }
-func (self *Interpreter) visitMulExression(node MulExpression) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitMulExression(node MulExpression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitCastExpression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// If only the base is present, return its value
 	if len(node.Following) == 0 {
@@ -396,13 +450,13 @@ func (self *Interpreter) visitMulExression(node MulExpression) (Value, *int, *er
 
 	// Check that the base holds a valid type to perform the requested operations
 	var baseVal Value
-	switch base.Type() {
+	switch (*base.Value).Type() {
 	case TypeNumber:
-		baseVal = base.(ValueNumber)
+		baseVal = (*base.Value).(ValueNumber)
 	case TypeBuiltinVariable:
-		baseVal = base.(ValueBuiltinVariable)
+		baseVal = (*base.Value).(ValueBuiltinVariable)
 	default:
-		return nil, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot apply operation on type %v", base.Type()), errors.TypeError)
+		return ReturnResult{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
 	}
 
 	// Performs typecase so that the algebraic functions are available on the base type
@@ -415,31 +469,33 @@ func (self *Interpreter) visitMulExression(node MulExpression) (Value, *int, *er
 
 		followingValue, code, err := self.visitCastExpression(following.Other)
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
 		switch following.MulOperator {
 		case MulOpMul:
-			algResult, algError = baseAlg.Mul(self.executor, node.Span, followingValue)
+			algResult, algError = baseAlg.Mul(self.executor, node.Span, *followingValue.Value)
 		case MulOpDiv:
-			algResult, algError = baseAlg.Div(self.executor, node.Span, followingValue)
+			algResult, algError = baseAlg.Div(self.executor, node.Span, *followingValue.Value)
 		case MullOpReminder:
-			algResult, algError = baseAlg.Rem(self.executor, node.Span, followingValue)
+			algResult, algError = baseAlg.Rem(self.executor, node.Span, *followingValue.Value)
 		default:
 			panic("BUG: a new mul operator has been added without updating this code")
 		}
 		if algError != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
 
 		// This is okay because the result of an algebraic operation should ALWAYS result in the same type
 		baseAlg = algResult.(ValueAlg)
 	}
-	return baseAlg.(Value), nil, nil
+	// Holds the return value
+	returnValue := baseAlg.(Value)
+	return ReturnResult{Value: &returnValue, ShouldReturn: false}, nil, nil
 }
-func (self *Interpreter) visitCastExpression(node CastExpression) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitCastExpression(node CastExpression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitUnaryExpression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// If there is not typecast, only return the base value
 	if node.Other == nil {
@@ -447,74 +503,85 @@ func (self *Interpreter) visitCastExpression(node CastExpression) (Value, *int, 
 	}
 	switch *node.Other {
 	case TypeNumber:
-		switch base.Type() {
+		switch (*base.Value).Type() {
 		case TypeNumber:
 			return base, nil, nil
 		case TypeBoolean:
 			numeric := 0.0
-			if base.(ValueBool).Value {
+			if (*base.Value).(ValueBool).Value {
 				numeric = 1.0
 			}
-			return ValueNumber{Value: numeric}, nil, nil
+			// Holds the final result
+			numericValue := makeNum(numeric)
+			return ReturnResult{Value: &numericValue, ShouldReturn: false}, nil, nil
 		case TypeString:
-			numeric, err := strconv.ParseFloat(base.(ValueString).Value, 64)
+			numeric, err := strconv.ParseFloat((*base.Value).(ValueString).Value, 64)
 			if err != nil {
-				return nil, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot cast non-numeric string to number: %s", err.Error()), errors.ValueError)
+				return ReturnResult{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot cast non-numeric string to number: %s", err.Error()), errors.ValueError)
 			}
-			return ValueNumber{Value: numeric}, nil, nil
+
+			// Holds the return value
+			numericValue := makeNum(numeric)
+			return ReturnResult{Value: &numericValue, ShouldReturn: false}, nil, nil
 		default:
-			return nil, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot cast %v to %v", base.Type(), *node.Other), errors.TypeError)
+			return ReturnResult{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot cast %v to %v", (*base.Value).Type(), *node.Other), errors.TypeError)
 		}
 	case TypeString:
-		display, err := base.Display(self.executor, node.Base.Span)
+		display, err := (*base.Value).Display(self.executor, node.Base.Span)
 		if err != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
-		return ValueString{Value: display}, nil, nil
+		// Holds the return value
+		valueStr := makeStr(display)
+		return ReturnResult{Value: &valueStr, ShouldReturn: false}, nil, nil
 	case TypeBoolean:
-		isTrue, err := base.IsTrue(self.executor, node.Base.Span)
+		isTrue, err := (*base.Value).IsTrue(self.executor, node.Base.Span)
 		if err != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
-		return ValueBool{Value: isTrue}, nil, nil
+		// Holds the return value
+		truthValue := makeBool(isTrue)
+		return ReturnResult{Value: &truthValue, ShouldReturn: false}, nil, nil
 	default:
-		return nil, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot cast to non-primitive type: cast from %v to %v is unsupported", base.Type(), *node.Other), errors.TypeError)
+		return ReturnResult{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot cast to non-primitive type: cast from %v to %v is unsupported", (*base.Value).Type(), *node.Other), errors.TypeError)
 	}
 }
-func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (ReturnResult, *int, *errors.Error) {
 	// If there is only a exp exression, return its value (recursion base case)
 	if node.ExpExpression != nil {
 		return self.visitEpxExpression(*node.ExpExpression)
 	}
 	unaryBase, code, err := self.visitUnaryExpression(node.UnaryExpression.UnaryExpression)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	var unaryResult Value
 	var unaryErr *errors.Error
 	switch node.UnaryExpression.UnaryOp {
 	case UnaryOpPlus:
-		unaryResult, unaryErr = ValueNumber{Value: 0.0}.Sub(self.executor, node.UnaryExpression.UnaryExpression.Span, unaryBase)
+		unaryResult, unaryErr = ValueNumber{Value: 0.0}.Sub(self.executor, node.UnaryExpression.UnaryExpression.Span, *unaryBase.Value)
 	case UnaryOpMinus:
-		unaryResult, unaryErr = ValueNumber{Value: 0.0}.Add(self.executor, node.UnaryExpression.UnaryExpression.Span, unaryBase)
+		unaryResult, unaryErr = ValueNumber{Value: 0.0}.Add(self.executor, node.UnaryExpression.UnaryExpression.Span, *unaryBase.Value)
 	case UnaryOpNot:
-		unaryBaseIsTrueTemp, err := unaryBase.IsTrue(self.executor, node.UnaryExpression.UnaryExpression.Span)
+		unaryBaseIsTrueTemp, err := (*unaryBase.Value).IsTrue(self.executor, node.UnaryExpression.UnaryExpression.Span)
 		if err != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
-		return ValueBool{Value: !unaryBaseIsTrueTemp}, nil, nil
+		// Truth value is inverted due to the unary not (!)
+		returnValue := makeBool(!unaryBaseIsTrueTemp)
+		return ReturnResult{Value: &returnValue}, nil, nil
 	default:
 		panic("BUG: a new unary operator has been added without updating this code")
 	}
 	if unaryErr != nil {
-		return nil, nil, unaryErr
+		return ReturnResult{}, nil, unaryErr
 	}
-	return unaryResult, nil, nil
+	return ReturnResult{Value: &unaryResult, ShouldReturn: false}, nil, nil
 }
-func (self *Interpreter) visitEpxExpression(node ExpExpression) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitEpxExpression(node ExpExpression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitAssignExression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// If there is no exponent, just return the base case
 	if node.Other == nil {
@@ -522,53 +589,53 @@ func (self *Interpreter) visitEpxExpression(node ExpExpression) (Value, *int, *e
 	}
 	power, code, err := self.visitUnaryExpression(*node.Other)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// Calculate result based on the base type
 	var powRes Value
 	var powErr *errors.Error
-	switch base.Type() {
+	switch (*base.Value).Type() {
 	case TypeNumber:
-		powRes, powErr = base.(ValueNumber).Pow(self.executor, node.Span, power)
+		powRes, powErr = (*base.Value).(ValueNumber).Pow(self.executor, node.Span, *power.Value)
 	case TypeBuiltinVariable:
-		powRes, powErr = base.(ValueBuiltinVariable).Pow(self.executor, node.Span, power)
+		powRes, powErr = (*base.Value).(ValueBuiltinVariable).Pow(self.executor, node.Span, *power.Value)
 	default:
-		return nil, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot perform power operation on type %v", base.Type()), errors.TypeError)
+		return ReturnResult{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot perform power operation on type %v", (*base.Value).Type()), errors.TypeError)
 	}
 	if powErr != nil {
-		return nil, nil, powErr
+		return ReturnResult{}, nil, powErr
 	}
-	return powRes, nil, nil
+	return ReturnResult{Value: &powRes, ShouldReturn: false}, nil, nil
 }
-func (self *Interpreter) visitAssignExression(node AssignExpression) (Value, *int, *errors.Error) {
-	baseTmp, code, err := self.visitCallExpression(node.Base)
+func (self *Interpreter) visitAssignExression(node AssignExpression) (ReturnResult, *int, *errors.Error) {
+	base, code, err := self.visitCallExpression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
-	base := *baseTmp
 	// If there is no assignment, return the base value here
 	if node.Other == nil {
 		return base, nil, nil
 	}
 	rhsValue, code, err := self.visitExpression(node.Other.Expression)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// Check if this type legal to assign to
-	if base.Type() == TypeObject || base.Type() == TypeBuiltinFunction || base.Type() == TypeBuiltinVariable {
-		return nil, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot reassign to type %v", base.Type()), errors.TypeError)
+	if (*base.Value).Type() == TypeObject || (*base.Value).Type() == TypeBuiltinFunction || (*base.Value).Type() == TypeBuiltinVariable {
+		return ReturnResult{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot reassign to type %v", (*base.Value).Type()), errors.TypeError)
 	}
 	// Perform a simpple assignment
 	if node.Other.Operator == OpAssign {
 		// TODO: answer questions below
 		// - Is this memory-safe?
 		// - Could it lead to unexpected behaviour?
-		baseTmp = &rhsValue
+		base.Value = rhsValue.Value
+		// Return the rhs as the return value of the entire assignment
 		return rhsValue, nil, nil
 	}
 	// Check that the base is a type that can be safely assigned to using the complex operators
-	if base.Type() != TypeString && base.Type() != TypeNumber {
-		return nil, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot use algebraic assignment operators on the %v type", base.Type()), errors.TypeError)
+	if (*base.Value).Type() != TypeString && (*base.Value).Type() != TypeNumber {
+		return ReturnResult{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot use algebraic assignment operators on the %v type", (*base.Value).Type()), errors.TypeError)
 	}
 	// Perform the more complex assignments
 	var newValue Value
@@ -577,78 +644,78 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Value, *in
 	case OpAssign:
 		panic("BUG: this case should have been handled above")
 	case OpPlusAssign:
-		newValue, assignErr = base.(ValueAlg).Add(self.executor, node.Span, rhsValue)
+		newValue, assignErr = (*base.Value).(ValueAlg).Add(self.executor, node.Span, *rhsValue.Value)
 	case OpMinusAssign:
-		newValue, assignErr = base.(ValueAlg).Sub(self.executor, node.Span, rhsValue)
+		newValue, assignErr = (*base.Value).(ValueAlg).Sub(self.executor, node.Span, *rhsValue.Value)
 	case OpMulAssign:
-		newValue, assignErr = base.(ValueAlg).Mul(self.executor, node.Span, rhsValue)
+		newValue, assignErr = (*base.Value).(ValueAlg).Mul(self.executor, node.Span, *rhsValue.Value)
 	case OpDivAssign:
-		newValue, assignErr = base.(ValueAlg).Div(self.executor, node.Span, rhsValue)
+		newValue, assignErr = (*base.Value).(ValueAlg).Div(self.executor, node.Span, *rhsValue.Value)
 	case OpReminderAssign:
-		newValue, assignErr = base.(ValueAlg).Rem(self.executor, node.Span, rhsValue)
+		newValue, assignErr = (*base.Value).(ValueAlg).Rem(self.executor, node.Span, *rhsValue.Value)
 	case OpPowerAssign:
-		newValue, assignErr = base.(ValueAlg).Pow(self.executor, node.Span, rhsValue)
+		newValue, assignErr = (*base.Value).(ValueAlg).Pow(self.executor, node.Span, *rhsValue.Value)
 	}
 	if assignErr != nil {
-		return nil, nil, assignErr
+		return ReturnResult{}, nil, assignErr
 	}
 	// Perform actual assignment
-	baseTmp = &newValue
+	base.Value = &newValue
 	// Return rhs value as a result of the entire expression
-	return rhsValue, nil, nil
+	return ReturnResult{Value: &newValue, ShouldReturn: false}, nil, nil
 }
 
 // Functions from here on downstream return a pointer to a value so that it can be modified in a assign expression
-func (self *Interpreter) visitCallExpression(node CallExpression) (*Value, *int, *errors.Error) {
+func (self *Interpreter) visitCallExpression(node CallExpression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitMemberExpression(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// Evaluate call / member parts
 	for _, part := range node.Parts {
 		// Handle args -> function call
 		if part.Args != nil {
 			// Call the base using the following ars
-			result, code, err := self.callValue(node.Span, *base, *part.Args)
+			result, code, err := self.callValue(node.Span, *base.Value, *part.Args)
 			if code != nil || err != nil {
-				return nil, code, err
+				return ReturnResult{}, code, err
 			}
 			// Swap the result and the base so that the next iteration uses this result
-			base = &result
+			base.Value = &result
 		}
 
 		// Handle member access
 		if part.MemberExpressionPart != nil {
-			result, err := getField(node.Span, *base, *part.MemberExpressionPart)
+			result, err := getField(node.Span, *base.Value, *part.MemberExpressionPart)
 			if err != nil {
-				return nil, nil, err
+				return ReturnResult{}, nil, err
 			}
 			// Swap the result and the base so that the next iteration uses this result
-			base = &result
+			base.Value = &result
 		}
 	}
 	// Return the last base (the result)
 	return base, nil, nil
 }
 
-func (self *Interpreter) visitMemberExpression(node MemberExpression) (*Value, *int, *errors.Error) {
+func (self *Interpreter) visitMemberExpression(node MemberExpression) (ReturnResult, *int, *errors.Error) {
 	base, code, err := self.visitAtom(node.Base)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	// Evaluate member expressions
 	for _, member := range node.Members {
-		result, err := getField(node.Span, *base, member)
+		result, err := getField(node.Span, *base.Value, member)
 		if err != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
 		// Swap the result and the base so that the next iteration uses this result
-		base = &result
+		base.Value = &result
 	}
 	return base, nil, nil
 }
 
-func (self *Interpreter) visitAtom(node Atom) (*Value, *int, *errors.Error) {
+func (self *Interpreter) visitAtom(node Atom) (ReturnResult, *int, *errors.Error) {
 	value := makeNull()
 	switch node.Kind() {
 	case AtomKindNumber:
@@ -662,9 +729,9 @@ func (self *Interpreter) visitAtom(node Atom) (*Value, *int, *errors.Error) {
 		// Make the pair's value
 		pairValue, code, err := self.visitExpression(pairNode.ValueExpr)
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
-		value = ValuePair{Key: pairNode.Key, Value: pairValue}
+		value = ValuePair{Key: pairNode.Key, Value: *pairValue.Value}
 	case AtomKindNull:
 		value = ValueNull{}
 	case AtomKindIdentifier:
@@ -675,11 +742,11 @@ func (self *Interpreter) visitAtom(node Atom) (*Value, *int, *errors.Error) {
 			scopeValue, exists := scope[key]
 			// If the correct value has been found, return early
 			if exists {
-				return &scopeValue, nil, nil
+				return ReturnResult{Value: &scopeValue, ShouldReturn: false}, nil, nil
 			}
 		}
 		// If the value has not been found in any scope, return an error
-		return nil, nil, errors.NewError(
+		return ReturnResult{}, nil, errors.NewError(
 			node.Span(),
 			fmt.Sprintf("Variable or function with name %s not found", key),
 			errors.ReferenceError,
@@ -687,68 +754,82 @@ func (self *Interpreter) visitAtom(node Atom) (*Value, *int, *errors.Error) {
 	case AtomKindIfExpr:
 		valueTemp, code, err := self.visitIfExpression(node.(IfExpr))
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
-		value = valueTemp
+		value = *valueTemp.Value
 	case AtomKindForExpr:
 		valueTemp, code, err := self.visitForExpression(node.(AtomFor))
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
-		value = valueTemp
+		value = *valueTemp.Value
 	}
-	// TODO: mehr
-	return &value, nil, nil
+	// TODO: implement more atom expressions
+	return ReturnResult{Value: &value, ShouldReturn: false}, nil, nil
 }
 
-// TODO: implement return functionality
-func (self *Interpreter) visitIfExpression(node IfExpr) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitIfExpression(node IfExpr) (ReturnResult, *int, *errors.Error) {
 	conditionValue, code, err := self.visitExpression(node.Condition)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
-	conditionIsTrue, err := conditionValue.IsTrue(self.executor, node.Span())
+	conditionIsTrue, err := (*conditionValue.Value).IsTrue(self.executor, node.Span())
 	if err != nil {
-		return nil, nil, err
+		return ReturnResult{}, nil, err
 	}
+
+	// Before visiting any branch, push a new scope
+	if err := self.pushScope(); err != nil {
+		return ReturnResult{}, nil, err
+	}
+	// When this function is done, pop the scope again
+	defer self.popScope()
+
 	// If the condition is true, visit the true branch
 	if conditionIsTrue {
 		value, code, err := self.visitStatements(node.Block)
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
-		// Return the value of the block
-		return *value.Value, nil, nil
+		// Forward any return statement
+		if value.ReturnValue != nil {
+			return ReturnResult{Value: value.ReturnValue, ShouldReturn: true}, nil, nil
+		}
+		// Otherwise, just return the result of the block
+		return ReturnResult{Value: value.Value, ShouldReturn: false}, nil, nil
 	} else {
 		// Otherwise, visit the else branch
 		value, code, err := self.visitStatements(*node.ElseBlock)
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
-		// Return the value of the else block
-		return *value.Value, nil, nil
+		// Forward any return statement
+		if value.ReturnValue != nil {
+			return ReturnResult{Value: value.ReturnValue, ShouldReturn: true}, nil, nil
+		}
+		// Otherwise, just return the result of the block
+		return ReturnResult{Value: value.Value, ShouldReturn: false}, nil, nil
 	}
 }
 
-// TODO: implement return functionality
-func (self *Interpreter) visitForExpression(node AtomFor) (Value, *int, *errors.Error) {
+func (self *Interpreter) visitForExpression(node AtomFor) (ReturnResult, *int, *errors.Error) {
 	// Make the value of the lower range
 	rangeLowerValue, code, err := self.visitExpression(node.RangeLowerExpr)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	rangeLowerNumeric := 0.0 // Placeholder is later filled
 	// Assert that the value is of type number or builtin variable
-	switch rangeLowerValue.Type() {
+	switch (*rangeLowerValue.Value).Type() {
 	case TypeNumber:
-		rangeLowerNumeric = rangeLowerValue.(ValueNumber).Value
+		rangeLowerNumeric = (*rangeLowerValue.Value).(ValueNumber).Value
 	case TypeBuiltinVariable:
-		callBackResult, err := rangeLowerValue.(ValueBuiltinVariable).Callback(self.executor, node.RangeLowerExpr.Span)
+		callBackResult, err := (*rangeLowerValue.Value).(ValueBuiltinVariable).Callback(self.executor, node.RangeLowerExpr.Span)
 		if err != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
 		if callBackResult.Type() != TypeNumber {
-			return nil, nil, errors.NewError(
+			return ReturnResult{}, nil, errors.NewError(
 				node.RangeLowerExpr.Span,
 				fmt.Sprintf("Cannot use value of type %v in a range", callBackResult.Type()),
 				errors.TypeError,
@@ -760,20 +841,20 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Value, *int, *errors.
 	// Make the value of the upper range
 	rangeUpperValue, code, err := self.visitExpression(node.RangeUpperExpr)
 	if code != nil || err != nil {
-		return nil, code, err
+		return ReturnResult{}, code, err
 	}
 	rangeUpperNumeric := 0.0 // Placeholder is later filled
 	// Assert that the value is of type number or builtin variable
-	switch rangeUpperValue.Type() {
+	switch (*rangeUpperValue.Value).Type() {
 	case TypeNumber:
-		rangeUpperNumeric = rangeUpperValue.(ValueNumber).Value
+		rangeUpperNumeric = (*rangeUpperValue.Value).(ValueNumber).Value
 	case TypeBuiltinVariable:
-		callBackResult, err := rangeUpperValue.(ValueBuiltinVariable).Callback(self.executor, node.RangeUpperExpr.Span)
+		callBackResult, err := (*rangeUpperValue.Value).(ValueBuiltinVariable).Callback(self.executor, node.RangeUpperExpr.Span)
 		if err != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
 		if callBackResult.Type() != TypeNumber {
-			return nil, nil, errors.NewError(
+			return ReturnResult{}, nil, errors.NewError(
 				node.RangeUpperExpr.Span,
 				fmt.Sprintf("Cannot use value of type %v in a range", callBackResult.Type()),
 				errors.TypeError,
@@ -784,7 +865,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Value, *int, *errors.
 
 	// Check that both ranges are whole numbers
 	if rangeLowerNumeric != float64(int(rangeLowerNumeric)) || rangeUpperNumeric != float64(int(rangeUpperNumeric)) {
-		return nil, nil, errors.NewError(
+		return ReturnResult{}, nil, errors.NewError(
 			errors.Span{
 				Start: node.RangeLowerExpr.Span.Start,
 				End:   node.RangeUpperExpr.Span.End,
@@ -794,62 +875,47 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Value, *int, *errors.
 		)
 	}
 
+	// Saves the last result of the loop
+	var lastValue *Value
+
+	// Enable the `inLoop` flag on the interpreter
+	self.inLoop = true
+	// Release the `inLoop` flag as soon as possible
+	defer func() { self.inLoop = false }()
+
 	// Performs the iteration code
 	for iteration := int(rangeLowerNumeric); iteration < int(rangeUpperNumeric); iteration++ {
 		// Add a new scope for the iteration
 		if err := self.pushScope(); err != nil {
-			return nil, nil, err
+			return ReturnResult{}, nil, err
 		}
-		// Add the head identifier to the scope
+		// Add the head identifier to the scope (so that loop code can access the iteration variable)
 		self.addVar(node.HeadIdentifier, ValueNumber{Value: float64(iteration)})
 
-		value, code, err := self.visitLoopStatements(node.IterationCode)
+		value, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
-			return nil, code, err
+			return ReturnResult{}, code, err
 		}
 
 		if value.BreakValue != nil {
-			return *value, nil, nil
+			return ReturnResult{
+				ShouldReturn: false,
+				Value:        value.BreakValue,
+			}, nil, nil
 		}
 
 		// Remove the scope again
 		self.popScope()
-	}
-	return nil, nil, nil
-}
 
-// Like visitStatements but enables the semantic use of break and continue statements
-func (self *Interpreter) visitLoopStatements(span errors.Span, statements []Statement) (Result, *int, *errors.Error) {
-	null := makeNull()
-	var lastResult Result = Result{
-		ShouldContinue: false,
-		ReturnValue:    nil,
-		BreakValue:     nil,
-		Value:          &null,
+		// Assign to the last value
+		lastValue = value.Value
 	}
-	var code *int
-	var err *errors.Error
-	for _, statement := range statements {
-		lastResult, code, err = self.visitStatement(statement)
-		if code != nil || err != nil {
-			return Result{}, code, err
-		}
-		// Return early if nessecary
-		if lastResult.BreakValue != nil || lastResult.ReturnValue != nil {
-			return lastResult, nil, nil
-		}
-		// If continue is used, return null for this iteration
-		if lastResult.ShouldContinue {
-			null := makeNull()
-			lastResult = Result{
-				ShouldContinue: false,
-				ReturnValue:    nil,
-				BreakValue:     nil,
-				Value:          &null,
-			}
-		}
-	}
-	return lastResult, nil, nil
+
+	// Returns the last of the loop's statements
+	return ReturnResult{
+		ShouldReturn: false,
+		Value:        lastValue,
+	}, nil, nil
 }
 
 // Helper functions
@@ -884,8 +950,13 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 			}
 
 			// Add the newly computed value to the scoe so the function can access it
-			self.addVar(argKey, argValue)
+			self.addVar(argKey, *argValue.Value)
 		}
+
+		// Enable the `inFunction` flag on the interpreter
+		self.inFunction = true
+		// Release the `inFunction` flag as soon as possible
+		defer func() { self.inFunction = false }()
 
 		// Visit the function's body
 		returnValue, code, err := self.visitStatements(function.Body)
@@ -906,7 +977,7 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 			if code != nil || err != nil {
 				return nil, code, err
 			}
-			callArgs = append(callArgs, argValue)
+			callArgs = append(callArgs, *argValue.Value)
 		}
 
 		// Call the builtin function
