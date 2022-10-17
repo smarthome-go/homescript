@@ -19,7 +19,7 @@ func (self dummyExecutor) Sleep(sleepTime float64) {
 }
 
 func (self dummyExecutor) Print(args ...string) {
-	fmt.Println(strings.Join(args, " "))
+	fmt.Println(">>> ", strings.Join(args, " "))
 }
 
 func (self dummyExecutor) SwitchOn(name string) (bool, error) {

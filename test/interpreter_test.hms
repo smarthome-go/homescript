@@ -1,7 +1,5 @@
 let value = 0;
 
-for i in 0..100000 {
-    value += i;
-};
+value = 10;
 
 print(value);

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
 
@@ -188,18 +189,18 @@ func (self *Interpreter) visitStatement(node Statement) (Result, *int, *errors.E
 
 func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.Error) {
 	// Check that the left hand side will cause no conflicts
-
 	righValue, code, err := self.visitExpression(node.Right)
 	if code != nil || err != nil {
 		return Result{}, code, nil
 	}
+	// Give the new value an identifier which can later be used for reassignment
+	// TODO: here
 	// Add the value to the scope
 	self.addVar(node.Left, *righValue.Value)
-	return Result{}, nil, nil
+	return righValue, nil, nil
 }
 func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *errors.Error) {
-	// TODO: implement this
-	return Result{}, nil, nil
+	return Result{}, nil, errors.NewError(node.Span(), "The import statement is not yet implemented", errors.RuntimeError)
 }
 
 func (self *Interpreter) visitBreakStatement(node BreakStmt) (Result, *int, *errors.Error) {
@@ -643,18 +644,32 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
+
+	// TODO: is this nessecary?
 	// Check if this type legal to assign to
-	if (*base.Value).Type() == TypeObject || (*base.Value).Type() == TypeBuiltinFunction || (*base.Value).Type() == TypeBuiltinVariable {
-		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot reassign to type %v", (*base.Value).Type()), errors.TypeError)
-	}
-	// Perform a simpple assignment
+	//if (*base.Value).Type() == TypeObject || (*base.Value).Type() == TypeBuiltinFunction || (*base.Value).Type() == TypeBuiltinVariable {
+	//return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot reassign to type %v", (*base.Value).Type()), errors.TypeError)
+	//}
+
+	// Perform a simple assignment
 	if node.Other.Operator == OpAssign {
-		// TODO: answer questions below
-		// - Is this memory-safe?
-		// - Could it lead to unexpected behaviour?
-		base.Value = rhsValue.Value
-		// Return the rhs as the return value of the entire assignment
-		return rhsValue, nil, nil
+		if ident := base.ValueIdentifier; ident != nil {
+			// Need to manually search through the scopes to find the right stack frame
+			for _, scope := range self.scopes {
+				_, exist := scope[*ident]
+				if exist {
+					// Perform actual assignment
+					scope[*ident] = *rhsValue.Value
+					// Return the rhs as the return value of the entire assignment
+					return rhsValue, nil, nil
+				}
+			}
+			panic("BUG: value holds an identifer but is not present in scope")
+		}
+		spew.Dump(base)
+		// Return an error, which states that this type is not assignable to
+		return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot assign to %v", (*base.Value).Type()), errors.TypeError)
+
 	}
 	// Check that the base is a type that can be safely assigned to using the complex operators
 	if (*base.Value).Type() != TypeString && (*base.Value).Type() != TypeNumber {
@@ -682,10 +697,22 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 	if assignErr != nil {
 		return Result{}, nil, assignErr
 	}
-	// Perform actual assignment
-	base.Value = &newValue
-	// Return rhs value as a result of the entire expression
-	return Result{Value: &newValue}, nil, nil
+	// Perform actual (complex) assignment
+	if ident := base.ValueIdentifier; ident != nil {
+		// Need to manually search through the scopes to find the right stack frame
+		for _, scope := range self.scopes {
+			_, exist := scope[*ident]
+			if exist {
+				// Perform actual assignment
+				scope[*ident] = newValue
+				// Return the rhs as the return value of the entire assignment
+				return Result{Value: &newValue}, nil, nil
+			}
+		}
+		panic("BUG: value holds an identifer but is not present in scope")
+	}
+	// Return an error, which states that this type is not assignable to
+	return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot assign to %v", (*base.Value).Type()), errors.TypeError)
 }
 
 // Functions from here on downstream return a pointer to a value so that it can be modified in a assign expression
@@ -764,19 +791,14 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		null := makeNull()
 		result = Result{Value: &null}
 	case AtomKindIdentifier:
+		// TODO: include identifier here
+		// Search the scope for the correct key
 		key := node.(AtomIdentifier).Identifier
-		// Seach the stack scope top to bottom (inner scopes have higher priority)
-		for _, scope := range self.scopes {
-			// Access the scope in order to get the identifier's value
-			scopeValue, exists := scope[key]
-			// If the correct value has been found, return early
-			if exists {
-				return Result{Value: &scopeValue}, nil, nil
-			}
+		scopeValue := self.getVar(key)
+		// If the key is associated with a value, return it
+		if scopeValue != nil {
+			return Result{Value: scopeValue}, nil, nil
 		}
-
-		a
-
 		// If the value has not been found in any scope, return an error
 		return Result{}, nil, errors.NewError(
 			node.Span(),
@@ -898,21 +920,14 @@ func (self *Interpreter) makeFunctionDeclaration(node AtomFunction) (Value, *err
 		Args:       node.ArgIdentifiers,
 		Body:       node.Body,
 	}
-
-	// Seach the stack scope top to bottom (inner scopes have higher priority)
-	// in order to check if the function already exists
-	for _, scope := range self.scopes {
-		// Access the scope in order to get the identifier's value
-		_, exists := scope[node.Name]
-		// If the correct value has been found, return early
-		if exists {
-			return nil, errors.NewError(node.Span(), fmt.Sprintf("Cannot declare function with name %s: name already taken in scope", node.Name), errors.SyntaxError)
-		}
+	// Validate that there is no conflicting value in the scope already
+	scopeValue := self.getVar(node.Name)
+	if scopeValue != nil {
+		return nil, errors.NewError(node.Span(), fmt.Sprintf("Cannot declare function with name %s: name already taken in scope", node.Name), errors.SyntaxError)
 	}
 
 	// Add the function to the current scope if there are no conflicts
 	self.addVar(node.Name, function)
-
 	// Return the functions value so that assignments like `let a = fn foo() ...` are possible
 	return function, nil
 }
