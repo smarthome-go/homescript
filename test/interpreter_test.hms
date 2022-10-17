@@ -1,5 +1,30 @@
-let value = 0;
+fn compute() {
+    let value = 0;
+    for i in 0..1000000 {
+        value += i;
+    };
+    print(value);
+    for i in 0..1000000 {
+        value -= i;
+    };
+    print(value);
+    return value;
+};
 
-value = 10;
+# compute();
 
-print(value);
+fn fib(n) {
+    if n < 2 {
+        n;
+    } else {
+        fib(n-1) + fib (n-2);
+    };
+};
+
+fn fibonacci(count) {
+    for i in 0..count {
+        print("fib("+i+"): ", fib(i));
+    };
+};
+
+fibonacci(20);

@@ -37,12 +37,12 @@ func (self ValueType) String() string {
 		return "Pair"
 	case TypeObject:
 		return "Object"
-	case TypeFunction | TypeBuiltinFunction:
+	case TypeFunction, TypeBuiltinFunction:
 		return "Function"
 	case TypeBuiltinVariable:
 		return "BuiltinVariable"
 	default:
-		// Unreachabel
+		// Unreachable
 		panic("BUG: A new type was introduced without updating this code")
 	}
 }
@@ -50,6 +50,7 @@ func (self ValueType) String() string {
 // Value interfaces
 type Value interface {
 	Type() ValueType
+	Ident() *string
 	// Is also used for `as str` and printing
 	Display(executor Executor, span errors.Span) (string, *errors.Error)
 	Debug(executor Executor, span errors.Span) (string, *errors.Error)
@@ -74,9 +75,12 @@ type ValueAlg interface {
 }
 
 // Null value
-type ValueNull struct{}
+type ValueNull struct {
+	Identifier *string
+}
 
 func (self ValueNull) Type() ValueType { return TypeNull }
+func (self ValueNull) Ident() *string  { return self.Identifier }
 func (self ValueNull) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "null", nil
 }
@@ -92,10 +96,12 @@ func (self ValueNull) IsEqual(_ Executor, _ errors.Span, other Value) (bool, *er
 
 // Number value
 type ValueNumber struct {
-	Value float64
+	Value      float64
+	Identifier *string
 }
 
 func (self ValueNumber) Type() ValueType { return TypeNumber }
+func (self ValueNumber) Ident() *string  { return self.Identifier }
 func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	// Check if the value is actually an integer
 	if float64(int(self.Value)) == self.Value {
@@ -273,10 +279,12 @@ func (self ValueNumber) Pow(executor Executor, span errors.Span, other Value) (V
 
 // Boolean value
 type ValueBool struct {
-	Value bool
+	Value      bool
+	Identifier *string
 }
 
 func (self ValueBool) Type() ValueType { return TypeBoolean }
+func (self ValueBool) Ident() *string  { return self.Identifier }
 func (self ValueBool) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return fmt.Sprintf("%t", self.Value), nil
 }
@@ -299,10 +307,12 @@ func (self ValueBool) IsEqual(_ Executor, span errors.Span, other Value) (bool, 
 
 // String value
 type ValueString struct {
-	Value string
+	Value      string
+	Identifier *string
 }
 
 func (self ValueString) Type() ValueType { return TypeString }
+func (self ValueString) Ident() *string  { return self.Identifier }
 func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return self.Value, nil
 }
@@ -354,11 +364,13 @@ func (self ValueString) Pow(executor Executor, span errors.Span, other Value) (V
 
 // Pair value
 type ValuePair struct {
-	Key   string
-	Value Value
+	Key        string
+	Value      Value
+	Identifier *string
 }
 
 func (self ValuePair) Type() ValueType { return TypePair }
+func (self ValuePair) Ident() *string  { return self.Identifier }
 func (self ValuePair) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	value, err := self.Value.Display(executor, span)
 	if err != nil {
@@ -401,6 +413,7 @@ type ValueObject struct {
 }
 
 func (self ValueObject) Type() ValueType { return TypeObject }
+func (self ValueObject) Ident() *string  { return nil }
 func (self ValueObject) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	fields := make([]string, 0)
 	for key, value := range self.Fields {
@@ -466,6 +479,7 @@ type ValueFunction struct {
 }
 
 func (self ValueFunction) Type() ValueType { return TypeFunction }
+func (self ValueFunction) Ident() *string  { return nil }
 func (self ValueFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<function>", nil
 }
@@ -492,6 +506,7 @@ type ValueBuiltinFunction struct {
 }
 
 func (self ValueBuiltinFunction) Type() ValueType { return TypeBuiltinFunction }
+func (self ValueBuiltinFunction) Ident() *string  { return nil }
 func (self ValueBuiltinFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<builtin-function>", nil
 }
@@ -518,6 +533,7 @@ type ValueBuiltinVariable struct {
 }
 
 func (self ValueBuiltinVariable) Type() ValueType { return TypeBuiltinVariable }
+func (self ValueBuiltinVariable) Ident() *string  { return nil }
 func (self ValueBuiltinVariable) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<builtin-variable>", nil
 }

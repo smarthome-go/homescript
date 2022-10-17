@@ -189,16 +189,58 @@ func (self *Interpreter) visitStatement(node Statement) (Result, *int, *errors.E
 
 func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.Error) {
 	// Check that the left hand side will cause no conflicts
-	righValue, code, err := self.visitExpression(node.Right)
+	rightResult, code, err := self.visitExpression(node.Right)
 	if code != nil || err != nil {
 		return Result{}, code, nil
 	}
-	// Give the new value an identifier which can later be used for reassignment
-	// TODO: here
+
+	// Insert an identifier into the value (if possible)
+	value := insertValueIdentifier(*rightResult.Value, node.Left)
+
 	// Add the value to the scope
-	self.addVar(node.Left, *righValue.Value)
-	return righValue, nil, nil
+	self.addVar(node.Left, value)
+	// Also update the result value to include the new Identifier
+	rightResult.Value = &value
+	// Finially, return the result
+	return rightResult, nil, nil
 }
+
+// This function is used in order to destructure most of the possible types
+// Then, each type is constructed manually using the correct constructor,
+// However, the constructor includes the assignment of an identifier
+// The identifier is used in the `AssignExpression` due to Go's weird and unclear memory model
+func insertValueIdentifier(value Value, identifier string) Value {
+	switch value.Type() {
+	case TypeNull:
+		return ValueNull{
+			Identifier: &identifier,
+		}
+	case TypeNumber:
+		return ValueNumber{
+			Value:      value.(ValueNumber).Value,
+			Identifier: &identifier,
+		}
+	case TypeBoolean:
+		return ValueBool{
+			Value:      value.(ValueBool).Value,
+			Identifier: &identifier,
+		}
+	case TypeString:
+		value = ValueString{
+			Value:      value.(ValueString).Value,
+			Identifier: &identifier,
+		}
+	case TypePair:
+		value = ValuePair{
+			Key:        value.(ValuePair).Key,
+			Value:      value.(ValuePair).Value,
+			Identifier: &identifier,
+		}
+	}
+	// For other types, it is not possible to insert an identifier, so just return it as is
+	return value
+}
+
 func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *errors.Error) {
 	return Result{}, nil, errors.NewError(node.Span(), "The import statement is not yet implemented", errors.RuntimeError)
 }
@@ -253,6 +295,9 @@ func (self *Interpreter) visitExpression(node Expression) (Result, *int, *errors
 	}
 	// If there are no other expressions, just return the base value
 	if len(node.Following) == 0 {
+		if base.Value == nil {
+			panic("nmi")
+		}
 		return base, nil, nil
 	}
 	// If the base is already true, return true without looking at the other expressions
@@ -570,11 +615,6 @@ func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (Result, *in
 	if node.ExpExpression != nil {
 		return self.visitEpxExpression(*node.ExpExpression)
 	}
-	if node.UnaryExpression == nil {
-		if node.ExpExpression == nil {
-			panic("is nil")
-		}
-	}
 	unaryBase, code, err := self.visitUnaryExpression(node.UnaryExpression.UnaryExpression)
 	if code != nil || err != nil {
 		return Result{}, code, err
@@ -645,15 +685,12 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 		return Result{}, code, err
 	}
 
-	// TODO: is this nessecary?
-	// Check if this type legal to assign to
-	//if (*base.Value).Type() == TypeObject || (*base.Value).Type() == TypeBuiltinFunction || (*base.Value).Type() == TypeBuiltinVariable {
-	//return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot reassign to type %v", (*base.Value).Type()), errors.TypeError)
-	//}
-
 	// Perform a simple assignment
 	if node.Other.Operator == OpAssign {
-		if ident := base.ValueIdentifier; ident != nil {
+		if ident := (*base.Value).Ident(); ident != nil {
+			// Insert the original identifier back into the new value (if possible)
+			*rhsValue.Value = insertValueIdentifier(*rhsValue.Value, *ident)
+
 			// Need to manually search through the scopes to find the right stack frame
 			for _, scope := range self.scopes {
 				_, exist := scope[*ident]
@@ -666,7 +703,6 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 			}
 			panic("BUG: value holds an identifer but is not present in scope")
 		}
-		spew.Dump(base)
 		// Return an error, which states that this type is not assignable to
 		return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot assign to %v", (*base.Value).Type()), errors.TypeError)
 
@@ -698,7 +734,10 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 		return Result{}, nil, assignErr
 	}
 	// Perform actual (complex) assignment
-	if ident := base.ValueIdentifier; ident != nil {
+	if ident := (*base.Value).Ident(); ident != nil {
+		// Insert the original identifier back into the new value (if possible)
+		newValue = insertValueIdentifier(newValue, *ident)
+
 		// Need to manually search through the scopes to find the right stack frame
 		for _, scope := range self.scopes {
 			_, exist := scope[*ident]
@@ -791,7 +830,9 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		null := makeNull()
 		result = Result{Value: &null}
 	case AtomKindIdentifier:
-		// TODO: include identifier here
+
+		// TODO: should include identifier insertion here?
+
 		// Search the scope for the correct key
 		key := node.(AtomIdentifier).Identifier
 		scopeValue := self.getVar(key)
@@ -1221,6 +1262,8 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 			if code != nil || err != nil {
 				return nil, code, err
 			}
+			// TODO fix this (everything nil)
+			spew.Dump(argValue)
 			callArgs = append(callArgs, *argValue.Value)
 		}
 
