@@ -6,8 +6,3 @@ type Result struct {
 	BreakValue     *Value
 	Value          *Value
 }
-
-type ReturnResult struct {
-	ShouldReturn bool
-	Value        *Value
-}

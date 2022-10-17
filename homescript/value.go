@@ -688,8 +688,18 @@ func makeNull() Value {
 	return ValueNull{}
 }
 
+func makeNullResult() Result {
+	null := makeNull()
+	return Result{Value: &null}
+}
+
 func makeBool(value bool) Value {
 	return ValueBool{Value: value}
+}
+
+func makeBoolResult(value bool) Result {
+	bool := makeBool(value)
+	return Result{Value: &bool}
 }
 
 func makeNum(value float64) Value {
@@ -698,4 +708,8 @@ func makeNum(value float64) Value {
 
 func makeStr(value string) Value {
 	return ValueString{Value: value}
+}
+
+func makePair(key string, value Value) Value {
+	return ValuePair{Key: key, Value: value}
 }
