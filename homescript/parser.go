@@ -30,7 +30,6 @@ type parser struct {
 	lexer     lexer
 	prevToken Token
 	currToken Token
-	errors    []errors.Error
 }
 
 func newParser(filename string, program string) parser {
@@ -38,7 +37,6 @@ func newParser(filename string, program string) parser {
 		lexer:     newLexer(filename, program),
 		prevToken: unknownToken(errors.Location{}),
 		currToken: unknownToken(errors.Location{}),
-		errors:    make([]errors.Error, 0),
 	}
 }
 
@@ -143,7 +141,7 @@ func (self *parser) eqExpr() (EqExpression, *errors.Error) {
 		}, nil
 	}
 	return EqExpression{
-		Base:  RelExpression{},
+		Base:  base,
 		Other: nil,
 		Span: errors.Span{
 			Start: startLocation,
@@ -183,12 +181,14 @@ func (self *parser) relExpr() (RelExpression, *errors.Error) {
 	if err := self.advance(); err != nil {
 		return RelExpression{}, err
 	}
+
 	other, err := self.addExpr()
 	if err != nil {
 		return RelExpression{}, err
 	}
+
 	return RelExpression{
-		Base: AddExpression{},
+		Base: base,
 		Other: &struct {
 			RelOperator RelOperator
 			Node        AddExpression
@@ -305,46 +305,48 @@ func (self *parser) castExpr() (CastExpression, *errors.Error) {
 	if err != nil {
 		return CastExpression{}, err
 	}
-	// Typecast should be performed
-	if self.currToken.Kind == As {
-		if err := self.advance(); err != nil {
-			return CastExpression{}, err
-		}
-		var typeCast ValueType
-		switch self.currToken.Kind {
-		case NullType:
-			typeCast = TypeNull
-		case NumberType:
-			typeCast = TypeNumber
-		case StringType:
-			typeCast = TypeString
-		case BooleanType:
-			typeCast = TypeBoolean
-		default:
-			return CastExpression{}, &errors.Error{
-				Kind:    errors.SyntaxError,
-				Message: fmt.Sprintf("Typecast requires a valid type: expected type name, found %v", self.currToken.Kind),
-				Span: errors.Span{
-					Start: self.prevToken.StartLocation,
-					End:   self.currToken.EndLocation,
-				},
-			}
-		}
-		if err := self.advance(); err != nil {
-			return CastExpression{}, err
-		}
+
+	if self.currToken.Kind != As {
 		return CastExpression{
 			Base:  base,
-			Other: &typeCast,
+			Other: nil,
 			Span: errors.Span{
 				Start: startLocation,
 				End:   self.currToken.EndLocation,
 			},
 		}, nil
 	}
+
+	// Typecast should be performed
+	if err := self.advance(); err != nil {
+		return CastExpression{}, err
+	}
+	var typeCast ValueType
+	switch self.currToken.Kind {
+	case NullType:
+		typeCast = TypeNull
+	case NumberType:
+		typeCast = TypeNumber
+	case StringType:
+		typeCast = TypeString
+	case BooleanType:
+		typeCast = TypeBoolean
+	default:
+		return CastExpression{}, &errors.Error{
+			Kind:    errors.SyntaxError,
+			Message: fmt.Sprintf("Typecast requires a valid type: expected type name, found %v", self.currToken.Kind),
+			Span: errors.Span{
+				Start: self.prevToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+	if err := self.advance(); err != nil {
+		return CastExpression{}, err
+	}
 	return CastExpression{
 		Base:  base,
-		Other: nil,
+		Other: &typeCast,
 		Span: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
@@ -372,7 +374,7 @@ func (self *parser) unaryExpr() (UnaryExpression, *errors.Error) {
 		}
 		base, err := self.unaryExpr()
 		if err != nil {
-			return UnaryExpression{}, err
+			panic("err")
 		}
 		return UnaryExpression{
 			UnaryExpression: &struct {
@@ -393,14 +395,15 @@ func (self *parser) unaryExpr() (UnaryExpression, *errors.Error) {
 	if err != nil {
 		return UnaryExpression{}, err
 	}
-	return UnaryExpression{
+	returnValue := UnaryExpression{
 		UnaryExpression: nil,
 		ExpExpression:   &expr,
 		Span: errors.Span{
 			Start: startLocation,
 			End:   self.prevToken.EndLocation,
 		},
-	}, nil
+	}
+	return returnValue, nil
 }
 
 func (self *parser) expExpr() (ExpExpression, *errors.Error) {
@@ -1470,15 +1473,13 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 	return statements, nil
 }
 
-func (self *parser) parse() ([]Statement, []errors.Error) {
+func (self *parser) parse() ([]Statement, *errors.Error) {
 	if err := self.advance(); err != nil {
-		self.errors = append(self.errors, *err)
-		return nil, self.errors
+		return nil, err
 	}
 	statements, err := self.statements()
 	if err != nil {
-		self.errors = append(self.errors, *err)
-		return nil, self.errors
+		return nil, err
 	}
 	return statements, nil
 }
