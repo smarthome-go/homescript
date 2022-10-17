@@ -30,6 +30,27 @@ const (
 	ReferenceError
 )
 
+func (self ErrorKind) String() string {
+	switch self {
+	case SyntaxError:
+		return "SyntaxError"
+	case TypeError:
+		return "TypeError"
+	case RuntimeError:
+		return "RuntimeError"
+	case ValueError:
+		return "ValueError"
+	case ThrowError:
+		return "ThrowError"
+	case StackOverflow:
+		return "StackOverflow"
+	case ReferenceError:
+		return "ReferenceError"
+	default:
+		panic("BUG: a new error kind was introduced without udating this code")
+	}
+}
+
 func NewError(span Span, message string, kind ErrorKind) *Error {
 	return &Error{
 		Span:    span,

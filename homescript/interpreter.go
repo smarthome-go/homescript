@@ -787,18 +787,64 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 }
 
 func (self *Interpreter) makeTryExpression(node AtomTry) (Result, *int, *errors.Error) {
+	// Add a new scope to the try block
+	if err := self.pushScope(); err != nil {
+		return Result{}, nil, err
+	}
 	tryBlockResult, code, err := self.visitStatements(node.TryBlock)
 	if code != nil {
+		// Remove the scope (cannot simly defer removing it (due to catch block))
+		self.popScope()
 		return Result{}, code, nil
 	}
+	// Remove the scope again
+	self.popScope()
+
 	// if there is an error, handle it (try to catch it)
 	if err != nil {
-		// If the error is not a runtime error, do not catch it
+		// If the error is not a runtime error, do not catch it and propagate it
 		if err.Kind != errors.RuntimeError {
 			return Result{}, nil, err
 		}
-	todo:
-		continue
+		// Add a new scope for the catch block
+		if err := self.pushScope(); err != nil {
+			return Result{}, nil, err
+		}
+		defer self.popScope()
+
+		// Add the error variable to the scope (as an error object)
+		self.addVar(node.ErrorIdentifier, ValueObject{
+			Fields: map[string]Value{
+				"kind":    makeStr(err.Kind.String()),
+				"message": makeStr(err.Message),
+				"location": ValueObject{
+					Fields: map[string]Value{
+						"start": ValueObject{
+							Fields: map[string]Value{
+								"index":  makeNum(float64(err.Span.Start.Index)),
+								"line":   makeNum(float64(err.Span.Start.Line)),
+								"column": makeNum(float64(err.Span.Start.Column)),
+							},
+						},
+						"end": ValueObject{
+							Fields: map[string]Value{
+								"index":  makeNum(float64(err.Span.End.Index)),
+								"line":   makeNum(float64(err.Span.End.Line)),
+								"column": makeNum(float64(err.Span.End.Column)),
+							},
+						},
+					},
+				},
+			},
+		})
+
+		// Visit the catch block
+		catchResult, code, err := self.visitStatements(node.CatchBlock)
+		if code != nil || err != nil {
+			return Result{}, code, err
+		}
+		// Return the result of the catch block
+		return catchResult, nil, nil
 	}
 	return tryBlockResult, nil, nil
 }
