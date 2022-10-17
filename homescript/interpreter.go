@@ -770,9 +770,37 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 			return Result{}, nil, err
 		}
 		result.Value = &valueTemp
+	case AtomKindTryExpr:
+		valueTemp, code, err := self.makeTryExpression(node.(AtomTry))
+		if code != nil || err != nil {
+			return Result{}, nil, err
+		}
+		result = valueTemp
+	case AtomKindExpression:
+		valueTemp, code, err := self.visitExpression(node.(AtomExpression).Expression)
+		if code != nil || err != nil {
+			return Result{}, code, err
+		}
+		result = valueTemp
 	}
-	TODO: implement more atom expressions
 	return result, nil, nil
+}
+
+func (self *Interpreter) makeTryExpression(node AtomTry) (Result, *int, *errors.Error) {
+	tryBlockResult, code, err := self.visitStatements(node.TryBlock)
+	if code != nil {
+		return Result{}, code, nil
+	}
+	// if there is an error, handle it (try to catch it)
+	if err != nil {
+		// If the error is not a runtime error, do not catch it
+		if err.Kind != errors.RuntimeError {
+			return Result{}, nil, err
+		}
+	todo:
+		continue
+	}
+	return tryBlockResult, nil, nil
 }
 
 func (self *Interpreter) makeFunctionDeclaration(node AtomFunction) (Value, *errors.Error) {
