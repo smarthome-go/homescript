@@ -391,7 +391,7 @@ func GetWeather(executor Executor, span errors.Span) (Value, *errors.Error) {
 }
 
 func GetTime(executor Executor, _ errors.Span) (Value, *errors.Error) {
-	time := executor.GeTime()
+	time := executor.GetTime()
 	return ValueObject{
 		Fields: map[string]Value{
 			"year": ValueNumber{

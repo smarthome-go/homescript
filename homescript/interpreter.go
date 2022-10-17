@@ -36,12 +36,15 @@ func NewInterpreter(
 	executor Executor,
 	sigTerm *chan int,
 	stackLimit uint,
+	scopeAdditions map[string]Value, // Allows the user to add more entries to the scope
 ) Interpreter {
 	scopes := make([]map[string]Value, 0)
+	// Adds the root scope
 	scopes = append(scopes, map[string]Value{
 		// Builtin functions implemented by Homescript
 		"exit":  ValueBuiltinFunction{}, // Special function implemented below
 		"throw": ValueBuiltinFunction{Callback: Throw},
+		"print": ValueBuiltinFunction{Callback: Print},
 		// Builtin functions implemented by the executor
 		"sleep":     ValueBuiltinFunction{Callback: Sleep},
 		"switch_on": ValueBuiltinFunction{Callback: SwitchOn},
@@ -56,6 +59,20 @@ func NewInterpreter(
 		"weather": ValueBuiltinVariable{Callback: GetWeather},
 		"time":    ValueBuiltinVariable{Callback: GetTime},
 	})
+	// Panic if the stackLimit is set to <= 1
+	if stackLimit <= 1 {
+		panic(fmt.Sprintf("Stack limit is set to %d: such a low stack limit is probably useless", stackLimit))
+	}
+	// Add the optional scope entries
+	for key, value := range scopeAdditions {
+		// Check if the isertion would be legal
+		_, exists := scopes[0][key]
+		if exists {
+			panic(fmt.Sprintf("Cannot insert scope addition with key %s: this key is already taken by a builtin value", key))
+		}
+		// Insert the value into the scope
+		scopes[0][key] = value
+	}
 	return Interpreter{
 		program:    program,
 		executor:   executor,
@@ -65,6 +82,17 @@ func NewInterpreter(
 		inLoop:     false,
 		inFunction: false,
 	}
+}
+
+func (self *Interpreter) run() (Value, int, *errors.Error) {
+	result, code, err := self.visitStatements(self.program)
+	if err != nil {
+		return nil, 1, err
+	}
+	if code != nil {
+		return nil, *code, err
+	}
+	return *result.Value, 0, nil
 }
 
 // Utility function used at the beginning of any AST node's logic
@@ -91,7 +119,6 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		// TODO: implement code which checks against an argument if the fn is called inside a function or loop to disallow certain statements conditially
 
 		// Handle potential break or return statements
 		if lastResult.BreakValue != nil {
@@ -160,13 +187,21 @@ func (self *Interpreter) visitStatement(node Statement) (Result, *int, *errors.E
 }
 
 func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.Error) {
-	// TODO: implement this
+	// Check that the left hand side will cause no conflicts
+
+	righValue, code, err := self.visitExpression(node.Right)
+	if code != nil || err != nil {
+		return Result{}, code, nil
+	}
+	// Add the value to the scope
+	self.addVar(node.Left, *righValue.Value)
 	return Result{}, nil, nil
 }
 func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *errors.Error) {
 	// TODO: implement this
 	return Result{}, nil, nil
 }
+
 func (self *Interpreter) visitBreakStatement(node BreakStmt) (Result, *int, *errors.Error) {
 	// If the break should have a value, make and override it here
 	if node.Expression != nil {
@@ -174,7 +209,7 @@ func (self *Interpreter) visitBreakStatement(node BreakStmt) (Result, *int, *err
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		return value, nil, nil
+		return Result{BreakValue: value.Value}, nil, nil
 	}
 	// The break value defaults to null
 	null := makeNull()
@@ -534,6 +569,11 @@ func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (Result, *in
 	if node.ExpExpression != nil {
 		return self.visitEpxExpression(*node.ExpExpression)
 	}
+	if node.UnaryExpression == nil {
+		if node.ExpExpression == nil {
+			panic("is nil")
+		}
+	}
 	unaryBase, code, err := self.visitUnaryExpression(node.UnaryExpression.UnaryExpression)
 	if code != nil || err != nil {
 		return Result{}, code, err
@@ -734,6 +774,9 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 				return Result{Value: &scopeValue}, nil, nil
 			}
 		}
+
+		a
+
 		// If the value has not been found in any scope, return an error
 		return Result{}, nil, errors.NewError(
 			node.Span(),
@@ -949,7 +992,8 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
-	rangeUpperNumeric := 0.0 // Placeholder is later filled
+	// Placeholder is later filled
+	rangeUpperNumeric := 0.0
 	// Assert that the value is of type number or builtin variable
 	switch (*rangeUpperValue.Value).Type() {
 	case TypeNumber:
@@ -995,8 +1039,6 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 		if err := self.pushScope(); err != nil {
 			return Result{}, nil, err
 		}
-		// Remove the scope again
-		defer self.popScope()
 
 		// Add the head identifier to the scope (so that loop code can access the iteration variable)
 		self.addVar(node.HeadIdentifier, ValueNumber{Value: float64(iteration)})
@@ -1014,6 +1056,9 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 
 		// Assign to the last value
 		lastValue = value.Value
+
+		// Remove the scope again
+		self.popScope()
 	}
 
 	// Returns the last of the loop's statements
@@ -1044,8 +1089,6 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 		if err := self.pushScope(); err != nil {
 			return Result{}, nil, err
 		}
-		// Remove it as soon as the function is finished
-		defer self.popScope()
 
 		// Enable the `inLoop` flag
 		self.inLoop = true
@@ -1064,6 +1107,9 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 
 		// Otherwise, update the lastResult
 		lastResult = result
+
+		// Remove it as soon as the function is finished
+		self.popScope()
 	}
 	return lastResult, nil, nil
 }
@@ -1074,8 +1120,6 @@ func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *erro
 		if err := self.pushScope(); err != nil {
 			return Result{}, nil, err
 		}
-		// Remove it as soon as the function is finished
-		defer self.popScope()
 
 		// Enable the `inLoop` flag
 		self.inLoop = true
@@ -1091,6 +1135,9 @@ func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *erro
 		if result.BreakValue != nil {
 			return Result{Value: result.BreakValue}, nil, nil
 		}
+
+		// Remove it as soon as the function is finished
+		self.popScope()
 	}
 	panic("BUG: this should be unreachable")
 }
@@ -1196,11 +1243,26 @@ func (self *Interpreter) popScope() {
 		panic("BUG: Cannot pop root scope")
 	}
 	// Remove the last (top) element from the slice / stack
-	self.scopes = self.scopes[:len(self.scopes)]
+	self.scopes = self.scopes[:len(self.scopes)-1]
 }
 
 // Adds a varable to the top of the stack
 func (self *Interpreter) addVar(key string, value Value) {
 	// Add the entry to the top hashmap
 	self.scopes[len(self.scopes)-1][key] = value
+}
+
+// Helper function for accessing the scope(s)
+// Must provide a string key, will return either nil (no such value) or *value (value exists)
+func (self *Interpreter) getVar(key string) *Value {
+	// Search the stack scope top to bottom (inner scopes have higher priority)
+	for _, scope := range self.scopes {
+		// Access the scope in order to get the identifier's value
+		scopeValue, exists := scope[key]
+		// If the correct value has been found, return early
+		if exists {
+			return &scopeValue
+		}
+	}
+	return nil
 }

@@ -23,11 +23,12 @@ type ErrorKind uint8
 const (
 	SyntaxError ErrorKind = iota
 	TypeError
-	RuntimeError
 	ValueError
-	ThrowError
-	StackOverflow
 	ReferenceError
+	StackOverflow
+	// Can be caught using `catch`
+	ThrowError
+	RuntimeError
 )
 
 func (self ErrorKind) String() string {

@@ -948,6 +948,25 @@ func (self *parser) whileExpr() (AtomWhile, *errors.Error) {
 	if err := self.advance(); err != nil {
 		return AtomWhile{}, err
 	}
+
+	// Expect an exression or return an error
+	isValidExpr := false
+	for _, possible := range firstExpr {
+		if possible == self.currToken.Kind {
+			isValidExpr = true
+			break
+		}
+	}
+	if !isValidExpr {
+		return AtomWhile{}, errors.NewError(errors.Span{
+			Start: self.currToken.StartLocation,
+			End:   self.currToken.EndLocation,
+		},
+			fmt.Sprintf("Expected expression, found %v", self.currToken.Kind),
+			errors.SyntaxError,
+		)
+	}
+
 	conditionExpr, err := self.expression()
 	if err != nil {
 		return AtomWhile{}, err

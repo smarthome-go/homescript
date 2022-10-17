@@ -64,5 +64,5 @@ type Executor interface {
 	// Builtin variables
 	GetUser() string
 	GetWeather() (Weather, error)
-	GeTime() Time
+	GetTime() Time
 }

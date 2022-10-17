@@ -97,6 +97,10 @@ type ValueNumber struct {
 
 func (self ValueNumber) Type() ValueType { return TypeNumber }
 func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *errors.Error) {
+	// Check if the value is actually an integer
+	if float64(int(self.Value)) == self.Value {
+		return fmt.Sprintf("%d", int(self.Value)), nil
+	}
 	return fmt.Sprintf("%f", self.Value), nil
 }
 func (self ValueNumber) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
