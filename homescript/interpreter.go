@@ -124,7 +124,7 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 		if lastResult.BreakValue != nil {
 			// Check if the use of break is legal here
 			if !self.inLoop {
-				return Result{}, nil, errors.NewError(statement.Span(), fmt.Sprintf("Can only use the break statement inside loops"), errors.SyntaxError)
+				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the break statement inside loops", errors.SyntaxError)
 			}
 			return Result{Value: lastResult.BreakValue}, nil, nil
 		}
@@ -133,7 +133,7 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 		if lastResult.ReturnValue != nil {
 			// Check if the use of return is legal here
 			if !self.inFunction {
-				return Result{}, nil, errors.NewError(statement.Span(), fmt.Sprintf("Can only use the return statement inside function bodies"), errors.SyntaxError)
+				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the return statement inside function bodies", errors.SyntaxError)
 			}
 			return lastResult, nil, nil
 		}
@@ -141,7 +141,7 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 		if lastResult.ShouldContinue {
 			// Check if the use of continue is legal here
 			if !self.inLoop {
-				return Result{}, nil, errors.NewError(statement.Span(), fmt.Sprintf("Can only use the continue statement inside loops"), errors.SyntaxError)
+				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the continue statement inside loops", errors.SyntaxError)
 			}
 			lastResult = makeNullResult()
 		}
@@ -296,9 +296,6 @@ func (self *Interpreter) visitExpression(node Expression) (Result, *int, *errors
 	}
 	// If there are no other expressions, just return the base value
 	if len(node.Following) == 0 {
-		if base.Value == nil {
-			panic("nmi")
-		}
 		return base, nil, nil
 	}
 	// If the base is already true, return true without looking at the other expressions
@@ -1101,7 +1098,6 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	loopIter := int(rangeLowerNumeric)
 
 	// Performs the iteration code
-	fmt.Printf("LOW: %f UP: %f\n", rangeLowerNumeric, rangeUpperNumeric)
 	for {
 		// Loop control code
 		if loopIter >= int(rangeUpperNumeric) && !isReversed || // Is normal (0..10)
@@ -1285,8 +1281,6 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 			if code != nil || err != nil {
 				return nil, code, err
 			}
-			// TODO fix this (everything nil)
-			//spew.Dump(argValue)
 			callArgs = append(callArgs, *argValue.Value)
 		}
 
