@@ -143,7 +143,7 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 			if !self.inLoop {
 				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the continue statement inside loops", errors.SyntaxError)
 			}
-			lastResult = makeNullResult()
+			return makeNullResult(), nil, nil
 		}
 	}
 	return lastResult, code, err
