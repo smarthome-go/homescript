@@ -1,6 +1,8 @@
 package homescript
 
-import hmsError "github.com/smarthome-go/homescript/homescript/errors"
+import (
+	hmsError "github.com/smarthome-go/homescript/homescript/errors"
+)
 
 // Executes the given Homescript code
 // The `sigTerm` variable is used to terminate the script at any point in time
@@ -11,6 +13,7 @@ func Run(
 	filename string,
 	program string,
 	scopeAdditions map[string]Value,
+	debug bool,
 ) (Value, int, *hmsError.Error) {
 	// Parse the source code
 	parser := newParser(filename, program)
@@ -25,6 +28,7 @@ func Run(
 		sigTerm,
 		2048,
 		scopeAdditions,
+		debug,
 	)
 	// Finally, execute the AST
 	value, exitCode, err := interpreter.run()

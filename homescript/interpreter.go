@@ -29,6 +29,9 @@ type Interpreter struct {
 	// If the Interpreter is currently handling a function
 	// Will unlock the use of the `return` statement inside a statement list
 	inFunction bool
+
+	// Will enable debug output of the scopes
+	debug bool
 }
 
 func NewInterpreter(
@@ -37,6 +40,7 @@ func NewInterpreter(
 	sigTerm *chan int,
 	stackLimit uint,
 	scopeAdditions map[string]Value, // Allows the user to add more entries to the scope
+	debug bool,
 ) Interpreter {
 	scopes := make([]map[string]Value, 0)
 	// Adds the root scope
@@ -1319,15 +1323,21 @@ func (self *Interpreter) popScope() {
 	}
 	// Remove the last (top) element from the slice / stack
 	self.scopes = self.scopes[:len(self.scopes)-1]
+	if self.debug {
+		self.debugScopes()
+	}
 }
 
 // Adds a varable to the top of the stack
 func (self *Interpreter) addVar(key string, value Value) {
 	// Add the entry to the top hashmap
 	self.scopes[len(self.scopes)-1][key] = value
+	if self.debug {
+		self.debugScopes()
+	}
 }
 
-// Debug function for printing the scope
+// Debug function for printing the scope(s)
 func (self *Interpreter) debugScopes() {
 	fmt.Printf("\n")
 	for idx, scope := range self.scopes {

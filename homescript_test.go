@@ -102,6 +102,7 @@ func TestInterpreter(t *testing.T) {
 		map[string]homescript.Value{
 			"foo": homescript.ValueString{Value: "bar"},
 		},
+		false,
 	)
 
 	if hmsError != nil {
@@ -116,4 +117,7 @@ func TestInterpreter(t *testing.T) {
 		panic(fmt.Sprintf("Display error: %v: %s", displayErr.Kind, displayErr.Message))
 	}
 	fmt.Printf("Exit-code %d: Return-value: %s\n", code, valueStr)
+	if code != 0 {
+		t.Errorf("EXIT-CODE: %d", code)
+	}
 }
