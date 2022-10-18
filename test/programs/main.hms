@@ -40,7 +40,7 @@ let exec_result = exec(
 print(                      # The result is an object
     exec_result.output,     # The print-output of the script
     exec_result.elapsed,    # The elapsed runtime (in seconds)
-#exec_result.return      # The scripts return value (value of last statement)
+    exec_result.value       # The scripts return value (value of last statement)
 );
 
 print(                      # String concatonation using different types is allowed
@@ -56,7 +56,7 @@ try {
 };
 
 try {
-    #throw();                # This is a type error and can therefore not be caught
+    #throw();               # This is a type error and can therefore not be caught
 } catch err {
     print(err);
 };
