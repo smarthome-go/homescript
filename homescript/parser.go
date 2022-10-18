@@ -1410,7 +1410,7 @@ func (self *parser) statement() (Statement, *errors.Error) {
 		}
 		return nil, &errors.Error{
 			Kind:    errors.SyntaxError,
-			Message: fmt.Sprintf("Invalid expression: expected one of the tokens 'let', 'import', 'break', 'continue', 'return', found %v", self.currToken.Kind),
+			Message: fmt.Sprintf("Invalid expression: expected one of %d tokens, found %v", len(firstExpr), self.currToken.Kind),
 			Span: errors.Span{
 				Start: self.currToken.StartLocation,
 				End:   self.currToken.EndLocation,
@@ -1440,13 +1440,16 @@ func (self *parser) statements() ([]Statement, *errors.Error) {
 		statements = append(statements, statement)
 
 		if self.currToken.Kind != Semicolon {
+			end := self.prevToken.EndLocation
+			// Increments the end column so that a missing semicolon is marked where it was expected
+			end.Column++
+
 			return nil, &errors.Error{
 				Kind:    errors.SyntaxError,
-				Message: fmt.Sprintf("Expected semicolon, found %v (Hint: add ';' after previous statement)", self.currToken.Kind),
-				// TODO: make sure that the minimum span is at least 1
+				Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
 				Span: errors.Span{
-					Start: self.prevToken.StartLocation,
-					End:   self.prevToken.EndLocation,
+					Start: end,
+					End:   end,
 				},
 			}
 		}
