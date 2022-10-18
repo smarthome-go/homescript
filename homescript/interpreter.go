@@ -46,7 +46,7 @@ func NewInterpreter(
 	// Adds the root scope
 	scopes = append(scopes, map[string]Value{
 		// Builtin functions implemented by Homescript
-		"exit":  ValueBuiltinFunction{}, // Special function implemented below
+		"exit":  ValueBuiltinFunction{Callback: Exit},
 		"throw": ValueBuiltinFunction{Callback: Throw},
 		"print": ValueBuiltinFunction{Callback: Print},
 		// Builtin functions implemented by the executor
@@ -58,7 +58,7 @@ func NewInterpreter(
 		"exec":      ValueBuiltinFunction{Callback: Exec},
 		"get":       ValueBuiltinFunction{Callback: Get},
 		"http":      ValueBuiltinFunction{Callback: Http},
-		// Builtin variables
+		// Builtin variables implemented by the executor
 		"user":    ValueBuiltinVariable{Callback: GetUser},
 		"weather": ValueBuiltinVariable{Callback: GetWeather},
 		"time":    ValueBuiltinVariable{Callback: GetTime},
@@ -881,7 +881,7 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		}
 		result.Value = &valueTemp
 	case AtomKindTryExpr:
-		valueTemp, code, err := self.makeTryExpression(node.(AtomTry))
+		valueTemp, code, err := self.visitTryExpression(node.(AtomTry))
 		if code != nil || err != nil {
 			return Result{}, nil, err
 		}
@@ -1289,9 +1289,9 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 		}
 
 		// Call the builtin function
-		returnValue, err := value.(ValueBuiltinFunction).Callback(self.executor, span, callArgs...)
-		if err != nil {
-			return nil, nil, err
+		returnValue, code, err := value.(ValueBuiltinFunction).Callback(self.executor, span, callArgs...)
+		if code != nil || err != nil {
+			return nil, code, err
 		}
 
 		// Return the functions return value
