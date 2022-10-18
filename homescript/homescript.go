@@ -14,6 +14,7 @@ func Run(
 	program string,
 	scopeAdditions map[string]Value,
 	debug bool,
+	stackSize uint,
 ) (Value, int, *hmsError.Error) {
 	// Parse the source code
 	parser := newParser(filename, program)
@@ -26,7 +27,7 @@ func Run(
 		ast,
 		executor,
 		sigTerm,
-		2048,
+		stackSize,
 		scopeAdditions,
 		debug,
 	)

@@ -46,10 +46,11 @@ func NewInterpreter(
 	// Adds the root scope
 	scopes = append(scopes, map[string]Value{
 		// Builtin functions implemented by Homescript
-		"exit":  ValueBuiltinFunction{Callback: Exit},
-		"throw": ValueBuiltinFunction{Callback: Throw},
-		"print": ValueBuiltinFunction{Callback: Print},
+		"exit":   ValueBuiltinFunction{Callback: Exit},
+		"throw":  ValueBuiltinFunction{Callback: Throw},
+		"assert": ValueBuiltinFunction{Callback: Assert},
 		// Builtin functions implemented by the executor
+		"print":     ValueBuiltinFunction{Callback: Print},
 		"sleep":     ValueBuiltinFunction{Callback: Sleep},
 		"switch_on": ValueBuiltinFunction{Callback: SwitchOn},
 		"switch":    ValueBuiltinFunction{Callback: Switch},
@@ -700,6 +701,15 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 			for _, scope := range self.scopes {
 				_, exist := scope[*ident]
 				if exist {
+					// Validate type equality
+					if (*base.Value).Type() != (*rhsValue.Value).Type() {
+						return Result{}, nil, errors.NewError(
+							node.Span,
+							fmt.Sprintf("Cannot assign %v to %v: type inequality", (*rhsValue.Value).Type(), (*base.Value).Type()),
+							errors.TypeError,
+						)
+					}
+
 					// Perform actual assignment
 					scope[*ident] = *rhsValue.Value
 					// Return the rhs as the return value of the entire assignment
@@ -747,6 +757,7 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 		for _, scope := range self.scopes {
 			_, exist := scope[*ident]
 			if exist {
+				// Type equality validation is omitted due to check above (in add / .. / div)
 				// Perform actual assignment
 				scope[*ident] = newValue
 				// Return the rhs as the return value of the entire assignment
@@ -780,7 +791,7 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 
 		// Handle member access
 		if part.MemberExpressionPart != nil {
-			result, err := getField(node.Span, *base.Value, *part.MemberExpressionPart)
+			result, err := getField(part.Span, *base.Value, *part.MemberExpressionPart)
 			if err != nil {
 				return Result{}, nil, err
 			}
@@ -896,7 +907,7 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 
 func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors.Error) {
 	// Add a new scope to the try block
-	if err := self.pushScope(); err != nil {
+	if err := self.pushScope(node.Span()); err != nil {
 		return Result{}, nil, err
 	}
 	tryBlockResult, code, err := self.visitStatements(node.TryBlock)
@@ -911,11 +922,11 @@ func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors
 		// If the error is not a runtime / thrown error, do not catch it and propagate it
 		if err.Kind != errors.RuntimeError && err.Kind != errors.ThrowError {
 			// Modify the error's message so that the try attempt is apparent
-			err.Message = fmt.Sprintf("Cannot catch error of tye %v:\n%s", err.Kind, err.Message)
+			err.Message = fmt.Sprintf("Uncatchable error: %s", err.Message)
 			return Result{}, nil, err
 		}
 		// Add a new scope for the catch block
-		if err := self.pushScope(); err != nil {
+		if err := self.pushScope(node.Span()); err != nil {
 			return Result{}, nil, err
 		}
 		defer self.popScope()
@@ -986,7 +997,7 @@ func (self *Interpreter) visitIfExpression(node IfExpr) (Result, *int, *errors.E
 	}
 
 	// Before visiting any branch, push a new scope
-	if err := self.pushScope(); err != nil {
+	if err := self.pushScope(node.Span()); err != nil {
 		return Result{}, nil, err
 	}
 	// When this function is done, pop the scope again
@@ -1108,7 +1119,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 		}
 
 		// Add a new scope for the iteration
-		if err := self.pushScope(); err != nil {
+		if err := self.pushScope(node.Span()); err != nil {
 			return Result{}, nil, err
 		}
 
@@ -1165,7 +1176,7 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 
 		// Actual loop iteration code
 		// Add a new scope for the loop
-		if err := self.pushScope(); err != nil {
+		if err := self.pushScope(node.Span()); err != nil {
 			return Result{}, nil, err
 		}
 
@@ -1196,7 +1207,7 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *errors.Error) {
 	for {
 		// Add a new scope for the loop
-		if err := self.pushScope(); err != nil {
+		if err := self.pushScope(node.Span()); err != nil {
 			return Result{}, nil, err
 		}
 
@@ -1245,7 +1256,7 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 		defer func() { self.inFunction = false }()
 
 		// Add a new scope for the running function and handle a potential stack overflow
-		if err := self.pushScope(); err != nil {
+		if err := self.pushScope(span); err != nil {
 			return nil, nil, err
 		}
 		// Remove the function scope again
@@ -1303,10 +1314,10 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 
 // Pushes a new scope on top of the scopes stack
 // Can return a runtime error if the maximum stack size would be exceeded by this operation
-func (self *Interpreter) pushScope() *errors.Error {
+func (self *Interpreter) pushScope(span errors.Span) *errors.Error {
 	// Check that the stack size will be legal after this operation
 	if len(self.scopes) >= int(self.stackLimit) {
-		return errors.NewError(errors.Span{}, fmt.Sprintf("Maximum call stack size of %d was exceeded", self.stackLimit), errors.StackOverflow)
+		return errors.NewError(span, fmt.Sprintf("Maximum stack size of %d was exceeded", self.stackLimit), errors.StackOverflow)
 	}
 	// Push a new stack frame onto the stack
 	self.scopes = append(self.scopes, make(map[string]Value))
