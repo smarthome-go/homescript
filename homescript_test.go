@@ -42,6 +42,7 @@ func (self dummyExecutor) Exec(id string, args map[string]string) (homescript.Ex
 	return homescript.ExecResponse{
 		Output:      "homescript test output",
 		RuntimeSecs: 0.2,
+		ReturnValue: homescript.ValueNull{},
 	}, nil
 }
 

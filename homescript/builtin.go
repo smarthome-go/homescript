@@ -277,6 +277,9 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 	if err != nil {
 		return nil, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
+	if output.ReturnValue == nil {
+		panic("Return value is nil: please implement this correctly")
+	}
 	return ValueObject{
 		Fields: map[string]Value{
 			"output": ValueString{
