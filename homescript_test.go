@@ -19,7 +19,7 @@ func (self dummyExecutor) Sleep(sleepTime float64) {
 }
 
 func (self dummyExecutor) Print(args ...string) {
-	fmt.Println(">>> ", strings.Join(args, " "))
+	fmt.Println(strings.Join(args, " "))
 }
 
 func (self dummyExecutor) SwitchOn(name string) (bool, error) {
@@ -89,35 +89,100 @@ func (self dummyExecutor) GetTime() homescript.Time {
 	}
 }
 
-func TestInterpreter(t *testing.T) {
-	program, err := os.ReadFile("./test/interpreter_test.hms")
-	assert.NoError(t, err)
-	sigTerm := make(chan int)
+func TestHomescripts(t *testing.T) {
+	type testError struct {
+		Kind    errors.ErrorKind
+		Message string
+	}
 
-	value, code, hmsError := homescript.Run(
-		dummyExecutor{},
-		&sigTerm,
-		"foo.hms",
-		string(program),
-		map[string]homescript.Value{
-			"foo": homescript.ValueString{Value: "bar"},
+	type test struct {
+		Name              string
+		File              string
+		ExpectedCode      int
+		ExpectedValueType homescript.ValueType
+		ExpectedError     *testError
+	}
+
+	tests := []test{
+		{
+			Name:              "Main",
+			File:              "./test/programs/main.hms",
+			ExpectedCode:      0,
+			ExpectedValueType: homescript.TypeNull,
+			ExpectedError:     nil,
 		},
-		false,
-	)
-
-	if hmsError != nil {
-		fmt.Println(hmsError.Display(string(program)))
-		return
+		{
+			Name:              "Fibonacci",
+			File:              "./test/programs/fibonacci.hms",
+			ExpectedCode:      0,
+			ExpectedValueType: homescript.TypeNull,
+			ExpectedError:     nil,
+		},
+		{
+			Name:              "StackOverFlow",
+			File:              "./test/programs/stack_overflow.hms",
+			ExpectedCode:      1,
+			ExpectedValueType: homescript.TypeNull,
+			ExpectedError: &testError{
+				Kind:    errors.StackOverflow,
+				Message: "Maximum stack size of",
+			},
+		},
 	}
 
-	fmt.Printf("value kind: %v\n", value.Type())
+	for idx, test := range tests {
+		t.Run(fmt.Sprintf("(%d/%d): %s", idx, len(tests), test.Name), func(t *testing.T) {
+			program, err := os.ReadFile(test.File)
+			assert.NoError(t, err)
+			sigTerm := make(chan int)
+			value, code, hmsError := homescript.Run(
+				dummyExecutor{},
+				&sigTerm,
+				"foo.hms",
+				string(program),
+				map[string]homescript.Value{
+					"foo": homescript.ValueString{Value: "bar"},
+				},
+				false,
+				1_000,
+			)
+			defer fmt.Printf("Program terminated with exit-code %d\n", code)
 
-	valueStr, displayErr := value.Display(dummyExecutor{}, errors.Span{})
-	if displayErr != nil {
-		panic(fmt.Sprintf("Display error: %v: %s", displayErr.Kind, displayErr.Message))
-	}
-	fmt.Printf("Exit-code %d: Return-value: %s\n", code, valueStr)
-	if code != 0 {
-		t.Errorf("EXIT-CODE: %d", code)
+			if hmsError != nil && test.ExpectedError == nil {
+				t.Errorf("Unexpected HMS error")
+				fmt.Println(hmsError.Display(string(program)))
+				return
+			}
+			if hmsError == nil && test.ExpectedError != nil {
+				t.Error("Expected HMS error, got none")
+				return
+			}
+
+			if hmsError != nil && test.ExpectedError != nil {
+				if hmsError.Kind != test.ExpectedError.Kind {
+					t.Errorf("Expected %v, got %v", test.ExpectedError.Kind, hmsError.Kind)
+					fmt.Println(hmsError.Display(string(program)))
+					return
+				}
+				if !strings.Contains(hmsError.Message, test.ExpectedError.Message) {
+					t.Errorf("Expected to find error-message `%s` inside error", test.ExpectedError.Message)
+					fmt.Println(hmsError.Display(string(program)))
+					return
+				}
+			}
+
+			if value.Type() != test.ExpectedValueType {
+				valueStr, displayErr := value.Display(dummyExecutor{}, errors.Span{})
+				if displayErr != nil {
+					panic(fmt.Sprintf("Display error: %v: %s", displayErr.Kind, displayErr.Message))
+				}
+				t.Errorf("Unexpected value: Type: %v | Value: %s\n", value.Type(), valueStr)
+				return
+			}
+
+			if code != test.ExpectedCode {
+				t.Errorf("Unexpected exit-code: expected %d, found %d", test.ExpectedCode, code)
+			}
+		})
 	}
 }
