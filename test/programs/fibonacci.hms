@@ -6,10 +6,6 @@ fn fib(n) {
     };
 };
 
-loop {
-
-}
-
-for n in 20..0 {
+for n in 0..26 {
     print("fib(" + n + ") = " + fib(n));
 };

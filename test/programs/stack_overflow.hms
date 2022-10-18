@@ -1,0 +1,5 @@
+fn rec(count) {
+    rec(count+1);
+};
+
+rec(0);

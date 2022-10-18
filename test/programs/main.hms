@@ -1,0 +1,64 @@
+# The print statement can be used in order to write to std out
+print("Homescript is awesome!");
+
+# Datatypes
+print(weather);             # Object (builtin only)
+print("string");            # String
+print(42);                  # Number
+print(3.14159265);          # Number (supports floats)
+print(true);                # Booleans
+print(false);               # Booleans
+print("key" => "value");    # Pairs (1 dimensional hash-maps)
+print(print);               # Functions
+
+# The `let` keyword can be used for variable declaration
+let object_value = weather;
+let string_value = "any string";
+string_value = 1 as str;    # Once a variable is bound to a value, it must not change its type
+#string_value = 1;          # Once a variable is bound to a value, it must not change its type
+
+let number_value = 42;
+print(                      # Print accepts arbitraty arguments (as long as n > 1)
+    "number_value",
+    number_value,
+);
+number_value = 3.14159265;  # Homescript supports re-assignment
+number_value +=  1;         # Plus assignment
+number_value -=  2;         # Minus assignment
+number_value *=  3;         # Multiply assignment
+number_value /=  4;         # Divide assignment
+number_value %=  5;         # Reminder assignment
+number_value **= 6;         # Power assignment
+print("after", number_value);
+
+# The exec function calls another Homescript
+let exec_result = exec(
+    "test_script",          # The target HMS ID
+    "key" => 42,            # Arguments to the HMS are in pair-form
+    #...                    # Many more arguments (or even none) are legal
+);
+print(                      # The result is an object
+    exec_result.output,     # The print-output of the script
+    exec_result.elapsed,    # The elapsed runtime (in seconds)
+#exec_result.return      # The scripts return value (value of last statement)
+);
+
+print(                      # String concatonation using different types is allowed
+    "Pi is roughly " + "a value of " + 3.14159265 + " right?"
+);
+#print(1 + false);          # Whilst operations involving two different types where none is a string are illegal
+
+# Error handling
+try {
+    throw("error");         # Throw- and Runtime errors can be caught
+} catch err {
+    print(err);
+};
+
+try {
+    #throw();                # This is a type error and can therefore not be caught
+} catch err {
+    print(err);
+};
+
+exit(0);
