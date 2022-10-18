@@ -653,7 +653,7 @@ func (self *lexer) skipComment() {
 func (self *lexer) nextToken() (Token, *errors.Error) {
 	for self.currentChar != nil {
 		switch *self.currentChar {
-		case ' ', '\n', '\t':
+		case ' ', '\n', '\t' | '\r':
 			self.advance()
 		case '\'', '"':
 			return self.makeString()
