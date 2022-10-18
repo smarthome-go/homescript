@@ -3,8 +3,6 @@ package errors
 import (
 	"fmt"
 	"strings"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 // All ranges inclusive
@@ -68,7 +66,6 @@ func NewError(span Span, message string, kind ErrorKind) *Error {
 }
 
 func (self Error) Display(program string) string {
-	spew.Dump(self)
 	lines := strings.Split(program, "\n")
 
 	line1 := ""
@@ -83,7 +80,7 @@ func (self Error) Display(program string) string {
 
 	markers := "^"
 	if self.Span.Start.Line == self.Span.End.Line {
-		markers = strings.Repeat("^", int(self.Span.End.Column)-int(self.Span.Start.Column))
+		markers = strings.Repeat("^", int(self.Span.End.Column-self.Span.Start.Column)+1) // This is required because token spans are inclusive
 	}
 	marker := fmt.Sprintf("%s\x1b[1;31m%s\x1b[0m", strings.Repeat(" ", int(self.Span.Start.Column+6)), markers)
 
