@@ -85,16 +85,17 @@ func NewInterpreter(
 		sigTerm:    sigTerm,
 		inLoop:     false,
 		inFunction: false,
+		debug:      debug,
 	}
 }
 
 func (self *Interpreter) run() (Value, int, *errors.Error) {
 	result, code, err := self.visitStatements(self.program)
 	if err != nil {
-		return nil, 1, err
+		return makeNull(), 1, err
 	}
 	if code != nil {
-		return nil, *code, err
+		return makeNull(), *code, err
 	}
 	return *result.Value, 0, nil
 }
@@ -834,9 +835,6 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		null := makeNull()
 		result = Result{Value: &null}
 	case AtomKindIdentifier:
-
-		// TODO: should include identifier insertion here?
-
 		// Search the scope for the correct key
 		key := node.(AtomIdentifier).Identifier
 		scopeValue := self.getVar(key)
@@ -875,7 +873,7 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		}
 		result = valueTemp
 	case AtomKindFnExpr:
-		valueTemp, err := self.makeFunctionDeclaration(node.(AtomFunction))
+		valueTemp, err := self.visitFunctionDeclaration(node.(AtomFunction))
 		if err != nil {
 			return Result{}, nil, err
 		}
@@ -883,7 +881,7 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 	case AtomKindTryExpr:
 		valueTemp, code, err := self.visitTryExpression(node.(AtomTry))
 		if code != nil || err != nil {
-			return Result{}, nil, err
+			return Result{}, code, err
 		}
 		result = valueTemp
 	case AtomKindExpression:
@@ -896,24 +894,24 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 	return result, nil, nil
 }
 
-func (self *Interpreter) makeTryExpression(node AtomTry) (Result, *int, *errors.Error) {
+func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors.Error) {
 	// Add a new scope to the try block
 	if err := self.pushScope(); err != nil {
 		return Result{}, nil, err
 	}
 	tryBlockResult, code, err := self.visitStatements(node.TryBlock)
 	if code != nil {
-		// Remove the scope (cannot simly defer removing it (due to catch block))
-		self.popScope()
 		return Result{}, code, nil
 	}
-	// Remove the scope again
+	// Remove the scope (cannot simly defer removing it (due to catch block))
 	self.popScope()
 
 	// if there is an error, handle it (try to catch it)
 	if err != nil {
-		// If the error is not a runtime error, do not catch it and propagate it
-		if err.Kind != errors.RuntimeError {
+		// If the error is not a runtime / thrown error, do not catch it and propagate it
+		if err.Kind != errors.RuntimeError && err.Kind != errors.ThrowError {
+			// Modify the error's message so that the try attempt is apparent
+			err.Message = fmt.Sprintf("Cannot catch error of tye %v:\n%s", err.Kind, err.Message)
 			return Result{}, nil, err
 		}
 		// Add a new scope for the catch block
@@ -959,7 +957,7 @@ func (self *Interpreter) makeTryExpression(node AtomTry) (Result, *int, *errors.
 	return tryBlockResult, nil, nil
 }
 
-func (self *Interpreter) makeFunctionDeclaration(node AtomFunction) (Value, *errors.Error) {
+func (self *Interpreter) visitFunctionDeclaration(node AtomFunction) (Value, *errors.Error) {
 	function := ValueFunction{
 		Identifier: node.Name,
 		Args:       node.ArgIdentifiers,
