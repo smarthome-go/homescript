@@ -141,7 +141,7 @@ func (self ValueNumber) IsLessThan(executor Executor, span errors.Span, other Va
 			}
 			return self.IsLessThan(executor, span, value)
 		}
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare number to %v: ", other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", TypeNumber, other.Type()), errors.TypeError)
 	}
 	return self.Value < other.(ValueNumber).Value, nil
 }
@@ -154,7 +154,7 @@ func (self ValueNumber) IsLessThanOrEqual(executor Executor, span errors.Span, o
 			}
 			return self.IsLessThanOrEqual(executor, span, value)
 		}
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare number to %v: ", other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", TypeNumber, other.Type()), errors.TypeError)
 	}
 	return self.Value <= other.(ValueNumber).Value, nil
 }
@@ -167,7 +167,7 @@ func (self ValueNumber) IsGreaterThan(executor Executor, span errors.Span, other
 			}
 			return self.IsGreaterThan(executor, span, value)
 		}
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare number to %v: ", other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", TypeNumber, other.Type()), errors.TypeError)
 	}
 	return self.Value > other.(ValueNumber).Value, nil
 }
@@ -180,26 +180,33 @@ func (self ValueNumber) IsGreaterThanOrEqual(executor Executor, span errors.Span
 			}
 			return self.IsGreaterThanOrEqual(executor, span, value)
 		}
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare number to %v: ", other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", TypeNumber, other.Type()), errors.TypeError)
 	}
 	return self.Value >= other.(ValueNumber).Value, nil
 }
 
 func (self ValueNumber) Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return nil, err
-			}
-			return self.Add(executor, span, value)
+	switch other.Type() {
+	case TypeNumber:
+		return ValueNumber{Value: self.Value + other.(ValueNumber).Value}, nil
+	case TypeString:
+		// Convert the number to a display representation
+		display, err := self.Display(executor, span)
+		if err != nil {
+			return nil, err
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot add %v to number: ", other.Type()), errors.TypeError)
+		// Return a string concatonation
+		return ValueString{Value: display + other.(ValueString).Value}, nil
+	case TypeBuiltinVariable:
+		otherCallback, err := other.(ValueBuiltinVariable).Callback(executor, span)
+		if err != nil {
+			return nil, err
+		}
+		self.Add(executor, span, otherCallback)
 	}
-	return ValueNumber{
-		Value: self.Value + other.(ValueNumber).Value,
-	}, nil
+	return nil, errors.NewError(span, fmt.Sprintf("Cannot add %v to %v: ", other.Type(), TypeString), errors.TypeError)
 }
+
 func (self ValueNumber) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	if other.Type() != TypeNumber {
 		if other.Type() == TypeBuiltinVariable {
@@ -209,7 +216,7 @@ func (self ValueNumber) Sub(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Sub(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot subtract %v from number: ", other.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("Cannot subtract %v from %v: ", other.Type(), TypeNumber), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: self.Value - other.(ValueNumber).Value,
@@ -224,7 +231,7 @@ func (self ValueNumber) Mul(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Mul(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot multiply number by %v: ", other.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("Cannot multiply %v by %v: ", TypeNumber, other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: self.Value * other.(ValueNumber).Value,
@@ -239,7 +246,7 @@ func (self ValueNumber) Div(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Div(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot divide number by %v: ", other.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("Cannot divide %v by %v: ", TypeNumber, other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: self.Value / other.(ValueNumber).Value,
@@ -254,7 +261,7 @@ func (self ValueNumber) Rem(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Rem(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot calculate reminder of number / %v: ", other.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("Cannot calculate reminder of %v / %v: ", TypeNumber, other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: math.Remainder(self.Value, other.(ValueNumber).Value),
@@ -270,7 +277,7 @@ func (self ValueNumber) Pow(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Pow(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot calculate power of number and %v: ", other.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("Cannot calculate power of %v and %v: ", TypeNumber, other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: math.Pow(self.Value, other.(ValueNumber).Value),
@@ -305,6 +312,41 @@ func (self ValueBool) IsEqual(_ Executor, span errors.Span, other Value) (bool, 
 	return self.Value == other.(ValueBool).Value, nil
 }
 
+func (self ValueBool) Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	switch other.Type() {
+	case TypeString:
+		// Convert the boolean to a display representation
+		display, err := self.Display(executor, span)
+		if err != nil {
+			return nil, err
+		}
+		// Return a string concatonation
+		return ValueString{Value: display + other.(ValueString).Value}, nil
+	case TypeBuiltinVariable:
+		otherCallback, err := other.(ValueBuiltinVariable).Callback(executor, span)
+		if err != nil {
+			return nil, err
+		}
+		self.Add(executor, span, otherCallback)
+	}
+	return nil, errors.NewError(span, fmt.Sprintf("Cannot add %v to %v: ", other.Type(), TypeString), errors.TypeError)
+}
+func (self ValueBool) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
+}
+func (self ValueBool) Mul(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
+}
+func (self ValueBool) Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
+}
+func (self ValueBool) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
+}
+func (self ValueBool) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
+}
+
 // String value
 type ValueString struct {
 	Value      string
@@ -334,17 +376,22 @@ func (self ValueString) IsEqual(_ Executor, span errors.Span, other Value) (bool
 }
 
 func (self ValueString) Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	if other.Type() != TypeString {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return nil, err
-			}
-			return self.Add(executor, span, value)
+	switch other.Type() {
+	case TypeString, TypeBoolean, TypeNumber:
+		display, err := other.Display(executor, span)
+		if err != nil {
+			return nil, err
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot add %v to string: ", other.Type()), errors.TypeError)
+		return ValueString{Value: self.Value + display}, nil
+	case TypeBuiltinVariable:
+		// This is required so that string cannot be added to builtin-var of type object
+		otherCallback, err := other.(ValueBuiltinVariable).Callback(executor, span)
+		if err != nil {
+			return nil, err
+		}
+		self.Add(executor, span, otherCallback)
 	}
-	return ValueString{Value: self.Value + other.(ValueString).Value}, nil
+	return nil, errors.NewError(span, fmt.Sprintf("Cannot add %v to %v: ", other.Type(), TypeString), errors.TypeError)
 }
 func (self ValueString) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
@@ -534,11 +581,21 @@ type ValueBuiltinVariable struct {
 
 func (self ValueBuiltinVariable) Type() ValueType { return TypeBuiltinVariable }
 func (self ValueBuiltinVariable) Ident() *string  { return nil }
-func (self ValueBuiltinVariable) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
-	return "<builtin-variable>", nil
+func (self ValueBuiltinVariable) Display(executor Executor, span errors.Span) (string, *errors.Error) {
+	value, err := self.Callback(executor, span)
+	if err != nil {
+		return "", err
+	}
+	// Invoke display on the callback result
+	return value.Display(executor, span)
 }
-func (self ValueBuiltinVariable) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
-	return "<builtin-variable>", nil
+func (self ValueBuiltinVariable) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
+	value, err := self.Callback(executor, span)
+	if err != nil {
+		return "", err
+	}
+	// Invoke debug on the callback result
+	return value.Debug(executor, span)
 }
 func (self ValueBuiltinVariable) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
 	value, err := self.Callback(executor, span)
@@ -620,6 +677,7 @@ func (self ValueBuiltinVariable) Add(executor Executor, span errors.Span, other 
 		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
 	}
 }
+
 func (self ValueBuiltinVariable) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	value, err := self.Callback(executor, span)
 	if err != nil {

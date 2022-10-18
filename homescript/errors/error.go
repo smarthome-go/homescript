@@ -1,5 +1,12 @@
 package errors
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/davecgh/go-spew/spew"
+)
+
 // All ranges inclusive
 type Span struct {
 	Start Location
@@ -58,4 +65,38 @@ func NewError(span Span, message string, kind ErrorKind) *Error {
 		Message: message,
 		Kind:    kind,
 	}
+}
+
+func (self Error) Display(program string) string {
+	spew.Dump(self)
+	lines := strings.Split(program, "\n")
+
+	line1 := ""
+	if self.Span.Start.Line > 1 {
+		line1 = fmt.Sprintf("\n \x1b[90m%- 3d | \x1b[0m%s", self.Span.Start.Line-1, lines[self.Span.Start.Line-2])
+	}
+	line2 := fmt.Sprintf(" \x1b[90m%- 3d | \x1b[0m%s", self.Span.Start.Line, lines[self.Span.Start.Line-1])
+	line3 := ""
+	if int(self.Span.Start.Line) < len(lines) {
+		line3 = fmt.Sprintf("\n \x1b[90m%- 3d | \x1b[0m%s", self.Span.Start.Line+1, lines[self.Span.Start.Line])
+	}
+
+	markers := "^"
+	if self.Span.Start.Line == self.Span.End.Line {
+		markers = strings.Repeat("^", int(self.Span.End.Column)-int(self.Span.Start.Column))
+	}
+	marker := fmt.Sprintf("%s\x1b[1;31m%s\x1b[0m", strings.Repeat(" ", int(self.Span.Start.Column+6)), markers)
+
+	return fmt.Sprintf(
+		"\x1b[1;36m%v\x1b[39m at %s:%d:%d\x1b[0m\n%s\n%s\n%s%s\n\n\x1b[1;31m%s\x1b[0m\n",
+		self.Kind,
+		"file",
+		self.Span.Start.Line,
+		self.Span.Start.Column,
+		line1,
+		line2,
+		marker,
+		line3,
+		self.Message,
+	)
 }

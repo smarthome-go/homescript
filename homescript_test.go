@@ -105,7 +105,7 @@ func TestInterpreter(t *testing.T) {
 	)
 
 	if hmsError != nil {
-		t.Errorf("%v: %s", hmsError.Kind, hmsError.Message)
+		fmt.Println(hmsError.Display(string(program)))
 		return
 	}
 

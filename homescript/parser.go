@@ -1443,9 +1443,10 @@ func (self *parser) statements() ([]Statement, *errors.Error) {
 			return nil, &errors.Error{
 				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Expected semicolon, found %v (Hint: add ';' after previous statement)", self.currToken.Kind),
+				// TODO: make sure that the minimum span is at least 1
 				Span: errors.Span{
-					Start: self.currToken.StartLocation,
-					End:   self.currToken.EndLocation,
+					Start: self.prevToken.StartLocation,
+					End:   self.prevToken.EndLocation,
 				},
 			}
 		}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
 
@@ -127,8 +126,9 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 			if !self.inLoop {
 				return Result{}, nil, errors.NewError(statement.Span(), fmt.Sprintf("Can only use the break statement inside loops"), errors.SyntaxError)
 			}
-			return lastResult, nil, nil
+			return Result{Value: lastResult.BreakValue}, nil, nil
 		}
+
 		// Handle potential break or return statements
 		if lastResult.ReturnValue != nil {
 			// Check if the use of return is legal here
@@ -258,6 +258,7 @@ func (self *Interpreter) visitBreakStatement(node BreakStmt) (Result, *int, *err
 	null := makeNull()
 	return Result{BreakValue: &null}, nil, nil
 }
+
 func (self *Interpreter) visitContinueStatement(node ContinueStmt) (Result, *int, *errors.Error) {
 	return Result{
 		ShouldContinue: true,
@@ -468,6 +469,8 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Result, *int, *e
 		baseVal = (*base.Value).(ValueBuiltinVariable)
 	case TypeString:
 		baseVal = (*base.Value).(ValueString)
+	case TypeBoolean:
+		baseVal = (*base.Value).(ValueBool)
 	default:
 		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
 	}
@@ -484,6 +487,7 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Result, *int, *e
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
+
 		switch following.AddOperator {
 		case AddOpPlus:
 			algResult, algError = baseAlg.Add(self.executor, node.Span, *followingValue.Value)
@@ -493,7 +497,7 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Result, *int, *e
 			panic("BUG: a new add operator has been added without updating this code")
 		}
 		if algError != nil {
-			return Result{}, nil, err
+			return Result{}, nil, algError
 		}
 
 		// This is okay because the result of an algebraic operation should ALWAYS result in the same type
@@ -546,9 +550,8 @@ func (self *Interpreter) visitMulExression(node MulExpression) (Result, *int, *e
 			panic("BUG: a new mul operator has been added without updating this code")
 		}
 		if algError != nil {
-			return Result{}, nil, err
+			return Result{}, nil, algError
 		}
-
 		// This is okay because the result of an algebraic operation should ALWAYS result in the same type
 		baseAlg = algResult.(ValueAlg)
 	}
@@ -1002,19 +1005,21 @@ func (self *Interpreter) visitIfExpression(node IfExpr) (Result, *int, *errors.E
 		}
 		// Otherwise, just return the result of the block
 		return Result{Value: value.Value}, nil, nil
-	} else {
-		// Otherwise, visit the else branch
-		value, code, err := self.visitStatements(*node.ElseBlock)
-		if code != nil || err != nil {
-			return Result{}, code, err
-		}
-		// Forward any return statement
-		if value.ReturnValue != nil {
-			return value, nil, nil
-		}
-		// Otherwise, just return the result of the block
-		return Result{Value: value.Value}, nil, nil
 	}
+	// Otherwise, visit the else branch (if it exists)
+	if node.ElseBlock == nil {
+		return makeNullResult(), nil, nil
+	}
+	value, code, err := self.visitStatements(*node.ElseBlock)
+	if code != nil || err != nil {
+		return Result{}, code, err
+	}
+	// Forward any return statement
+	if value.ReturnValue != nil {
+		return value, nil, nil
+	}
+	// Otherwise, just return the result of the block
+	return Result{Value: value.Value}, nil, nil
 }
 
 func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors.Error) {
@@ -1082,22 +1087,35 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	}
 
 	// Saves the last result of the loop
-	var lastValue *Value
+	null := makeNull()
+	var lastValue *Value = &null
 
 	// Enable the `inLoop` flag on the interpreter
 	self.inLoop = true
 	// Release the `inLoop` flag as soon as possible
 	defer func() { self.inLoop = false }()
 
+	// If the lower range bound is greater than the upper bound, reverse the order
+	isReversed := rangeLowerNumeric > rangeUpperNumeric
+
+	loopIter := int(rangeLowerNumeric)
+
 	// Performs the iteration code
-	for iteration := int(rangeLowerNumeric); iteration < int(rangeUpperNumeric); iteration++ {
+	fmt.Printf("LOW: %f UP: %f\n", rangeLowerNumeric, rangeUpperNumeric)
+	for {
+		// Loop control code
+		if loopIter >= int(rangeUpperNumeric) && !isReversed || // Is normal (0..10)
+			loopIter <= int(rangeUpperNumeric) && isReversed { // Is inverted (10..0)
+			break
+		}
+
 		// Add a new scope for the iteration
 		if err := self.pushScope(); err != nil {
 			return Result{}, nil, err
 		}
 
 		// Add the head identifier to the scope (so that loop code can access the iteration variable)
-		self.addVar(node.HeadIdentifier, ValueNumber{Value: float64(iteration)})
+		self.addVar(node.HeadIdentifier, ValueNumber{Value: float64(loopIter)})
 
 		value, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
@@ -1115,6 +1133,13 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 
 		// Remove the scope again
 		self.popScope()
+
+		// Loop iter variabel control
+		if isReversed {
+			loopIter--
+		} else {
+			loopIter++
+		}
 	}
 
 	// Returns the last of the loop's statements
@@ -1195,7 +1220,6 @@ func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *erro
 		// Remove it as soon as the function is finished
 		self.popScope()
 	}
-	panic("BUG: this should be unreachable")
 }
 
 // Helper functions
@@ -1217,6 +1241,11 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 			)
 		}
 
+		// Enable the `inFunction` flag on the interpreter
+		self.inFunction = true
+		// Release the `inFunction` flag as soon as possible
+		defer func() { self.inFunction = false }()
+
 		// Add a new scope for the running function and handle a potential stack overflow
 		if err := self.pushScope(); err != nil {
 			return nil, nil, err
@@ -1225,20 +1254,14 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 		defer self.popScope()
 
 		// Evaluate argument values and add them to the new scope
-		for index, argKey := range function.Args {
-			argValue, code, err := self.visitExpression(args[index])
+		for idx, arg := range function.Args {
+			argValue, code, err := self.visitExpression(args[idx])
 			if code != nil || err != nil {
 				return nil, code, err
 			}
-
-			// Add the newly computed value to the scoe so the function can access it
-			self.addVar(argKey, *argValue.Value)
+			// Add the computed value to the new (current) scope
+			self.addVar(arg, *argValue.Value)
 		}
-
-		// Enable the `inFunction` flag on the interpreter
-		self.inFunction = true
-		// Release the `inFunction` flag as soon as possible
-		defer func() { self.inFunction = false }()
 
 		// Visit the function's body
 		returnValue, code, err := self.visitStatements(function.Body)
@@ -1263,7 +1286,7 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 				return nil, code, err
 			}
 			// TODO fix this (everything nil)
-			spew.Dump(argValue)
+			//spew.Dump(argValue)
 			callArgs = append(callArgs, *argValue.Value)
 		}
 
@@ -1310,13 +1333,31 @@ func (self *Interpreter) addVar(key string, value Value) {
 	self.scopes[len(self.scopes)-1][key] = value
 }
 
+// Debug function for printing the scope
+func (self *Interpreter) debugScopes() {
+	fmt.Printf("\n")
+	for idx, scope := range self.scopes {
+		for k, v := range scope {
+			dis, err := v.Display(self.executor, errors.Span{})
+			if err != nil {
+				panic(err.Message)
+			}
+			fmt.Printf("%10s => %s\n", k, dis)
+		}
+		fmt.Printf("---------- [NUM: %d] \n", idx)
+	}
+	fmt.Printf("\n")
+}
+
 // Helper function for accessing the scope(s)
 // Must provide a string key, will return either nil (no such value) or *value (value exists)
 func (self *Interpreter) getVar(key string) *Value {
 	// Search the stack scope top to bottom (inner scopes have higher priority)
-	for _, scope := range self.scopes {
+	scopeLen := len(self.scopes)
+	// Must iterate over the slice backwards (0 is root | len-1 is top of the stack)
+	for idx := scopeLen - 1; idx >= 0; idx-- {
 		// Access the scope in order to get the identifier's value
-		scopeValue, exists := scope[key]
+		scopeValue, exists := self.scopes[idx][key]
 		// If the correct value has been found, return early
 		if exists {
 			return &scopeValue
