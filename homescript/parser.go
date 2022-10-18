@@ -517,7 +517,7 @@ func (self *parser) callExpr() (CallExpression, *errors.Error) {
 		Parts: parts,
 		Span: errors.Span{
 			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			End:   self.prevToken.EndLocation,
 		},
 	}, nil
 }
@@ -538,7 +538,7 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 				Args:                 &argsItem,
 				Span: errors.Span{
 					Start: startLocation,
-					End:   self.currToken.EndLocation,
+					End:   self.prevToken.EndLocation,
 				},
 			})
 		case Dot:

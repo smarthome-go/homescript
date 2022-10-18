@@ -285,6 +285,8 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 			"elapsed": ValueNumber{
 				Value: output.RuntimeSecs,
 			},
+			//TODO: do this
+			//"return_value": returnValue,
 		},
 	}, nil, nil
 }
