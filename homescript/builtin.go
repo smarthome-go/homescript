@@ -39,6 +39,8 @@ func checkArgs(name string, span errors.Span, args []Value, types ...ValueType) 
 	return nil
 }
 
+/// Builtins implemented by Homescript ///
+
 // Terminates the execution of the current Homescript
 // Exit code `0` indicates success, other values can be used for different purposes
 func Exit(_ Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
@@ -68,6 +70,31 @@ func Throw(_ Executor, span errors.Span, args ...Value) (Value, *int, *errors.Er
 		errors.ThrowError,
 	)
 }
+
+// Asserts that a statement is true, otherwise an error is returned
+func Assert(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if len(args) != 1 {
+		return nil, nil, errors.NewError(
+			span,
+			fmt.Sprintf("Function 'assert' takes 1 argument but %d were given", len(args)),
+			errors.RuntimeError,
+		)
+	}
+	isTrue, err := args[0].IsTrue(executor, span)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !isTrue {
+		return nil, nil, errors.NewError(
+			span,
+			fmt.Sprintf("Assertion of %v value failed", args[0].Type()),
+			errors.ValueError,
+		)
+	}
+	return ValueNull{}, nil, nil
+}
+
+/// Builtins implemented by the executor ///
 
 // Pauses the execution of the current script for a given amount of seconds
 func Sleep(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
