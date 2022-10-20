@@ -167,7 +167,7 @@ LoopExpr  = 'loop' , Block ;
   assert(add_one(3) == 4);
   ```
 *)
-FnExpr  = 'fn' , identifier , ArgNames , Block ;
+FnExpr  = 'fn' , [ identifier ] , ArgNames , Block ;
 (*
   A <TryExpr> executes some block of code and catches any error that might occur. The thrown error
   is then assigned to the <identifier> and the catch block is run.
