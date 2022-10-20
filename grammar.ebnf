@@ -190,7 +190,7 @@ escape_seq = '\' , ( ESCAPE_CHAR
                    | 'U' , 8 * HEX ) ;
 bool       = 'true' | 'false' | 'on' | 'off' ;
 type       = 'str' | 'bool' | 'num' | 'null' ;
-identifier = ( LETTER , { LETTER | DIGIT} ) - ( bool | type | ? any keyword ? ) ;
+identifier = ( LETTER , { LETTER | DIGIT } ) - ( bool | type | ? any keyword ? ) ;
 
 (* ********************************** *)
 (* ****** TERMINAL SYMBOL SETS ****** *)
