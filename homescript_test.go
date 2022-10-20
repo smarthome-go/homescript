@@ -14,6 +14,18 @@ import (
 
 type dummyExecutor struct{}
 
+func (self dummyExecutor) ResolveModule(id string) (string, bool, error) {
+	path := "test/programs/" + id + ".hms"
+	file, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("read file: %s", err.Error())
+	}
+	return string(file), true, nil
+}
+
 func (self dummyExecutor) Sleep(sleepTime float64) {
 	time.Sleep(time.Duration(sleepTime * 1000 * float64(time.Millisecond)))
 }
@@ -116,7 +128,7 @@ func TestHomescripts(t *testing.T) {
 			Name:              "Fibonacci",
 			File:              "./test/programs/fibonacci.hms",
 			ExpectedCode:      0,
-			ExpectedValueType: homescript.TypeNull,
+			ExpectedValueType: homescript.TypeFunction,
 			ExpectedError:     nil,
 		},
 		{
@@ -129,6 +141,16 @@ func TestHomescripts(t *testing.T) {
 				Message: "Maximum stack size of",
 			},
 		},
+		{
+			Name:              "ImportExport",
+			File:              "./test/programs/import_export.hms",
+			ExpectedCode:      1,
+			ExpectedValueType: homescript.TypeNull,
+			ExpectedError: &testError{
+				Kind:    errors.RuntimeError,
+				Message: "Illegal import: circular import detected",
+			},
+		},
 	}
 
 	for idx, test := range tests {
@@ -136,7 +158,8 @@ func TestHomescripts(t *testing.T) {
 			program, err := os.ReadFile(test.File)
 			assert.NoError(t, err)
 			sigTerm := make(chan int)
-			value, code, hmsError := homescript.Run(
+			moduleName := strings.ReplaceAll(strings.Split(test.File, "/")[len(strings.Split(test.File, "/"))-1], ".hms", "")
+			value, code, _, hmsError := homescript.Run(
 				dummyExecutor{},
 				&sigTerm,
 				"foo.hms",
@@ -146,6 +169,8 @@ func TestHomescripts(t *testing.T) {
 				},
 				false,
 				1_000,
+				make([]string, 0),
+				moduleName,
 			)
 			defer fmt.Printf("Program terminated with exit-code %d\n", code)
 

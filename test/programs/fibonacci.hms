@@ -5,7 +5,3 @@ fn fib(n) {
         fib(n - 1) + fib (n - 2);
     };
 };
-
-for n in 0..26 {
-    print("fib(" + n + ") = " + fib(n));
-};

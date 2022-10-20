@@ -1,0 +1,5 @@
+fn import_me(foo, bar) {
+    print(foo, bar);
+};
+
+import import_me as broken_import from import_export;

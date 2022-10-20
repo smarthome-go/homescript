@@ -61,4 +61,11 @@ try {
     print(err);
 };
 
+# Import the fibonacci function
+import fib from fibonacci;
+
+for n in 0..26 {
+    print("fib(" + n + ") = " + fib(n));
+};
+
 exit(0);
