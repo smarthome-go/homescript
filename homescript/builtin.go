@@ -94,6 +94,16 @@ func Assert(executor Executor, span errors.Span, args ...Value) (Value, *int, *e
 	return ValueNull{}, nil, nil
 }
 
+// Resolves a function imported by an 'import' statement
+// The builtin just has the task of providing the target module code
+// This function then runs the target module code and returns the value of the target function (analyzes the root scope)
+// If the target module contains top level code, it is also executed
+func ResolveModule(executor Executor, span errors.Span, module string, function string) (Value, *int, *errors.Error) {
+	moduleCode, err := executor.ResolveModule(module)
+
+	return nil, nil, nil
+}
+
 /// Builtins implemented by the executor ///
 
 // Pauses the execution of the current script for a given amount of seconds
