@@ -8,12 +8,19 @@ import (
 )
 
 type Interpreter struct {
-	program  []Statement
+	// Source program as AST representation
+	program []Statement
+
+	// Holds user-defined functions
 	executor Executor
 
 	// Scope stack: manages scopes (is searched in top -> down order)
 	// The last element is the top whilst the first element is the bottom of the stack
 	scopes []map[string]Value
+
+	// Holds the modules visited so far (by import statements)
+	// in order to prevent a circular import
+	moduleStack []string
 
 	// Specifies how many stack frames may lay in the scopes stack
 	// Is controlled by self.pushScope
@@ -41,6 +48,8 @@ func NewInterpreter(
 	stackLimit uint,
 	scopeAdditions map[string]Value, // Allows the user to add more entries to the scope
 	debug bool,
+	moduleStack []string,
+	moduleName string,
 ) Interpreter {
 	scopes := make([]map[string]Value, 0)
 	// Adds the root scope
@@ -78,15 +87,18 @@ func NewInterpreter(
 		// Insert the value into the scope
 		scopes[0][key] = value
 	}
+	// Append the current script to the module stack
+	moduleStack = append(moduleStack, moduleName)
 	return Interpreter{
-		program:    program,
-		executor:   executor,
-		scopes:     scopes,
-		stackLimit: stackLimit,
-		sigTerm:    sigTerm,
-		inLoop:     false,
-		inFunction: false,
-		debug:      debug,
+		program:     program,
+		executor:    executor,
+		scopes:      scopes,
+		stackLimit:  stackLimit,
+		sigTerm:     sigTerm,
+		inLoop:      false,
+		inFunction:  false,
+		debug:       debug,
+		moduleStack: moduleStack,
 	}
 }
 
@@ -197,7 +209,7 @@ func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.
 	// Check that the left hand side will cause no conflicts
 	rightResult, code, err := self.visitExpression(node.Right)
 	if code != nil || err != nil {
-		return Result{}, code, nil
+		return Result{}, code, err
 	}
 
 	// Insert an identifier into the value (if possible)
@@ -248,7 +260,52 @@ func insertValueIdentifier(value Value, identifier string) Value {
 }
 
 func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *errors.Error) {
-	return Result{}, nil, errors.NewError(node.Span(), "The import statement is not yet implemented", errors.RuntimeError)
+	// Prevent possible circular import
+	for _, module := range self.moduleStack {
+		if module == node.FromModule {
+			// Would import a script which is located (upstream) in the moduleStack
+			// Stack is unwided and displayed in order to show the problem to the user
+			visual := "=== Module Stack ===\n"
+			for idx, visited := range self.moduleStack {
+				if idx == 0 {
+					visual += fmt.Sprintf("            %2d: %-10s (ORIGIN)\n", 1, self.moduleStack[0])
+				} else {
+					visual += fmt.Sprintf("imports -> %2d: %-10s\n", idx+1, visited)
+				}
+			}
+			visual += fmt.Sprintf("  imports -> %d: %-10s (HERE)\n", len(self.moduleStack)+1, node.FromModule)
+			return Result{}, nil, errors.NewError(
+				node.Range,
+				fmt.Sprintf("Illegal import: circular import detected:\n%s", visual),
+				errors.RuntimeError,
+			)
+		}
+	}
+	// Resolve the function to be imported
+	function, err := self.ResolveModule(
+		node.Span(),
+		node.FromModule,
+		node.Function,
+	)
+	if err != nil {
+		return Result{}, nil, err
+	}
+	actualImport := node.Function
+	if node.RewriteAs != nil {
+		actualImport = *node.RewriteAs
+	}
+	// Check if the function conflicts with existing values
+	value := self.getVar(actualImport)
+	if value != nil {
+		return Result{}, nil, errors.NewError(
+			node.Span(),
+			fmt.Sprintf("Import error: the name '%s' is already present in the current scope", actualImport),
+			errors.ValueError,
+		)
+	}
+	// Push the function into the current scope
+	self.addVar(actualImport, function)
+	return Result{Value: &function}, nil, nil
 }
 
 func (self *Interpreter) visitBreakStatement(node BreakStmt) (Result, *int, *errors.Error) {
@@ -1377,4 +1434,58 @@ func (self *Interpreter) getVar(key string) *Value {
 		}
 	}
 	return nil
+}
+
+// Resolves a function imported by an 'import' statement
+// The builtin just has the task of providing the target module code
+// This function then runs the target module code and returns the value of the target function (analyzes the root scope)
+// If the target module contains top level code, it is also executed
+func (self Interpreter) ResolveModule(span errors.Span, module string, function string) (Value, *errors.Error) {
+	moduleCode, found, err := self.executor.ResolveModule(module)
+	if err != nil {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("Import error: resolve module: %s", err.Error()),
+			errors.RuntimeError,
+		)
+	}
+	if !found {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("Import error: cannot resolve module '%s' no such module", module),
+			errors.RuntimeError,
+		)
+	}
+	_, exitCode, rootScope, runErr := Run(
+		self.executor,
+		self.sigTerm,
+		module,
+		moduleCode,
+		make(map[string]Value),
+		false,
+		10,
+		self.moduleStack,
+		function,
+	)
+	if runErr != nil {
+		runErr.Message = "Import error: target returned error: " + runErr.Message
+		runErr.Span = span
+		return nil, runErr
+	}
+	if exitCode != 0 {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("Import error: resolve module: script '%s' terminated with exit-code %d", module, exitCode),
+			errors.RuntimeError,
+		)
+	}
+	functionValue, found := rootScope[function]
+	if !found {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("Import error: no function named '%s' found in module '%s'", function, module),
+			errors.RuntimeError,
+		)
+	}
+	return functionValue, nil
 }

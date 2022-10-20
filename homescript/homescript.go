@@ -15,12 +15,19 @@ func Run(
 	scopeAdditions map[string]Value,
 	debug bool,
 	stackSize uint,
-) (Value, int, *hmsError.Error) {
+	moduleStack []string,
+	moduleName string,
+) (
+	returnValue Value,
+	exitCode int,
+	rootScope map[string]Value,
+	hmsError *hmsError.Error,
+) {
 	// Parse the source code
 	parser := newParser(filename, program)
 	ast, err := parser.parse()
 	if err != nil {
-		return nil, 1, err
+		return nil, 1, nil, err
 	}
 	// Create the interpreter
 	interpreter := NewInterpreter(
@@ -30,8 +37,13 @@ func Run(
 		stackSize,
 		scopeAdditions,
 		debug,
+		moduleStack,
+		moduleName,
 	)
 	// Finally, execute the AST
-	value, exitCode, err := interpreter.run()
-	return value, exitCode, err
+	returnValue, exitCode, hmsError = interpreter.run()
+	return returnValue,
+		exitCode,
+		interpreter.scopes[0], // Return the root scope
+		hmsError
 }
