@@ -265,15 +265,15 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 		if module == node.FromModule {
 			// Would import a script which is located (upstream) in the moduleStack
 			// Stack is unwided and displayed in order to show the problem to the user
-			visual := "=== Module Stack ===\n"
+			visual := "=== Import Stack ===\n"
 			for idx, visited := range self.moduleStack {
 				if idx == 0 {
-					visual += fmt.Sprintf("            %2d: %-10s (ORIGIN)\n", 1, self.moduleStack[0])
+					visual += fmt.Sprintf("             %2d: %-10s (ORIGIN)\n", 1, self.moduleStack[0])
 				} else {
-					visual += fmt.Sprintf("imports -> %2d: %-10s\n", idx+1, visited)
+					visual += fmt.Sprintf("  imports -> %2d: %-10s\n", idx+1, visited)
 				}
 			}
-			visual += fmt.Sprintf("  imports -> %d: %-10s (HERE)\n", len(self.moduleStack)+1, node.FromModule)
+			visual += fmt.Sprintf("  imports -> %2d: %-10s (HERE)\n", len(self.moduleStack)+1, node.FromModule)
 			return Result{}, nil, errors.NewError(
 				node.Range,
 				fmt.Sprintf("Illegal import: circular import detected:\n%s", visual),
@@ -1027,18 +1027,22 @@ func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors
 
 func (self *Interpreter) visitFunctionDeclaration(node AtomFunction) (Value, *errors.Error) {
 	function := ValueFunction{
-		Identifier: node.Name,
+		Identifier: node.Ident,
 		Args:       node.ArgIdentifiers,
 		Body:       node.Body,
 	}
-	// Validate that there is no conflicting value in the scope already
-	scopeValue := self.getVar(node.Name)
-	if scopeValue != nil {
-		return nil, errors.NewError(node.Span(), fmt.Sprintf("Cannot declare function with name %s: name already taken in scope", node.Name), errors.SyntaxError)
+
+	// If the function declaration contains no identifier, just return the function's value
+	if node.Ident != nil {
+		// Validate that there is no conflicting value in the scope already
+		scopeValue := self.getVar(*node.Ident)
+		if scopeValue != nil {
+			return nil, errors.NewError(node.Span(), fmt.Sprintf("Cannot declare function with name %s: name already taken in scope", *node.Ident), errors.SyntaxError)
+		}
+		// Add the function to the current scope if there are no conflicts
+		self.addVar(*node.Ident, function)
 	}
 
-	// Add the function to the current scope if there are no conflicts
-	self.addVar(node.Name, function)
 	// Return the functions value so that assignments like `let a = fn foo() ...` are possible
 	return function, nil
 }

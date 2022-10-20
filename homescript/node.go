@@ -381,7 +381,7 @@ func (self AtomLoop) Span() errors.Span { return self.Range }
 
 // Function declaration
 type AtomFunction struct {
-	Name           string
+	Ident          *string
 	ArgIdentifiers []string
 	Body           Block
 	Range          errors.Span

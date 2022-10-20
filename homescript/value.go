@@ -520,7 +520,7 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 
 // Function value
 type ValueFunction struct {
-	Identifier string
+	Identifier *string
 	Args       []string
 	Body       []Statement
 }
@@ -544,7 +544,10 @@ func (self ValueFunction) IsEqual(_ Executor, span errors.Span, other Value) (bo
 			errors.TypeError,
 		)
 	}
-	return self.Identifier == other.(ValueFunction).Identifier, nil
+	if self.Identifier != nil && other.(ValueFunction).Identifier != nil {
+		return *self.Identifier == *(other.(ValueFunction)).Identifier, nil
+	}
+	return false, nil
 }
 
 // Builtin function value

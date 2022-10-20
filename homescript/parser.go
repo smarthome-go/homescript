@@ -1012,20 +1012,15 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 		return AtomFunction{}, err
 	}
 
-	// Make function identifier
-	if self.currToken.Kind != Identifier {
-		return AtomFunction{}, &errors.Error{
-			Kind:    errors.SyntaxError,
-			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
-			},
+	// Make optional function identifier
+	var identifier *string
+	if self.currToken.Kind == Identifier {
+		// Assign to the identifier placeholder
+		identifierTmp := self.currToken.Value
+		identifier = &identifierTmp
+		if err := self.advance(); err != nil {
+			return AtomFunction{}, err
 		}
-	}
-	functionName := self.currToken.Value
-	if err := self.advance(); err != nil {
-		return AtomFunction{}, err
 	}
 
 	// Expect Lparen (
@@ -1115,7 +1110,7 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 		return AtomFunction{}, err
 	}
 	return AtomFunction{
-		Name:           functionName,
+		Ident:          identifier,
 		ArgIdentifiers: args,
 		Body:           functionBlock,
 		Range: errors.Span{

@@ -68,4 +68,16 @@ for n in 0..26 {
     print("fib(" + n + ") = " + fib(n));
 };
 
+let a = fn () {
+    print("Anonymous function");
+};
+a();
+
+if false {
+    print("Always true");
+} else if true {
+    print("else if works like this");
+};
+
+
 exit(0);
