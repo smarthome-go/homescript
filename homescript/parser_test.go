@@ -49,19 +49,13 @@ func TestParser(t *testing.T) {
 	start := time.Now()
 	parser := newParser("parser_test.hms", string(program))
 
-	ast, parseError := parser.parse()
+	ast, parseErrors := parser.parse()
 
-	if parseError != nil {
-		fmt.Printf(
-			"%v: (l:%d c: %d) - (l:%d c: %d): %s",
-			parseError.Kind,
-			parseError.Span.Start.Line,
-			parseError.Span.Start.Column,
-			parseError.Span.End.Line,
-			parseError.Span.End.Column,
-			parseError.Message,
-		)
-		t.Error("Parsing failed")
+	if len(parseErrors) > 0 {
+		t.Error("Parsing failed due to error(s)")
+		for _, err := range parseErrors {
+			fmt.Println(err.Display(string(program)))
+		}
 		return
 	}
 

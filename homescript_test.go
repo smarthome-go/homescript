@@ -113,7 +113,7 @@ func TestHomescripts(t *testing.T) {
 		File              string
 		ExpectedCode      int
 		ExpectedValueType homescript.ValueType
-		ExpectedError     *testError
+		ExpectedErrors    []testError
 	}
 
 	tests := []test{
@@ -122,23 +122,25 @@ func TestHomescripts(t *testing.T) {
 			File:              "./test/programs/main.hms",
 			ExpectedCode:      0,
 			ExpectedValueType: homescript.TypeNull,
-			ExpectedError:     nil,
+			ExpectedErrors:    nil,
 		},
 		{
 			Name:              "Fibonacci",
 			File:              "./test/programs/fibonacci.hms",
 			ExpectedCode:      0,
 			ExpectedValueType: homescript.TypeFunction,
-			ExpectedError:     nil,
+			ExpectedErrors:    nil,
 		},
 		{
 			Name:              "StackOverFlow",
 			File:              "./test/programs/stack_overflow.hms",
 			ExpectedCode:      1,
 			ExpectedValueType: homescript.TypeNull,
-			ExpectedError: &testError{
-				Kind:    errors.StackOverflow,
-				Message: "Maximum stack size of",
+			ExpectedErrors: []testError{
+				{
+					Kind:    errors.StackOverflow,
+					Message: "Maximum stack size of",
+				},
 			},
 		},
 		{
@@ -146,10 +148,19 @@ func TestHomescripts(t *testing.T) {
 			File:              "./test/programs/import_export.hms",
 			ExpectedCode:      1,
 			ExpectedValueType: homescript.TypeNull,
-			ExpectedError: &testError{
-				Kind:    errors.RuntimeError,
-				Message: "Illegal import: circular import detected",
+			ExpectedErrors: []testError{
+				{
+					Kind:    errors.RuntimeError,
+					Message: "Illegal import: circular import detected",
+				},
 			},
+		},
+		{
+			Name:              "Syntax",
+			File:              "./test/programs/syntax.hms",
+			ExpectedCode:      0,
+			ExpectedValueType: homescript.TypeNull,
+			ExpectedErrors:    nil,
 		},
 	}
 
@@ -159,7 +170,7 @@ func TestHomescripts(t *testing.T) {
 			assert.NoError(t, err)
 			sigTerm := make(chan int)
 			moduleName := strings.ReplaceAll(strings.Split(test.File, "/")[len(strings.Split(test.File, "/"))-1], ".hms", "")
-			value, code, _, hmsError := homescript.Run(
+			value, code, _, hmsErrors := homescript.Run(
 				dummyExecutor{},
 				&sigTerm,
 				"foo.hms",
@@ -174,27 +185,36 @@ func TestHomescripts(t *testing.T) {
 			)
 			defer fmt.Printf("Program terminated with exit-code %d\n", code)
 
-			if hmsError != nil && test.ExpectedError == nil {
-				t.Errorf("Unexpected HMS error")
-				fmt.Println(hmsError.Display(string(program)))
+			if len(hmsErrors) > 0 && len(test.ExpectedErrors) == 0 {
+				t.Errorf("Unexpected HMS error(s)")
+				for _, err := range hmsErrors {
+					fmt.Println(err.Display(string(program)))
+				}
 				return
 			}
-			if hmsError == nil && test.ExpectedError != nil {
-				t.Error("Expected HMS error, got none")
+			if len(hmsErrors) == 0 && len(test.ExpectedErrors) > 0 {
+				t.Error("Expected HMS error(s), got none")
 				return
 			}
 
-			if hmsError != nil && test.ExpectedError != nil {
-				if hmsError.Kind != test.ExpectedError.Kind {
-					t.Errorf("Expected %v, got %v", test.ExpectedError.Kind, hmsError.Kind)
-					fmt.Println(hmsError.Display(string(program)))
+			if len(hmsErrors) > 0 && len(test.ExpectedErrors) > 0 {
+				if len(hmsErrors) != len(test.ExpectedErrors) {
+					t.Errorf("Expected %d error(s), got %d", len(test.ExpectedErrors), len(hmsErrors))
 					return
 				}
-				if !strings.Contains(hmsError.Message, test.ExpectedError.Message) {
-					t.Errorf("Expected to find error-message `%s` inside error", test.ExpectedError.Message)
-					fmt.Println(hmsError.Display(string(program)))
-					return
+				for idx, err := range test.ExpectedErrors {
+					if err.Kind != hmsErrors[idx].Kind {
+						t.Errorf("Expected %v, got %v", err.Kind, hmsErrors[idx].Kind)
+						fmt.Println(hmsErrors[idx].Display(string(program)))
+						return
+					}
+					if !strings.Contains(hmsErrors[idx].Message, err.Message) {
+						t.Errorf("Expected to find error-message `%s` inside error", err.Message)
+						fmt.Println(hmsErrors[idx].Display(string(program)))
+						return
+					}
 				}
+				return
 			}
 
 			if value.Type() != test.ExpectedValueType {

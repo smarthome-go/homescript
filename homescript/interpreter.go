@@ -1471,10 +1471,12 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, function 
 		self.moduleStack,
 		function,
 	)
-	if runErr != nil {
-		runErr.Message = "Import error: target returned error: " + runErr.Message
-		runErr.Span = span
-		return nil, runErr
+	if len(runErr) > 0 {
+		if runErr != nil {
+			runErr[0].Message = "Import error: target returned error: " + runErr[0].Message
+			runErr[0].Span = span
+			return nil, &runErr[0]
+		}
 	}
 	if exitCode != 0 {
 		return nil, errors.NewError(

@@ -21,13 +21,13 @@ func Run(
 	returnValue Value,
 	exitCode int,
 	rootScope map[string]Value,
-	hmsError *hmsError.Error,
+	hmsErrors []hmsError.Error,
 ) {
 	// Parse the source code
 	parser := newParser(filename, program)
-	ast, err := parser.parse()
-	if err != nil {
-		return nil, 1, nil, err
+	ast, errors := parser.parse()
+	if len(errors) > 0 {
+		return nil, 1, nil, errors
 	}
 	// Create the interpreter
 	interpreter := NewInterpreter(
@@ -41,9 +41,12 @@ func Run(
 		moduleName,
 	)
 	// Finally, execute the AST
-	returnValue, exitCode, hmsError = interpreter.run()
+	returnValue, exitCode, runtimeError := interpreter.run()
+	if runtimeError != nil {
+		return nil, exitCode, interpreter.scopes[0], []hmsError.Error{*runtimeError}
+	}
 	return returnValue,
 		exitCode,
 		interpreter.scopes[0], // Return the root scope
-		hmsError
+		nil
 }

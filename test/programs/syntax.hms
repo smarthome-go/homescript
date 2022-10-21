@@ -1,0 +1,6 @@
+print('hi');
+print('hi');
+
+fn a () {};
+# why does this work? }
+a;

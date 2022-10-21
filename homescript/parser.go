@@ -30,6 +30,7 @@ type parser struct {
 	lexer     lexer
 	prevToken Token
 	currToken Token
+	errors    []errors.Error
 }
 
 func newParser(filename string, program string) parser {
@@ -37,6 +38,7 @@ func newParser(filename string, program string) parser {
 		lexer:     newLexer(filename, program),
 		prevToken: unknownToken(errors.Location{}),
 		currToken: unknownToken(errors.Location{}),
+		errors:    make([]errors.Error, 0),
 	}
 }
 
@@ -1439,14 +1441,17 @@ func (self *parser) statements() ([]Statement, *errors.Error) {
 			// Increments the end column so that a missing semicolon is marked where it was expected
 			end.Column++
 
-			return nil, &errors.Error{
-				Kind:    errors.SyntaxError,
-				Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
-				Span: errors.Span{
-					Start: end,
-					End:   end,
+			// Try to skip this error
+			self.errors = append(self.errors,
+				errors.Error{
+					Kind:    errors.SyntaxError,
+					Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
+					Span: errors.Span{
+						Start: end,
+						End:   end,
+					},
 				},
-			}
+			)
 		}
 
 		if self.advance(); err != nil {
@@ -1459,14 +1464,15 @@ func (self *parser) statements() ([]Statement, *errors.Error) {
 
 func (self *parser) curlyBlock() (Block, *errors.Error) {
 	if self.currToken.Kind != LCurly {
-		return nil, &errors.Error{
+		self.errors = append(self.errors, errors.Error{
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Invalid block: expected %v, found %v", LCurly, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
+				Start: self.currToken.EndLocation,
 				End:   self.currToken.EndLocation,
 			},
-		}
+		},
+		)
 	}
 	if err := self.advance(); err != nil {
 		return nil, err
@@ -1491,13 +1497,15 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 	return statements, nil
 }
 
-func (self *parser) parse() ([]Statement, *errors.Error) {
+func (self *parser) parse() ([]Statement, []errors.Error) {
 	if err := self.advance(); err != nil {
-		return nil, err
+		self.errors = append(self.errors, *err)
+		return nil, self.errors
 	}
 	statements, err := self.statements()
 	if err != nil {
-		return nil, err
+		self.errors = append(self.errors, *err)
+		return nil, self.errors
 	}
-	return statements, nil
+	return statements, self.errors
 }
