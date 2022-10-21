@@ -144,7 +144,16 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 			if !self.inLoop {
 				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the break statement inside loops", errors.SyntaxError)
 			}
-			return Result{Value: lastResult.BreakValue}, nil, nil
+			return lastResult, nil, nil
+		}
+
+		// If continue is used, return null for this iteration
+		if lastResult.ShouldContinue {
+			// Check if the use of continue is legal here
+			if !self.inLoop {
+				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the continue statement inside loops", errors.SyntaxError)
+			}
+			return makeNullResult(), nil, nil
 		}
 
 		// Handle potential break or return statements
@@ -154,14 +163,6 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the return statement inside function bodies", errors.SyntaxError)
 			}
 			return lastResult, nil, nil
-		}
-		// If continue is used, return null for this iteration
-		if lastResult.ShouldContinue {
-			// Check if the use of continue is legal here
-			if !self.inLoop {
-				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the continue statement inside loops", errors.SyntaxError)
-			}
-			return makeNullResult(), nil, nil
 		}
 	}
 	return lastResult, code, err
@@ -189,17 +190,11 @@ func (self *Interpreter) visitStatement(node Statement) (Result, *int, *errors.E
 	case ReturnStmtKind:
 		return self.visitReturnStatement(node.(ReturnStmt))
 	case ExpressionStmtKind:
-		// Because visitExpression returns a value instead of a result, it must be transformed here
 		value, code, err := self.visitExpression(node.(ExpressionStmt).Expression)
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		return Result{
-			ShouldContinue: false,
-			ReturnValue:    nil,
-			BreakValue:     nil,
-			Value:          value.Value,
-		}, nil, nil
+		return value, nil, nil
 	default:
 		panic("BUG: a new statement kind was introduced without updating this code")
 	}
@@ -559,13 +554,13 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Result, *int, *e
 		if algError != nil {
 			return Result{}, nil, algError
 		}
-
-		// This is okay because the result of an algebraic operation should ALWAYS result in the same type
+		// This is okay because the result of an algebraic operation should ALWAYS result in an algebraic type
 		baseAlg = algResult.(ValueAlg)
 	}
 	returnValue := baseAlg.(Value)
 	return Result{Value: &returnValue}, nil, nil
 }
+
 func (self *Interpreter) visitMulExression(node MulExpression) (Result, *int, *errors.Error) {
 	base, code, err := self.visitCastExpression(node.Base)
 	if code != nil || err != nil {
@@ -612,13 +607,14 @@ func (self *Interpreter) visitMulExression(node MulExpression) (Result, *int, *e
 		if algError != nil {
 			return Result{}, nil, algError
 		}
-		// This is okay because the result of an algebraic operation should ALWAYS result in the same type
+		// This is okay because the result of an algebraic operation should ALWAYS result in an algebraic type
 		baseAlg = algResult.(ValueAlg)
 	}
 	// Holds the return value
 	returnValue := baseAlg.(Value)
 	return Result{Value: &returnValue}, nil, nil
 }
+
 func (self *Interpreter) visitCastExpression(node CastExpression) (Result, *int, *errors.Error) {
 	base, code, err := self.visitUnaryExpression(node.Base)
 	if code != nil || err != nil {
@@ -682,6 +678,7 @@ func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (Result, *in
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
+
 	var unaryResult Value
 	var unaryErr *errors.Error
 	switch node.UnaryExpression.UnaryOp {
@@ -705,6 +702,7 @@ func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (Result, *in
 	}
 	return Result{Value: &unaryResult}, nil, nil
 }
+
 func (self *Interpreter) visitEpxExpression(node ExpExpression) (Result, *int, *errors.Error) {
 	base, code, err := self.visitAssignExression(node.Base)
 	if code != nil || err != nil {
@@ -734,6 +732,7 @@ func (self *Interpreter) visitEpxExpression(node ExpExpression) (Result, *int, *
 	}
 	return Result{Value: &powRes}, nil, nil
 }
+
 func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *int, *errors.Error) {
 	base, code, err := self.visitCallExpression(node.Base)
 	if code != nil || err != nil {
@@ -743,6 +742,7 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 	if node.Other == nil {
 		return base, nil, nil
 	}
+
 	rhsValue, code, err := self.visitExpression(node.Other.Expression)
 	if code != nil || err != nil {
 		return Result{}, code, err
@@ -1070,8 +1070,8 @@ func (self *Interpreter) visitIfExpression(node IfExpr) (Result, *int, *errors.E
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		// Forward any return statement
-		if value.ReturnValue != nil {
+		// Forward any return, break or continue statement
+		if value.ReturnValue != nil || value.BreakValue != nil || value.ShouldContinue {
 			return value, nil, nil
 		}
 		// Otherwise, just return the result of the block
@@ -1085,8 +1085,8 @@ func (self *Interpreter) visitIfExpression(node IfExpr) (Result, *int, *errors.E
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
-	// Forward any return statement
-	if value.ReturnValue != nil {
+	// Forward any return, break or continue statement
+	if value.ReturnValue != nil || value.BreakValue != nil || value.ShouldContinue {
 		return value, nil, nil
 	}
 	// Otherwise, just return the result of the block
