@@ -182,13 +182,13 @@ func (self TokenKind) String() string {
 	case Return:
 		display = "return"
 	case StringType:
-		display = "type:str"
+		display = "str"
 	case NumberType:
-		display = "type:num"
+		display = "num"
 	case BooleanType:
-		display = "type:bool"
+		display = "bool"
 	case NullType:
-		display = "type:NULL"
+		display = "null"
 	case True:
 		display = "true"
 	case False:
