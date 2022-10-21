@@ -207,6 +207,8 @@ func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.
 		return Result{}, code, err
 	}
 
+	// TODO: this needs to be done
+
 	// Insert an identifier into the value (if possible)
 	value := insertValueIdentifier(*rightResult.Value, node.Left)
 
@@ -1287,6 +1289,8 @@ func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *erro
 
 		// Remove it as soon as the function is finished
 		self.popScope()
+		// TODO: why is memory usage skyrocketing when not sleeping?
+		// time.Sleep(time.Millisecond)
 	}
 }
 
@@ -1461,7 +1465,6 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, function 
 	_, exitCode, rootScope, runErr := Run(
 		self.executor,
 		self.sigTerm,
-		module,
 		moduleCode,
 		make(map[string]Value),
 		false,
