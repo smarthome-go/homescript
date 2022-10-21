@@ -878,18 +878,16 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 }
 
 func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
-	null := makeNull()
-	result := Result{Value: &null}
 	switch node.Kind() {
 	case AtomKindNumber:
 		num := makeNum(node.(AtomNumber).Num)
-		result = Result{Value: &num}
+		return Result{Value: &num}, nil, nil
 	case AtomKindBoolean:
 		bool := makeBool(node.(AtomBoolean).Value)
-		result = Result{Value: &bool}
+		return Result{Value: &bool}, nil, nil
 	case AtomKindString:
 		str := makeStr(node.(AtomString).Content)
-		result = Result{Value: &str}
+		return Result{Value: &str}, nil, nil
 	case AtomKindPair:
 		pairNode := node.(AtomPair)
 		// Make the pair's value
@@ -898,10 +896,10 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 			return Result{}, code, err
 		}
 		pair := makePair(pairNode.Key, *pairValue.Value)
-		result = Result{Value: &pair}
+		return Result{Value: &pair}, nil, nil
 	case AtomKindNull:
 		null := makeNull()
-		result = Result{Value: &null}
+		return Result{Value: &null}, nil, nil
 	case AtomKindIdentifier:
 		// Search the scope for the correct key
 		key := node.(AtomIdentifier).Identifier
@@ -921,45 +919,45 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		result = valueTemp
+		return valueTemp, nil, nil
 	case AtomKindForExpr:
 		valueTemp, code, err := self.visitForExpression(node.(AtomFor))
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		result = valueTemp
+		return valueTemp, nil, nil
 	case AtomKindWhileExpr:
 		valueTemp, code, err := self.visitWhileExpression(node.(AtomWhile))
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		result = valueTemp
+		return valueTemp, nil, nil
 	case AtomKindLoopExpr:
 		valueTemp, code, err := self.visitLoopExpression(node.(AtomLoop))
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		result = valueTemp
+		return valueTemp, nil, nil
 	case AtomKindFnExpr:
 		valueTemp, err := self.visitFunctionDeclaration(node.(AtomFunction))
 		if err != nil {
 			return Result{}, nil, err
 		}
-		result.Value = &valueTemp
+		return Result{Value: &valueTemp}, nil, nil
 	case AtomKindTryExpr:
 		valueTemp, code, err := self.visitTryExpression(node.(AtomTry))
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		result = valueTemp
+		return valueTemp, nil, nil
 	case AtomKindExpression:
 		valueTemp, code, err := self.visitExpression(node.(AtomExpression).Expression)
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		result = valueTemp
+		return valueTemp, nil, nil
 	}
-	return result, nil, nil
+	panic("BUG: A new atom was introduced without updating this code")
 }
 
 func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors.Error) {
