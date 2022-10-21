@@ -794,3 +794,7 @@ func makeStr(value string) Value {
 func makePair(key string, value Value) Value {
 	return ValuePair{Key: key, Value: value}
 }
+
+func makeFn() Value {
+	return ValueFunction{}
+}

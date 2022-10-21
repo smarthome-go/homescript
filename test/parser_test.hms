@@ -75,7 +75,7 @@ try {
 # Different kinds of expressions
 true || false; false || true;      # Or expr
 true && false; true && true;       # And expr
-1 == 1; 1 !== 2;                   # Eq expr
+1 == 1; 1 != 2;                   # Eq expr
 1 < 2; 1 <= 2;                     # Rel expr (less)
 3 > 2; 3 >= 2;                     # Rel expr (greater)
 1 + 1; 2 - 1;                      # Add expr

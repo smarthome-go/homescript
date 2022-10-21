@@ -10,7 +10,6 @@ import (
 func Run(
 	executor Executor,
 	sigTerm *chan int,
-	filename string,
 	program string,
 	scopeAdditions map[string]Value,
 	debug bool,
@@ -24,7 +23,7 @@ func Run(
 	hmsErrors []hmsError.Error,
 ) {
 	// Parse the source code
-	parser := newParser(filename, program)
+	parser := newParser(program)
 	ast, errors := parser.parse()
 	if len(errors) > 0 {
 		return nil, 1, nil, errors
@@ -49,4 +48,37 @@ func Run(
 		exitCode,
 		interpreter.scopes[0], // Return the root scope
 		nil
+}
+
+// Analyzes the given Homescript code
+func Analyze(
+	executor Executor,
+	program string,
+	scopeAdditions map[string]Value,
+) (
+	diagnostics []Diagnostic,
+) {
+	// Parse the source code
+	parser := newParser(program)
+	ast, errors := parser.parse()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			diagnostics = append(diagnostics, Diagnostic{
+				Severity: Error,
+				Kind:     err.Kind,
+				Message:  err.Message,
+				Span:     err.Span,
+			})
+
+		}
+		return diagnostics
+	}
+	// Create the analyzer
+	analyzer := NewAnalyzer(
+		ast,
+		executor,
+		scopeAdditions,
+	)
+	// Finally, analyze the AST
+	return analyzer.analyze()
 }

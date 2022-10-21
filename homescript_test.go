@@ -173,13 +173,12 @@ func TestHomescripts(t *testing.T) {
 			value, code, _, hmsErrors := homescript.Run(
 				dummyExecutor{},
 				&sigTerm,
-				"foo.hms",
 				string(program),
 				map[string]homescript.Value{
 					"foo": homescript.ValueString{Value: "bar"},
 				},
 				false,
-				1_000,
+				1000,
 				make([]string, 0),
 				moduleName,
 			)
@@ -188,7 +187,7 @@ func TestHomescripts(t *testing.T) {
 			if len(hmsErrors) > 0 && len(test.ExpectedErrors) == 0 {
 				t.Errorf("Unexpected HMS error(s)")
 				for _, err := range hmsErrors {
-					fmt.Println(err.Display(string(program)))
+					fmt.Println(err.Display(string(program), test.File))
 				}
 				return
 			}
@@ -205,12 +204,12 @@ func TestHomescripts(t *testing.T) {
 				for idx, err := range test.ExpectedErrors {
 					if err.Kind != hmsErrors[idx].Kind {
 						t.Errorf("Expected %v, got %v", err.Kind, hmsErrors[idx].Kind)
-						fmt.Println(hmsErrors[idx].Display(string(program)))
+						fmt.Println(hmsErrors[idx].Display(string(program), test.File))
 						return
 					}
 					if !strings.Contains(hmsErrors[idx].Message, err.Message) {
 						t.Errorf("Expected to find error-message `%s` inside error", err.Message)
-						fmt.Println(hmsErrors[idx].Display(string(program)))
+						fmt.Println(hmsErrors[idx].Display(string(program), test.File))
 						return
 					}
 				}
@@ -231,4 +230,17 @@ func TestHomescripts(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAnalyzer(t *testing.T) {
+	program, err := os.ReadFile("./test/programs/main.hms")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	diagnostics := homescript.Analyze(
+		dummyExecutor{},
+		string(program),
+		make(map[string]homescript.Value),
+	)
+	fmt.Printf("Found %d diagnostic(s)\n", len(diagnostics))
 }

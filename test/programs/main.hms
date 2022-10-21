@@ -64,9 +64,11 @@ try {
 # Import the fibonacci function
 import fib from fibonacci;
 
-for n in 2..22 {
+let a = "This is A: " + for n in 2..22 {
     print("fib(" + n + ") = " + fib(n));
+    n;
 };
+print(a);
 
 let a = fn () {
     print("Anonymous function");
