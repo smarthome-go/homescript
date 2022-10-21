@@ -248,10 +248,8 @@ func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 
 	// Add the value to the scope
 	self.addVar(node.Left, value)
-
 	// Also update the result value to include the new Identifier
 	rightResult.Value = &value
-
 	// Finially, return the result
 	return rightResult, nil
 }
@@ -802,8 +800,8 @@ func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *erro
 			for _, scope := range self.scopes {
 				_, exist := scope.this[*ident]
 				if exist {
-					// Validate type equality
-					if (*base.Value).Type() != (*rhsValue.Value).Type() {
+					// Validate type equality (if the left type is null, anything can be assigned to it)
+					if (*base.Value).Type() != (*rhsValue.Value).Type() && (*base.Value).Type() != TypeNull {
 						self.issue(node.Span, fmt.Sprintf("cannot assign %v to %v: type inequality", (*rhsValue.Value).Type(), (*base.Value).Type()), errors.TypeError)
 						return Result{}, nil
 					}
