@@ -814,7 +814,7 @@ func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *erro
 			}
 			panic("BUG: value holds an identifer but is not present in scope")
 		}
-		self.issue(node.Base.Span, fmt.Sprintf("cannot assign to %v", (*base.Value).Type()), errors.TypeError)
+		self.issue(node.Base.Span, fmt.Sprintf("cannot assign to value of type %v", (*base.Value).Type()), errors.TypeError)
 		return Result{}, nil
 	}
 	// Check that the base is a type that can be safely assigned to using the complex operators
