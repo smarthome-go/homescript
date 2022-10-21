@@ -82,7 +82,7 @@ func NewInterpreter(
 		// Check if the isertion would be legal
 		_, exists := scopes[0][key]
 		if exists {
-			panic(fmt.Sprintf("Cannot insert scope addition with key %s: this key is already taken by a builtin value", key))
+			panic(fmt.Sprintf("cannot insert scope addition with key %s: this key is already taken by a builtin value", key))
 		}
 		// Insert the value into the scope
 		scopes[0][key] = value
@@ -477,7 +477,7 @@ func (self *Interpreter) visitRelExression(node RelExpression) (Result, *int, *e
 	case TypeBuiltinVariable:
 		baseVal = (*base.Value).(ValueBuiltinVariable)
 	default:
-		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot compare %v to %v", (*base.Value).Type(), (*otherValue.Value).Type()), errors.TypeError)
+		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("cannot compare %v to %v", (*base.Value).Type(), (*otherValue.Value).Type()), errors.TypeError)
 	}
 
 	// Perform typecast so that comparison operators can be used
@@ -529,7 +529,7 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Result, *int, *e
 	case TypeBoolean:
 		baseVal = (*base.Value).(ValueBool)
 	default:
-		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
+		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
 	}
 
 	// Performs typecase so that the algebraic functions are available on the base type
@@ -581,7 +581,7 @@ func (self *Interpreter) visitMulExression(node MulExpression) (Result, *int, *e
 	case TypeBuiltinVariable:
 		baseVal = (*base.Value).(ValueBuiltinVariable)
 	default:
-		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
+		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
 	}
 
 	// Performs typecase so that the algebraic functions are available on the base type
@@ -642,14 +642,14 @@ func (self *Interpreter) visitCastExpression(node CastExpression) (Result, *int,
 		case TypeString:
 			numeric, err := strconv.ParseFloat((*base.Value).(ValueString).Value, 64)
 			if err != nil {
-				return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot cast non-numeric string to number: %s", err.Error()), errors.ValueError)
+				return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("cannot cast non-numeric string to number: %s", err.Error()), errors.ValueError)
 			}
 
 			// Holds the return value
 			numericValue := makeNum(numeric)
 			return Result{Value: &numericValue}, nil, nil
 		default:
-			return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot cast %v to %v", (*base.Value).Type(), *node.Other), errors.TypeError)
+			return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("cannot cast %v to %v", (*base.Value).Type(), *node.Other), errors.TypeError)
 		}
 	case TypeString:
 		display, err := (*base.Value).Display(self.executor, node.Base.Span)
@@ -727,7 +727,7 @@ func (self *Interpreter) visitEpxExpression(node ExpExpression) (Result, *int, *
 	case TypeBuiltinVariable:
 		powRes, powErr = (*base.Value).(ValueBuiltinVariable).Pow(self.executor, node.Span, *power.Value)
 	default:
-		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot perform power operation on type %v", (*base.Value).Type()), errors.TypeError)
+		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("cannot perform power operation on type %v", (*base.Value).Type()), errors.TypeError)
 	}
 	if powErr != nil {
 		return Result{}, nil, powErr
@@ -764,7 +764,7 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 					if (*base.Value).Type() != (*rhsValue.Value).Type() {
 						return Result{}, nil, errors.NewError(
 							node.Span,
-							fmt.Sprintf("Cannot assign %v to %v: type inequality", (*rhsValue.Value).Type(), (*base.Value).Type()),
+							fmt.Sprintf("cannot assign %v to %v: type inequality", (*rhsValue.Value).Type(), (*base.Value).Type()),
 							errors.TypeError,
 						)
 					}
@@ -778,12 +778,12 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 			panic("BUG: value holds an identifer but is not present in scope")
 		}
 		// Return an error, which states that this type is not assignable to
-		return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot assign to %v", (*base.Value).Type()), errors.TypeError)
+		return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("cannot assign to %v", (*base.Value).Type()), errors.TypeError)
 
 	}
 	// Check that the base is a type that can be safely assigned to using the complex operators
 	if (*base.Value).Type() != TypeString && (*base.Value).Type() != TypeNumber {
-		return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot use algebraic assignment operators on the %v type", (*base.Value).Type()), errors.TypeError)
+		return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("cannot use algebraic assignment operators on the %v type", (*base.Value).Type()), errors.TypeError)
 	}
 	// Perform the more complex assignments
 	var newValue Value
@@ -826,7 +826,7 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 		panic("BUG: value holds an identifer but is not present in scope")
 	}
 	// Return an error, which states that this type is not assignable to
-	return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("Cannot assign to %v", (*base.Value).Type()), errors.TypeError)
+	return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("cannot assign to %v", (*base.Value).Type()), errors.TypeError)
 }
 
 // Functions from here on downstream return a pointer to a value so that it can be modified in a assign expression
@@ -1040,7 +1040,7 @@ func (self *Interpreter) visitFunctionDeclaration(node AtomFunction) (Value, *er
 		// Validate that there is no conflicting value in the scope already
 		scopeValue := self.getVar(*node.Ident)
 		if scopeValue != nil {
-			return nil, errors.NewError(node.Span(), fmt.Sprintf("Cannot declare function with name %s: name already taken in scope", *node.Ident), errors.SyntaxError)
+			return nil, errors.NewError(node.Span(), fmt.Sprintf("cannot declare function with name %s: name already taken in scope", *node.Ident), errors.SyntaxError)
 		}
 		// Add the function to the current scope if there are no conflicts
 		self.addVar(*node.Ident, function)
@@ -1115,7 +1115,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 		if callBackResult.Type() != TypeNumber {
 			return Result{}, nil, errors.NewError(
 				node.RangeLowerExpr.Span,
-				fmt.Sprintf("Cannot use value of type %v in a range", callBackResult.Type()),
+				fmt.Sprintf("cannot use value of type %v in a range", callBackResult.Type()),
 				errors.TypeError,
 			)
 		}
@@ -1141,7 +1141,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 		if callBackResult.Type() != TypeNumber {
 			return Result{}, nil, errors.NewError(
 				node.RangeUpperExpr.Span,
-				fmt.Sprintf("Cannot use value of type %v in a range", callBackResult.Type()),
+				fmt.Sprintf("cannot use value of type %v in a range", callBackResult.Type()),
 				errors.TypeError,
 			)
 		}
@@ -1394,7 +1394,7 @@ func (self *Interpreter) pushScope(span errors.Span) *errors.Error {
 func (self *Interpreter) popScope() {
 	// Check that the root scope is not popped
 	if len(self.scopes) == 1 {
-		panic("BUG: Cannot pop root scope")
+		panic("BUG: cannot pop root scope")
 	}
 	// Remove the last (top) element from the slice / stack
 	self.scopes = self.scopes[:len(self.scopes)-1]
