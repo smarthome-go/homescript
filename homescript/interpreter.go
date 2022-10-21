@@ -968,11 +968,14 @@ func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors
 		return Result{}, nil, err
 	}
 	tryBlockResult, code, err := self.visitStatements(node.TryBlock)
-	if code != nil {
-		return Result{}, code, nil
-	}
+
 	// Remove the scope (cannot simly defer removing it (due to catch block))
 	self.popScope()
+
+	if code != nil {
+		// Error is not caught intentionally
+		return Result{}, code, nil
+	}
 
 	// if there is an error, handle it (try to catch it)
 	if err != nil {
