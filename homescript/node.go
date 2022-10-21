@@ -330,10 +330,12 @@ func (self AtomPair) Kind() AtomKind    { return AtomKindPair }
 func (self AtomPair) Span() errors.Span { return self.Range }
 
 // Null
-type AtomNull struct{}
+type AtomNull struct {
+	Range errors.Span
+}
 
 func (self AtomNull) Kind() AtomKind    { return AtomKindNull }
-func (self AtomNull) Span() errors.Span { return errors.Span{} }
+func (self AtomNull) Span() errors.Span { return self.Range }
 
 // If expression
 
