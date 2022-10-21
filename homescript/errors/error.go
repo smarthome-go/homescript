@@ -54,6 +54,8 @@ func (self ErrorKind) String() string {
 		return "StackOverflow"
 	case ReferenceError:
 		return "ReferenceError"
+	case Warning:
+		return "Warning"
 	default:
 		panic("BUG: a new error kind was introduced without udating this code")
 	}
@@ -67,7 +69,7 @@ func NewError(span Span, message string, kind ErrorKind) *Error {
 	}
 }
 
-func (self Error) Display(program string) string {
+func (self Error) Display(program string, filename string) string {
 	lines := strings.Split(program, "\n")
 
 	line1 := ""
@@ -89,7 +91,7 @@ func (self Error) Display(program string) string {
 	return fmt.Sprintf(
 		"\x1b[1;36m%v\x1b[39m at %s:%d:%d\x1b[0m\n%s\n%s\n%s%s\n\n\x1b[1;31m%s\x1b[0m\n",
 		self.Kind,
-		"file",
+		filename,
 		self.Span.Start.Line,
 		self.Span.Start.Column,
 		line1,

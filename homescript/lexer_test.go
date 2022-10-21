@@ -16,7 +16,7 @@ func TestLexer(t *testing.T) {
 
 	start := time.Now()
 
-	lexer := newLexer("testing", string(program))
+	lexer := newLexer(string(program))
 
 	tokens := make([]string, 0)
 	for {

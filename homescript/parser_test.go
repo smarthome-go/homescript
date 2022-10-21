@@ -17,7 +17,7 @@ func TestParserLexer(t *testing.T) {
 
 	start := time.Now()
 
-	lexer := newLexer("testing", string(program))
+	lexer := newLexer(string(program))
 
 	tokens := make([]string, 0)
 	for {
@@ -47,14 +47,14 @@ func TestParser(t *testing.T) {
 	assert.NoError(t, err)
 
 	start := time.Now()
-	parser := newParser("parser_test.hms", string(program))
+	parser := newParser(string(program))
 
 	ast, parseErrors := parser.parse()
 
 	if len(parseErrors) > 0 {
 		t.Error("Parsing failed due to error(s)")
 		for _, err := range parseErrors {
-			fmt.Println(err.Display(string(program)))
+			fmt.Println(err.Display(string(program), "parser_test.hms"))
 		}
 		return
 	}

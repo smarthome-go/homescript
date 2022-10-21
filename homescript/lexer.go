@@ -42,7 +42,7 @@ type lexer struct {
 	location     errors.Location
 }
 
-func newLexer(filename string, program_source string) lexer {
+func newLexer(program_source string) lexer {
 	program := []rune(program_source)
 	programLen := len(program)
 	var currentChar *rune
@@ -705,7 +705,7 @@ func (self *lexer) nextToken() (Token, *errors.Error) {
 			return unknownToken(self.location), errors.NewError(errors.Span{
 				Start: self.location,
 				End:   self.location,
-			}, fmt.Sprintf("Illegal characer: %c", *self.currentChar), errors.SyntaxError)
+			}, fmt.Sprintf("illegal characer: %c", *self.currentChar), errors.SyntaxError)
 		}
 	}
 	return Token{
