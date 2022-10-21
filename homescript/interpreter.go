@@ -1247,7 +1247,7 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 		// Enable the `inLoop` flag
 		self.inLoop = true
 		// Release the `inLoop` flag as soon as this function is finished
-		defer func() { self.inFunction = false }()
+		defer func() { self.inLoop = false }()
 
 		result, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
@@ -1278,7 +1278,7 @@ func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *erro
 		// Enable the `inLoop` flag
 		self.inLoop = true
 		// Release the `inLoop` flag as soon as this function is finished
-		defer func() { self.inFunction = false }()
+		defer func() { self.inLoop = false }()
 
 		result, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
