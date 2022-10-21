@@ -2,6 +2,7 @@ package homescript
 
 import (
 	"fmt"
+	"runtime/debug"
 	"strconv"
 
 	"github.com/smarthome-go/homescript/homescript/errors"
@@ -33,9 +34,9 @@ type parser struct {
 	errors    []errors.Error
 }
 
-func newParser(filename string, program string) parser {
+func newParser(program string) parser {
 	return parser{
-		lexer:     newLexer(filename, program),
+		lexer:     newLexer(program),
 		prevToken: unknownToken(errors.Location{}),
 		currToken: unknownToken(errors.Location{}),
 		errors:    make([]errors.Error, 0),
@@ -45,6 +46,7 @@ func newParser(filename string, program string) parser {
 func (self *parser) advance() *errors.Error {
 	next, err := self.lexer.nextToken()
 	if err != nil {
+		fmt.Println(string(debug.Stack()))
 		return err
 	}
 	self.prevToken = self.currToken
@@ -376,7 +378,7 @@ func (self *parser) unaryExpr() (UnaryExpression, *errors.Error) {
 		}
 		base, err := self.unaryExpr()
 		if err != nil {
-			panic("err")
+			return UnaryExpression{}, err
 		}
 		return UnaryExpression{
 			UnaryExpression: &struct {
@@ -798,7 +800,23 @@ func (self *parser) atom() (Atom, *errors.Error) {
 			},
 		}, nil
 	}
-	return nil, nil
+	self.errors = append(self.errors, errors.Error{
+		Span: errors.Span{
+			Start: self.prevToken.EndLocation,
+			End:   self.prevToken.EndLocation,
+		},
+		Message: "expression expected here",
+		Kind:    errors.Warning,
+	},
+	)
+	return nil, errors.NewError(
+		errors.Span{
+			Start: self.currToken.StartLocation,
+			End:   self.currToken.EndLocation,
+		},
+		fmt.Sprintf("unexpected token %v found here", self.currToken.Kind),
+		errors.SyntaxError,
+	)
 }
 
 func (self *parser) ifExpr() (IfExpr, *errors.Error) {
@@ -1366,14 +1384,13 @@ func (self *parser) returnStmt() (ReturnStmt, *errors.Error) {
 		}
 		additionalExpr = &additionalExprTemp
 	}
-	returnStmt := ReturnStmt{
+	return ReturnStmt{
 		Expression: additionalExpr,
 		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
 		},
-	}
-	return returnStmt, nil
+	}, nil
 }
 
 func (self *parser) statement() (Statement, *errors.Error) {
@@ -1436,7 +1453,11 @@ func (self *parser) statements() ([]Statement, *errors.Error) {
 		}
 		statements = append(statements, statement)
 
-		if self.currToken.Kind != Semicolon {
+		if self.currToken.Kind == Semicolon {
+			if err := self.advance(); err != nil {
+				return nil, err
+			}
+		} else {
 			end := self.prevToken.EndLocation
 			// Increments the end column so that a missing semicolon is marked where it was expected
 			end.Column++
@@ -1453,10 +1474,6 @@ func (self *parser) statements() ([]Statement, *errors.Error) {
 				},
 			)
 		}
-
-		if self.advance(); err != nil {
-			return nil, err
-		}
 	}
 
 	return statements, nil
@@ -1468,15 +1485,17 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Invalid block: expected %v, found %v", LCurly, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.EndLocation,
-				End:   self.currToken.EndLocation,
+				Start: self.prevToken.EndLocation,
+				End:   self.prevToken.EndLocation,
 			},
 		},
 		)
+	} else {
+		if err := self.advance(); err != nil {
+			return nil, err
+		}
 	}
-	if err := self.advance(); err != nil {
-		return nil, err
-	}
+
 	statements, err := self.statements()
 	if err != nil {
 		return nil, err
