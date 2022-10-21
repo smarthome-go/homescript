@@ -34,6 +34,8 @@ const (
 	// Can be caught using `catch`
 	ThrowError
 	RuntimeError
+	// Only used in the analyzerrror
+	Warning
 )
 
 func (self ErrorKind) String() string {
