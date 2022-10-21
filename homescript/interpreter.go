@@ -768,8 +768,8 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 			for _, scope := range self.scopes {
 				_, exist := scope[*ident]
 				if exist {
-					// Validate type equality
-					if (*base.Value).Type() != (*rhsValue.Value).Type() {
+					// Validate type equality (left side may be null)
+					if (*base.Value).Type() != (*rhsValue.Value).Type() && (*base.Value).Type() != TypeNull {
 						return Result{}, nil, errors.NewError(
 							node.Span,
 							fmt.Sprintf("cannot assign %v to %v: type inequality", (*rhsValue.Value).Type(), (*base.Value).Type()),
