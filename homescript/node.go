@@ -92,7 +92,7 @@ type ExpressionStmt struct {
 }
 
 func (self ExpressionStmt) Kind() StatementKind { return ExpressionStmtKind }
-func (self ExpressionStmt) Span() errors.Span   { return errors.Span{} }
+func (self ExpressionStmt) Span() errors.Span   { return self.Expression.Span }
 
 /////// Expressions ///////
 
