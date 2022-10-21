@@ -805,8 +805,11 @@ func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *erro
 						self.issue(node.Span, fmt.Sprintf("cannot assign %v to %v: type inequality", (*rhsValue.Value).Type(), (*base.Value).Type()), errors.TypeError)
 						return Result{}, nil
 					}
+					// Perform actual assignment (required for checking against null)
+					value := insertValueIdentifier(*rhsValue.Value, *ident)
+					scope.this[*ident] = value
 					// Return the rhs as the return value of the entire assignment
-					return rhsValue, nil
+					return Result{Value: &value}, nil
 				}
 			}
 			panic("BUG: value holds an identifer but is not present in scope")
