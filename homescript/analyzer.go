@@ -227,16 +227,16 @@ func (self *Analyzer) visitStatement(node Statement) (Result, *errors.Error) {
 
 func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 	// Check that the left hand side will cause no conflicts
+	fromScope := self.getVar(node.Left)
+	if fromScope != nil {
+		self.issue(node.Range, fmt.Sprintf("cannot declare variable with name %s: name already taken in scope", node.Left), errors.SyntaxError)
+		return Result{}, nil
+	}
+
+	// Evaluate the right hand side
 	rightResult, err := self.visitExpression(node.Right)
 	if err != nil {
 		return Result{}, err
-	}
-
-	val := self.getVar(node.Left)
-	// This is not a critical error because there is just a variable conflict
-	if val != nil {
-		self.issue(node.Span(), fmt.Sprintf("cannot declare variable: '%s' already found in scope", node.Left), errors.TypeError)
-		return rightResult, nil
 	}
 
 	if rightResult.Value == nil || *rightResult.Value == nil {
