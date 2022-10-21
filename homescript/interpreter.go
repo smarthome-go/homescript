@@ -202,12 +202,20 @@ func (self *Interpreter) visitStatement(node Statement) (Result, *int, *errors.E
 
 func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.Error) {
 	// Check that the left hand side will cause no conflicts
+	fromScope := self.getVar(node.Left)
+	if fromScope != nil {
+		return Result{}, nil, errors.NewError(
+			node.Span(),
+			fmt.Sprintf("cannot declare variable with name %s: name already taken in scope", node.Left),
+			errors.SyntaxError,
+		)
+	}
+
+	// Evaluate the right hand side
 	rightResult, code, err := self.visitExpression(node.Right)
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
-
-	// TODO: this needs to be done
 
 	// Insert an identifier into the value (if possible)
 	value := insertValueIdentifier(*rightResult.Value, node.Left)
