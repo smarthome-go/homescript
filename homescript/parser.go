@@ -756,6 +756,17 @@ func (self *parser) atom() (Atom, *errors.Error) {
 				End:   self.prevToken.EndLocation,
 			},
 		}, nil
+	case NullType:
+		if err := self.advance(); err != nil {
+			return nil, err
+		}
+		return AtomNull{
+				Range: errors.Span{
+					Start: startLocation,
+					End:   self.prevToken.EndLocation,
+				},
+			},
+			nil
 	case If:
 		return self.ifExpr()
 	case For:
