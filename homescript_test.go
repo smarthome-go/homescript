@@ -243,6 +243,6 @@ func TestAnalyzer(t *testing.T) {
 		make(map[string]homescript.Value),
 	)
 	for _, diagnostic := range diagnostics {
-		fmt.Println(diagnostic.Display(string(program), "analyzer.hms"))
+		fmt.Printf("%s\n_\n_\n", diagnostic.Display(string(program), "analyzer.hms"))
 	}
 }
