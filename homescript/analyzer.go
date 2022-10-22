@@ -3,6 +3,7 @@ package homescript
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
@@ -28,6 +29,52 @@ type Analyzer struct {
 	inFunction bool
 }
 
+func (self Diagnostic) Display(program string, filename string) string {
+	lines := strings.Split(program, "\n")
+
+	line1 := ""
+	if self.Span.Start.Line > 1 {
+		line1 = fmt.Sprintf("\n \x1b[90m%- 3d | \x1b[0m%s", self.Span.Start.Line-1, lines[self.Span.Start.Line-2])
+	}
+	line2 := fmt.Sprintf(" \x1b[90m%- 3d | \x1b[0m%s", self.Span.Start.Line, lines[self.Span.Start.Line-1])
+	line3 := ""
+	if int(self.Span.Start.Line) < len(lines) {
+		line3 = fmt.Sprintf("\n \x1b[90m%- 3d | \x1b[0m%s", self.Span.Start.Line+1, lines[self.Span.Start.Line])
+	}
+
+	markers := "^"
+	if self.Span.Start.Line == self.Span.End.Line {
+		markers = strings.Repeat("^", int(self.Span.End.Column-self.Span.Start.Column)+1) // This is required because token spans are inclusive
+	}
+	marker := fmt.Sprintf("%s\x1b[1;31m%s\x1b[0m", strings.Repeat(" ", int(self.Span.Start.Column+6)), markers)
+
+	var color int
+	switch self.Severity {
+	case Info:
+		color = 6
+	case Warning:
+		color = 3
+	case Error:
+		color = 1
+	default:
+		panic("New severity was introduced without updating this code")
+	}
+
+	return fmt.Sprintf(
+		"\x1b[1;36m%v\x1b[39m at %s:%d:%d\x1b[0m\n%s\n%s\n%s%s\n\n\x1b[1;3%dm%s\x1b[0m\n",
+		self.Kind,
+		filename,
+		self.Span.Start.Line,
+		self.Span.Start.Column,
+		line1,
+		line2,
+		marker,
+		line3,
+		color,
+		self.Message,
+	)
+}
+
 type Diagnostic struct {
 	Severity DiagnosticSeverity
 	Kind     errors.ErrorKind
@@ -48,6 +95,15 @@ type scope struct {
 	this map[string]Value
 	// If this scope belongs to a function
 	identifier *string
+	// Where the scope was pushed
+	span errors.Span
+	// Saves which functions have been called in this scope
+	// Used for preventing duplicate analysis of a function
+	// Also serves to inform about unused functions
+	functionCalls []string
+	// Saves which variable names have been accessed
+	// Used for issueing warnings about unused varirables
+	variableAccesses []string
 }
 
 func NewAnalyzer(
@@ -118,6 +174,15 @@ func (self *Analyzer) diagnosticError(err errors.Error) {
 	})
 }
 
+func (self *Analyzer) info(span errors.Span, message string) {
+	self.diagnostics = append(self.diagnostics, Diagnostic{
+		Severity: Info,
+		Kind:     errors.Info,
+		Message:  message,
+		Span:     span,
+	})
+}
+
 func (self *Analyzer) warn(span errors.Span, message string) {
 	self.diagnostics = append(self.diagnostics, Diagnostic{
 		Severity: Warning,
@@ -142,12 +207,16 @@ func (self *Analyzer) analyze() []Diagnostic {
 		self.diagnosticError(*err)
 		return self.diagnostics
 	}
+	// Pop the last scope from the scopes in order to analyze top-level functions
+	if err := self.popScope(); err != nil {
+		self.diagnosticError(*err)
+	}
 	return self.diagnostics
 }
 
 // Interpreter code
 func (self *Analyzer) visitStatements(statements []Statement) (Result, *errors.Error) {
-	lastResult := makeNullResult()
+	lastResult := makeNullResult(errors.Span{})
 
 	unreachable := false
 	for _, statement := range statements {
@@ -244,7 +313,7 @@ func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 	}
 
 	// Insert an identifier into the value (if possible)
-	value := insertValueIdentifier(*rightResult.Value, node.Left)
+	value := insertValueMetadata(*rightResult.Value, node.Left, node.Range)
 
 	// Add the value to the scope
 	self.addVar(node.Left, value)
@@ -288,7 +357,7 @@ func (self *Analyzer) visitBreakStatement(node BreakStmt) (Result, *errors.Error
 		return Result{BreakValue: value.Value}, nil
 	}
 	// The break value defaults to null
-	null := makeNull()
+	null := makeNull(node.Span())
 	return Result{BreakValue: &null}, nil
 }
 
@@ -303,12 +372,20 @@ func (self *Analyzer) visitContinueStatement(node ContinueStmt) (Result, *errors
 
 func (self *Analyzer) visitReturnStatement(node ReturnStmt) (Result, *errors.Error) {
 	// The return value defaults to null
-	returnValue := makeNull()
+	returnValue := makeNull(node.Expression.Span)
 	// If the return statment should return a value, make and override it here
 	if node.Expression != nil {
 		value, err := self.visitExpression(*node.Expression)
 		if err != nil {
 			return Result{}, err
+		}
+		if value.Value == nil || *value.Value == nil {
+			return Result{
+				ShouldContinue: false,
+				ReturnValue:    &returnValue,
+				BreakValue:     nil,
+				Value:          nil,
+			}, nil
 		}
 		returnValue = *value.Value
 	}
@@ -336,7 +413,7 @@ func (self *Analyzer) visitExpression(node Expression) (Result, *errors.Error) {
 		_, err = (*base.Value).IsTrue(self.executor, node.Base.Span)
 		if err != nil {
 			self.diagnosticError(*err)
-			return makeBoolResult(false), nil
+			return makeBoolResult(node.Span, false), nil
 		}
 	}
 
@@ -352,12 +429,12 @@ func (self *Analyzer) visitExpression(node Expression) (Result, *errors.Error) {
 			_, err = (*followingValue.Value).IsTrue(self.executor, following.Span)
 			if err != nil {
 				self.diagnosticError(*err)
-				return makeBoolResult(false), nil
+				return makeBoolResult(node.Span, false), nil
 			}
 		}
 	}
 
-	return makeBoolResult(false), nil
+	return makeBoolResult(node.Span, false), nil
 }
 
 func (self *Analyzer) visitAndExpression(node AndExpression) (Result, *errors.Error) {
@@ -375,7 +452,7 @@ func (self *Analyzer) visitAndExpression(node AndExpression) (Result, *errors.Er
 		_, err = (*base.Value).IsTrue(self.executor, node.Base.Span)
 		if err != nil {
 			self.diagnosticError(*err)
-			return makeBoolResult(false), nil
+			return makeBoolResult(node.Span, false), nil
 		}
 	}
 
@@ -391,11 +468,11 @@ func (self *Analyzer) visitAndExpression(node AndExpression) (Result, *errors.Er
 			_, err = (*followingValue.Value).IsTrue(self.executor, following.Span)
 			if err != nil {
 				self.diagnosticError(*err)
-				return makeBoolResult(false), nil
+				return makeBoolResult(node.Span, false), nil
 			}
 		}
 	}
-	return makeBoolResult(false), nil
+	return makeBoolResult(node.Span, false), nil
 }
 
 func (self *Analyzer) visitEqExpression(node EqExpression) (Result, *errors.Error) {
@@ -416,13 +493,13 @@ func (self *Analyzer) visitEqExpression(node EqExpression) (Result, *errors.Erro
 
 	// Prevent further analysis if either the base or the other values are nil
 	if base.Value == nil || otherValue.Value == nil {
-		return makeBoolResult(false), nil
+		return makeBoolResult(node.Span, false), nil
 	}
 
 	// Finally, test for equality
 	_, err = (*base.Value).IsEqual(self.executor, node.Span, *otherValue.Value)
 	if err != nil {
-		return makeBoolResult(false), err
+		return makeBoolResult(node.Span, false), err
 	}
 	return Result{}, nil
 }
@@ -444,7 +521,7 @@ func (self *Analyzer) visitRelExression(node RelExpression) (Result, *errors.Err
 
 	// Prevent further analysis if either the base or the other values are nil
 	if base.Value == nil || otherValue.Value == nil {
-		return makeBoolResult(false), nil
+		return makeBoolResult(node.Span, false), nil
 	}
 
 	// Check that the comparison involves a valid left hand side
@@ -456,7 +533,7 @@ func (self *Analyzer) visitRelExression(node RelExpression) (Result, *errors.Err
 		baseVal = (*base.Value).(ValueBuiltinVariable)
 	default:
 		self.issue(node.Span, fmt.Sprintf("Cannot compare %v to %v", (*base.Value).Type(), (*otherValue.Value).Type()), errors.TypeError)
-		return makeBoolResult(false), nil
+		return makeBoolResult(node.Span, false), nil
 	}
 
 	// Perform typecast so that comparison operators can be used
@@ -478,9 +555,9 @@ func (self *Analyzer) visitRelExression(node RelExpression) (Result, *errors.Err
 		panic("BUG: a new rel operator was introduced without updating this code")
 	}
 	if relError != nil {
-		return makeBoolResult(false), nil
+		return makeBoolResult(node.Span, false), nil
 	}
-	return makeBoolResult(false), nil
+	return makeBoolResult(node.Span, false), nil
 }
 
 func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Error) {
@@ -496,6 +573,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 
 	// Prevent further analysis if the base value is nil
 	if base.Value == nil {
+		self.info(node.Span, "manual type validation required")
 		return Result{}, nil
 	}
 
@@ -511,7 +589,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 	case TypeBoolean:
 		baseVal = (*base.Value).(ValueBool)
 	default:
-		self.issue(node.Span, fmt.Sprintf("Cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
+		self.issue(node.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
 		return Result{}, nil
 	}
 
@@ -543,6 +621,11 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 		}
 
 		if algError != nil {
+			scope := self.getScope()
+			// If the error occurs inside a function body, highlight the caller location
+			if self.inFunction && scope.identifier != nil {
+				self.info(scope.span, fmt.Sprintf("%v at l. %d:%d caused here", algError.Kind, algError.Span.Start.Line, algError.Span.Start.Column))
+			}
 			self.diagnosticError(*algError)
 			// Must return a blank result in order to prevent other functions from using a nil value
 			return Result{}, nil
@@ -631,12 +714,12 @@ func (self *Analyzer) visitCastExpression(node CastExpression) (Result, *errors.
 	if base.Value == nil {
 		switch *node.Other {
 		case TypeNumber:
-			num := makeNum(0)
+			num := makeNum(node.Span, 0)
 			return Result{Value: &num}, nil
 		case TypeBoolean:
-			return makeBoolResult(false), nil
+			return makeBoolResult(node.Span, false), nil
 		case TypeString:
-			str := makeStr("")
+			str := makeStr(node.Span, "")
 			return Result{Value: &str}, nil
 		default:
 			self.issue(node.Span, fmt.Sprintf("cannot cast to non-primitive type: cast from %v to %v is unsupported", (*base.Value).Type(), *node.Other), errors.TypeError)
@@ -650,7 +733,7 @@ func (self *Analyzer) visitCastExpression(node CastExpression) (Result, *errors.
 		case TypeNumber:
 			return base, nil
 		case TypeBoolean:
-			numericValue := makeNum(0)
+			numericValue := makeNum(node.Span, 0)
 			return Result{Value: &numericValue}, nil
 		case TypeString:
 			_, err := strconv.ParseFloat((*base.Value).(ValueString).Value, 64)
@@ -658,7 +741,7 @@ func (self *Analyzer) visitCastExpression(node CastExpression) (Result, *errors.
 				self.issue(node.Base.Span, "cast to number used on non-numeric string", errors.ValueError)
 				return Result{}, nil
 			}
-			num := makeNum(0)
+			num := makeNum(node.Span, 0)
 			return Result{Value: &num}, nil
 		default:
 			self.issue(node.Span, fmt.Sprintf("cannot cast %v to %v", (*base.Value).Type(), *node.Other), errors.TypeError)
@@ -669,14 +752,14 @@ func (self *Analyzer) visitCastExpression(node CastExpression) (Result, *errors.
 		if err != nil {
 			return Result{}, err
 		}
-		valueStr := makeStr("")
+		valueStr := makeStr(node.Span, "")
 		return Result{Value: &valueStr}, nil
 	case TypeBoolean:
 		_, err := (*base.Value).IsTrue(self.executor, node.Base.Span)
 		if err != nil {
 			return Result{}, err
 		}
-		truthValue := makeBool(false)
+		truthValue := makeBool(node.Span, false)
 		return Result{Value: &truthValue}, nil
 	default:
 		self.issue(node.Span, fmt.Sprintf("cannot cast to non-primitive type: cast from %v to %v is unsupported", (*base.Value).Type(), *node.Other), errors.TypeError)
@@ -710,7 +793,7 @@ func (self *Analyzer) visitUnaryExpression(node UnaryExpression) (Result, *error
 			self.diagnosticError(*err)
 			return Result{}, nil
 		}
-		returnValue := makeBool(false)
+		returnValue := makeBool(node.Span, false)
 		return Result{Value: &returnValue}, nil
 	default:
 		panic("BUG: a new unary operator has been added without updating this code")
@@ -739,7 +822,7 @@ func (self *Analyzer) visitEpxExpression(node ExpExpression) (Result, *errors.Er
 	// If the base value is nil, stop this analysis
 	if base.Value == nil {
 		if power.Value != nil && (*power.Value).Type() == TypeNumber {
-			num := makeNum(0)
+			num := makeNum(errors.Span{}, 0)
 			return Result{Value: &num}, nil
 		}
 		return Result{}, nil
@@ -806,7 +889,7 @@ func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *erro
 						return Result{}, nil
 					}
 					// Perform actual assignment (required for checking against null)
-					value := insertValueIdentifier(*rhsValue.Value, *ident)
+					value := insertValueMetadata(*rhsValue.Value, *ident, (*rhsValue.Value).Span())
 					scope.this[*ident] = value
 					// Return the rhs as the return value of the entire assignment
 					return Result{Value: &value}, nil
@@ -849,7 +932,7 @@ func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *erro
 	// Perform actual (complex) assignment
 	if ident := (*base.Value).Ident(); ident != nil {
 		// Insert the original identifier back into the new value (if possible)
-		newValue = insertValueIdentifier(newValue, *ident)
+		newValue = insertValueMetadata(newValue, *ident, newValue.Span())
 
 		// Need to manually search through the scopes to find the right stack frame
 		for _, scope := range self.scopes {
@@ -879,13 +962,16 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 		if part.Args != nil {
 			// Call the base using the following args
 			// TODO: maybe include this
-			//result, err := self.callValue(node.Span, *base.Value, *part.Args)
-			//if err != nil {
-			//self.diagnosticError(*err)
-			//return Result{}, nil
-			//}
+			if base.Value == nil || *base.Value == nil {
+				return Result{}, nil
+			}
+			result, err := self.callValue(node.Span, *base.Value, *part.Args)
+			if err != nil {
+				self.diagnosticError(*err)
+				return Result{}, nil
+			}
 			// Swap the result and the base so that the next iteration uses this result
-			// base.Value = &result
+			base.Value = &result
 			return Result{}, nil
 		}
 		// Handle member access
@@ -927,17 +1013,17 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 }
 
 func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
-	null := makeNull()
+	null := makeNull(node.Span())
 	result := Result{Value: &null}
 	switch node.Kind() {
 	case AtomKindNumber:
-		num := makeNum(node.(AtomNumber).Num)
+		num := makeNum(node.Span(), node.(AtomNumber).Num)
 		result = Result{Value: &num}
 	case AtomKindBoolean:
-		bool := makeBool(node.(AtomBoolean).Value)
+		bool := makeBool(node.Span(), node.(AtomBoolean).Value)
 		result = Result{Value: &bool}
 	case AtomKindString:
-		str := makeStr(node.(AtomString).Content)
+		str := makeStr(node.Span(), node.(AtomString).Content)
 		result = Result{Value: &str}
 	case AtomKindPair:
 		pairNode := node.(AtomPair)
@@ -946,15 +1032,29 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		if err != nil {
 			return Result{}, err
 		}
-		pair := makePair(pairNode.Key, *pairValue.Value)
+		pair := makePair(node.Span(), pairNode.Key, *pairValue.Value)
 		result = Result{Value: &pair}
 	case AtomKindNull:
-		null := makeNull()
+		null := makeNull(node.Span())
 		result = Result{Value: &null}
 	case AtomKindIdentifier:
 		// Search the scope for the correct key
 		key := node.(AtomIdentifier).Identifier
 		scopeValue := self.getVar(key)
+
+		// Add this variable to the variable accesses
+		// Only add the access if it is not already in the list
+		isMarked := false
+		for _, access := range self.getScope().variableAccesses {
+			if access == key {
+				isMarked = true
+				break
+			}
+		}
+		if !isMarked {
+			self.getScope().variableAccesses = append(self.getScope().variableAccesses, key)
+		}
+
 		// If the key is associated with a value, return it
 		if scopeValue != nil {
 			return Result{Value: scopeValue}, nil
@@ -1028,22 +1128,22 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 	// Add the error variable to the scope (as an error object)
 	self.addVar(node.ErrorIdentifier, ValueObject{
 		Fields: map[string]Value{
-			"kind":    makeStr(""),
-			"message": makeStr(""),
+			"kind":    makeStr(errors.Span{}, ""),
+			"message": makeStr(errors.Span{}, ""),
 			"location": ValueObject{
 				Fields: map[string]Value{
 					"start": ValueObject{
 						Fields: map[string]Value{
-							"index":  makeNum(0.0),
-							"line":   makeNum(0.0),
-							"column": makeNum(0.0),
+							"index":  makeNum(errors.Span{}, 0.0),
+							"line":   makeNum(errors.Span{}, 0.0),
+							"column": makeNum(errors.Span{}, 0.0),
 						},
 					},
 					"end": ValueObject{
 						Fields: map[string]Value{
-							"index":  makeNum(0.0),
-							"line":   makeNum(0.0),
-							"column": makeNum(0.0),
+							"index":  makeNum(errors.Span{}, 0.0),
+							"line":   makeNum(errors.Span{}, 0.0),
+							"column": makeNum(errors.Span{}, 0.0),
 						},
 					},
 				},
@@ -1064,34 +1164,47 @@ func (self *Analyzer) visitFunctionDeclaration(node AtomFunction) (Value, *error
 		Identifier: node.Ident,
 		Args:       node.ArgIdentifiers,
 		Body:       node.Body,
+		Range:      node.Range,
 	}
 
-	// If the function declaration contains no identifier, just return the function's value
+	// If the function declaration contains an identifier, check for conflicts
 	if node.Ident != nil {
 		// Validate that there is no conflicting value in the scope already
 		scopeValue := self.getVar(*node.Ident)
 		if scopeValue != nil {
-			return nil, errors.NewError(node.Span(), fmt.Sprintf("Cannot declare function with name %s: name already taken in scope", *node.Ident), errors.SyntaxError)
+			self.issue(node.Range, fmt.Sprintf("cannot declare function with name '%s': name already taken in scope", *node.Ident), errors.TypeError)
+			return nil, nil
 		}
 		// Add the function to the current scope if there are no conflicts
 		self.addVar(*node.Ident, function)
 	}
 
-	if err := self.pushScope(node.Ident, node.Range); err != nil {
-		return nil, err
-	}
+	// TODO: move this
+	/*
 
-	self.inFunction = true
+		if err := self.pushScope(node.Ident, node.Range); err != nil {
+			return nil, err
+		}
 
-	// Before returning the function, analyze its body
-	if _, err := self.visitStatements(node.Body); err != nil {
-		return nil, err
-	}
+		self.inFunction = true
 
-	self.inFunction = false
-	self.popScope()
+		// Add the function's parameters into the new scope
+		for _, param := range node.ArgIdentifiers {
+			self.addVar(param, nil)
+		}
+
+		// Before returning the function, analyze its body
+		if _, err := self.visitStatements(node.Body); err != nil {
+			return nil, err
+		}
+
+		self.inFunction = false
+		self.popScope()
+
+	*/
 
 	// Return the functions value so that assignments like `let a = fn foo() ...` are possible
+
 	return function, nil
 }
 
@@ -1303,14 +1416,15 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		if err := self.pushScope(function.Identifier, span); err != nil {
 			return nil, err
 		}
-		// Remove the function scope again
-		defer self.popScope()
 
 		// Evaluate argument values and add them to the new scope
 		for idx, arg := range function.Args {
 			argValue, err := self.visitExpression(args[idx])
 			if err != nil {
 				return nil, err
+			}
+			if argValue.Value == nil || *argValue.Value == nil {
+				return nil, nil
 			}
 			// Add the computed value to the new (current) scope
 			self.addVar(arg, *argValue.Value)
@@ -1321,6 +1435,23 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		if err != nil {
 			return nil, err
 		}
+
+		// Remove the function scope again
+		self.popScope()
+
+		// Mark the function as used here
+		// Only do it if the function was not already used before
+		alreadyMarked := false
+		for _, use := range self.getScope().functionCalls {
+			if function.Identifier != nil && use == *function.Identifier {
+				alreadyMarked = true
+				break
+			}
+		}
+		if !alreadyMarked {
+			self.getScope().functionCalls = append(self.getScope().functionCalls, *function.Identifier)
+		}
+
 		return nil, nil
 	case TypeBuiltinFunction:
 		for _, arg := range args {
@@ -1348,20 +1479,81 @@ func (self *Analyzer) pushScope(ident *string, span errors.Span) *errors.Error {
 	}
 	// Push a new stack frame onto the stack
 	self.scopes = append(self.scopes, scope{
-		this:       make(map[string]Value),
-		identifier: ident,
+		this:          make(map[string]Value),
+		identifier:    ident,
+		span:          span,
+		functionCalls: make([]string, 0),
 	})
 	return nil
 }
 
 // Pops a scope from the top of the stack
-func (self *Analyzer) popScope() {
-	// Check that the root scope is not popped
-	if len(self.scopes) == 1 {
-		panic("BUG: Cannot pop root scope")
+func (self *Analyzer) popScope() *errors.Error {
+	if len(self.scopes) == 0 {
+		panic("BUG: no scopes to pop")
 	}
+	fmt.Println(self.scopes[len(self.scopes)-1].functionCalls)
+	if self.scopes[len(self.scopes)-1].identifier != nil {
+		fmt.Println(*self.scopes[len(self.scopes)-1].identifier)
+	}
+	// Before removing the scope, analyze its functions
+	for _, value := range self.scopes[len(self.scopes)-1].this {
+		// If the current value is a variable, analyze its uses
+		if value != nil && value.Ident() != nil {
+			isUsed := false
+			for _, access := range self.scopes[len(self.scopes)-1].variableAccesses {
+				if access == *value.Ident() {
+					isUsed = true
+					break
+				}
+			}
+			if !isUsed && value.Ident() != nil {
+				fmt.Println(value.Span())
+				self.warn(value.Span(), fmt.Sprintf("variable '%s' is unused", *value.Ident()))
+			}
+		}
+
+		// If the current value is a function, analyze it
+		if value != nil && value.Type() == TypeFunction {
+			alreadyCalled := false
+			for _, call := range self.scopes[len(self.scopes)-1].functionCalls {
+				if value.(ValueFunction).Identifier != nil && call == *value.(ValueFunction).Identifier {
+					// If this function has already been called, do not analyze it
+					alreadyCalled = true
+					break
+				}
+			}
+			if alreadyCalled {
+				fmt.Println("already called: ", value.Ident())
+				continue
+			}
+
+			// Issue a warning that the function is not used
+			if value.(ValueFunction).Identifier != nil {
+				self.warn(value.(ValueFunction).Range, fmt.Sprintf("function '%s' is unused", *value.(ValueFunction).Identifier))
+			}
+
+			self.inFunction = true
+			if err := self.pushScope(value.Ident(), errors.Span{}); err != nil {
+				return err
+			}
+			// Add all arg values to the function's scope
+			for _, param := range value.(ValueFunction).Args {
+				self.addVar(param, nil)
+			}
+			if _, err := self.visitStatements(value.(ValueFunction).Body); err != nil {
+				return err
+			}
+			self.inFunction = false
+			if err := self.popScope(); err != nil {
+				return err
+			}
+		}
+	}
+
 	// Remove the last (top) element from the slice / stack
 	self.scopes = self.scopes[:len(self.scopes)-1]
+	return nil
 }
 
 // Adds a varable to the top of the stack
@@ -1385,4 +1577,9 @@ func (self *Analyzer) getVar(key string) *Value {
 		}
 	}
 	return nil
+}
+
+func (self Analyzer) getScope() *scope {
+	scopeLen := len(self.scopes)
+	return &self.scopes[scopeLen-1]
 }

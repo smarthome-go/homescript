@@ -34,8 +34,9 @@ const (
 	// Can be caught using `catch`
 	ThrowError
 	RuntimeError
-	// Only used in the analyzerrror
+	// Only used in the analyzer
 	Warning
+	Info
 )
 
 func (self ErrorKind) String() string {
@@ -56,6 +57,8 @@ func (self ErrorKind) String() string {
 		return "ReferenceError"
 	case Warning:
 		return "Warning"
+	case Info:
+		return "Info"
 	default:
 		panic("BUG: a new error kind was introduced without udating this code")
 	}
