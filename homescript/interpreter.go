@@ -60,6 +60,7 @@ func NewInterpreter(
 		"assert": ValueBuiltinFunction{Callback: Assert},
 		// Builtin functions implemented by the executor
 		"print":     ValueBuiltinFunction{Callback: Print},
+		"println":   ValueBuiltinFunction{Callback: Println},
 		"sleep":     ValueBuiltinFunction{Callback: Sleep},
 		"switch_on": ValueBuiltinFunction{Callback: SwitchOn},
 		"switch":    ValueBuiltinFunction{Callback: Switch},
@@ -771,8 +772,8 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 			*rhsValue.Value = insertValueMetadata(*rhsValue.Value, *ident, (*rhsValue.Value).Span())
 
 			// Need to manually search through the scopes to find the right stack frame
-			for _, scope := range self.scopes {
-				_, exist := scope[*ident]
+			for idx := len(self.scopes) - 1; idx >= 0; idx-- {
+				_, exist := self.scopes[idx][*ident]
 				if exist {
 					// Validate type equality (left side may be null)
 					if (*base.Value).Type() != (*rhsValue.Value).Type() && (*base.Value).Type() != TypeNull {
@@ -784,7 +785,7 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 					}
 
 					// Perform actual assignment
-					scope[*ident] = *rhsValue.Value
+					self.scopes[idx][*ident] = *rhsValue.Value
 					// Return the rhs as the return value of the entire assignment
 					return rhsValue, nil, nil
 				}
@@ -827,12 +828,12 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 		newValue = insertValueMetadata(newValue, *ident, newValue.Span())
 
 		// Need to manually search through the scopes to find the right stack frame
-		for _, scope := range self.scopes {
-			_, exist := scope[*ident]
+		for idx := len(self.scopes) - 1; idx >= 0; idx-- {
+			_, exist := self.scopes[idx][*ident]
 			if exist {
 				// Type equality validation is omitted due to check above (in add / .. / div)
 				// Perform actual assignment
-				scope[*ident] = newValue
+				self.scopes[idx][*ident] = newValue
 				// Return the rhs as the return value of the entire assignment
 				return Result{Value: &newValue}, nil, nil
 			}
@@ -1179,11 +1180,6 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	null := makeNull(node.Range)
 	var lastValue *Value = &null
 
-	// Enable the `inLoop` flag on the interpreter
-	self.inLoop = true
-	// Release the `inLoop` flag as soon as possible
-	defer func() { self.inLoop = false }()
-
 	// If the lower range bound is greater than the upper bound, reverse the order
 	isReversed := rangeLowerNumeric > rangeUpperNumeric
 
@@ -1205,10 +1201,14 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 		// Add the head identifier to the scope (so that loop code can access the iteration variable)
 		self.addVar(node.HeadIdentifier, ValueNumber{Value: float64(loopIter)})
 
+		// Enable the `inLoop` flag on the interpreter
+		self.inLoop = true
+
 		value, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
+		self.inLoop = false
 
 		if value.BreakValue != nil {
 			return Result{
@@ -1258,16 +1258,16 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 		if err := self.pushScope(node.Span()); err != nil {
 			return Result{}, nil, err
 		}
-
 		// Enable the `inLoop` flag
 		self.inLoop = true
-		// Release the `inLoop` flag as soon as this function is finished
-		defer func() { self.inLoop = false }()
 
 		result, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
+
+		self.popScope()
+		self.inLoop = false
 
 		// Check if there is a break statement
 		if result.BreakValue != nil {
@@ -1276,37 +1276,31 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 
 		// Otherwise, update the lastResult
 		lastResult = result
-
-		// Remove it as soon as the function is finished
-		self.popScope()
 	}
 	return lastResult, nil, nil
 }
 
 func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *errors.Error) {
 	for {
-		// Add a new scope for the loop
+		// Add a new scope for the loop iteration
 		if err := self.pushScope(node.Span()); err != nil {
 			return Result{}, nil, err
 		}
-
-		// Enable the `inLoop` flag
 		self.inLoop = true
-		// Release the `inLoop` flag as soon as this function is finished
-		defer func() { self.inLoop = false }()
 
 		result, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
 
+		self.popScope()
+		self.inLoop = false
+
 		// Check if there is a break statement
 		if result.BreakValue != nil {
 			return Result{Value: result.BreakValue}, nil, nil
 		}
 
-		// Remove it as soon as the function is finished
-		self.popScope()
 		// TODO: why is memory usage skyrocketing when not sleeping?
 		// time.Sleep(time.Millisecond)
 	}
@@ -1402,6 +1396,9 @@ func (self *Interpreter) pushScope(span errors.Span) *errors.Error {
 	}
 	// Push a new stack frame onto the stack
 	self.scopes = append(self.scopes, make(map[string]Value))
+	if self.debug {
+		self.debugScope()
+	}
 	return nil
 }
 
@@ -1411,10 +1408,10 @@ func (self *Interpreter) popScope() {
 	if len(self.scopes) == 1 {
 		panic("BUG: cannot pop root scope")
 	}
-	// Remove the last (top) element from the slice / stack
 	self.scopes = self.scopes[:len(self.scopes)-1]
+	// Remove the last (top) element from the slice / stack
 	if self.debug {
-		self.debugScopes()
+		self.debugScope()
 	}
 }
 
@@ -1423,24 +1420,21 @@ func (self *Interpreter) addVar(key string, value Value) {
 	// Add the entry to the top hashmap
 	self.scopes[len(self.scopes)-1][key] = value
 	if self.debug {
-		self.debugScopes()
+		self.debugScope()
 	}
 }
 
 // Debug function for printing the scope(s)
-func (self *Interpreter) debugScopes() {
-	fmt.Printf("\n")
-	for idx, scope := range self.scopes {
-		for k, v := range scope {
-			dis, err := v.Display(self.executor, errors.Span{})
-			if err != nil {
-				panic(err.Message)
-			}
-			fmt.Printf("%10s => %s\n", k, dis)
+func (self *Interpreter) debugScope() {
+	for k, v := range self.scopes[len(self.scopes)-1] {
+		dis, err := v.Display(self.executor, errors.Span{})
+		if err != nil {
+			panic(err.Message)
 		}
-		fmt.Printf("---------- [NUM: %d] \n", idx)
+		fmt.Printf("%10s => %s\n", k, dis)
 	}
-	fmt.Printf("\n")
+	fmt.Println()
+	fmt.Println()
 }
 
 // Helper function for accessing the scope(s)
