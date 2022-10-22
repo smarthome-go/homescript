@@ -1,12 +1,12 @@
 # Datatypes
-print(weather);             # Object (builtin only)
-print("string");            # String
-print(42);                  # Number
-print(3.14159265);          # Number (supports floats)
-print(true);                # Booleans
-print(false);               # Booleans
-print("key" => "value");    # Pairs (1 dimensional hash-maps)
-print(print);               # Functions
+println(weather);             # Object (builtin only)
+println("string");            # String
+println(42);                  # Number
+println(3.14159265);          # Number (supports floats)
+println(true);                # Booleans
+println(false);               # Booleans
+println("key" => "value");    # Pairs (1 dimensional hash-maps)
+println(println);               # Functions
 
 # The `let` keyword can be used for variable declaration
 let string_value = "any string";
@@ -27,7 +27,7 @@ number_value *=  3;         # Multiply assignment
 number_value /=  4;         # Divide assignment
 number_value %=  5;         # Reminder assignment
 number_value **= 6;         # Power assignment
-print("after", number_value);
+println("after", number_value);
 
 # The exec function calls another Homescript
 let exec_result = exec(
@@ -35,37 +35,37 @@ let exec_result = exec(
     "key" => 42,            # Arguments to the HMS are in pair-form
     #...                    # Many more arguments (or even none) are legal
 );
-print(                      # The result is an object
-    exec_result.output,     # The print-output of the script
+println(                      # The result is an object
+    exec_result.output,     # The println-output of the script
     exec_result.elapsed,    # The elapsed runtime (in seconds)
     exec_result.value       # The scripts return value (value of last statement)
 );
 
 # String concatenation using different types is allowed
-# Every variable wich can be printed can be used in concatenation
-print(
+# Every variable wich can be printlned can be used in concatenation
+println(
     "Pi is roughly " + "a value of " + 3.14159265 + " right?"
 );
 # However, operations involving completely different types are illegal
-#print(1 + false);
+#println(1 + false);
 
 # Error handling
 try {
     throw("error");         # Throw- and Runtime errors can be caught
 } catch err {
-    print(err);
+    println(err);
 };
 
 try {
     # This is a type error and can therefore not be caught
     # 1 + false;
 } catch err {
-    print(err);
+    println(err);
 };
 
 # Homescript supports anonymous functions
 let a = fn () {
-    print("Anonymous function");
+    println("Anonymous function");
 };
 a();
 
@@ -73,14 +73,14 @@ a();
 if true == false {
     throw("This should be unreachable");
 } else if 1 > 0 {
-    print("Else if works like this");
+    println("Else if works like this");
 } else {
-    print("Final else block");
+    println("Final else block");
 };
 
 # Loops
 for any_identifier in 0..10  {
-    print(any_identifier);
+    println(any_identifier);
 };
 
 let while_counter = 0;
@@ -95,7 +95,7 @@ let last_loop_counter = loop {
     };
     loop_counter += 1;
 };
-print("Last loop counter:", last_loop_counter);
+println("Last loop counter:", last_loop_counter);
 
 # Homescript supports a very basic module system
 # Functions can be imported from another script
@@ -106,8 +106,8 @@ import fib from fibonacci;
 
 # Calculate some fibonacci numbers
 let last_number = "This is the last number: " + for n in 2..22 {
-    print("fib(" + n + ") = " + fib(n));
+    println("fib(" + n + ") = " + fib(n));
     n;
 };
 
-print(last_number);
+println(last_number);
