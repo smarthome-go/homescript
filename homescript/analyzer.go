@@ -104,6 +104,13 @@ type scope struct {
 	// Saves which variable names have been accessed
 	// Used for issueing warnings about unused varirables
 	variableAccesses []string
+	// Saves which functions were imported
+	// Because import is currently not implemented, the function should not be analyzed
+	importedFunctions []string
+	// Specifies whether the current scope is inside a function body / is a function body
+	// Is used for backtracking the original caller of a function
+	// Used for showing where a in-function type error was caused
+	inFunction bool
 }
 
 func NewAnalyzer(
@@ -163,6 +170,39 @@ func (self *Analyzer) diagnostic(span errors.Span, message string, severity Diag
 		Message:  message,
 		Span:     span,
 	})
+}
+
+// Can be used to create a diagnostic message at the point where the current function was called
+func (self *Analyzer) callerHint(kind errors.ErrorKind, errSpan errors.Span) {
+	// Only continue if invoked inside a function
+	if !self.getScope().inFunction {
+		return
+	}
+	// Backtracking to the point where the scope is no longer inside a function
+	scopesCnt := len(self.scopes) - 1
+	var prevIdent *string
+	for idx := scopesCnt; idx >= 0; idx-- {
+		curr := self.scopes[idx]
+		if curr.identifier != nil {
+			fmt.Printf("%d: %s %t\n", idx, *curr.identifier, curr.inFunction)
+		} else {
+			fmt.Printf("%d: <nil> %t\n", idx, curr.inFunction)
+		}
+		// If the current scope is no longer in a function, the correct scope has been found
+		// If the current scipe is no longer in the same function, the correct scope has been found as well
+		if !curr.inFunction ||
+			(prevIdent != nil && curr.identifier != nil && *prevIdent != *curr.identifier) {
+			self.info(
+				self.scopes[idx+1].span,
+				fmt.Sprintf("%v at line %d:%d caused here", kind, errSpan.Start.Line, errSpan.Start.Column),
+			)
+			break
+		}
+		if curr.identifier != nil {
+			id := *self.scopes[idx].identifier
+			prevIdent = &id
+		}
+	}
 }
 
 func (self *Analyzer) diagnosticError(err errors.Error) {
@@ -309,6 +349,8 @@ func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 	}
 
 	if rightResult.Value == nil || *rightResult.Value == nil {
+		// If the right hand side evaluates to nil, still add a placeholder to the scope
+		self.addVar(node.Left, nil)
 		return Result{}, nil
 	}
 
@@ -331,7 +373,7 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 
 	// Check if the function conflicts with existing values
 	value := self.getVar(actualImport)
-	function := makeFn()
+	function := makeFn(&actualImport, node.Range)
 
 	// Only report this non-critical error
 	if value != nil {
@@ -342,6 +384,8 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 	} else {
 		// Push a dummy function into the current scope
 		self.addVar(actualImport, function)
+		// Add the funtion to the list of imported functions to avoid analysis
+		self.getScope().importedFunctions = append(self.getScope().importedFunctions, actualImport)
 	}
 
 	return Result{Value: &function}, nil
@@ -608,6 +652,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 
 		// Terminate this function's analysis if the followingValue is nil
 		if followingValue.Value == nil || *followingValue.Value == nil {
+			self.info(node.Span, "manual type validation required")
 			return Result{}, nil
 		}
 
@@ -621,11 +666,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 		}
 
 		if algError != nil {
-			scope := self.getScope()
-			// If the error occurs inside a function body, highlight the caller location
-			if self.inFunction && scope.identifier != nil {
-				self.info(scope.span, fmt.Sprintf("%v at l. %d:%d caused here", algError.Kind, algError.Span.Start.Line, algError.Span.Start.Column))
-			}
+			self.callerHint(algError.Kind, algError.Span)
 			self.diagnosticError(*algError)
 			// Must return a blank result in order to prevent other functions from using a nil value
 			return Result{}, nil
@@ -1040,7 +1081,7 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 	case AtomKindIdentifier:
 		// Search the scope for the correct key
 		key := node.(AtomIdentifier).Identifier
-		scopeValue := self.getVar(key)
+		scopeValue := self.accessVar(key)
 
 		// Add this variable to the variable accesses
 		// Only add the access if it is not already in the list
@@ -1109,7 +1150,7 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 
 func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 	// Add a new scope to the try block
-	if err := self.pushScope(nil, node.Span()); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction); err != nil {
 		return Result{}, err
 	}
 	_, err := self.visitStatements(node.TryBlock)
@@ -1120,7 +1161,7 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 	self.popScope()
 
 	// Add a new scope for the catch block
-	if err := self.pushScope(nil, node.Span()); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction); err != nil {
 		return Result{}, err
 	}
 	defer self.popScope()
@@ -1214,12 +1255,8 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 		return Result{}, err
 	}
 
-	if err := self.pushScope(nil, node.Span()); err != nil {
-		return Result{}, err
-	}
-
 	// If branch
-	if err := self.pushScope(nil, node.Span()); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction); err != nil {
 		return Result{}, err
 	}
 	_, err = self.visitStatements(node.Block)
@@ -1228,9 +1265,13 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 	}
 	self.popScope()
 
-	// Else block
+	// Else branch
 	if node.ElseBlock == nil {
 		return Result{}, nil
+	}
+
+	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction); err != nil {
+		return Result{}, err
 	}
 
 	_, err = self.visitStatements(*node.ElseBlock)
@@ -1310,7 +1351,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	// Performs one iteration
 
 	// Add a new scope for the iteration
-	if err := self.pushScope(nil, node.Span()); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction); err != nil {
 		return Result{}, err
 	}
 
@@ -1344,7 +1385,7 @@ func (self *Analyzer) visitWhileExpression(node AtomWhile) (Result, *errors.Erro
 
 	// Actual loop iteration code
 	// Add a new scope for the loop
-	if err := self.pushScope(nil, node.Span()); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction); err != nil {
 		return Result{}, err
 	}
 
@@ -1365,7 +1406,7 @@ func (self *Analyzer) visitWhileExpression(node AtomWhile) (Result, *errors.Erro
 
 func (self *Analyzer) visitLoopExpression(node AtomLoop) (Result, *errors.Error) {
 	// Add a new scope for the loop
-	if err := self.pushScope(nil, node.Span()); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction); err != nil {
 		return Result{}, err
 	}
 
@@ -1391,6 +1432,28 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		// Cast the value to a function
 		function := value.(ValueFunction)
 
+		// Mark the function as used here
+		// Only do it if the function was not already used before
+		alreadyMarked := false
+		for _, use := range self.getScope().functionCalls {
+			if function.Identifier != nil && use == *function.Identifier {
+				alreadyMarked = true
+				break
+			}
+		}
+		if !alreadyMarked && function.Identifier != nil {
+			self.getScope().functionCalls = append(self.getScope().functionCalls, *function.Identifier)
+		}
+
+		// Do not call the function if it was imported
+		for _, imported := range self.getScope().importedFunctions {
+			if function.Identifier != nil && imported == *function.Identifier {
+				// Create a note that the function should be verified manually
+				self.info(span, "imported function: manual type verification required")
+				return nil, nil
+			}
+		}
+
 		cntArgsRequired := len(function.Args)
 		cntArgsGiven := len(args)
 
@@ -1407,13 +1470,13 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 
 		// Prevent recursion here
 		for _, scope := range self.scopes {
-			if scope.identifier == function.Identifier {
+			if scope.identifier != nil && function.Identifier != nil && *scope.identifier == *function.Identifier {
 				return nil, nil
 			}
 		}
 
 		// Add a new scope for the running function and handle a potential stack overflow
-		if err := self.pushScope(function.Identifier, span); err != nil {
+		if err := self.pushScope(function.Identifier, span, true); err != nil {
 			return nil, err
 		}
 
@@ -1438,20 +1501,6 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 
 		// Remove the function scope again
 		self.popScope()
-
-		// Mark the function as used here
-		// Only do it if the function was not already used before
-		alreadyMarked := false
-		for _, use := range self.getScope().functionCalls {
-			if function.Identifier != nil && use == *function.Identifier {
-				alreadyMarked = true
-				break
-			}
-		}
-		if !alreadyMarked {
-			self.getScope().functionCalls = append(self.getScope().functionCalls, *function.Identifier)
-		}
-
 		return nil, nil
 	case TypeBuiltinFunction:
 		for _, arg := range args {
@@ -1471,7 +1520,7 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 
 // Pushes a new scope on top of the scopes stack
 // Can return a runtime error if the maximum stack size would be exceeded by this operation
-func (self *Analyzer) pushScope(ident *string, span errors.Span) *errors.Error {
+func (self *Analyzer) pushScope(ident *string, span errors.Span, inFunction bool) *errors.Error {
 	max := 20
 	// Check that the stack size will be legal after this operation
 	if len(self.scopes) >= max {
@@ -1483,6 +1532,7 @@ func (self *Analyzer) pushScope(ident *string, span errors.Span) *errors.Error {
 		identifier:    ident,
 		span:          span,
 		functionCalls: make([]string, 0),
+		inFunction:    inFunction,
 	})
 	return nil
 }
@@ -1492,66 +1542,55 @@ func (self *Analyzer) popScope() *errors.Error {
 	if len(self.scopes) == 0 {
 		panic("BUG: no scopes to pop")
 	}
-	fmt.Println(self.scopes[len(self.scopes)-1].functionCalls)
-	if self.scopes[len(self.scopes)-1].identifier != nil {
-		fmt.Println(*self.scopes[len(self.scopes)-1].identifier)
-	}
-	// Before removing the scope, analyze its functions
-	for _, value := range self.scopes[len(self.scopes)-1].this {
-		// If the current value is a variable, analyze its uses
+	// Check for unused variables before dropping the scope
+	scope := self.scopes[len(self.scopes)-1]
+	for key, value := range scope.this {
+		// If the current value is a variable, analyze variable accesses
 		if value != nil && value.Ident() != nil {
 			isUsed := false
-			for _, access := range self.scopes[len(self.scopes)-1].variableAccesses {
-				if access == *value.Ident() {
+			for _, access := range scope.variableAccesses {
+				if access == key {
 					isUsed = true
 					break
 				}
 			}
-			if !isUsed && value.Ident() != nil {
-				fmt.Println(value.Span())
-				self.warn(value.Span(), fmt.Sprintf("variable '%s' is unused", *value.Ident()))
+			if !isUsed {
+				self.warn(value.Span(), fmt.Sprintf("variable '%s' is unused", key))
 			}
 		}
-
-		// If the current value is a function, analyze it
+		// If the current value is a function, check if it has been used
 		if value != nil && value.Type() == TypeFunction {
-			alreadyCalled := false
-			for _, call := range self.scopes[len(self.scopes)-1].functionCalls {
-				if value.(ValueFunction).Identifier != nil && call == *value.(ValueFunction).Identifier {
-					// If this function has already been called, do not analyze it
-					alreadyCalled = true
+			isUsed := false
+			for _, use := range scope.functionCalls {
+				if use == key {
+					isUsed = true
 					break
 				}
 			}
-			if alreadyCalled {
-				fmt.Println("already called: ", value.Ident())
-				continue
-			}
-
-			// Issue a warning that the function is not used
-			if value.(ValueFunction).Identifier != nil {
-				self.warn(value.(ValueFunction).Range, fmt.Sprintf("function '%s' is unused", *value.(ValueFunction).Identifier))
-			}
-
-			self.inFunction = true
-			if err := self.pushScope(value.Ident(), errors.Span{}); err != nil {
-				return err
-			}
-			// Add all arg values to the function's scope
-			for _, param := range value.(ValueFunction).Args {
-				self.addVar(param, nil)
-			}
-			if _, err := self.visitStatements(value.(ValueFunction).Body); err != nil {
-				return err
-			}
-			self.inFunction = false
-			if err := self.popScope(); err != nil {
-				return err
+			if !isUsed {
+				fmt.Println("checking function")
+				// Issue a warning
+				self.warn(value.Span(), fmt.Sprintf("function '%s' is unused", key))
+				// Analyze the function
+				if err := self.pushScope(&key, scope.span, true); err != nil {
+					return err
+				}
+				// Add dummt values for the parameters
+				for _, param := range value.(ValueFunction).Args {
+					self.addVar(param, nil)
+				}
+				self.inFunction = true
+				if _, err := self.visitStatements(value.(ValueFunction).Body); err != nil {
+					return err
+				}
+				self.inFunction = false
+				if err := self.popScope(); err != nil {
+					return err
+				}
 			}
 		}
 	}
-
-	// Remove the last (top) element from the slice / stack
+	// Delete the scope
 	self.scopes = self.scopes[:len(self.scopes)-1]
 	return nil
 }
@@ -1563,7 +1602,32 @@ func (self *Analyzer) addVar(key string, value Value) {
 }
 
 // Helper function for accessing the scope(s)
+// Will also mark the access in the target scope
 // Must provide a string key, will return either nil (no such value) or *value (value exists)
+func (self *Analyzer) accessVar(key string) *Value {
+	// Search the stack scope top to bottom (inner scopes have higher priority)
+	scopeLen := len(self.scopes)
+	// Must iterate over the slice backwards (0 is root | len-1 is top of the stack)
+	for idx := scopeLen - 1; idx >= 0; idx-- {
+		// Access the scope in order to get the identifier's value
+		scopeValue, exists := self.scopes[idx].this[key]
+		// If the correct value has been found, return early
+		if exists {
+			// Append the access to either function access or variable access
+			if scopeValue != nil && scopeValue.Type() == TypeFunction {
+				self.scopes[idx].functionCalls = append(self.scopes[idx].functionCalls, key)
+			} else {
+				self.scopes[idx].variableAccesses = append(self.scopes[idx].variableAccesses, key)
+			}
+			return &scopeValue
+		}
+	}
+	return nil
+}
+
+// Helper function for accessing the scope(s)
+// Must provide a string key, will return either nil (no such value) or *value (value exists)
+// Does not keep a log of accesses
 func (self *Analyzer) getVar(key string) *Value {
 	// Search the stack scope top to bottom (inner scopes have higher priority)
 	scopeLen := len(self.scopes)
