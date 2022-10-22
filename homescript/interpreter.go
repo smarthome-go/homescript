@@ -105,10 +105,10 @@ func NewInterpreter(
 func (self *Interpreter) run() (Value, int, *errors.Error) {
 	result, code, err := self.visitStatements(self.program)
 	if err != nil {
-		return makeNull(), 1, err
+		return makeNull(errors.Span{}), 1, err
 	}
 	if code != nil {
-		return makeNull(), *code, err
+		return makeNull(errors.Span{}), *code, err
 	}
 	return *result.Value, 0, nil
 }
@@ -129,7 +129,7 @@ func (self *Interpreter) checkSigTerm() (int, bool) {
 
 // Interpreter code
 func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, *errors.Error) {
-	lastResult := makeNullResult()
+	lastResult := makeNullResult(errors.Span{})
 	var code *int
 	var err *errors.Error
 	for _, statement := range statements {
@@ -153,7 +153,7 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 			if !self.inLoop {
 				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the continue statement inside loops", errors.SyntaxError)
 			}
-			return makeNullResult(), nil, nil
+			return makeNullResult(statement.Span()), nil, nil
 		}
 
 		// Handle potential break or return statements
@@ -218,7 +218,7 @@ func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.
 	}
 
 	// Insert an identifier into the value (if possible)
-	value := insertValueIdentifier(*rightResult.Value, node.Left)
+	value := insertValueMetadata(*rightResult.Value, node.Left, (*rightResult.Value).Span())
 
 	// Add the value to the scope
 	self.addVar(node.Left, value)
@@ -230,34 +230,40 @@ func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.
 
 // This function is used in order to destructure most of the possible types
 // Then, each type is constructed manually using the correct constructor,
-// However, the constructor includes the assignment of an identifier
-// The identifier is used in the `AssignExpression` due to Go's weird and unclear memory model
-func insertValueIdentifier(value Value, identifier string) Value {
+// However, the constructor includes the assignment of an identifier and a new span
+// The identifier is used in the `AssignExpression` due to Go's untransparent memory model
+// The span is updated if the variable's location should e.g. be set to the one of it's let statement
+func insertValueMetadata(value Value, identifier string, span errors.Span) Value {
 	switch value.Type() {
 	case TypeNull:
 		return ValueNull{
 			Identifier: &identifier,
+			Range:      span,
 		}
 	case TypeNumber:
 		return ValueNumber{
 			Value:      value.(ValueNumber).Value,
 			Identifier: &identifier,
+			Range:      span,
 		}
 	case TypeBoolean:
 		return ValueBool{
 			Value:      value.(ValueBool).Value,
 			Identifier: &identifier,
+			Range:      span,
 		}
 	case TypeString:
 		value = ValueString{
 			Value:      value.(ValueString).Value,
 			Identifier: &identifier,
+			Range:      span,
 		}
 	case TypePair:
 		value = ValuePair{
 			Key:        value.(ValuePair).Key,
 			Value:      value.(ValuePair).Value,
 			Identifier: &identifier,
+			Range:      span,
 		}
 	}
 	// For other types, it is not possible to insert an identifier, so just return it as is
@@ -323,7 +329,7 @@ func (self *Interpreter) visitBreakStatement(node BreakStmt) (Result, *int, *err
 		return Result{BreakValue: value.Value}, nil, nil
 	}
 	// The break value defaults to null
-	null := makeNull()
+	null := makeNull(node.Range)
 	return Result{BreakValue: &null}, nil, nil
 }
 
@@ -337,7 +343,7 @@ func (self *Interpreter) visitContinueStatement(node ContinueStmt) (Result, *int
 }
 func (self *Interpreter) visitReturnStatement(node ReturnStmt) (Result, *int, *errors.Error) {
 	// The return value defaults to null
-	returnValue := makeNull()
+	returnValue := makeNull(node.Range)
 	// If the return statment should return a value, make and override it here
 	if node.Expression != nil {
 		value, code, err := self.visitExpression(*node.Expression)
@@ -372,7 +378,7 @@ func (self *Interpreter) visitExpression(node Expression) (Result, *int, *errors
 		return Result{}, nil, err
 	}
 	if baseIsTrue {
-		returnValue := makeBool(true)
+		returnValue := makeBool(node.Span, true)
 		return Result{Value: &returnValue}, nil, nil
 	}
 	// Look at the other expressions
@@ -387,12 +393,12 @@ func (self *Interpreter) visitExpression(node Expression) (Result, *int, *errors
 		}
 		// If the current value is true, return true without looking at the other expressions
 		if followingIsTrue {
-			returnValue := makeBool(true)
+			returnValue := makeBool(node.Span, true)
 			return Result{Value: &returnValue}, nil, nil
 		}
 	}
 	// If all values before where false, return false
-	returnValue := makeBool(false)
+	returnValue := makeBool(node.Span, false)
 	return Result{Value: &returnValue}, nil, nil
 }
 
@@ -411,7 +417,7 @@ func (self *Interpreter) visitAndExpression(node AndExpression) (Result, *int, *
 		return Result{}, nil, err
 	}
 	if !baseIsTrue {
-		returnValue := makeBool(false)
+		returnValue := makeBool(node.Span, false)
 		return Result{Value: &returnValue}, nil, nil
 	}
 	// Look at the other expressions
@@ -426,12 +432,12 @@ func (self *Interpreter) visitAndExpression(node AndExpression) (Result, *int, *
 		}
 		// Stop here if the value is false
 		if !followingIsTrue {
-			returnValue := makeBool(false)
+			returnValue := makeBool(node.Span, false)
 			return Result{Value: &returnValue}, nil, nil
 		}
 	}
 	// If all values where true, return true
-	returnValue := makeBool(true)
+	returnValue := makeBool(node.Span, true)
 	return Result{Value: &returnValue}, nil, nil
 }
 
@@ -455,11 +461,11 @@ func (self *Interpreter) visitEqExpression(node EqExpression) (Result, *int, *er
 	}
 	// Check if the comparison should be inverted (using the != operator over the == operator)
 	if node.Other.Inverted {
-		returnValue := makeBool(!isEqual)
+		returnValue := makeBool(node.Span, !isEqual)
 		return Result{Value: &returnValue}, nil, nil
 	}
 	// If the comparison was not inverted, return the normal result
-	returnValue := makeBool(isEqual)
+	returnValue := makeBool(node.Span, isEqual)
 	return Result{Value: &returnValue}, nil, nil
 }
 
@@ -511,7 +517,7 @@ func (self *Interpreter) visitRelExression(node RelExpression) (Result, *int, *e
 	if relError != nil {
 		return Result{}, nil, err
 	}
-	returnValue := makeBool(relConditionTrue)
+	returnValue := makeBool(node.Span, relConditionTrue)
 	return Result{Value: &returnValue}, nil, nil
 }
 
@@ -645,7 +651,7 @@ func (self *Interpreter) visitCastExpression(node CastExpression) (Result, *int,
 				numeric = 1.0
 			}
 			// Holds the final result
-			numericValue := makeNum(numeric)
+			numericValue := makeNum(node.Span, numeric)
 			return Result{Value: &numericValue}, nil, nil
 		case TypeString:
 			numeric, err := strconv.ParseFloat((*base.Value).(ValueString).Value, 64)
@@ -654,7 +660,7 @@ func (self *Interpreter) visitCastExpression(node CastExpression) (Result, *int,
 			}
 
 			// Holds the return value
-			numericValue := makeNum(numeric)
+			numericValue := makeNum(node.Span, numeric)
 			return Result{Value: &numericValue}, nil, nil
 		default:
 			return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("cannot cast %v to %v", (*base.Value).Type(), *node.Other), errors.TypeError)
@@ -665,7 +671,7 @@ func (self *Interpreter) visitCastExpression(node CastExpression) (Result, *int,
 			return Result{}, nil, err
 		}
 		// Holds the return value
-		valueStr := makeStr(display)
+		valueStr := makeStr(node.Span, display)
 		return Result{Value: &valueStr}, nil, nil
 	case TypeBoolean:
 		isTrue, err := (*base.Value).IsTrue(self.executor, node.Base.Span)
@@ -673,7 +679,7 @@ func (self *Interpreter) visitCastExpression(node CastExpression) (Result, *int,
 			return Result{}, nil, err
 		}
 		// Holds the return value
-		truthValue := makeBool(isTrue)
+		truthValue := makeBool(node.Span, isTrue)
 		return Result{Value: &truthValue}, nil, nil
 	default:
 		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("Cannot cast to non-primitive type: cast from %v to %v is unsupported", (*base.Value).Type(), *node.Other), errors.TypeError)
@@ -702,7 +708,7 @@ func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (Result, *in
 			return Result{}, nil, err
 		}
 		// Truth value is inverted due to the unary not (!)
-		returnValue := makeBool(!unaryBaseIsTrueTemp)
+		returnValue := makeBool(node.Span, !unaryBaseIsTrueTemp)
 		return Result{Value: &returnValue}, nil, nil
 	default:
 		panic("BUG: a new unary operator has been added without updating this code")
@@ -762,7 +768,7 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 	if node.Other.Operator == OpAssign {
 		if ident := (*base.Value).Ident(); ident != nil {
 			// Insert the original identifier back into the new value (if possible)
-			*rhsValue.Value = insertValueIdentifier(*rhsValue.Value, *ident)
+			*rhsValue.Value = insertValueMetadata(*rhsValue.Value, *ident, (*rhsValue.Value).Span())
 
 			// Need to manually search through the scopes to find the right stack frame
 			for _, scope := range self.scopes {
@@ -818,7 +824,7 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 	// Perform actual (complex) assignment
 	if ident := (*base.Value).Ident(); ident != nil {
 		// Insert the original identifier back into the new value (if possible)
-		newValue = insertValueIdentifier(newValue, *ident)
+		newValue = insertValueMetadata(newValue, *ident, newValue.Span())
 
 		// Need to manually search through the scopes to find the right stack frame
 		for _, scope := range self.scopes {
@@ -890,13 +896,13 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 	switch node.Kind() {
 	case AtomKindNumber:
-		num := makeNum(node.(AtomNumber).Num)
+		num := makeNum(node.Span(), node.(AtomNumber).Num)
 		return Result{Value: &num}, nil, nil
 	case AtomKindBoolean:
-		bool := makeBool(node.(AtomBoolean).Value)
+		bool := makeBool(node.Span(), node.(AtomBoolean).Value)
 		return Result{Value: &bool}, nil, nil
 	case AtomKindString:
-		str := makeStr(node.(AtomString).Content)
+		str := makeStr(node.Span(), node.(AtomString).Content)
 		return Result{Value: &str}, nil, nil
 	case AtomKindPair:
 		pairNode := node.(AtomPair)
@@ -905,10 +911,10 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		pair := makePair(pairNode.Key, *pairValue.Value)
+		pair := makePair(node.Span(), pairNode.Key, *pairValue.Value)
 		return Result{Value: &pair}, nil, nil
 	case AtomKindNull:
-		null := makeNull()
+		null := makeNull(node.Span())
 		return Result{Value: &null}, nil, nil
 	case AtomKindIdentifier:
 		// Search the scope for the correct key
@@ -1002,22 +1008,22 @@ func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors
 		// Add the error variable to the scope (as an error object)
 		self.addVar(node.ErrorIdentifier, ValueObject{
 			Fields: map[string]Value{
-				"kind":    makeStr(err.Kind.String()),
-				"message": makeStr(err.Message),
+				"kind":    makeStr(errors.Span{}, err.Kind.String()),
+				"message": makeStr(errors.Span{}, err.Message),
 				"location": ValueObject{
 					Fields: map[string]Value{
 						"start": ValueObject{
 							Fields: map[string]Value{
-								"index":  makeNum(float64(err.Span.Start.Index)),
-								"line":   makeNum(float64(err.Span.Start.Line)),
-								"column": makeNum(float64(err.Span.Start.Column)),
+								"index":  makeNum(errors.Span{}, float64(err.Span.Start.Index)),
+								"line":   makeNum(errors.Span{}, float64(err.Span.Start.Line)),
+								"column": makeNum(errors.Span{}, float64(err.Span.Start.Column)),
 							},
 						},
 						"end": ValueObject{
 							Fields: map[string]Value{
-								"index":  makeNum(float64(err.Span.End.Index)),
-								"line":   makeNum(float64(err.Span.End.Line)),
-								"column": makeNum(float64(err.Span.End.Column)),
+								"index":  makeNum(errors.Span{}, float64(err.Span.End.Index)),
+								"line":   makeNum(errors.Span{}, float64(err.Span.End.Line)),
+								"column": makeNum(errors.Span{}, float64(err.Span.End.Column)),
 							},
 						},
 					},
@@ -1041,6 +1047,7 @@ func (self *Interpreter) visitFunctionDeclaration(node AtomFunction) (Value, *er
 		Identifier: node.Ident,
 		Args:       node.ArgIdentifiers,
 		Body:       node.Body,
+		Range:      node.Span(),
 	}
 
 	// If the function declaration contains no identifier, just return the function's value
@@ -1090,7 +1097,7 @@ func (self *Interpreter) visitIfExpression(node IfExpr) (Result, *int, *errors.E
 	}
 	// Otherwise, visit the else branch (if it exists)
 	if node.ElseBlock == nil {
-		return makeNullResult(), nil, nil
+		return makeNullResult(node.Range), nil, nil
 	}
 	value, code, err := self.visitStatements(*node.ElseBlock)
 	if code != nil || err != nil {
@@ -1169,7 +1176,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	}
 
 	// Saves the last result of the loop
-	null := makeNull()
+	null := makeNull(node.Range)
 	var lastValue *Value = &null
 
 	// Enable the `inLoop` flag on the interpreter
@@ -1230,7 +1237,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 }
 
 func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *errors.Error) {
-	lastResult := makeNullResult()
+	lastResult := makeNullResult(node.Range)
 	for {
 		// Conditional expression evaluation
 		condValue, code, err := self.visitExpression(node.HeadCondition)

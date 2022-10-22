@@ -51,6 +51,7 @@ func (self ValueType) String() string {
 type Value interface {
 	Type() ValueType
 	Ident() *string
+	Span() errors.Span
 	// Is also used for `as str` and printing
 	Display(executor Executor, span errors.Span) (string, *errors.Error)
 	Debug(executor Executor, span errors.Span) (string, *errors.Error)
@@ -77,10 +78,12 @@ type ValueAlg interface {
 // Null value
 type ValueNull struct {
 	Identifier *string
+	Range      errors.Span
 }
 
-func (self ValueNull) Type() ValueType { return TypeNull }
-func (self ValueNull) Ident() *string  { return self.Identifier }
+func (self ValueNull) Type() ValueType   { return TypeNull }
+func (self ValueNull) Span() errors.Span { return self.Range }
+func (self ValueNull) Ident() *string    { return self.Identifier }
 func (self ValueNull) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "null", nil
 }
@@ -98,10 +101,12 @@ func (self ValueNull) IsEqual(_ Executor, _ errors.Span, other Value) (bool, *er
 type ValueNumber struct {
 	Value      float64
 	Identifier *string
+	Range      errors.Span
 }
 
-func (self ValueNumber) Type() ValueType { return TypeNumber }
-func (self ValueNumber) Ident() *string  { return self.Identifier }
+func (self ValueNumber) Type() ValueType   { return TypeNumber }
+func (self ValueNumber) Span() errors.Span { return self.Range }
+func (self ValueNumber) Ident() *string    { return self.Identifier }
 func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	// Check if the value is actually an integer
 	if float64(int(self.Value)) == self.Value {
@@ -126,7 +131,7 @@ func (self ValueNumber) IsEqual(executor Executor, span errors.Span, other Value
 		}
 		return false, errors.NewError(
 			span,
-			fmt.Sprintf("Cannot compare %v to %v", self.Type(), other.Type()),
+			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
 			errors.TypeError,
 		)
 	}
@@ -141,7 +146,7 @@ func (self ValueNumber) IsLessThan(executor Executor, span errors.Span, other Va
 			}
 			return self.IsLessThan(executor, span, value)
 		}
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", TypeNumber, other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return self.Value < other.(ValueNumber).Value, nil
 }
@@ -154,7 +159,7 @@ func (self ValueNumber) IsLessThanOrEqual(executor Executor, span errors.Span, o
 			}
 			return self.IsLessThanOrEqual(executor, span, value)
 		}
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", TypeNumber, other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return self.Value <= other.(ValueNumber).Value, nil
 }
@@ -167,7 +172,7 @@ func (self ValueNumber) IsGreaterThan(executor Executor, span errors.Span, other
 			}
 			return self.IsGreaterThan(executor, span, value)
 		}
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", TypeNumber, other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return self.Value > other.(ValueNumber).Value, nil
 }
@@ -180,7 +185,7 @@ func (self ValueNumber) IsGreaterThanOrEqual(executor Executor, span errors.Span
 			}
 			return self.IsGreaterThanOrEqual(executor, span, value)
 		}
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", TypeNumber, other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return self.Value >= other.(ValueNumber).Value, nil
 }
@@ -204,7 +209,7 @@ func (self ValueNumber) Add(executor Executor, span errors.Span, other Value) (V
 		}
 		self.Add(executor, span, otherCallback)
 	}
-	return nil, errors.NewError(span, fmt.Sprintf("Cannot add %v to %v: ", other.Type(), TypeString), errors.TypeError)
+	return nil, errors.NewError(span, fmt.Sprintf("cannot add %v to %v", other.Type(), self.Type()), errors.TypeError)
 }
 
 func (self ValueNumber) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
@@ -216,7 +221,7 @@ func (self ValueNumber) Sub(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Sub(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot subtract %v from %v: ", other.Type(), TypeNumber), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("cannot subtract %v from %v", other.Type(), self.Type()), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: self.Value - other.(ValueNumber).Value,
@@ -231,7 +236,7 @@ func (self ValueNumber) Mul(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Mul(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot multiply %v by %v: ", TypeNumber, other.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("cannot multiply %v by %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: self.Value * other.(ValueNumber).Value,
@@ -246,7 +251,7 @@ func (self ValueNumber) Div(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Div(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot divide %v by %v: ", TypeNumber, other.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("cannot divide %v by %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: self.Value / other.(ValueNumber).Value,
@@ -261,7 +266,7 @@ func (self ValueNumber) Rem(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Rem(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot calculate reminder of %v / %v: ", TypeNumber, other.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("cannot calculate reminder of %v / %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: math.Remainder(self.Value, other.(ValueNumber).Value),
@@ -277,7 +282,7 @@ func (self ValueNumber) Pow(executor Executor, span errors.Span, other Value) (V
 			}
 			return self.Pow(executor, span, value)
 		}
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot calculate power of %v and %v: ", TypeNumber, other.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("cannot calculate power of %v and %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
 		Value: math.Pow(self.Value, other.(ValueNumber).Value),
@@ -288,10 +293,12 @@ func (self ValueNumber) Pow(executor Executor, span errors.Span, other Value) (V
 type ValueBool struct {
 	Value      bool
 	Identifier *string
+	Range      errors.Span
 }
 
-func (self ValueBool) Type() ValueType { return TypeBoolean }
-func (self ValueBool) Ident() *string  { return self.Identifier }
+func (self ValueBool) Type() ValueType   { return TypeBoolean }
+func (self ValueBool) Span() errors.Span { return self.Range }
+func (self ValueBool) Ident() *string    { return self.Identifier }
 func (self ValueBool) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return fmt.Sprintf("%t", self.Value), nil
 }
@@ -305,7 +312,7 @@ func (self ValueBool) IsEqual(_ Executor, span errors.Span, other Value) (bool, 
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
-			fmt.Sprintf("Cannot compare %v to %v", self.Type(), other.Type()),
+			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
 			errors.TypeError,
 		)
 	}
@@ -329,7 +336,7 @@ func (self ValueBool) Add(executor Executor, span errors.Span, other Value) (Val
 		}
 		self.Add(executor, span, otherCallback)
 	}
-	return nil, errors.NewError(span, fmt.Sprintf("Cannot add %v to %v: ", other.Type(), TypeString), errors.TypeError)
+	return nil, errors.NewError(span, fmt.Sprintf("cannot add %v to %v", other.Type(), self.Type()), errors.TypeError)
 }
 func (self ValueBool) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
@@ -351,10 +358,12 @@ func (self ValueBool) Pow(executor Executor, span errors.Span, other Value) (Val
 type ValueString struct {
 	Value      string
 	Identifier *string
+	Range      errors.Span
 }
 
-func (self ValueString) Type() ValueType { return TypeString }
-func (self ValueString) Ident() *string  { return self.Identifier }
+func (self ValueString) Type() ValueType   { return TypeString }
+func (self ValueString) Span() errors.Span { return self.Range }
+func (self ValueString) Ident() *string    { return self.Identifier }
 func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return self.Value, nil
 }
@@ -368,7 +377,7 @@ func (self ValueString) IsEqual(_ Executor, span errors.Span, other Value) (bool
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
-			fmt.Sprintf("Cannot compare %v to %v", self.Type(), other.Type()),
+			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
 			errors.TypeError,
 		)
 	}
@@ -391,7 +400,7 @@ func (self ValueString) Add(executor Executor, span errors.Span, other Value) (V
 		}
 		self.Add(executor, span, otherCallback)
 	}
-	return nil, errors.NewError(span, fmt.Sprintf("Cannot add %v to %v: ", other.Type(), TypeString), errors.TypeError)
+	return nil, errors.NewError(span, fmt.Sprintf("cannot add %v to %v", other.Type(), self.Type()), errors.TypeError)
 }
 func (self ValueString) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
@@ -414,10 +423,12 @@ type ValuePair struct {
 	Key        string
 	Value      Value
 	Identifier *string
+	Range      errors.Span
 }
 
-func (self ValuePair) Type() ValueType { return TypePair }
-func (self ValuePair) Ident() *string  { return self.Identifier }
+func (self ValuePair) Type() ValueType   { return TypePair }
+func (self ValuePair) Span() errors.Span { return self.Range }
+func (self ValuePair) Ident() *string    { return self.Identifier }
 func (self ValuePair) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	value, err := self.Value.Display(executor, span)
 	if err != nil {
@@ -443,7 +454,7 @@ func (self ValuePair) IsEqual(executor Executor, span errors.Span, other Value) 
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
-			fmt.Sprintf("Cannot compare %v to %v", self.Type(), other.Type()),
+			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
 			errors.TypeError,
 		)
 	}
@@ -459,8 +470,9 @@ type ValueObject struct {
 	Fields map[string]Value
 }
 
-func (self ValueObject) Type() ValueType { return TypeObject }
-func (self ValueObject) Ident() *string  { return nil }
+func (self ValueObject) Type() ValueType   { return TypeObject }
+func (self ValueObject) Span() errors.Span { return errors.Span{} }
+func (self ValueObject) Ident() *string    { return nil }
 func (self ValueObject) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	fields := make([]string, 0)
 	for key, value := range self.Fields {
@@ -499,7 +511,7 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
-			fmt.Sprintf("Cannot compare %v to %v", self.Type(), other.Type()),
+			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
 			errors.TypeError,
 		)
 	}
@@ -523,10 +535,12 @@ type ValueFunction struct {
 	Identifier *string
 	Args       []string
 	Body       []Statement
+	Range      errors.Span
 }
 
-func (self ValueFunction) Type() ValueType { return TypeFunction }
-func (self ValueFunction) Ident() *string  { return nil }
+func (self ValueFunction) Type() ValueType   { return TypeFunction }
+func (self ValueFunction) Span() errors.Span { return self.Range }
+func (self ValueFunction) Ident() *string    { return nil }
 func (self ValueFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<function>", nil
 }
@@ -540,7 +554,7 @@ func (self ValueFunction) IsEqual(_ Executor, span errors.Span, other Value) (bo
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
-			fmt.Sprintf("Cannot compare %v to %v", self.Type(), other.Type()),
+			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
 			errors.TypeError,
 		)
 	}
@@ -555,8 +569,9 @@ type ValueBuiltinFunction struct {
 	Callback func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error)
 }
 
-func (self ValueBuiltinFunction) Type() ValueType { return TypeBuiltinFunction }
-func (self ValueBuiltinFunction) Ident() *string  { return nil }
+func (self ValueBuiltinFunction) Type() ValueType   { return TypeBuiltinFunction }
+func (self ValueBuiltinFunction) Span() errors.Span { return errors.Span{} }
+func (self ValueBuiltinFunction) Ident() *string    { return nil }
 func (self ValueBuiltinFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<builtin-function>", nil
 }
@@ -570,7 +585,7 @@ func (self ValueBuiltinFunction) IsEqual(executor Executor, span errors.Span, ot
 	if self.Type() != other.Type() && other.Type() != TypeFunction {
 		return false, errors.NewError(
 			span,
-			fmt.Sprintf("Cannot compare %v to %v", self.Type(), other.Type()),
+			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
 			errors.TypeError,
 		)
 	}
@@ -582,8 +597,9 @@ type ValueBuiltinVariable struct {
 	Callback func(executor Executor, span errors.Span) (Value, *errors.Error)
 }
 
-func (self ValueBuiltinVariable) Type() ValueType { return TypeBuiltinVariable }
-func (self ValueBuiltinVariable) Ident() *string  { return nil }
+func (self ValueBuiltinVariable) Type() ValueType   { return TypeBuiltinVariable }
+func (self ValueBuiltinVariable) Span() errors.Span { return errors.Span{} }
+func (self ValueBuiltinVariable) Ident() *string    { return nil }
 func (self ValueBuiltinVariable) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	value, err := self.Callback(executor, span)
 	if err != nil {
@@ -619,7 +635,7 @@ func (self ValueBuiltinVariable) IsEqual(executor Executor, span errors.Span, ot
 	if value.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
-			fmt.Sprintf("Cannot compare %v to %v", self.Type(), other.Type()),
+			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
 			errors.TypeError,
 		)
 	}
@@ -631,7 +647,7 @@ func (self ValueBuiltinVariable) IsLessThan(executor Executor, span errors.Span,
 		return false, err
 	}
 	if value.Type() != TypeNumber {
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", value.Type(), other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", value.Type(), other.Type()), errors.TypeError)
 	}
 	return value.(ValueNumber).IsLessThan(executor, span, other)
 }
@@ -641,7 +657,7 @@ func (self ValueBuiltinVariable) IsLessThanOrEqual(executor Executor, span error
 		return false, err
 	}
 	if value.Type() != TypeNumber {
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", value.Type(), other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", value.Type(), other.Type()), errors.TypeError)
 	}
 	return value.(ValueNumber).IsLessThanOrEqual(executor, span, other)
 }
@@ -651,7 +667,7 @@ func (self ValueBuiltinVariable) IsGreaterThan(executor Executor, span errors.Sp
 		return false, err
 	}
 	if value.Type() != TypeNumber {
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", value.Type(), other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", value.Type(), other.Type()), errors.TypeError)
 	}
 	return value.(ValueNumber).IsGreaterThan(executor, span, other)
 }
@@ -661,7 +677,7 @@ func (self ValueBuiltinVariable) IsGreaterThanOrEqual(executor Executor, span er
 		return false, err
 	}
 	if value.Type() != TypeNumber {
-		return false, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v: ", value.Type(), other.Type()), errors.TypeError)
+		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", value.Type(), other.Type()), errors.TypeError)
 	}
 	return value.(ValueNumber).IsGreaterThanOrEqual(executor, span, other)
 }
@@ -755,7 +771,7 @@ func (self ValueBuiltinVariable) Pow(executor Executor, span errors.Span, other 
 // Helper functions for values
 func getField(span errors.Span, self Value, fieldKey string) (Value, *errors.Error) {
 	if self.Type() != TypeObject {
-		return nil, errors.NewError(span, fmt.Sprintf("Cannot access fields of type %v", self.Type()), errors.TypeError)
+		return nil, errors.NewError(span, fmt.Sprintf("cannot access fields of type %v", self.Type()), errors.TypeError)
 	}
 	fieldValue, exists := self.(ValueObject).Fields[fieldKey]
 	if !exists {
@@ -765,34 +781,34 @@ func getField(span errors.Span, self Value, fieldKey string) (Value, *errors.Err
 }
 
 // Helper factory functions
-func makeNull() Value {
-	return ValueNull{}
+func makeNull(span errors.Span) Value {
+	return ValueNull{Range: span}
 }
 
-func makeNullResult() Result {
-	null := makeNull()
+func makeNullResult(span errors.Span) Result {
+	null := makeNull(span)
 	return Result{Value: &null}
 }
 
-func makeBool(value bool) Value {
-	return ValueBool{Value: value}
+func makeBool(span errors.Span, value bool) Value {
+	return ValueBool{Value: value, Range: span}
 }
 
-func makeBoolResult(value bool) Result {
-	bool := makeBool(value)
+func makeBoolResult(span errors.Span, value bool) Result {
+	bool := makeBool(span, value)
 	return Result{Value: &bool}
 }
 
-func makeNum(value float64) Value {
-	return ValueNumber{Value: value}
+func makeNum(span errors.Span, value float64) Value {
+	return ValueNumber{Value: value, Range: span}
 }
 
-func makeStr(value string) Value {
-	return ValueString{Value: value}
+func makeStr(span errors.Span, value string) Value {
+	return ValueString{Value: value, Range: span}
 }
 
-func makePair(key string, value Value) Value {
-	return ValuePair{Key: key, Value: value}
+func makePair(span errors.Span, key string, value Value) Value {
+	return ValuePair{Key: key, Value: value, Range: span}
 }
 
 func makeFn() Value {
