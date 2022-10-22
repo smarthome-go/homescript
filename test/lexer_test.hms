@@ -1,21 +1,3 @@
-; , . .. =>
-( ) {  }
-|| && == != !
-< <= > >=
-+ - * / % **
-= += -= *= /= **= %=
-fn return
-if else
-try catch
-for while loop
-break continue
-str num bool null
-true on false off
-"foo string" "c" ""
-'foo string' 'c' ''
-1 1.1 42 42.69 3.14159265
-import foo from bar;
-import foo as bar from baz;
-let foo = bar;
-for i in 0..10
-..
+2*2;
+
+2/2;

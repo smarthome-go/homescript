@@ -482,47 +482,43 @@ func (self *lexer) makeStar() Token {
 	startLocation := self.location
 	self.advance()
 
-	if self.currentChar != nil {
-		if *self.currentChar == '=' {
-			token := Token{
-				Kind:          MultiplyAssign,
-				Value:         "*=",
-				StartLocation: startLocation,
-				EndLocation:   self.location,
-			}
-			self.advance()
-			return token
+	if self.currentChar != nil && *self.currentChar == '=' {
+		token := Token{
+			Kind:          MultiplyAssign,
+			Value:         "*=",
+			StartLocation: startLocation,
+			EndLocation:   self.location,
 		}
-		if *self.currentChar == '*' {
-			if self.nextChar != nil && *self.nextChar == '=' {
-				self.advance()
-				token := Token{
-					Kind:          PowerAssign,
-					Value:         "**=",
-					StartLocation: startLocation,
-					EndLocation:   self.location,
-				}
-				self.advance()
-				return token
-			}
-			token := Token{
-				Kind:          Power,
-				Value:         "**",
-				StartLocation: startLocation,
-				EndLocation:   self.location,
-			}
-			self.advance()
-			return token
-		}
+		self.advance()
+		return token
 	}
-	token := Token{
+	if self.currentChar != nil && *self.currentChar == '*' {
+		if self.nextChar != nil && *self.nextChar == '=' {
+			self.advance()
+			token := Token{
+				Kind:          PowerAssign,
+				Value:         "**=",
+				StartLocation: startLocation,
+				EndLocation:   self.location,
+			}
+			self.advance()
+			return token
+		}
+		token := Token{
+			Kind:          Power,
+			Value:         "**",
+			StartLocation: startLocation,
+			EndLocation:   self.location,
+		}
+		self.advance()
+		return token
+	}
+	return Token{
 		Kind:          Multiply,
 		Value:         "*",
 		StartLocation: startLocation,
 		EndLocation:   startLocation,
 	}
-	self.advance()
-	return token
 }
 
 func (self *lexer) makeDiv() Token {
