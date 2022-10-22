@@ -765,7 +765,9 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 			_, algError = baseAlg.Mul(self.executor, node.Span, *followingValue.Value)
 		case MulOpDiv:
 			_, algError = baseAlg.Div(self.executor, node.Span, *followingValue.Value)
-		case MullOpReminder:
+		case MulOpIntDiv:
+			_, algError = baseAlg.IntDiv(self.executor, node.Span, *followingValue.Value)
+		case MulOpReminder:
 			_, algError = baseAlg.Rem(self.executor, node.Span, *followingValue.Value)
 		default:
 			panic("BUG: a new mul operator has been added without updating this code")
@@ -998,6 +1000,8 @@ func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *erro
 		newValue, assignErr = (*base.Value).(ValueAlg).Mul(self.executor, node.Span, *rhsValue.Value)
 	case OpDivAssign:
 		newValue, assignErr = (*base.Value).(ValueAlg).Div(self.executor, node.Span, *rhsValue.Value)
+	case OpIntDivAssign:
+		newValue, assignErr = (*base.Value).(ValueAlg).IntDiv(self.executor, node.Span, *rhsValue.Value)
 	case OpReminderAssign:
 		newValue, assignErr = (*base.Value).(ValueAlg).Rem(self.executor, node.Span, *rhsValue.Value)
 	case OpPowerAssign:
@@ -1301,6 +1305,12 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 		return Result{}, err
 	}
 	self.popScope()
+
+	// Visit potential else if construct
+	if node.ElseIfExpr != nil {
+		self.visitIfExpression(*node.ElseIfExpr)
+		return Result{}, nil
+	}
 
 	// Else branch
 	if node.ElseBlock == nil {
