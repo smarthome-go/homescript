@@ -55,6 +55,7 @@ type HttpResponse struct {
 type Executor interface {
 	Sleep(float64)
 	Print(args ...string)
+	Println(args ...string)
 	SwitchOn(name string) (bool, error)
 	Switch(name string, on bool) error
 	Notify(title string, description string, level NotificationLevel) error

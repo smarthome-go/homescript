@@ -121,6 +121,20 @@ func Print(executor Executor, span errors.Span, args ...Value) (Value, *int, *er
 	return ValueNull{}, nil, nil
 }
 
+// Outputs a string with a newline at the end
+func Println(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	msgs := make([]string, 0)
+	for _, arg := range args {
+		res, err := arg.Display(executor, span)
+		if err != nil {
+			return nil, nil, err
+		}
+		msgs = append(msgs, res)
+	}
+	executor.Println(msgs...)
+	return ValueNull{}, nil, nil
+}
+
 // Retrieves the current power state of the provided switch
 func SwitchOn(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 	if err := checkArgs("switchOn", span, args, TypeString); err != nil {
