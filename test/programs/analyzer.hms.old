@@ -1,0 +1,21 @@
+import fib from fibonacci;
+
+for i in 0..10 {
+    fib(1);
+};
+
+fn a (x, y) {
+    if true {
+        if false {
+            x + y;
+        };
+    };
+};
+
+fn b() {
+    if true {
+        a(true, false);
+    };
+};
+
+b();

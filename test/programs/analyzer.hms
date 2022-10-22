@@ -1,9 +1,14 @@
-fn takes_3(one, two, three) {
-   one + two;
+fn box(dimensions) {
+    for y in 0..dimensions {
+        for x in 0..dimensions {
+            if x == 0 || y == 0 || x == dimensions-1 || y == dimensions-1 {
+                print("#");
+            } else {
+                print(" ");
+            };
+        };
+    };
+    print("\n");
 };
 
-#takes_3(1, 2, 3);
-
-let a = 1;
-
-#a;
+box(30);

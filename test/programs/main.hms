@@ -109,4 +109,5 @@ let last_number = "This is the last number: " + for n in 2..22 {
     print("fib(" + n + ") = " + fib(n));
     n;
 };
+
 print(last_number);
