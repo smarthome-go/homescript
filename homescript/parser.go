@@ -1071,7 +1071,10 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 	}
 
 	// Make args
-	args := make([]string, 0)
+	args := make([]struct {
+		Identifier string
+		Span       errors.Span
+	}, 0)
 
 	// Only make args if there is no immediate closing bracket
 	if self.currToken.Kind != RParen {
@@ -1086,7 +1089,13 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 				},
 			}
 		}
-		args = append(args, self.currToken.Value)
+		args = append(args, struct {
+			Identifier string
+			Span       errors.Span
+		}{Identifier: self.currToken.Value, Span: errors.Span{
+			Start: self.currToken.StartLocation,
+			End:   self.currToken.EndLocation,
+		}})
 		if err := self.advance(); err != nil {
 			return AtomFunction{}, err
 		}
@@ -1110,7 +1119,16 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 					},
 				}
 			}
-			args = append(args, self.currToken.Value)
+			args = append(args, struct {
+				Identifier string
+				Span       errors.Span
+			}{
+				Identifier: self.currToken.Value,
+				Span: errors.Span{
+					Start: self.currToken.StartLocation,
+					End:   self.currToken.EndLocation,
+				},
+			})
 			if err := self.advance(); err != nil {
 				return AtomFunction{}, err
 			}

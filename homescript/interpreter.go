@@ -1350,7 +1350,7 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 				return nil, code, err
 			}
 			// Add the computed value to the new (current) scope
-			self.addVar(arg, *argValue.Value)
+			self.addVar(arg.Identifier, *argValue.Value)
 		}
 
 		// Visit the function's body

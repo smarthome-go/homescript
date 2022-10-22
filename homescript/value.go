@@ -533,9 +533,12 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 // Function value
 type ValueFunction struct {
 	Identifier *string
-	Args       []string
-	Body       []Statement
-	Range      errors.Span
+	Args       []struct {
+		Identifier string
+		Span       errors.Span
+	}
+	Body  []Statement
+	Range errors.Span
 }
 
 func (self ValueFunction) Type() ValueType   { return TypeFunction }
@@ -811,6 +814,6 @@ func makePair(span errors.Span, key string, value Value) Value {
 	return ValuePair{Key: key, Value: value, Range: span}
 }
 
-func makeFn() Value {
-	return ValueFunction{}
+func makeFn(identifier *string, span errors.Span) Value {
+	return ValueFunction{Identifier: identifier, Range: span}
 }
