@@ -31,6 +31,10 @@ func (self dummyExecutor) Sleep(sleepTime float64) {
 }
 
 func (self dummyExecutor) Print(args ...string) {
+	fmt.Printf("%s", strings.Join(args, " "))
+}
+
+func (self dummyExecutor) Println(args ...string) {
 	fmt.Println(strings.Join(args, " "))
 }
 
@@ -102,68 +106,82 @@ func (self dummyExecutor) GetTime() homescript.Time {
 	}
 }
 
+type testError struct {
+	Kind    errors.ErrorKind
+	Message string
+}
+
+type test struct {
+	Name              string
+	File              string
+	Debug             bool
+	ExpectedCode      int
+	ExpectedValueType homescript.ValueType
+	ExpectedErrors    []testError
+}
+
+var tests = []test{
+	{
+		Name:              "Main",
+		File:              "./test/programs/main.hms",
+		Debug:             false,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors:    nil,
+	},
+	{
+		Name:              "Fibonacci",
+		File:              "./test/programs/fibonacci.hms",
+		Debug:             false,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeFunction,
+		ExpectedErrors:    nil,
+	},
+	{
+		Name:              "StackOverFlow",
+		File:              "./test/programs/stack_overflow.hms",
+		Debug:             false,
+		ExpectedCode:      1,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors: []testError{
+			{
+				Kind:    errors.StackOverflow,
+				Message: "Maximum stack size of",
+			},
+		},
+	},
+	{
+		Name:              "ImportExport",
+		File:              "./test/programs/import_export.hms",
+		Debug:             false,
+		ExpectedCode:      1,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors: []testError{
+			{
+				Kind:    errors.RuntimeError,
+				Message: "Illegal import: circular import detected",
+			},
+		},
+	},
+	{
+		Name:              "Analyzer",
+		File:              "./test/programs/analyzer.hms",
+		Debug:             false,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors:    nil,
+	},
+	{
+		Name:              "PrimeNumbers",
+		File:              "./test/programs/primes.hms",
+		Debug:             true,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors:    nil,
+	},
+}
+
 func TestHomescripts(t *testing.T) {
-	type testError struct {
-		Kind    errors.ErrorKind
-		Message string
-	}
-
-	type test struct {
-		Name              string
-		File              string
-		ExpectedCode      int
-		ExpectedValueType homescript.ValueType
-		ExpectedErrors    []testError
-	}
-
-	tests := []test{
-		{
-			Name:              "Main",
-			File:              "./test/programs/main.hms",
-			ExpectedCode:      0,
-			ExpectedValueType: homescript.TypeNull,
-			ExpectedErrors:    nil,
-		},
-		{
-			Name:              "Fibonacci",
-			File:              "./test/programs/fibonacci.hms",
-			ExpectedCode:      0,
-			ExpectedValueType: homescript.TypeFunction,
-			ExpectedErrors:    nil,
-		},
-		{
-			Name:              "StackOverFlow",
-			File:              "./test/programs/stack_overflow.hms",
-			ExpectedCode:      1,
-			ExpectedValueType: homescript.TypeNull,
-			ExpectedErrors: []testError{
-				{
-					Kind:    errors.StackOverflow,
-					Message: "Maximum stack size of",
-				},
-			},
-		},
-		{
-			Name:              "ImportExport",
-			File:              "./test/programs/import_export.hms",
-			ExpectedCode:      1,
-			ExpectedValueType: homescript.TypeNull,
-			ExpectedErrors: []testError{
-				{
-					Kind:    errors.RuntimeError,
-					Message: "Illegal import: circular import detected",
-				},
-			},
-		},
-		{
-			Name:              "Analyzer",
-			File:              "./test/programs/analyzer.hms",
-			ExpectedCode:      0,
-			ExpectedValueType: homescript.TypeNull,
-			ExpectedErrors:    nil,
-		},
-	}
-
 	for idx, test := range tests {
 		t.Run(fmt.Sprintf("(%d/%d): %s", idx, len(tests), test.Name), func(t *testing.T) {
 			program, err := os.ReadFile(test.File)
@@ -174,10 +192,11 @@ func TestHomescripts(t *testing.T) {
 				dummyExecutor{},
 				&sigTerm,
 				string(program),
-				map[string]homescript.Value{
-					"foo": homescript.ValueString{Value: "bar"},
-				},
-				false,
+				//map[string]homescript.Value{
+				//"foo": homescript.ValueString{Value: "bar"},
+				//},
+				make(map[string]homescript.Value),
+				test.Debug,
 				1000,
 				make([]string, 0),
 				moduleName,
@@ -233,16 +252,23 @@ func TestHomescripts(t *testing.T) {
 }
 
 func TestAnalyzer(t *testing.T) {
-	program, err := os.ReadFile("./test/programs/analyzer.hms")
-	if err != nil {
-		t.Error(err.Error())
-	}
-	diagnostics := homescript.Analyze(
-		dummyExecutor{},
-		string(program),
-		make(map[string]homescript.Value),
-	)
-	for _, diagnostic := range diagnostics {
-		fmt.Printf("%s\n_\n_\n", diagnostic.Display(string(program), "analyzer.hms"))
+	for idx, test := range tests {
+		t.Run(fmt.Sprintf("(%d/%d): %s", idx, len(tests), test.Name), func(t *testing.T) {
+			program, err := os.ReadFile(test.File)
+			if err != nil {
+				t.Error(err.Error())
+			}
+			diagnostics := homescript.Analyze(
+				dummyExecutor{},
+				string(program),
+				make(map[string]homescript.Value),
+			)
+			for _, diagnostic := range diagnostics {
+				fmt.Printf("%s\n_\n_\n", diagnostic.Display(string(program), "analyzer.hms"))
+			}
+			if len(diagnostics) == 0 {
+				fmt.Println("no diagnostics")
+			}
+		})
 	}
 }
