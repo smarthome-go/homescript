@@ -543,6 +543,28 @@ func (self *lexer) makeDiv() Token {
 	return token
 }
 
+func (self *lexer) makeIntDiv() Token {
+	startLocation := self.location
+
+	tokenKind := IntDivide
+	tokenValue := "\\"
+
+	if self.nextChar != nil && *self.nextChar == '=' {
+		tokenKind = IntDivideAssign
+		tokenValue = "\\="
+		self.advance()
+	}
+
+	token := Token{
+		Kind:          tokenKind,
+		Value:         tokenValue,
+		StartLocation: startLocation,
+		EndLocation:   self.location,
+	}
+	self.advance()
+	return token
+}
+
 func (self *lexer) makeReminder() Token {
 	startLocation := self.location
 
@@ -687,6 +709,8 @@ func (self *lexer) nextToken() (Token, *errors.Error) {
 			return self.makeStar(), nil
 		case '/':
 			return self.makeDiv(), nil
+		case '\\':
+			return self.makeIntDiv(), nil
 		case '%':
 			return self.makeReminder(), nil
 		case '#':

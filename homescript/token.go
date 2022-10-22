@@ -36,20 +36,22 @@ const (
 	GreaterThanEqual // >=
 	Not              // !
 
-	Plus     // +
-	Minus    // -
-	Multiply // *
-	Divide   // /
-	Reminder // %
-	Power    // **
+	Plus      // +
+	Minus     // -
+	Multiply  // *
+	Divide    // /
+	IntDivide // /
+	Reminder  // %
+	Power     // **
 
-	Assign         // =
-	PlusAssign     // +=
-	MinusAssign    // -=
-	MultiplyAssign // *=
-	DivideAssign   // /=
-	PowerAssign    // **=
-	ReminderAssign // %=
+	Assign          // =
+	PlusAssign      // +=
+	MinusAssign     // -=
+	MultiplyAssign  // *=
+	DivideAssign    // /=
+	IntDivideAssign // \=
+	PowerAssign     // **=
+	ReminderAssign  // %=
 
 	Import   // import
 	As       // as
@@ -141,6 +143,8 @@ func (self TokenKind) String() string {
 		display = "multiply"
 	case Divide:
 		display = "divide"
+	case IntDivide:
+		display = "int-divide"
 	case Reminder:
 		display = "reminder"
 	case Power:
@@ -155,6 +159,8 @@ func (self TokenKind) String() string {
 		display = "multiply-assign"
 	case DivideAssign:
 		display = "divide-assign"
+	case IntDivideAssign:
+		display = "int-divide-assign"
 	case PowerAssign:
 		display = "power-assign"
 	case ReminderAssign:
