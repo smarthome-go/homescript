@@ -24,6 +24,7 @@ var firstExpr = []TokenKind{
 	False,
 	String,
 	Number,
+	NullType,
 	Identifier,
 }
 
@@ -1527,15 +1528,16 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 	return statements, nil
 }
 
-func (self *parser) parse() ([]Statement, []errors.Error) {
+// Returns the ast, any errors an an indication whether the error was critical
+func (self *parser) parse() ([]Statement, []errors.Error, bool) {
 	if err := self.advance(); err != nil {
 		self.errors = append(self.errors, *err)
-		return nil, self.errors
+		return nil, self.errors, true
 	}
 	statements, err := self.statements()
 	if err != nil {
 		self.errors = append(self.errors, *err)
-		return nil, self.errors
+		return nil, self.errors, true
 	}
-	return statements, self.errors
+	return statements, self.errors, false
 }

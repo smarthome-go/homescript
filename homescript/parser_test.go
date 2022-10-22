@@ -49,7 +49,7 @@ func TestParser(t *testing.T) {
 	start := time.Now()
 	parser := newParser(string(program))
 
-	ast, parseErrors := parser.parse()
+	ast, parseErrors, _ := parser.parse()
 
 	if len(parseErrors) > 0 {
 		t.Error("Parsing failed due to error(s)")

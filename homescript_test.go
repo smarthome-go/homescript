@@ -156,8 +156,8 @@ func TestHomescripts(t *testing.T) {
 			},
 		},
 		{
-			Name:              "Syntax",
-			File:              "./test/programs/syntax.hms",
+			Name:              "Analyzer",
+			File:              "./test/programs/analyzer.hms",
 			ExpectedCode:      0,
 			ExpectedValueType: homescript.TypeNull,
 			ExpectedErrors:    nil,
@@ -233,7 +233,7 @@ func TestHomescripts(t *testing.T) {
 }
 
 func TestAnalyzer(t *testing.T) {
-	program, err := os.ReadFile("./test/programs/main.hms")
+	program, err := os.ReadFile("./test/programs/analyzer.hms")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -242,5 +242,7 @@ func TestAnalyzer(t *testing.T) {
 		string(program),
 		make(map[string]homescript.Value),
 	)
-	fmt.Printf("Found %d diagnostic(s)\n", len(diagnostics))
+	for _, diagnostic := range diagnostics {
+		fmt.Println(diagnostic.Display(string(program), "analyzer.hms"))
+	}
 }

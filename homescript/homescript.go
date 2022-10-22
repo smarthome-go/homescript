@@ -24,7 +24,7 @@ func Run(
 ) {
 	// Parse the source code
 	parser := newParser(program)
-	ast, errors := parser.parse()
+	ast, errors, _ := parser.parse()
 	if len(errors) > 0 {
 		return nil, 1, nil, errors
 	}
@@ -60,7 +60,7 @@ func Analyze(
 ) {
 	// Parse the source code
 	parser := newParser(program)
-	ast, errors := parser.parse()
+	ast, errors, critical := parser.parse()
 	if len(errors) > 0 {
 		for _, err := range errors {
 			diagnostics = append(diagnostics, Diagnostic{
@@ -71,7 +71,10 @@ func Analyze(
 			})
 
 		}
-		return diagnostics
+		// If there was a critical error, return only the syntax errors
+		if critical {
+			return diagnostics
+		}
 	}
 	// Create the analyzer
 	analyzer := NewAnalyzer(
@@ -80,5 +83,7 @@ func Analyze(
 		scopeAdditions,
 	)
 	// Finally, analyze the AST
-	return analyzer.analyze()
+	semanticDiagnostics := analyzer.analyze()
+	diagnostics = append(diagnostics, semanticDiagnostics...)
+	return diagnostics
 }
