@@ -1,6 +1,3 @@
-# The print statement can be used in order to write to std out
-print("Homescript is awesome!");
-
 # Datatypes
 print(weather);             # Object (builtin only)
 print("string");            # String
@@ -12,16 +9,17 @@ print("key" => "value");    # Pairs (1 dimensional hash-maps)
 print(print);               # Functions
 
 # The `let` keyword can be used for variable declaration
-let object_value = weather;
 let string_value = "any string";
 string_value = 1 as str;    # Once a variable is bound to a value, it must not change its type
-#string_value = 1;          # Once a variable is bound to a value, it must not change its type
+# string_value = 1;         # Illegal assignment
+let object_value = weather;
+
+# on / off are synonyms for true / false
+let boolean_value = true;
+boolean_value = on;
+boolean_value = off;
 
 let number_value = 42;
-print(                      # Print accepts arbitraty arguments (as long as n > 1)
-    "number_value",
-    number_value,
-);
 number_value = 3.14159265;  # Homescript supports re-assignment
 number_value +=  1;         # Plus assignment
 number_value -=  2;         # Minus assignment
@@ -43,10 +41,13 @@ print(                      # The result is an object
     exec_result.value       # The scripts return value (value of last statement)
 );
 
-print(                      # String concatonation using different types is allowed
+# String concatenation using different types is allowed
+# Every variable wich can be printed can be used in concatenation
+print(
     "Pi is roughly " + "a value of " + 3.14159265 + " right?"
 );
-#print(1 + false);          # Whilst operations involving two different types where none is a string are illegal
+# However, operations involving completely different types are illegal
+#print(1 + false);
 
 # Error handling
 try {
@@ -56,30 +57,56 @@ try {
 };
 
 try {
-    #throw();               # This is a type error and can therefore not be caught
+    # This is a type error and can therefore not be caught
+    # 1 + false;
 } catch err {
     print(err);
 };
 
-# Import the fibonacci function
-import fib from fibonacci;
-
-let a = "This is A: " + for n in 2..22 {
-    print("fib(" + n + ") = " + fib(n));
-    n;
-};
-print(a);
-
+# Homescript supports anonymous functions
 let a = fn () {
     print("Anonymous function");
 };
 a();
 
-if false {
-    print("Always true");
-} else if true {
-    print("else if works like this");
+# Program control flow
+if true == false {
+    throw("This should be unreachable");
+} else if 1 > 0 {
+    print("Else if works like this");
+} else {
+    print("Final else block");
 };
 
+# Loops
+for any_identifier in 0..10  {
+    print(any_identifier);
+};
 
-exit(0);
+let while_counter = 0;
+while while_counter < 10 {
+    while_counter += 1;
+};
+
+let loop_counter = 0;
+let last_loop_counter = loop {
+    if loop_counter > 10 {
+        break loop_counter;
+    };
+    loop_counter += 1;
+};
+print("Last loop counter:", last_loop_counter);
+
+# Homescript supports a very basic module system
+# Functions can be imported from another script
+# import foo [ as bar ] from baz;
+
+# Imports the fin(n) function
+import fib from fibonacci;
+
+# Calculate some fibonacci numbers
+let last_number = "This is the last number: " + for n in 2..22 {
+    print("fib(" + n + ") = " + fib(n));
+    n;
+};
+print(last_number);
