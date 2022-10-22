@@ -1,0 +1,9 @@
+fn takes_3(one, two, three) {
+   one + two;
+};
+
+#takes_3(1, 2, 3);
+
+let a = 1;
+
+#a;

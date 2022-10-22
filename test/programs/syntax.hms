@@ -1,8 +1,0 @@
-print('hi');
-print('hi');
-
-fn a () {};
-
-# I do know why this works, but I need to prevent this...
-# why does this work? }
-a;
