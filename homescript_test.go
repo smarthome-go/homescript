@@ -120,7 +120,7 @@ var tests = []test{
 	{
 		Name:              "Fibonacci",
 		File:              "./test/programs/fibonacci.hms",
-		Skip:              false,
+		Skip:              true,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -184,7 +184,7 @@ var tests = []test{
 	{
 		Name:              "Analyzer",
 		File:              "./test/programs/analyzer.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -197,6 +197,7 @@ func TestHomescripts(t *testing.T) {
 		t.Run(fmt.Sprintf("(%d/%d): %s", idx, len(tests), test.Name), func(t *testing.T) {
 			if test.Skip {
 				t.SkipNow()
+				return
 			}
 			program, err := os.ReadFile(test.File)
 			assert.NoError(t, err)
@@ -206,10 +207,11 @@ func TestHomescripts(t *testing.T) {
 				dummyExecutor{},
 				&sigTerm,
 				string(program),
-				//map[string]homescript.Value{
-				//"foo": homescript.ValueString{Value: "bar"},
-				//},
 				make(map[string]homescript.Value),
+				map[string]homescript.Value{
+					"power_on": homescript.ValueBool{Value: true},
+					"PI":       homescript.ValueNumber{Value: 3.14159265},
+				},
 				test.Debug,
 				1000,
 				make([]string, 0),
