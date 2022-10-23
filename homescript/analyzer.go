@@ -1308,8 +1308,7 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 
 	// Visit potential else if construct
 	if node.ElseIfExpr != nil {
-		self.visitIfExpression(*node.ElseIfExpr)
-		return Result{}, nil
+		return self.visitIfExpression(*node.ElseIfExpr)
 	}
 
 	// Else branch
@@ -1325,6 +1324,7 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 	if err != nil {
 		return Result{}, err
 	}
+	self.popScope()
 	return Result{}, nil
 }
 
