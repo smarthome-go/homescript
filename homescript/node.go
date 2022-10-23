@@ -255,8 +255,13 @@ type CallExprPart struct {
 // Member expression
 type MemberExpression struct {
 	Base    Atom
-	Members []string // Each member is an identifier 'foo.bar.baz' where `foo` is the base and `bar` and `baz` are the members
-	Span    errors.Span
+	Members []struct {
+		// Each member is an identifier 'foo.bar.baz' where `foo` is the base and `bar` and `baz` are the members
+		Identifier string
+		// Span is used in order to deliver better error messages
+		Span errors.Span
+	}
+	Span errors.Span
 }
 
 ///////////// ATOM /////////////

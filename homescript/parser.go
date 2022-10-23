@@ -659,7 +659,12 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 	if err != nil {
 		return MemberExpression{}, err
 	}
-	members := make([]string, 0)
+
+	members := make([]struct {
+		Identifier string
+		Span       errors.Span
+	}, 0)
+
 	for self.currToken.Kind == Dot {
 		if err := self.advance(); err != nil {
 			return MemberExpression{}, err
@@ -674,7 +679,13 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 				},
 			}
 		}
-		members = append(members, self.currToken.Value)
+		members = append(members, struct {
+			Identifier string
+			Span       errors.Span
+		}{Identifier: self.currToken.Value, Span: errors.Span{
+			Start: self.currToken.StartLocation,
+			End:   self.currToken.EndLocation,
+		}})
 		if err := self.advance(); err != nil {
 			return MemberExpression{}, err
 		}
@@ -1195,6 +1206,17 @@ func (self *parser) tryExpr() (AtomTry, *errors.Error) {
 	}
 	if err := self.advance(); err != nil {
 		return AtomTry{}, err
+	}
+	// Expect an identifier here
+	if self.currToken.Kind != Identifier {
+		return AtomTry{}, errors.NewError(
+			errors.Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+			fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
+			errors.SyntaxError,
+		)
 	}
 	catchIdentifier := self.currToken.Value
 	if err := self.advance(); err != nil {

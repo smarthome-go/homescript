@@ -1,0 +1,12 @@
+println(ARGS.test("aaa"));
+#println(ARGS.foo.bar);
+
+println("a a b c".replace("a", "z"));
+println("a a b c".replace_all("a", "y"));
+println("_".repeat(100));
+
+println(1.is_int());
+println(3.14159265.is_int());
+println(3.14159265.trunc());
+println(42.69.round());
+println(42.69.trunc());

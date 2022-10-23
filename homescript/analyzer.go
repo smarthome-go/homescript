@@ -130,6 +130,19 @@ type scope struct {
 	inLoop bool
 }
 
+func throwDummy(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if len(args) != 1 {
+		return nil, nil, errors.NewError(span, fmt.Sprintf("function 'throw' requires exactly 1 argument but %d were given", len(args)), errors.TypeError)
+	}
+	for _, arg := range args {
+		_, err := arg.Display(executor, span)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return nil, nil, nil
+}
+
 func NewAnalyzer(
 	program []Statement,
 	executor Executor,
@@ -141,7 +154,7 @@ func NewAnalyzer(
 		this: map[string]Value{
 			// Builtin functions implemented by Homescript
 			"exit":   ValueBuiltinFunction{Callback: Exit},
-			"throw":  ValueBuiltinFunction{Callback: Throw},
+			"throw":  ValueBuiltinFunction{Callback: throwDummy},
 			"assert": ValueBuiltinFunction{Callback: Assert},
 			// Builtin functions implemented by the executor
 			"print":     ValueBuiltinFunction{Callback: Print},
@@ -1047,11 +1060,10 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 		// Handle args -> function call
 		if part.Args != nil {
 			// Call the base using the following args
-			// TODO: maybe include this
 			if base.Value == nil || *base.Value == nil {
 				return Result{}, nil
 			}
-			result, err := self.callValue(node.Span, *base.Value, *part.Args)
+			result, err := self.callValue(part.Span, *base.Value, *part.Args)
 			if err != nil {
 				self.diagnosticError(*err)
 				return Result{}, nil
@@ -1062,9 +1074,8 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 		}
 		// Handle member access
 		if part.MemberExpressionPart != nil {
-			result, err := getField(self.executor, part.Span, *base.Value, *part.MemberExpressionPart)
-			if err != nil {
-				self.diagnosticError(*err)
+			result := self.getField(*base.Value, part.Span, *part.MemberExpressionPart)
+			if result == nil {
 				return Result{}, nil
 			}
 			// Swap the result and the base so that the next iteration uses this result
@@ -1087,19 +1098,30 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 
 	// Evaluate member expressions
 	for _, member := range node.Members {
-		value, exists := (*base.Value).Fields()[member]
-		if !exists {
-			if (*base.Value).Type() == TypeObject && (*base.Value).(ValueObject).IsDynamic {
-				self.info(node.Span, "dynamic object: manual member validation required")
-				return Result{}, nil
-			}
-			self.issue((*base.Value).Span(), fmt.Sprintf("%v has no member named %s", (*base.Value).Type(), member), errors.TypeError)
+		if base.Value == nil || *base.Value == nil {
 			return Result{}, nil
+		}
+		value := self.getField(*base.Value, member.Span, member.Identifier)
+		if value == nil {
+			continue
 		}
 		// Swap the result and the base so that the next iteration uses this result
 		base.Value = &value
 	}
 	return base, nil
+}
+
+func (self *Analyzer) getField(value Value, span errors.Span, key string) Value {
+	val, exists := value.Fields()[key]
+	if !exists {
+		if value.Type() == TypeObject && value.(ValueObject).IsDynamic {
+			self.info(span, "dynamic object: manual member validation required")
+			return nil
+		}
+		self.issue(span, fmt.Sprintf("%v has no member named %s", value.Type(), key), errors.TypeError)
+		return nil
+	}
+	return val
 }
 
 func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
@@ -1604,10 +1626,14 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 			return nil, nil
 		}
 		return res, nil
-	default:
-		self.issue(span, fmt.Sprintf("value of type %v is not callable", value.Type()), errors.TypeError)
-		return nil, nil
+	case TypeObject:
+		if value.(ValueObject).IsDynamic {
+			self.info(span, "dynamic object: manual call validation required")
+			return nil, nil
+		}
 	}
+	self.issue(span, fmt.Sprintf("value of type %v is not callable", value.Type()), errors.TypeError)
+	return nil, nil
 }
 
 // Helper functions for scope management

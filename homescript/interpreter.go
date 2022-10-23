@@ -899,7 +899,9 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 	}
 	// Evaluate member expressions
 	for _, member := range node.Members {
-		result, err := getField(self.executor, node.Span, *base.Value, member)
+		// TODO: maybe include the base + member in the span (foo.bar.baz)
+		// Like this	     									  ~~~~~~~
+		result, err := getField(self.executor, member.Span, *base.Value, member.Identifier)
 		if err != nil {
 			return Result{}, nil, err
 		}

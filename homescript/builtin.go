@@ -55,19 +55,23 @@ func Exit(_ Executor, span errors.Span, args ...Value) (Value, *int, *errors.Err
 	}
 	return nil, nil, errors.NewError(
 		span,
-		"First argument of function 'exit' has to be an integer",
+		"first argument of function 'exit' has to be an integer",
 		errors.TypeError,
 	)
 }
 
 // Returns an intentional error
-func Throw(_ Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-	if err := checkArgs("throw", span, args, TypeString); err != nil {
+func Throw(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if len(args) != 1 {
+		return nil, nil, errors.NewError(span, fmt.Sprintf("function 'throw' requires exactly 1 argument but %d were given", len(args)), errors.TypeError)
+	}
+	display, err := args[0].Display(executor, span)
+	if err != nil {
 		return nil, nil, err
 	}
 	return nil, nil, errors.NewError(
 		span,
-		args[0].(ValueString).Value,
+		display,
 		errors.ThrowError,
 	)
 }
@@ -77,7 +81,7 @@ func Assert(executor Executor, span errors.Span, args ...Value) (Value, *int, *e
 	if len(args) != 1 {
 		return nil, nil, errors.NewError(
 			span,
-			fmt.Sprintf("Function 'assert' takes 1 argument but %d were given", len(args)),
+			fmt.Sprintf("function 'assert' takes 1 argument but %d were given", len(args)),
 			errors.RuntimeError,
 		)
 	}
@@ -88,7 +92,7 @@ func Assert(executor Executor, span errors.Span, args ...Value) (Value, *int, *e
 	if !isTrue {
 		return nil, nil, errors.NewError(
 			span,
-			fmt.Sprintf("Assertion of %v value failed", args[0].Type()),
+			fmt.Sprintf("assertion of %v value failed", args[0].Type()),
 			errors.ValueError,
 		)
 	}
@@ -175,7 +179,7 @@ func Notify(executor Executor, span errors.Span, args ...Value) (Value, *int, *e
 	if rawLevel != float64(int(math.Round(rawLevel))) {
 		return nil, nil, errors.NewError(
 			span,
-			"Third argument of function 'notify' has to be an integer",
+			"third argument of function 'notify' has to be an integer",
 			errors.TypeError,
 		)
 	}
@@ -190,7 +194,7 @@ func Notify(executor Executor, span errors.Span, args ...Value) (Value, *int, *e
 	default:
 		return nil, nil, errors.NewError(
 			span,
-			fmt.Sprintf("Notification level has to be one of 1, 2, or 3, got %d", int(math.Round(rawLevel))),
+			fmt.Sprintf("notification level has to be one of 1, 2, or 3, got %d", int(math.Round(rawLevel))),
 			errors.ValueError,
 		)
 	}
@@ -211,7 +215,7 @@ func Log(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 	if rawLevel != float64(int(math.Round(rawLevel))) {
 		return nil, nil, errors.NewError(
 			span,
-			"Third argument of function 'log' has to be an integer",
+			"third argument of function 'log' has to be an integer",
 			errors.TypeError,
 		)
 	}
@@ -232,7 +236,7 @@ func Log(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 	default:
 		return nil, nil, errors.NewError(
 			span,
-			fmt.Sprintf("Log level has to be one of 0, 1, 2, 3, 4, or 5 got %d", int(math.Round(rawLevel))),
+			fmt.Sprintf("log level has to be one of 0, 1, 2, 3, 4, or 5 got %d", int(math.Round(rawLevel))),
 			errors.ValueError,
 		)
 	}
@@ -249,7 +253,7 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 	if len(args) == 0 {
 		return nil, nil, errors.NewError(
 			span,
-			"Function 'exec' takes 1 or more arguments but 0 were given",
+			"function 'exec' takes 1 or more arguments but 0 were given",
 			errors.TypeError,
 		)
 	}
@@ -257,7 +261,7 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 	if args[0].Type() != TypeString {
 		return nil, nil, errors.NewError(
 			span,
-			"First argument of function 'exec' has to be of type String",
+			"first argument of function 'exec' has to be of type String",
 			errors.TypeError,
 		)
 	}
@@ -267,7 +271,7 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		if arg.Type() != TypePair {
 			return nil, nil, errors.NewError(
 				span,
-				fmt.Sprintf("Argument %d of function 'exec' has to be of type Pair\nhint: you can create a value pair using `pair('key', 'value')`", indexArg),
+				fmt.Sprintf("argument %d of function 'exec' has to be of type Pair\nhint: you can create a value pair using `pair('key', 'value')`", indexArg),
 				errors.TypeError,
 			)
 		}
@@ -275,7 +279,7 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		if alreadyExists {
 			return nil, nil, errors.NewError(
 				span,
-				fmt.Sprintf("Call argument (value pair) %d of function 'exec' has duplicate key entry '%s'", indexArg+2, arg.(ValuePair).Key),
+				fmt.Sprintf("call argument (value pair) %d of function 'exec' has duplicate key entry '%s'", indexArg+2, arg.(ValuePair).Key),
 				errors.TypeError,
 			)
 		}
@@ -293,7 +297,7 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		return nil, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
 	if output.ReturnValue == nil {
-		panic("Return value is nil: please implement this correctly")
+		panic("return value is nil: please implement this correctly")
 	}
 	return ValueObject{
 		ObjFields: map[string]Value{
@@ -338,7 +342,7 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 	if len(args) < 3 {
 		return nil, nil, errors.NewError(
 			span,
-			fmt.Sprintf("Function 'http' takes three or more arguments but %d were given", len(args)),
+			fmt.Sprintf("function 'http' takes three or more arguments but %d were given", len(args)),
 			errors.TypeError,
 		)
 	}
@@ -361,7 +365,7 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		if header.Type() != TypePair {
 			return nil, nil, errors.NewError(
 				span,
-				fmt.Sprintf("Argument %d of function 'http' has to be of type Pair.\nhint: you can create a value pair using `pair('key', 'value')`", headerIndex+4),
+				fmt.Sprintf("argument %d of function 'http' has to be of type pair", headerIndex+4),
 				errors.TypeError,
 			)
 		}
@@ -369,7 +373,7 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		if alreadyExists {
 			return nil, nil, errors.NewError(
 				span,
-				fmt.Sprintf("Header entry (value pair) %d of function 'http' has duplicate key entry '%s'", headerIndex+4, header.(ValuePair).Key),
+				fmt.Sprintf("header entry (value pair) %d of function 'http' has duplicate key entry '%s'", headerIndex+4, header.(ValuePair).Key),
 				errors.ValueError,
 			)
 		}
@@ -485,7 +489,7 @@ func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int,
 	if arg.DataType != "time" {
 		return nil, nil, errors.NewError(
 			span,
-			fmt.Sprintf("time.since requires a object of type 'time', got '%s'", arg.DataType),
+			fmt.Sprintf("function 'since' requires an object of type 'time', got '%s'", arg.DataType),
 			errors.TypeError,
 		)
 	}
