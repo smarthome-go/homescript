@@ -158,6 +158,11 @@ func NewAnalyzer(
 			"user":    ValueBuiltinVariable{Callback: GetUser},
 			"weather": ValueBuiltinVariable{Callback: GetWeather},
 			"time":    ValueBuiltinVariable{Callback: GetTime},
+			"ARGS": ValueObject{
+				DataType:  "args",
+				IsDynamic: true,
+				ObjFields: make(map[string]Value),
+			},
 		},
 		identifier: nil,
 	},
@@ -1082,13 +1087,17 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 
 	// Evaluate member expressions
 	for _, member := range node.Members {
-		result, err := getField(self.executor, node.Span, *base.Value, member)
-		if err != nil {
-			self.diagnosticError(*err)
+		value, exists := (*base.Value).Fields()[member]
+		if !exists {
+			if (*base.Value).Type() == TypeObject && (*base.Value).(ValueObject).IsDynamic {
+				self.info(node.Span, "dynamic object: manual member validation required")
+				return Result{}, nil
+			}
+			self.issue((*base.Value).Span(), fmt.Sprintf("%v has no member named %s", (*base.Value).Type(), member), errors.TypeError)
 			return Result{}, nil
 		}
 		// Swap the result and the base so that the next iteration uses this result
-		base.Value = &result
+		base.Value = &value
 	}
 	return base, nil
 }
@@ -1578,13 +1587,23 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		self.popScope()
 		return nil, nil
 	case TypeBuiltinFunction:
+		callArgs := make([]Value, 0)
 		for _, arg := range args {
-			_, err := self.visitExpression(arg)
+			value, err := self.visitExpression(arg)
 			if err != nil {
 				return nil, err
 			}
+			if value.Value == nil || *value.Value == nil {
+				return nil, nil
+			}
+			callArgs = append(callArgs, *value.Value)
 		}
-		return nil, nil
+		res, _, err := value.(ValueBuiltinFunction).Callback(self.executor, span, callArgs...)
+		if err != nil {
+			self.diagnosticError(*err)
+			return nil, nil
+		}
+		return res, nil
 	default:
 		self.issue(span, fmt.Sprintf("value of type %v is not callable", value.Type()), errors.TypeError)
 		return nil, nil

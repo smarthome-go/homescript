@@ -47,6 +47,7 @@ func NewInterpreter(
 	sigTerm *chan int,
 	stackLimit uint,
 	scopeAdditions map[string]Value, // Allows the user to add more entries to the scope
+	args map[string]Value, // Just like scopeAdditions but already named `ARGS.x`
 	debug bool,
 	moduleStack []string,
 	moduleName string,
@@ -73,6 +74,11 @@ func NewInterpreter(
 		"user":    ValueBuiltinVariable{Callback: GetUser},
 		"weather": ValueBuiltinVariable{Callback: GetWeather},
 		"time":    ValueBuiltinVariable{Callback: GetTime},
+		"ARGS": ValueObject{
+			DataType:  "args",
+			IsDynamic: true,
+			ObjFields: args,
+		},
 	})
 	// Panic if the stackLimit is set to <= 1
 	if stackLimit <= 1 {
@@ -1499,6 +1505,7 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, function 
 		self.executor,
 		self.sigTerm,
 		moduleCode,
+		make(map[string]Value),
 		make(map[string]Value),
 		false,
 		10,
