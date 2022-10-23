@@ -616,7 +616,9 @@ func (self *Interpreter) visitMulExression(node MulExpression) (Result, *int, *e
 			algResult, algError = baseAlg.Mul(self.executor, node.Span, *followingValue.Value)
 		case MulOpDiv:
 			algResult, algError = baseAlg.Div(self.executor, node.Span, *followingValue.Value)
-		case MullOpReminder:
+		case MulOpIntDiv:
+			algResult, algError = baseAlg.IntDiv(self.executor, node.Span, *followingValue.Value)
+		case MulOpReminder:
 			algResult, algError = baseAlg.Rem(self.executor, node.Span, *followingValue.Value)
 		default:
 			panic("BUG: a new mul operator has been added without updating this code")
@@ -814,6 +816,8 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 		newValue, assignErr = (*base.Value).(ValueAlg).Mul(self.executor, node.Span, *rhsValue.Value)
 	case OpDivAssign:
 		newValue, assignErr = (*base.Value).(ValueAlg).Div(self.executor, node.Span, *rhsValue.Value)
+	case OpIntDivAssign:
+		newValue, assignErr = (*base.Value).(ValueAlg).IntDiv(self.executor, node.Span, *rhsValue.Value)
 	case OpReminderAssign:
 		newValue, assignErr = (*base.Value).(ValueAlg).Rem(self.executor, node.Span, *rhsValue.Value)
 	case OpPowerAssign:
@@ -1076,19 +1080,16 @@ func (self *Interpreter) visitIfExpression(node IfExpr) (Result, *int, *errors.E
 		return Result{}, nil, err
 	}
 
-	// Before visiting any branch, push a new scope
-	if err := self.pushScope(node.Span()); err != nil {
-		return Result{}, nil, err
-	}
-	// When this function is done, pop the scope again
-	defer self.popScope()
-
 	// If the condition is true, visit the true branch
 	if conditionIsTrue {
+		if err := self.pushScope(node.Span()); err != nil {
+			return Result{}, nil, err
+		}
 		value, code, err := self.visitStatements(node.Block)
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
+		self.popScope()
 		// Forward any return, break or continue statement
 		if value.ReturnValue != nil || value.BreakValue != nil || value.ShouldContinue {
 			return value, nil, nil
@@ -1096,14 +1097,24 @@ func (self *Interpreter) visitIfExpression(node IfExpr) (Result, *int, *errors.E
 		// Otherwise, just return the result of the block
 		return Result{Value: value.Value}, nil, nil
 	}
+
+	// If there is a else if construct, handle it here
+	if node.ElseIfExpr != nil {
+		return self.visitIfExpression(*node.ElseIfExpr)
+	}
+
 	// Otherwise, visit the else branch (if it exists)
 	if node.ElseBlock == nil {
 		return makeNullResult(node.Range), nil, nil
+	}
+	if err := self.pushScope(node.Span()); err != nil {
+		return Result{}, nil, err
 	}
 	value, code, err := self.visitStatements(*node.ElseBlock)
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
+	self.popScope()
 	// Forward any return, break or continue statement
 	if value.ReturnValue != nil || value.BreakValue != nil || value.ShouldContinue {
 		return value, nil, nil
@@ -1300,9 +1311,6 @@ func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *erro
 		if result.BreakValue != nil {
 			return Result{Value: result.BreakValue}, nil, nil
 		}
-
-		// TODO: why is memory usage skyrocketing when not sleeping?
-		// time.Sleep(time.Millisecond)
 	}
 }
 

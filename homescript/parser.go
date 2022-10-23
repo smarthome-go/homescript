@@ -265,15 +265,17 @@ func (self *parser) mulExpr() (MulExpression, *errors.Error) {
 		Other       CastExpression
 	}, 0)
 
-	for self.currToken.Kind == Multiply || self.currToken.Kind == Divide || self.currToken.Kind == Reminder {
+	for self.currToken.Kind == Multiply || self.currToken.Kind == Divide || self.currToken.Kind == IntDivide || self.currToken.Kind == Reminder {
 		var mulOp MulOperator
 		switch self.currToken.Kind {
 		case Multiply:
 			mulOp = MulOpMul
 		case Divide:
 			mulOp = MulOpDiv
+		case IntDivide:
+			mulOp = MulOpIntDiv
 		case Reminder:
-			mulOp = MullOpReminder
+			mulOp = MulOpReminder
 		}
 
 		if err := self.advance(); err != nil {
@@ -459,6 +461,8 @@ func (self *parser) assignExpr() (AssignExpression, *errors.Error) {
 		assignOp = OpMulAssign
 	case DivideAssign:
 		assignOp = OpDivAssign
+	case IntDivideAssign:
+		assignOp = OpIntDivAssign
 	case ReminderAssign:
 		assignOp = OpReminderAssign
 	case PlusAssign:

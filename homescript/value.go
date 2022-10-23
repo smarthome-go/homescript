@@ -71,6 +71,7 @@ type ValueAlg interface {
 	Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
 	Mul(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
 	Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
+	IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
 	Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
 	Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
 }
@@ -257,6 +258,21 @@ func (self ValueNumber) Div(executor Executor, span errors.Span, other Value) (V
 		Value: self.Value / other.(ValueNumber).Value,
 	}, nil
 }
+func (self ValueNumber) IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	if other.Type() != TypeNumber {
+		if other.Type() == TypeBuiltinVariable {
+			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
+			if err != nil {
+				return nil, err
+			}
+			return self.IntDiv(executor, span, value)
+		}
+		return nil, errors.NewError(span, fmt.Sprintf("cannot divide %v by %v", self.Type(), other.Type()), errors.TypeError)
+	}
+	return ValueNumber{
+		Value: math.Floor(self.Value / other.(ValueNumber).Value),
+	}, nil
+}
 func (self ValueNumber) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	if other.Type() != TypeNumber {
 		if other.Type() == TypeBuiltinVariable {
@@ -347,6 +363,9 @@ func (self ValueBool) Mul(executor Executor, span errors.Span, other Value) (Val
 func (self ValueBool) Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
+func (self ValueBool) IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
+}
 func (self ValueBool) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
@@ -409,6 +428,9 @@ func (self ValueString) Mul(executor Executor, span errors.Span, other Value) (V
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
 func (self ValueString) Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
+}
+func (self ValueString) IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
 func (self ValueString) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
@@ -738,6 +760,20 @@ func (self ValueBuiltinVariable) Div(executor Executor, span errors.Span, other 
 		return value.(ValueNumber).Div(executor, span, other)
 	case TypeString:
 		return value.(ValueString).Div(executor, span, other)
+	default:
+		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
+	}
+}
+func (self ValueBuiltinVariable) IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+	value, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, err
+	}
+	switch value.Type() {
+	case TypeNumber:
+		return value.(ValueNumber).IntDiv(executor, span, other)
+	case TypeString:
+		return value.(ValueString).IntDiv(executor, span, other)
 	default:
 		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
 	}

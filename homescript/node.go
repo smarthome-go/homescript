@@ -175,7 +175,8 @@ type MulOperator uint8
 const (
 	MulOpMul MulOperator = iota
 	MulOpDiv
-	MullOpReminder
+	MulOpIntDiv
+	MulOpReminder
 )
 
 // Cast expression
@@ -231,6 +232,7 @@ const (
 	OpMinusAssign
 	OpMulAssign
 	OpDivAssign
+	OpIntDivAssign
 	OpReminderAssign
 	OpPowerAssign
 )
