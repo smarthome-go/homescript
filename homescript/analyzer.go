@@ -696,7 +696,6 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 				}
 			} else if base.Value != nil && (*base.Value).Ident() != nil {
 				for _, arg := range self.getScope().args {
-					fmt.Println(arg, *(*base.Value).Ident())
 					if arg == *(*base.Value).Ident() {
 						// Only show the function caller if the type error was caused by an argument
 						self.badArgError(algError.Kind, algError.Span)
@@ -1058,7 +1057,7 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 		}
 		// Handle member access
 		if part.MemberExpressionPart != nil {
-			result, err := getField(part.Span, *base.Value, *part.MemberExpressionPart)
+			result, err := getField(self.executor, part.Span, *base.Value, *part.MemberExpressionPart)
 			if err != nil {
 				self.diagnosticError(*err)
 				return Result{}, nil
@@ -1083,7 +1082,7 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 
 	// Evaluate member expressions
 	for _, member := range node.Members {
-		result, err := getField(node.Span, *base.Value, member)
+		result, err := getField(self.executor, node.Span, *base.Value, member)
 		if err != nil {
 			self.diagnosticError(*err)
 			return Result{}, nil
@@ -1124,21 +1123,32 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		key := node.(AtomIdentifier).Identifier
 		scopeValue := self.accessVar(key)
 
-		// Add this variable to the variable accesses
-		// Only add the access if it is not already in the list
-		isMarked := false
-		for _, access := range self.getScope().variableAccesses {
-			if access == key {
-				isMarked = true
-				break
+		// TODO: remove this
+		/*
+			// Add this variable to the variable accesses
+			// Only add the access if it is not already in the list
+			isMarked := false
+			for _, access := range self.getScope().variableAccesses {
+				if access == key {
+					isMarked = true
+					break
+				}
 			}
-		}
-		if !isMarked {
-			self.getScope().variableAccesses = append(self.getScope().variableAccesses, key)
-		}
+			if !isMarked {
+				self.getScope().variableAccesses = append(self.getScope().variableAccesses, key)
+			}
+		*/
 
 		// If the key is associated with a value, return it
 		if scopeValue != nil {
+			// This resolves the `true` value of builtin variables directly here
+			if (*scopeValue) != nil && (*scopeValue).Type() == TypeBuiltinVariable {
+				value, err := (*scopeValue).(ValueBuiltinVariable).Callback(self.executor, node.Span())
+				if err != nil {
+					return Result{}, err
+				}
+				return Result{Value: &value}, nil
+			}
 			return Result{Value: scopeValue}, nil
 		}
 		self.issue(node.Span(), fmt.Sprintf("variable or function with name '%s' not found", key), errors.ReferenceError)
@@ -1707,9 +1717,27 @@ func (self *Analyzer) accessVar(key string) *Value {
 		if exists {
 			// Append the access to either function access or variable access
 			if scopeValue != nil && scopeValue.Type() == TypeFunction {
-				self.scopes[idx].functionCalls = append(self.scopes[idx].functionCalls, key)
+				isMarked := false
+				for _, funAccess := range self.scopes[idx].functionCalls {
+					if funAccess == key {
+						isMarked = true
+						break
+					}
+				}
+				if !isMarked {
+					self.scopes[idx].functionCalls = append(self.scopes[idx].functionCalls, key)
+				}
 			} else {
-				self.scopes[idx].variableAccesses = append(self.scopes[idx].variableAccesses, key)
+				isMarked := false
+				for _, access := range self.scopes[idx].variableAccesses {
+					if access == key {
+						isMarked = true
+						break
+					}
+				}
+				if !isMarked {
+					self.scopes[idx].variableAccesses = append(self.scopes[idx].variableAccesses, key)
+				}
 			}
 			return &scopeValue
 		}
