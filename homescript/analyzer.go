@@ -1479,20 +1479,15 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		}
 
 		// Do not call the function if it was imported
+		importedFunction := false
 		for _, scope := range self.scopes {
 			for _, imported := range scope.importedFunctions {
 				if function.Identifier != nil && imported == *function.Identifier {
 					// Create a note that the function should be verified manually
 					self.info(span, "imported function: manual type verification required")
-					return nil, nil
+					importedFunction = true
+					break
 				}
-			}
-		}
-
-		// Prevent recursion here
-		for _, scope := range self.scopes {
-			if scope.identifier != nil && function.Identifier != nil && *scope.identifier == *function.Identifier {
-				return nil, nil
 			}
 		}
 
@@ -1507,7 +1502,10 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 
 		// Validate that the function has been called using the correct amount of arguments
 		if len(args) != len(function.Args) {
-			self.issue(span, fmt.Sprintf("function requires %d argument(s), however %d were supplied", len(function.Args), len(args)), errors.TypeError)
+			// Only add a warning if the function is not imported
+			if !importedFunction {
+				self.issue(span, fmt.Sprintf("function requires %d argument(s), however %d were supplied", len(function.Args), len(args)), errors.TypeError)
+			}
 			// Still evaluate the function body, just add dummy elements
 			for _, arg := range function.Args {
 				self.addVar(arg.Identifier, nil)
@@ -1531,6 +1529,18 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 					//val := insertValueMetadata(*argValue.Value, arg, value.Span())
 					self.addVar(arg.Identifier, val)
 				}
+			}
+		}
+
+		// If the function was imported, return here
+		if importedFunction {
+			return nil, nil
+		}
+
+		// Prevent recursion here
+		for _, scope := range self.scopes {
+			if scope.identifier != nil && function.Identifier != nil && *scope.identifier == *function.Identifier {
+				return nil, nil
 			}
 		}
 
