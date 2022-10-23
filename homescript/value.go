@@ -464,11 +464,11 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 			errors.TypeError,
 		)
 	}
-	if len(self.Fields) != len(other.(ValueObject).Fields) {
+	if len(self.ObjFields) != len(other.(ValueObject).ObjFields) {
 		return false, nil
 	}
-	for key, value := range self.Fields {
-		eq, err := other.(ValueObject).Fields[key].IsEqual(executor, span, value)
+	for key, value := range self.ObjFields {
+		eq, err := other.(ValueObject).ObjFields[key].IsEqual(executor, span, value)
 		if err != nil {
 			return false, err
 		}
@@ -729,23 +729,11 @@ func (self ValueBuiltinVariable) Pow(executor Executor, span errors.Span, other 
 
 // Helper functions for values
 func getField(executor Executor, span errors.Span, self Value, fieldKey string) (Value, *errors.Error) {
-	switch self.Type() {
-	case TypeObject:
-		fieldValue, exists := self.(ValueObject).Fields[fieldKey]
-		if !exists {
-			return nil, errors.NewError(span, fmt.Sprintf("Value has no member named %s", fieldKey), errors.TypeError)
-		}
-		return fieldValue, nil
-	case TypeString:
-		switch fieldKey {
-		case "replace":
-			return nil, errors.NewError(span, "string.replace is not yet implemented", errors.RuntimeError)
-		default:
-			return nil, errors.NewError(span, fmt.Sprintf("string has no member named %s", fieldKey), errors.TypeError)
-		}
-	default:
-		return nil, errors.NewError(span, fmt.Sprintf("cannot access fields of type %v", self.Type()), errors.TypeError)
+	value, exists := self.Fields()[fieldKey]
+	if !exists {
+		return nil, errors.NewError(span, fmt.Sprintf("%v has no member named %s", self.Type(), fieldKey), errors.TypeError)
 	}
+	return value, nil
 }
 
 // Helper factory functions

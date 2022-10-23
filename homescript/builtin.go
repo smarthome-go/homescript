@@ -296,7 +296,7 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		panic("Return value is nil: please implement this correctly")
 	}
 	return ValueObject{
-		Fields: map[string]Value{
+		ObjFields: map[string]Value{
 			"output": ValueString{
 				Value: output.Output,
 			},
@@ -318,7 +318,7 @@ func Get(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 		return ValueNumber{}, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
 	return ValueObject{
-		Fields: map[string]Value{
+		ObjFields: map[string]Value{
 			"status": ValueString{
 				Value: res.Status,
 			},
@@ -391,7 +391,7 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		return ValueNull{}, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
 	return ValueObject{
-		Fields: map[string]Value{
+		ObjFields: map[string]Value{
 			"status": ValueString{
 				Value: res.Status,
 			},
@@ -416,7 +416,7 @@ func GetWeather(executor Executor, span errors.Span) (Value, *errors.Error) {
 		return nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
 	return ValueObject{
-		Fields: map[string]Value{
+		ObjFields: map[string]Value{
 			"title": ValueString{
 				Value: data.WeatherTitle,
 			},
@@ -441,7 +441,7 @@ func GetTime(executor Executor, _ errors.Span) (Value, *errors.Error) {
 	_, week := time.ISOWeek()
 	return ValueObject{
 		DataType: "time",
-		Fields: map[string]Value{
+		ObjFields: map[string]Value{
 			"year": ValueNumber{
 				Value: float64(time.Year()),
 			},
@@ -489,7 +489,7 @@ func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int,
 			errors.TypeError,
 		)
 	}
-	millis, ok := arg.Fields["unix"]
+	millis, ok := arg.ObjFields["unix"]
 	if !ok || millis.Type() != TypeNumber {
 		return nil, nil, errors.NewError(
 			span,
@@ -501,7 +501,7 @@ func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int,
 	since := time.Since(then)
 	return ValueObject{
 		DataType: "duration",
-		Fields: map[string]Value{
+		ObjFields: map[string]Value{
 			"millis":  ValueNumber{Value: float64(since.Milliseconds())},
 			"seconds": ValueNumber{Value: float64(since.Seconds())},
 			"minutes": ValueNumber{Value: float64(since.Minutes())},

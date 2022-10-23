@@ -1219,20 +1219,20 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 
 	// Add the error variable to the scope (as an error object)
 	self.addVar(node.ErrorIdentifier, ValueObject{
-		Fields: map[string]Value{
+		ObjFields: map[string]Value{
 			"kind":    makeStr(errors.Span{}, ""),
 			"message": makeStr(errors.Span{}, ""),
 			"location": ValueObject{
-				Fields: map[string]Value{
+				ObjFields: map[string]Value{
 					"start": ValueObject{
-						Fields: map[string]Value{
+						ObjFields: map[string]Value{
 							"index":  makeNum(errors.Span{}, 0.0),
 							"line":   makeNum(errors.Span{}, 0.0),
 							"column": makeNum(errors.Span{}, 0.0),
 						},
 					},
 					"end": ValueObject{
-						Fields: map[string]Value{
+						ObjFields: map[string]Value{
 							"index":  makeNum(errors.Span{}, 0.0),
 							"line":   makeNum(errors.Span{}, 0.0),
 							"column": makeNum(errors.Span{}, 0.0),
