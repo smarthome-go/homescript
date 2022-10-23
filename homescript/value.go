@@ -123,13 +123,6 @@ func (self ValueNumber) IsTrue(executor Executor, span errors.Span) (bool, *erro
 }
 func (self ValueNumber) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
 	if self.Type() != other.Type() {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return false, err
-			}
-			return self.IsEqual(executor, span, value)
-		}
 		return false, errors.NewError(
 			span,
 			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
@@ -140,52 +133,24 @@ func (self ValueNumber) IsEqual(executor Executor, span errors.Span, other Value
 }
 func (self ValueNumber) IsLessThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
 	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return false, err
-			}
-			return self.IsLessThan(executor, span, value)
-		}
 		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return self.Value < other.(ValueNumber).Value, nil
 }
 func (self ValueNumber) IsLessThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
 	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return false, err
-			}
-			return self.IsLessThanOrEqual(executor, span, value)
-		}
 		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return self.Value <= other.(ValueNumber).Value, nil
 }
 func (self ValueNumber) IsGreaterThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
 	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return false, err
-			}
-			return self.IsGreaterThan(executor, span, value)
-		}
 		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return self.Value > other.(ValueNumber).Value, nil
 }
 func (self ValueNumber) IsGreaterThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
 	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return false, err
-			}
-			return self.IsGreaterThanOrEqual(executor, span, value)
-		}
 		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return self.Value >= other.(ValueNumber).Value, nil
@@ -203,25 +168,12 @@ func (self ValueNumber) Add(executor Executor, span errors.Span, other Value) (V
 		}
 		// Return a string concatonation
 		return ValueString{Value: display + other.(ValueString).Value}, nil
-	case TypeBuiltinVariable:
-		otherCallback, err := other.(ValueBuiltinVariable).Callback(executor, span)
-		if err != nil {
-			return nil, err
-		}
-		self.Add(executor, span, otherCallback)
 	}
 	return nil, errors.NewError(span, fmt.Sprintf("cannot add %v to %v", other.Type(), self.Type()), errors.TypeError)
 }
 
 func (self ValueNumber) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return nil, err
-			}
-			return self.Sub(executor, span, value)
-		}
 		return nil, errors.NewError(span, fmt.Sprintf("cannot subtract %v from %v", other.Type(), self.Type()), errors.TypeError)
 	}
 	return ValueNumber{
@@ -245,13 +197,6 @@ func (self ValueNumber) Mul(executor Executor, span errors.Span, other Value) (V
 }
 func (self ValueNumber) Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return nil, err
-			}
-			return self.Div(executor, span, value)
-		}
 		return nil, errors.NewError(span, fmt.Sprintf("cannot divide %v by %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
@@ -260,13 +205,6 @@ func (self ValueNumber) Div(executor Executor, span errors.Span, other Value) (V
 }
 func (self ValueNumber) IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return nil, err
-			}
-			return self.IntDiv(executor, span, value)
-		}
 		return nil, errors.NewError(span, fmt.Sprintf("cannot divide %v by %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
@@ -275,13 +213,6 @@ func (self ValueNumber) IntDiv(executor Executor, span errors.Span, other Value)
 }
 func (self ValueNumber) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return nil, err
-			}
-			return self.Rem(executor, span, value)
-		}
 		return nil, errors.NewError(span, fmt.Sprintf("cannot calculate reminder of %v / %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
@@ -291,13 +222,6 @@ func (self ValueNumber) Rem(executor Executor, span errors.Span, other Value) (V
 
 func (self ValueNumber) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	if other.Type() != TypeNumber {
-		if other.Type() == TypeBuiltinVariable {
-			value, err := other.(ValueBuiltinVariable).Callback(executor, span)
-			if err != nil {
-				return nil, err
-			}
-			return self.Pow(executor, span, value)
-		}
 		return nil, errors.NewError(span, fmt.Sprintf("cannot calculate power of %v and %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
@@ -411,13 +335,6 @@ func (self ValueString) Add(executor Executor, span errors.Span, other Value) (V
 			return nil, err
 		}
 		return ValueString{Value: self.Value + display}, nil
-	case TypeBuiltinVariable:
-		// This is required so that string cannot be added to builtin-var of type object
-		otherCallback, err := other.(ValueBuiltinVariable).Callback(executor, span)
-		if err != nil {
-			return nil, err
-		}
-		self.Add(executor, span, otherCallback)
 	}
 	return nil, errors.NewError(span, fmt.Sprintf("cannot add %v to %v", other.Type(), self.Type()), errors.TypeError)
 }
@@ -489,6 +406,9 @@ func (self ValuePair) IsEqual(executor Executor, span errors.Span, other Value) 
 
 // Object value
 type ValueObject struct {
+	// Can be used if a builtin function only accepts objects of a certain type
+	DataType string
+	// The fields of the object
 	Fields map[string]Value
 }
 
@@ -626,20 +546,10 @@ func (self ValueBuiltinVariable) Type() ValueType   { return TypeBuiltinVariable
 func (self ValueBuiltinVariable) Span() errors.Span { return errors.Span{} }
 func (self ValueBuiltinVariable) Ident() *string    { return nil }
 func (self ValueBuiltinVariable) Display(executor Executor, span errors.Span) (string, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return "", err
-	}
-	// Invoke display on the callback result
-	return value.Display(executor, span)
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return "", err
-	}
-	// Invoke debug on the callback result
-	return value.Debug(executor, span)
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
 	value, err := self.Callback(executor, span)
@@ -808,15 +718,24 @@ func (self ValueBuiltinVariable) Pow(executor Executor, span errors.Span, other 
 }
 
 // Helper functions for values
-func getField(span errors.Span, self Value, fieldKey string) (Value, *errors.Error) {
-	if self.Type() != TypeObject {
+func getField(executor Executor, span errors.Span, self Value, fieldKey string) (Value, *errors.Error) {
+	switch self.Type() {
+	case TypeObject:
+		fieldValue, exists := self.(ValueObject).Fields[fieldKey]
+		if !exists {
+			return nil, errors.NewError(span, fmt.Sprintf("Value has no member named %s", fieldKey), errors.TypeError)
+		}
+		return fieldValue, nil
+	case TypeString:
+		switch fieldKey {
+		case "replace":
+			return nil, errors.NewError(span, "string.replace is not yet implemented", errors.RuntimeError)
+		default:
+			return nil, errors.NewError(span, fmt.Sprintf("string has no member named %s", fieldKey), errors.TypeError)
+		}
+	default:
 		return nil, errors.NewError(span, fmt.Sprintf("cannot access fields of type %v", self.Type()), errors.TypeError)
 	}
-	fieldValue, exists := self.(ValueObject).Fields[fieldKey]
-	if !exists {
-		return nil, errors.NewError(span, fmt.Sprintf("Value has no member named %s", fieldKey), errors.TypeError)
-	}
-	return fieldValue, nil
 }
 
 // Helper factory functions
