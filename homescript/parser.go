@@ -2,7 +2,6 @@ package homescript
 
 import (
 	"fmt"
-	"runtime/debug"
 	"strconv"
 
 	"github.com/smarthome-go/homescript/homescript/errors"
@@ -47,7 +46,6 @@ func newParser(program string) parser {
 func (self *parser) advance() *errors.Error {
 	next, err := self.lexer.nextToken()
 	if err != nil {
-		fmt.Println(string(debug.Stack()))
 		return err
 	}
 	self.prevToken = self.currToken
@@ -1504,8 +1502,8 @@ func (self *parser) statements() ([]Statement, *errors.Error) {
 					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
 					Span: errors.Span{
-						Start: self.currToken.EndLocation,
-						End:   self.currToken.EndLocation,
+						Start: end,
+						End:   end,
 					},
 				},
 			)
