@@ -92,20 +92,6 @@ func (self dummyExecutor) GetWeather() (homescript.Weather, error) {
 	}, nil
 }
 
-func (self dummyExecutor) GetTime() homescript.Time {
-	return homescript.Time{
-		Year:         2022,
-		Month:        10,
-		CalendarWeek: 42,
-		CalendarDay:  17,
-		WeekDayText:  "Monday",
-		WeekDay:      1,
-		Hour:         19,
-		Minute:       9,
-		Second:       32,
-	}
-}
-
 type testError struct {
 	Kind    errors.ErrorKind
 	Message string
@@ -114,6 +100,7 @@ type testError struct {
 type test struct {
 	Name              string
 	File              string
+	Skip              bool
 	Debug             bool
 	ExpectedCode      int
 	ExpectedValueType homescript.ValueType
@@ -124,6 +111,7 @@ var tests = []test{
 	{
 		Name:              "Main",
 		File:              "./test/programs/main.hms",
+		Skip:              true,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -132,6 +120,7 @@ var tests = []test{
 	{
 		Name:              "Fibonacci",
 		File:              "./test/programs/fibonacci.hms",
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -140,6 +129,7 @@ var tests = []test{
 	{
 		Name:              "StackOverFlow",
 		File:              "./test/programs/stack_overflow.hms",
+		Skip:              true,
 		Debug:             false,
 		ExpectedCode:      1,
 		ExpectedValueType: homescript.TypeNull,
@@ -153,6 +143,7 @@ var tests = []test{
 	{
 		Name:              "ImportExport",
 		File:              "./test/programs/import_export.hms",
+		Skip:              true,
 		Debug:             false,
 		ExpectedCode:      1,
 		ExpectedValueType: homescript.TypeNull,
@@ -166,6 +157,7 @@ var tests = []test{
 	{
 		Name:              "PrimeNumbers",
 		File:              "./test/programs/primes.hms",
+		Skip:              true,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNumber,
@@ -174,6 +166,7 @@ var tests = []test{
 	{
 		Name:              "FizzBuzz",
 		File:              "./test/programs/fizzbuzz.hms",
+		Skip:              true,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -182,6 +175,7 @@ var tests = []test{
 	{
 		Name:              "Box",
 		File:              "./test/programs/box.hms",
+		Skip:              true,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -190,6 +184,7 @@ var tests = []test{
 	{
 		Name:              "Analyzer",
 		File:              "./test/programs/analyzer.hms",
+		Skip:              true,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -200,6 +195,9 @@ var tests = []test{
 func TestHomescripts(t *testing.T) {
 	for idx, test := range tests {
 		t.Run(fmt.Sprintf("(%d/%d): %s", idx, len(tests), test.Name), func(t *testing.T) {
+			if test.Skip {
+				t.SkipNow()
+			}
 			program, err := os.ReadFile(test.File)
 			assert.NoError(t, err)
 			sigTerm := make(chan int)
