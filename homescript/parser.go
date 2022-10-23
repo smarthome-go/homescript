@@ -533,10 +533,10 @@ func (self *parser) callExpr() (CallExpression, *errors.Error) {
 
 func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 	var parts []CallExprPart = nil
-	for self.currToken.Kind != EOF {
-		startLocation := self.currToken.StartLocation
+	for self.currToken.Kind == LParen || self.currToken.Kind == Dot {
 		switch self.currToken.Kind {
 		case LParen:
+			startLocation := self.currToken.StartLocation
 			// Make args
 			argsItem, err := self.args()
 			if err != nil {
@@ -555,6 +555,7 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 			if err := self.advance(); err != nil {
 				return nil, err
 			}
+			startLocation := self.currToken.StartLocation
 			if self.currToken.Kind != Identifier {
 				return nil, &errors.Error{
 					Kind:    errors.SyntaxError,
@@ -565,8 +566,9 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 					},
 				}
 			}
+			identifier := self.currToken.Value
 			parts = append(parts, CallExprPart{
-				MemberExpressionPart: &self.currToken.Value,
+				MemberExpressionPart: &identifier,
 				Args:                 nil,
 				Span: errors.Span{
 					Start: startLocation,
@@ -1502,8 +1504,8 @@ func (self *parser) statements() ([]Statement, *errors.Error) {
 					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
 					Span: errors.Span{
-						Start: end,
-						End:   end,
+						Start: self.currToken.EndLocation,
+						End:   self.currToken.EndLocation,
 					},
 				},
 			)
