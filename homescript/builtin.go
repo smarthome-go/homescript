@@ -3,6 +3,7 @@ package homescript
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
@@ -436,36 +437,76 @@ func GetWeather(executor Executor, span errors.Span) (Value, *errors.Error) {
 }
 
 func GetTime(executor Executor, _ errors.Span) (Value, *errors.Error) {
-	time := executor.GetTime()
+	time := time.Now()
+	_, week := time.ISOWeek()
 	return ValueObject{
+		DataType: "time",
 		Fields: map[string]Value{
 			"year": ValueNumber{
-				Value: float64(time.Year),
+				Value: float64(time.Year()),
 			},
 			"month": ValueNumber{
-				Value: float64(time.Minute),
+				Value: float64(time.Month()),
 			},
 			"week": ValueNumber{
-				Value: float64(time.CalendarWeek),
+				Value: float64(week),
 			},
 			"week_day_text": ValueString{
-				Value: time.WeekDayText,
+				Value: time.Weekday().String(),
 			},
 			"week_day": ValueNumber{
-				Value: float64(time.WeekDay),
+				Value: float64(time.Weekday()),
 			},
 			"calendar_day": ValueNumber{
-				Value: float64(time.CalendarDay),
+				Value: float64(time.Day()),
 			},
 			"hour": ValueNumber{
-				Value: float64(time.Hour),
+				Value: float64(time.Hour()),
 			},
 			"minue": ValueNumber{
-				Value: float64(time.Minute),
+				Value: float64(time.Minute()),
 			},
 			"second": ValueNumber{
-				Value: float64(time.Second),
+				Value: float64(time.Second()),
 			},
+			"unix": ValueNumber{
+				Value: float64(time.UnixMilli()),
+			},
+			"since": ValueBuiltinFunction{Callback: timeSince},
 		},
 	}, nil
+}
+
+func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if err := checkArgs("time.since", span, args, TypeObject); err != nil {
+		return nil, nil, err
+	}
+	arg := args[0].(ValueObject)
+	if arg.DataType != "time" {
+		return nil, nil, errors.NewError(
+			span,
+			fmt.Sprintf("time.since requires a object of type 'time', got '%s'", arg.DataType),
+			errors.TypeError,
+		)
+	}
+	millis, ok := arg.Fields["unix"]
+	if !ok || millis.Type() != TypeNumber {
+		return nil, nil, errors.NewError(
+			span,
+			"no field of type number named 'unix' found on time object",
+			errors.RuntimeError,
+		)
+	}
+	then := time.UnixMilli(int64(millis.(ValueNumber).Value))
+	since := time.Since(then)
+	return ValueObject{
+		DataType: "duration",
+		Fields: map[string]Value{
+			"millis":  ValueNumber{Value: float64(since.Milliseconds())},
+			"seconds": ValueNumber{Value: float64(since.Seconds())},
+			"minutes": ValueNumber{Value: float64(since.Minutes())},
+			"hours":   ValueNumber{Value: float64(since.Hours())},
+			"display": ValueString{Value: fmt.Sprintf("%v", since)},
+		},
+	}, nil, nil
 }

@@ -19,18 +19,6 @@ const (
 	NotiCritical
 )
 
-type Time struct {
-	Year         uint16
-	Month        uint8
-	CalendarWeek uint8
-	CalendarDay  uint8
-	WeekDayText  string
-	WeekDay      uint8
-	Hour         uint8
-	Minute       uint8
-	Second       uint8
-}
-
 type Weather struct {
 	WeatherTitle       string
 	WeatherDescription string
@@ -68,5 +56,4 @@ type Executor interface {
 	// Builtin variables
 	GetUser() string
 	GetWeather() (Weather, error)
-	GetTime() Time
 }
