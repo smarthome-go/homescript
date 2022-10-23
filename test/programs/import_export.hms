@@ -4,3 +4,4 @@ fn import_me(foo, bar) {
 
 import import_me as broken_import from import_export;
 
+broken_import(1, 2);

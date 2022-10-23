@@ -1,5 +1,5 @@
-fn rec(count) {
-    rec(count+1);
+fn rec() {
+    rec();
 };
 
-rec(0);
+rec();

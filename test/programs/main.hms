@@ -101,13 +101,32 @@ println("Last loop counter:", last_loop_counter);
 # Functions can be imported from another script
 # import foo [ as bar ] from baz;
 
-# Imports the fin(n) function
-import fib from fibonacci;
+# Imports the fib(n) function
+#import fib from fibonacci;
 
 # Calculate some fibonacci numbers
-let last_number = "This is the last number: " + for n in 2..22 {
-    println("fib(" + n + ") = " + fib(n));
-    n;
-};
+#for n in 2..22 {
+    #println("fib(" + n + ") = " + fib(n));
+#};
 
-println(last_number);
+# Imports the fizzbuzz function
+import fizz_buzz from fizzbuzz;
+
+# Play fizzbuzz until 32
+#fizz_buzz(32);
+
+# Imprts the primes function
+import primes from primes;
+
+# Calculate 100 primes
+#primes(100);
+
+# Imports the box function
+#import box from box;
+
+for size in 3..50 {
+    #print(box(size));
+};
+for size in 50..3 {
+    #print(box(size));
+};

@@ -89,3 +89,5 @@ true && false; true && true;       # And expr
 
 # TODO: examine why this does not work
 # let abc = break 1;
+2 \ 3;
+a \= 3;

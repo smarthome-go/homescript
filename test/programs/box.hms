@@ -1,0 +1,23 @@
+fn box(dimensions) {
+    let output = "";
+    for y in 0..dimensions {
+        for x in 0..dimensions*2 {
+            if x == 0 || y == 0 || x == dimensions*2-1 || y == dimensions-1 {
+                output += "#";
+            } else {
+                output += " ";
+            };
+        };
+        output += "\n";
+    };
+    return output;
+};
+
+for _ in 0..3 {
+    for size in 2..50 {
+        println(box(size));
+    };
+    for size in 50..2 {
+        println(box(size));
+    };
+};

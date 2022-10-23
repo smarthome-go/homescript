@@ -1,0 +1,16 @@
+fn fizz_buzz(max) {
+    for n in 0..max + 1 {
+        if n % 15 == 0 {
+            println("FizzBuzz");
+        } else if n % 3 == 0 {
+            println("Fizz");
+        } else if n % 5 == 0 {
+            println("Buzz");
+        } else {
+            println(n);
+        };
+    };
+};
+
+# Play fizz_buzz until 100
+fizz_buzz(100);

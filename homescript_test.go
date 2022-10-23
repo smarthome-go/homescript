@@ -134,7 +134,7 @@ var tests = []test{
 		File:              "./test/programs/fibonacci.hms",
 		Debug:             false,
 		ExpectedCode:      0,
-		ExpectedValueType: homescript.TypeFunction,
+		ExpectedValueType: homescript.TypeNull,
 		ExpectedErrors:    nil,
 	},
 	{
@@ -164,17 +164,33 @@ var tests = []test{
 		},
 	},
 	{
-		Name:              "Analyzer",
-		File:              "./test/programs/analyzer.hms",
+		Name:              "PrimeNumbers",
+		File:              "./test/programs/primes.hms",
+		Debug:             false,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeNumber,
+		ExpectedErrors:    nil,
+	},
+	{
+		Name:              "FizzBuzz",
+		File:              "./test/programs/fizzbuzz.hms",
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
 		ExpectedErrors:    nil,
 	},
 	{
-		Name:              "PrimeNumbers",
-		File:              "./test/programs/primes.hms",
-		Debug:             true,
+		Name:              "Box",
+		File:              "./test/programs/box.hms",
+		Debug:             false,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors:    nil,
+	},
+	{
+		Name:              "Analyzer",
+		File:              "./test/programs/analyzer.hms",
+		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
 		ExpectedErrors:    nil,
@@ -264,7 +280,7 @@ func TestAnalyzer(t *testing.T) {
 				make(map[string]homescript.Value),
 			)
 			for _, diagnostic := range diagnostics {
-				fmt.Printf("%s\n_\n_\n", diagnostic.Display(string(program), "analyzer.hms"))
+				fmt.Printf("%s\n_\n_\n", diagnostic.Display(string(program), test.File))
 			}
 			if len(diagnostics) == 0 {
 				fmt.Println("no diagnostics")
