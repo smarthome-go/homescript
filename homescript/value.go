@@ -26,21 +26,21 @@ const (
 func (self ValueType) String() string {
 	switch self {
 	case TypeNull:
-		return "Null"
+		return "null"
 	case TypeNumber:
-		return "Number"
+		return "number"
 	case TypeBoolean:
-		return "Boolean"
+		return "boolean"
 	case TypeString:
-		return "String"
+		return "string"
 	case TypePair:
-		return "Pair"
+		return "pair"
 	case TypeObject:
-		return "Object"
+		return "object"
 	case TypeFunction, TypeBuiltinFunction:
-		return "Function"
+		return "function"
 	case TypeBuiltinVariable:
-		return "BuiltinVariable"
+		return "builtinVariable"
 	default:
 		// Unreachable
 		panic("BUG: A new type was introduced without updating this code")
