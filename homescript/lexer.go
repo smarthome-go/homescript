@@ -58,21 +58,25 @@ func newLexer(program_source string) lexer {
 		currentChar = &program[0]
 		nextChar = &program[1]
 	}
+
 	lexer := lexer{
 		currentIndex: 0,
 		currentChar:  currentChar,
 		nextChar:     nextChar,
 		program:      program,
 		location: errors.Location{
+			Index:  0,
 			Line:   1,
 			Column: 1,
-			Index:  0,
 		},
 	}
 	return lexer
 }
 
 func (self *lexer) advance() {
+	// Advance location
+	self.location.Advance(self.currentChar != nil && *self.currentChar == '\n')
+
 	// Advance current & next char
 	self.currentIndex++
 	programLen := len(self.program)
@@ -87,15 +91,6 @@ func (self *lexer) advance() {
 		self.nextChar = nil
 	} else {
 		self.nextChar = &self.program[self.currentIndex+1]
-	}
-
-	// Advance location
-	self.location.Index++
-	if self.currentChar != nil && *self.currentChar == '\n' {
-		self.location.Line++
-		self.location.Column = 0
-	} else {
-		self.location.Column++
 	}
 }
 
