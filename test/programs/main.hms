@@ -110,13 +110,13 @@ println("Last loop counter:", last_loop_counter);
 #};
 
 # Imports the fizzbuzz function
-import fizz_buzz from fizzbuzz;
+#import fizz_buzz from fizzbuzz;
 
 # Play fizzbuzz until 32
 #fizz_buzz(32);
 
 # Imprts the primes function
-import primes from primes;
+#import primes from primes;
 
 # Calculate 100 primes
 #primes(100);
@@ -124,9 +124,9 @@ import primes from primes;
 # Imports the box function
 #import box from box;
 
-for size in 3..50 {
+#for size in 3..50 {
     #print(box(size));
-};
-for size in 50..3 {
+#};
+#for size in 50..3 {
     #print(box(size));
-};
+#};

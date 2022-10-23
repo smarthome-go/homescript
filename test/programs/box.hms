@@ -13,11 +13,6 @@ fn box(dimensions) {
     return output;
 };
 
-for _ in 0..3 {
-    for size in 2..50 {
-        println(box(size));
-    };
-    for size in 50..2 {
-        println(box(size));
-    };
+for size in 2..8 {
+    println(box(size));
 };

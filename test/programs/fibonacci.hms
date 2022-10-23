@@ -6,7 +6,7 @@ fn fib(n) {
     };
 };
 
-# Calculate until the 26. fibonacci numbers
-for n in 2..26 {
+# Calculate some fibonacci numbers
+for n in 2..24 {
     println(fib(n));
 };

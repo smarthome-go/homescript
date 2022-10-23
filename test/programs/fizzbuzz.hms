@@ -12,5 +12,5 @@ fn fizz_buzz(max) {
     };
 };
 
-# Play fizz_buzz until 100
-fizz_buzz(100);
+# Play fizz_buzz until 15
+fizz_buzz(15);

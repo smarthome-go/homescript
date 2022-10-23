@@ -111,7 +111,7 @@ var tests = []test{
 	{
 		Name:              "Main",
 		File:              "./test/programs/main.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -120,7 +120,7 @@ var tests = []test{
 	{
 		Name:              "Fibonacci",
 		File:              "./test/programs/fibonacci.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -129,7 +129,7 @@ var tests = []test{
 	{
 		Name:              "StackOverFlow",
 		File:              "./test/programs/stack_overflow.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      1,
 		ExpectedValueType: homescript.TypeNull,
@@ -143,7 +143,7 @@ var tests = []test{
 	{
 		Name:              "ImportExport",
 		File:              "./test/programs/import_export.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      1,
 		ExpectedValueType: homescript.TypeNull,
@@ -157,7 +157,7 @@ var tests = []test{
 	{
 		Name:              "PrimeNumbers",
 		File:              "./test/programs/primes.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNumber,
@@ -166,7 +166,7 @@ var tests = []test{
 	{
 		Name:              "FizzBuzz",
 		File:              "./test/programs/fizzbuzz.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -175,7 +175,7 @@ var tests = []test{
 	{
 		Name:              "Box",
 		File:              "./test/programs/box.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -211,6 +211,11 @@ func TestHomescripts(t *testing.T) {
 				map[string]homescript.Value{
 					"power_on": homescript.ValueBool{Value: true},
 					"PI":       homescript.ValueNumber{Value: 3.14159265},
+					"test": homescript.ValueBuiltinFunction{
+						Callback: func(_ homescript.Executor, _ errors.Span, _ ...homescript.Value) (homescript.Value, *int, *errors.Error) {
+							return homescript.ValueNull{}, nil, nil
+						},
+					},
 				},
 				test.Debug,
 				1000,
