@@ -854,6 +854,12 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
+	// TODO: fix this
+	for _, part := range node.Parts {
+		if part.MemberExpressionPart != nil {
+			fmt.Println(*part.MemberExpressionPart)
+		}
+	}
 	// Evaluate call / member parts
 	for _, part := range node.Parts {
 		// Handle args -> function call
@@ -866,10 +872,9 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = &result
 		}
-
 		// Handle member access
 		if part.MemberExpressionPart != nil {
-			result, err := getField(part.Span, *base.Value, *part.MemberExpressionPart)
+			result, err := getField(self.executor, part.Span, *base.Value, *part.MemberExpressionPart)
 			if err != nil {
 				return Result{}, nil, err
 			}
@@ -888,7 +893,7 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 	}
 	// Evaluate member expressions
 	for _, member := range node.Members {
-		result, err := getField(node.Span, *base.Value, member)
+		result, err := getField(self.executor, node.Span, *base.Value, member)
 		if err != nil {
 			return Result{}, nil, err
 		}
@@ -927,6 +932,14 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		scopeValue := self.getVar(key)
 		// If the key is associated with a value, return it
 		if scopeValue != nil {
+			// This resolves the `true` value of builtin variables directly here
+			if (*scopeValue).Type() == TypeBuiltinVariable {
+				value, err := (*scopeValue).(ValueBuiltinVariable).Callback(self.executor, node.Span())
+				if err != nil {
+					return Result{}, nil, err
+				}
+				return Result{Value: &value}, nil, nil
+			}
 			return Result{Value: scopeValue}, nil, nil
 		}
 		// If the value has not been found in any scope, return an error
