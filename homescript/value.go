@@ -52,6 +52,7 @@ type Value interface {
 	Type() ValueType
 	Ident() *string
 	Span() errors.Span
+	Fields() map[string]Value
 	// Is also used for `as str` and printing
 	Display(executor Executor, span errors.Span) (string, *errors.Error)
 	Debug(executor Executor, span errors.Span) (string, *errors.Error)
@@ -82,9 +83,10 @@ type ValueNull struct {
 	Range      errors.Span
 }
 
-func (self ValueNull) Type() ValueType   { return TypeNull }
-func (self ValueNull) Span() errors.Span { return self.Range }
-func (self ValueNull) Ident() *string    { return self.Identifier }
+func (self ValueNull) Type() ValueType          { return TypeNull }
+func (self ValueNull) Span() errors.Span        { return self.Range }
+func (self ValueNull) Fields() map[string]Value { return make(map[string]Value) }
+func (self ValueNull) Ident() *string           { return self.Identifier }
 func (self ValueNull) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "null", nil
 }
@@ -105,9 +107,10 @@ type ValueNumber struct {
 	Range      errors.Span
 }
 
-func (self ValueNumber) Type() ValueType   { return TypeNumber }
-func (self ValueNumber) Span() errors.Span { return self.Range }
-func (self ValueNumber) Ident() *string    { return self.Identifier }
+func (self ValueNumber) Type() ValueType          { return TypeNumber }
+func (self ValueNumber) Span() errors.Span        { return self.Range }
+func (self ValueNumber) Fields() map[string]Value { return make(map[string]Value) }
+func (self ValueNumber) Ident() *string           { return self.Identifier }
 func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	// Check if the value is actually an integer
 	if float64(int(self.Value)) == self.Value {
@@ -236,9 +239,10 @@ type ValueBool struct {
 	Range      errors.Span
 }
 
-func (self ValueBool) Type() ValueType   { return TypeBoolean }
-func (self ValueBool) Span() errors.Span { return self.Range }
-func (self ValueBool) Ident() *string    { return self.Identifier }
+func (self ValueBool) Type() ValueType          { return TypeBoolean }
+func (self ValueBool) Span() errors.Span        { return self.Range }
+func (self ValueBool) Fields() map[string]Value { return make(map[string]Value) }
+func (self ValueBool) Ident() *string           { return self.Identifier }
 func (self ValueBool) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return fmt.Sprintf("%t", self.Value), nil
 }
@@ -304,9 +308,10 @@ type ValueString struct {
 	Range      errors.Span
 }
 
-func (self ValueString) Type() ValueType   { return TypeString }
-func (self ValueString) Span() errors.Span { return self.Range }
-func (self ValueString) Ident() *string    { return self.Identifier }
+func (self ValueString) Type() ValueType          { return TypeString }
+func (self ValueString) Span() errors.Span        { return self.Range }
+func (self ValueString) Fields() map[string]Value { return make(map[string]Value) }
+func (self ValueString) Ident() *string           { return self.Identifier }
 func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return self.Value, nil
 }
@@ -365,9 +370,10 @@ type ValuePair struct {
 	Range      errors.Span
 }
 
-func (self ValuePair) Type() ValueType   { return TypePair }
-func (self ValuePair) Span() errors.Span { return self.Range }
-func (self ValuePair) Ident() *string    { return self.Identifier }
+func (self ValuePair) Type() ValueType          { return TypePair }
+func (self ValuePair) Span() errors.Span        { return self.Range }
+func (self ValuePair) Fields() map[string]Value { return make(map[string]Value) }
+func (self ValuePair) Ident() *string           { return self.Identifier }
 func (self ValuePair) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	value, err := self.Value.Display(executor, span)
 	if err != nil {
@@ -409,15 +415,16 @@ type ValueObject struct {
 	// Can be used if a builtin function only accepts objects of a certain type
 	DataType string
 	// The fields of the object
-	Fields map[string]Value
+	ObjFields map[string]Value
 }
 
-func (self ValueObject) Type() ValueType   { return TypeObject }
-func (self ValueObject) Span() errors.Span { return errors.Span{} }
-func (self ValueObject) Ident() *string    { return nil }
+func (self ValueObject) Type() ValueType          { return TypeObject }
+func (self ValueObject) Span() errors.Span        { return errors.Span{} }
+func (self ValueObject) Fields() map[string]Value { return make(map[string]Value) }
+func (self ValueObject) Ident() *string           { return nil }
 func (self ValueObject) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	fields := make([]string, 0)
-	for key, value := range self.Fields {
+	for key, value := range self.ObjFields {
 		valueDisplay, err := value.Display(executor, span)
 		if err != nil {
 			return "", err
@@ -428,7 +435,7 @@ func (self ValueObject) Display(executor Executor, span errors.Span) (string, *e
 }
 func (self ValueObject) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
 	fields := make([]string, 0)
-	for key, value := range self.Fields {
+	for key, value := range self.ObjFields {
 		valueDisplay, err := value.Display(executor, span)
 		if err != nil {
 			return "", err
@@ -438,7 +445,7 @@ func (self ValueObject) Debug(executor Executor, span errors.Span) (string, *err
 	return fmt.Sprintf("{\n%s\n}", strings.Join(fields, "\n")), nil
 }
 func (self ValueObject) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
-	for _, value := range self.Fields {
+	for _, value := range self.ObjFields {
 		valueTrue, err := value.IsTrue(executor, span)
 		if err != nil {
 			return false, err
@@ -483,9 +490,10 @@ type ValueFunction struct {
 	Range errors.Span
 }
 
-func (self ValueFunction) Type() ValueType   { return TypeFunction }
-func (self ValueFunction) Span() errors.Span { return self.Range }
-func (self ValueFunction) Ident() *string    { return nil }
+func (self ValueFunction) Type() ValueType          { return TypeFunction }
+func (self ValueFunction) Span() errors.Span        { return self.Range }
+func (self ValueFunction) Fields() map[string]Value { return make(map[string]Value) }
+func (self ValueFunction) Ident() *string           { return nil }
 func (self ValueFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<function>", nil
 }
@@ -514,9 +522,10 @@ type ValueBuiltinFunction struct {
 	Callback func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error)
 }
 
-func (self ValueBuiltinFunction) Type() ValueType   { return TypeBuiltinFunction }
-func (self ValueBuiltinFunction) Span() errors.Span { return errors.Span{} }
-func (self ValueBuiltinFunction) Ident() *string    { return nil }
+func (self ValueBuiltinFunction) Type() ValueType          { return TypeBuiltinFunction }
+func (self ValueBuiltinFunction) Span() errors.Span        { return errors.Span{} }
+func (self ValueBuiltinFunction) Fields() map[string]Value { return make(map[string]Value) }
+func (self ValueBuiltinFunction) Ident() *string           { return nil }
 func (self ValueBuiltinFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<builtin-function>", nil
 }
@@ -542,9 +551,10 @@ type ValueBuiltinVariable struct {
 	Callback func(executor Executor, span errors.Span) (Value, *errors.Error)
 }
 
-func (self ValueBuiltinVariable) Type() ValueType   { return TypeBuiltinVariable }
-func (self ValueBuiltinVariable) Span() errors.Span { return errors.Span{} }
-func (self ValueBuiltinVariable) Ident() *string    { return nil }
+func (self ValueBuiltinVariable) Type() ValueType          { return TypeBuiltinVariable }
+func (self ValueBuiltinVariable) Span() errors.Span        { return errors.Span{} }
+func (self ValueBuiltinVariable) Fields() map[string]Value { return make(map[string]Value) }
+func (self ValueBuiltinVariable) Ident() *string           { return nil }
 func (self ValueBuiltinVariable) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
