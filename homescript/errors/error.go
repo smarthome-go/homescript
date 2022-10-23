@@ -17,6 +17,16 @@ type Location struct {
 	Index  uint
 }
 
+func (self *Location) Advance(newline bool) {
+	self.Index += 1
+	if newline {
+		self.Column = 1
+		self.Line += 1
+	} else {
+		self.Column += 1
+	}
+}
+
 type Error struct {
 	Kind    ErrorKind
 	Message string
