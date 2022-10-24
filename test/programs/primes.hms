@@ -10,7 +10,8 @@ fn primes(count) {
         let is_prime = true;
         while n2 != n {
             # Test if division result is an integer
-            if n / n2 == n \ n2 {
+            # if n / n2 == n \ n2 {
+            if (n / n2).is_int() {
                 is_prime = false;
                 break;
             };
