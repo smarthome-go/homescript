@@ -59,6 +59,7 @@ func Analyze(
 	scopeAdditions map[string]Value,
 ) (
 	diagnostics []Diagnostic,
+	symbols []symbol,
 ) {
 	// Parse the source code
 	parser := newParser(program)
@@ -75,7 +76,7 @@ func Analyze(
 		}
 		// If there was a critical error, return only the syntax errors
 		if critical {
-			return diagnostics
+			return diagnostics, nil
 		}
 	}
 	// Create the analyzer
@@ -87,5 +88,5 @@ func Analyze(
 	// Finally, analyze the AST
 	semanticDiagnostics := analyzer.analyze()
 	diagnostics = append(diagnostics, semanticDiagnostics...)
-	return diagnostics
+	return diagnostics, analyzer.symbols
 }

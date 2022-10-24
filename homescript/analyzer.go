@@ -16,8 +16,59 @@ type Analyzer struct {
 	// The last element is the top whilst the first element is the bottom of the stack
 	scopes []scope
 
+	// Contains all the symbols contained in the file
+	symbols []symbol
+
 	// Holds the analyzer's diagnostics
 	diagnostics []Diagnostic
+}
+
+type symbol struct {
+	Span  errors.Span
+	Type  symbolType
+	Value Value
+}
+
+type symbolType string
+
+const (
+	SymbolTypeUnknown         symbolType = "unknown"
+	SymbolTypeNull            symbolType = "null"
+	SymbolTypeNumber          symbolType = "number"
+	SymbolTypeBoolean         symbolType = "boolean"
+	SymbolTypeString          symbolType = "string"
+	SymbolTypePair            symbolType = "pair"
+	SymbolTypeObject          symbolType = "object"
+	SymbolDynamicMember       symbolType = "dynamic member"
+	SymbolTypeFunction        symbolType = "function"
+	SymbolTypeBuiltinFunction symbolType = "builtin function"
+	SymbolTypeBuiltinVariable symbolType = "builtin variable"
+)
+
+func (self ValueType) toSymbolType() symbolType {
+	switch self {
+	case TypeNull:
+		return SymbolTypeNull
+	case TypeNumber:
+		return SymbolTypeNumber
+	case TypeBoolean:
+		return SymbolTypeBoolean
+	case TypeString:
+		return SymbolTypeString
+	case TypePair:
+		return SymbolTypePair
+	case TypeObject:
+		return SymbolTypeObject
+	case TypeFunction:
+		return SymbolTypeFunction
+	case TypeBuiltinFunction:
+		return SymbolTypeBuiltinFunction
+	case TypeBuiltinVariable:
+		return SymbolTypeBuiltinVariable
+	default:
+		// Unreachable
+		panic("BUG: A new type was introduced without updating this code")
+	}
 }
 
 func (self Diagnostic) Display(program string, filename string) string {
@@ -365,8 +416,8 @@ func (self *Analyzer) visitStatement(node Statement) (Result, *errors.Error) {
 
 func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 	// Check that the left hand side will cause no conflicts
-	fromScope := self.getVar(node.Left)
-	if fromScope != nil {
+	_, exists := self.getScope().this[node.Left]
+	if exists {
 		self.issue(node.Range, fmt.Sprintf("cannot declare variable with name %s: name already taken in scope", node.Left), errors.SyntaxError)
 		return Result{}, nil
 	}
@@ -379,7 +430,7 @@ func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 
 	if rightResult.Value == nil || *rightResult.Value == nil {
 		// If the right hand side evaluates to nil, still add a placeholder to the scope
-		self.addVar(node.Left, nil)
+		self.addVar(node.Left, nil, node.Range)
 		return Result{}, nil
 	}
 
@@ -387,7 +438,7 @@ func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 	value := insertValueMetadata(*rightResult.Value, node.Left, node.Range)
 
 	// Add the value to the scope
-	self.addVar(node.Left, value)
+	self.addVar(node.Left, value, node.Range)
 	// Also update the result value to include the new Identifier
 	rightResult.Value = &value
 	// Finially, return the result
@@ -412,7 +463,7 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		)
 	} else {
 		// Push a dummy function into the current scope
-		self.addVar(actualImport, function)
+		self.addVar(actualImport, function, node.Range)
 		// Add the funtion to the list of imported functions to avoid analysis
 		self.getScope().importedFunctions = append(self.getScope().importedFunctions, actualImport)
 	}
@@ -1070,7 +1121,7 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 			}
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = &result
-			return Result{}, nil
+			//return Result{}, nil
 		}
 		// Handle member access
 		if part.MemberExpressionPart != nil {
@@ -1115,12 +1166,22 @@ func (self *Analyzer) getField(value Value, span errors.Span, key string) Value 
 	val, exists := value.Fields()[key]
 	if !exists {
 		if value.Type() == TypeObject && value.(ValueObject).IsDynamic {
+			self.symbols = append(self.symbols, symbol{
+				Span:  span,
+				Value: nil,
+				Type:  SymbolDynamicMember,
+			})
 			self.info(span, "dynamic object: manual member validation required")
 			return nil
 		}
 		self.issue(span, fmt.Sprintf("%v has no member named %s", value.Type(), key), errors.TypeError)
 		return nil
 	}
+	self.symbols = append(self.symbols, symbol{
+		Span:  span,
+		Value: val,
+		Type:  val.Type().toSymbolType(),
+	})
 	return val
 }
 
@@ -1178,7 +1239,25 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 				if err != nil {
 					return Result{}, err
 				}
+				self.symbols = append(self.symbols, symbol{
+					Value: value,
+					Span:  node.Span(),
+					Type:  value.Type().toSymbolType(),
+				})
 				return Result{Value: &value}, nil
+			}
+			if scopeValue == nil || *scopeValue == nil {
+				self.symbols = append(self.symbols, symbol{
+					Value: *scopeValue,
+					Span:  node.Span(),
+					Type:  SymbolTypeUnknown,
+				})
+			} else {
+				self.symbols = append(self.symbols, symbol{
+					Value: *scopeValue,
+					Span:  node.Span(),
+					Type:  (*scopeValue).Type().toSymbolType(),
+				})
 			}
 			return Result{Value: scopeValue}, nil
 		}
@@ -1227,6 +1306,13 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		}
 		result = valueTemp
 	}
+	if result.Value != nil && *result.Value != nil {
+		self.symbols = append(self.symbols, symbol{
+			Span:  (*result.Value).Span(),
+			Value: *result.Value,
+			Type:  (*result.Value).Type().toSymbolType(),
+		})
+	}
 	return result, nil
 }
 
@@ -1272,7 +1358,8 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 				},
 			},
 		},
-	})
+		// TODO: improve location here
+	}, node.Range)
 	// Always visit the catch block
 	_, err = self.visitStatements(node.CatchBlock)
 	if err != nil {
@@ -1299,7 +1386,8 @@ func (self *Analyzer) visitFunctionDeclaration(node AtomFunction) (Value, *error
 			return nil, nil
 		}
 		// Add the function to the current scope if there are no conflicts
-		self.addVar(*node.Ident, function)
+		// TODO: Improve span here
+		self.addVar(*node.Ident, function, node.Range)
 	}
 
 	// TODO: move this
@@ -1441,7 +1529,8 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	}
 
 	// Add the head identifier to the scope (so that loop code can access the iteration variable)
-	self.addVar(node.HeadIdentifier, ValueNumber{Value: 0.0})
+	// TODO: improve indent here
+	self.addVar(node.HeadIdentifier, ValueNumber{Value: 0.0}, node.Range)
 
 	_, err = self.visitStatements(node.IterationCode)
 	if err != nil {
@@ -1549,7 +1638,7 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 			}
 			// Still evaluate the function body, just add dummy elements
 			for _, arg := range function.Args {
-				self.addVar(arg.Identifier, nil)
+				self.addVar(arg.Identifier, nil, span)
 			}
 		} else {
 			// Evaluate argument values and add them to the new scope
@@ -1560,7 +1649,7 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 				}
 				// Add the computed value to the new (current) scope
 				if argValue.Value == nil || *argValue.Value == nil {
-					self.addVar(arg.Identifier, nil)
+					self.addVar(arg.Identifier, nil, span)
 				} else {
 					// This will highlight the param identifier as the location
 					val := insertValueMetadata(*argValue.Value, arg.Identifier, arg.Span)
@@ -1568,7 +1657,7 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 					// This hithlights the entire function
 					// TODO: remove this
 					//val := insertValueMetadata(*argValue.Value, arg, value.Span())
-					self.addVar(arg.Identifier, val)
+					self.addVar(arg.Identifier, val, span)
 				}
 			}
 		}
@@ -1713,7 +1802,7 @@ func (self *Analyzer) popScope() *errors.Error {
 				}
 				// Add dummy values for the parameters
 				for _, param := range value.(ValueFunction).Args {
-					self.addVar(param.Identifier, nil)
+					self.addVar(param.Identifier, nil, value.Span())
 				}
 				if _, err := self.visitStatements(value.(ValueFunction).Body); err != nil {
 					return err
@@ -1743,7 +1832,21 @@ func (self *Analyzer) popScope() *errors.Error {
 }
 
 // Adds a varable to the top of the stack
-func (self *Analyzer) addVar(key string, value Value) {
+func (self *Analyzer) addVar(key string, value Value, span errors.Span) {
+	if value != nil {
+		// Add the value to the symbols list
+		self.symbols = append(self.symbols, symbol{
+			Span:  value.Span(),
+			Value: value,
+			Type:  value.Type().toSymbolType(),
+		})
+	} else {
+		self.symbols = append(self.symbols, symbol{
+			Span:  span,
+			Value: value,
+			Type:  SymbolTypeUnknown,
+		})
+	}
 	// Add the entry to the top hashmap
 	self.scopes[len(self.scopes)-1].this[key] = value
 }
