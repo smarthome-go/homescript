@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
 
@@ -416,9 +417,9 @@ func (self *Analyzer) visitStatement(node Statement) (Result, *errors.Error) {
 
 func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 	// Check that the left hand side will cause no conflicts
-	_, exists := self.getScope().this[node.Left]
+	_, exists := self.getScope().this[node.Left.Identifier]
 	if exists {
-		self.issue(node.Range, fmt.Sprintf("cannot declare variable with name %s: name already taken in scope", node.Left), errors.SyntaxError)
+		self.issue(node.Range, fmt.Sprintf("cannot declare variable with name %s: name already taken in scope", node.Left.Identifier), errors.SyntaxError)
 		return Result{}, nil
 	}
 
@@ -430,15 +431,16 @@ func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 
 	if rightResult.Value == nil || *rightResult.Value == nil {
 		// If the right hand side evaluates to nil, still add a placeholder to the scope
-		self.addVar(node.Left, nil, node.Range)
+		// TODO: set this to node.span?
+		self.addVar(node.Left.Identifier, nil, node.Left.Span)
 		return Result{}, nil
 	}
 
 	// Insert an identifier into the value (if possible)
-	value := insertValueMetadata(*rightResult.Value, node.Left, node.Range)
+	value := insertValueMetadata(*rightResult.Value, node.Left.Identifier, node.Left.Span)
 
 	// Add the value to the scope
-	self.addVar(node.Left, value, node.Range)
+	self.addVar(node.Left.Identifier, value, node.Left.Span)
 	// Also update the result value to include the new Identifier
 	rightResult.Value = &value
 	// Finially, return the result
@@ -807,6 +809,15 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 	case TypeBuiltinVariable:
 		baseVal = (*base.Value).(ValueBuiltinVariable)
 	default:
+		if base.Value != nil && (*base.Value).Ident() != nil {
+			for _, arg := range self.getScope().args {
+				if arg == *(*base.Value).Ident() {
+					// Only show the function caller if the type error was caused by an argument
+					self.badArgError(errors.TypeError, node.Span)
+					break
+				}
+			}
+		}
 		self.issue(node.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
 		return Result{}, nil
 	}
@@ -841,7 +852,17 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 			panic("BUG: a new mul operator has been added without updating this code")
 		}
 		if algError != nil {
-			return Result{}, algError
+			if base.Value != nil && (*base.Value).Ident() != nil {
+				for _, arg := range self.getScope().args {
+					if arg == *(*base.Value).Ident() {
+						// Only show the function caller if the type error was caused by an argument
+						self.badArgError(errors.TypeError, node.Span)
+						break
+					}
+				}
+			}
+			self.diagnosticError(*algError)
+			return Result{}, nil
 		}
 	}
 	return Result{Value: base.Value}, nil
@@ -1013,14 +1034,14 @@ func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *erro
 		return Result{}, err
 	}
 
-	if base.Value == nil {
-		if rhsValue.Value != nil {
+	if base.Value == nil || *base.Value == nil {
+		if rhsValue.Value != nil && *rhsValue.Value != nil {
 			return Result{Value: rhsValue.Value}, nil
 		}
 		return Result{}, nil
 	}
 
-	if rhsValue.Value == nil {
+	if rhsValue.Value == nil || *rhsValue.Value == nil {
 		return Result{}, nil
 	}
 
@@ -1608,7 +1629,7 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 			self.getScope().functionCalls = append(self.getScope().functionCalls, *function.Identifier)
 		}
 
-		// Do not call the function if it was imported
+		// Used later for custom errors
 		importedFunction := false
 		for _, scope := range self.scopes {
 			for _, imported := range scope.importedFunctions {
@@ -1629,47 +1650,47 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		if err := self.pushScope(function.Identifier, span, true, false, params); err != nil {
 			return nil, err
 		}
+		// Remove the function scope again
+		defer self.popScope()
 
 		// Validate that the function has been called using the correct amount of arguments
-		if len(args) != len(function.Args) {
-			// Only add a warning if the function is not imported
-			if !importedFunction {
-				self.issue(span, fmt.Sprintf("function requires %d argument(s), however %d were supplied", len(function.Args), len(args)), errors.TypeError)
-			}
+		if len(args) != len(function.Args) && !importedFunction {
+			self.issue(span, fmt.Sprintf("function requires %d argument(s), however %d were supplied", len(function.Args), len(args)), errors.TypeError)
 			// Still evaluate the function body, just add dummy elements
 			for _, arg := range function.Args {
 				self.addVar(arg.Identifier, nil, span)
 			}
 		} else {
 			// Evaluate argument values and add them to the new scope
-			for idx, arg := range function.Args {
-				argValue, err := self.visitExpression(args[idx])
-				if err != nil {
+			if importedFunction {
+				for _, arg := range args {
+					_, err := self.visitExpression(arg)
 					return nil, err
 				}
-				// Add the computed value to the new (current) scope
-				if argValue.Value == nil || *argValue.Value == nil {
-					self.addVar(arg.Identifier, nil, span)
-				} else {
-					// This will highlight the param identifier as the location
-					val := insertValueMetadata(*argValue.Value, arg.Identifier, arg.Span)
+			} else {
+				for idx, arg := range function.Args {
+					argValue, err := self.visitExpression(args[idx])
+					if err != nil {
+						return nil, err
+					}
+					// Add the computed value to the new (current) scope
+					if argValue.Value == nil || *argValue.Value == nil {
+						self.addVar(arg.Identifier, nil, span)
+					} else {
+						// This will highlight the param identifier as the location
+						val := insertValueMetadata(*argValue.Value, arg.Identifier, arg.Span)
 
-					// This hithlights the entire function
-					// TODO: remove this
-					//val := insertValueMetadata(*argValue.Value, arg, value.Span())
-					self.addVar(arg.Identifier, val, span)
+						// This hithlights the entire function
+						self.addVar(arg.Identifier, val, span)
+					}
 				}
 			}
 		}
 
-		// If the function was imported, return here
-		if importedFunction {
-			return nil, nil
-		}
-
 		// Prevent recursion here
-		for _, scope := range self.scopes {
-			if scope.identifier != nil && function.Identifier != nil && *scope.identifier == *function.Identifier {
+		for idx := len(self.scopes) - 2; idx >= 0; idx-- {
+			spew.Dump(self.scopes[idx].identifier)
+			if self.scopes[idx].identifier != nil && function.Identifier != nil && *self.scopes[idx].identifier == *function.Identifier {
 				return nil, nil
 			}
 		}
@@ -1693,9 +1714,6 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 				self.warn(arg.Span, fmt.Sprintf("function argument '%s' is unused", arg.Identifier))
 			}
 		}
-
-		// Remove the function scope again
-		self.popScope()
 		return nil, nil
 	case TypeBuiltinFunction:
 		callArgs := make([]Value, 0)
@@ -1790,8 +1808,20 @@ func (self *Analyzer) popScope() *errors.Error {
 				}
 			}
 			if !isUsed {
+				// Detect if the function is an imported function
+				imported := false
+				for _, im := range scope.importedFunctions {
+					if im == key {
+						imported = true
+						break
+					}
+				}
 				// Issue a warning
-				self.warn(value.Span(), fmt.Sprintf("function '%s' is unused", key))
+				if imported {
+					self.warn(value.Span(), fmt.Sprintf("import '%s' is unused", key))
+				} else {
+					self.warn(value.Span(), fmt.Sprintf("function '%s' is unused", key))
+				}
 				// Analyze the function
 				args := make([]string, 0)
 				for _, param := range value.(ValueFunction).Args {
@@ -1807,9 +1837,6 @@ func (self *Analyzer) popScope() *errors.Error {
 				if _, err := self.visitStatements(value.(ValueFunction).Body); err != nil {
 					return err
 				}
-				if err := self.popScope(); err != nil {
-					return err
-				}
 				// Check if there are unused arguments
 				for _, arg := range value.(ValueFunction).Args {
 					isUsed := false
@@ -1822,6 +1849,9 @@ func (self *Analyzer) popScope() *errors.Error {
 					if !isUsed {
 						self.warn(arg.Span, fmt.Sprintf("function argument '%s' is unused", arg.Identifier))
 					}
+				}
+				if err := self.popScope(); err != nil {
+					return err
 				}
 			}
 		}
