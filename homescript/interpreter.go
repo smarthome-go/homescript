@@ -16,7 +16,7 @@ type Interpreter struct {
 
 	// Scope stack: manages scopes (is searched in top -> down order)
 	// The last element is the top whilst the first element is the bottom of the stack
-	scopes []map[string]Value
+	scopes []map[string]*Value
 
 	// Holds the modules visited so far (by import statements)
 	// in order to prevent a circular import
@@ -41,6 +41,10 @@ type Interpreter struct {
 	debug bool
 }
 
+func valPtr(input Value) *Value {
+	return &input
+}
+
 func NewInterpreter(
 	program []Statement,
 	executor Executor,
@@ -52,33 +56,31 @@ func NewInterpreter(
 	moduleStack []string,
 	moduleName string,
 ) Interpreter {
-	scopes := make([]map[string]Value, 0)
+	scopes := make([]map[string]*Value, 0)
 	// Adds the root scope
-	scopes = append(scopes, map[string]Value{
+	scopes = append(scopes, map[string]*Value{
 		// Builtin functions implemented by Homescript
-		"exit":   ValueBuiltinFunction{Callback: Exit},
-		"throw":  ValueBuiltinFunction{Callback: Throw},
-		"assert": ValueBuiltinFunction{Callback: Assert},
-		// Builtin functions implemented by the executor
-		"print":     ValueBuiltinFunction{Callback: Print},
-		"println":   ValueBuiltinFunction{Callback: Println},
-		"sleep":     ValueBuiltinFunction{Callback: Sleep},
-		"switch_on": ValueBuiltinFunction{Callback: SwitchOn},
-		"switch":    ValueBuiltinFunction{Callback: Switch},
-		"notify":    ValueBuiltinFunction{Callback: Notify},
-		"log":       ValueBuiltinFunction{Callback: Log},
-		"exec":      ValueBuiltinFunction{Callback: Exec},
-		"get":       ValueBuiltinFunction{Callback: Get},
-		"http":      ValueBuiltinFunction{Callback: Http},
-		// Builtin variables implemented by the executor
-		"user":    ValueBuiltinVariable{Callback: GetUser},
-		"weather": ValueBuiltinVariable{Callback: GetWeather},
-		"time":    ValueBuiltinVariable{Callback: GetTime},
-		"ARGS": ValueObject{
+		"exit":      valPtr(ValueBuiltinFunction{Callback: Exit}),
+		"throw":     valPtr(ValueBuiltinFunction{Callback: Throw}),
+		"assert":    valPtr(ValueBuiltinFunction{Callback: Assert}),
+		"print":     valPtr(ValueBuiltinFunction{Callback: Print}), // Builtin functions implemented by the executor
+		"println":   valPtr(ValueBuiltinFunction{Callback: Println}),
+		"sleep":     valPtr(ValueBuiltinFunction{Callback: Sleep}),
+		"switch_on": valPtr(ValueBuiltinFunction{Callback: SwitchOn}),
+		"switch":    valPtr(ValueBuiltinFunction{Callback: Switch}),
+		"notify":    valPtr(ValueBuiltinFunction{Callback: Notify}),
+		"log":       valPtr(ValueBuiltinFunction{Callback: Log}),
+		"exec":      valPtr(ValueBuiltinFunction{Callback: Exec}),
+		"get":       valPtr(ValueBuiltinFunction{Callback: Get}),
+		"http":      valPtr(ValueBuiltinFunction{Callback: Http}),
+		"user":      valPtr(ValueBuiltinVariable{Callback: GetUser}), // Builtin variables implemented by the executor
+		"weather":   valPtr(ValueBuiltinVariable{Callback: GetWeather}),
+		"time":      valPtr(ValueBuiltinVariable{Callback: GetTime}),
+		"ARGS": valPtr(ValueObject{
 			DataType:  "args",
 			IsDynamic: true,
 			ObjFields: args,
-		},
+		}),
 	})
 	// Panic if the stackLimit is set to <= 1
 	if stackLimit <= 1 {
@@ -92,7 +94,7 @@ func NewInterpreter(
 			panic(fmt.Sprintf("cannot insert scope addition with key %s: this key is already taken by a builtin value", key))
 		}
 		// Insert the value into the scope
-		scopes[0][key] = value
+		scopes[0][key] = &value
 	}
 	// Append the current script to the module stack
 	moduleStack = append(moduleStack, moduleName)
@@ -225,12 +227,12 @@ func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.
 	}
 
 	// Insert an identifier into the value (if possible)
-	value := insertValueMetadata(*rightResult.Value, node.Left.Identifier, node.Left.Span)
+	// value := insertValueMetadata(*rightResult.Value, node.Left.Identifier, node.Left.Span)
 
 	// Add the value to the scope
-	self.addVar(node.Left.Identifier, value)
+	self.addVar(node.Left.Identifier, rightResult.Value)
 	// Also update the result value to include the new Identifier
-	rightResult.Value = &value
+	// rightResult.Value =
 	// Finially, return the result
 	return rightResult, nil, nil
 }
@@ -331,7 +333,7 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 	}
 	// Push the function into the current scope
 	self.addVar(actualImport, function)
-	return Result{Value: &function}, nil, nil
+	return Result{Value: function}, nil, nil
 }
 
 func (self *Interpreter) visitBreakStatement(node BreakStmt) (Result, *int, *errors.Error) {
@@ -783,6 +785,11 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 
 	// Perform a simple assignment
 	if node.Other.Operator == OpAssign {
+		// Assignment
+		*base.Value = *rhsValue.Value
+		return rhsValue, nil, nil
+
+		// Unreachable
 		if ident := (*base.Value).Ident(); ident != nil {
 			// Insert the original identifier back into the new value (if possible)
 			*rhsValue.Value = insertValueMetadata(*rhsValue.Value, *ident, (*rhsValue.Value).Span())
@@ -801,7 +808,7 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 					}
 
 					// Perform actual assignment
-					self.scopes[idx][*ident] = *rhsValue.Value
+					self.scopes[idx][*ident] = rhsValue.Value
 					// Return the rhs as the return value of the entire assignment
 					return rhsValue, nil, nil
 				}
@@ -843,7 +850,12 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 	// Perform actual (complex) assignment
 	if ident := (*base.Value).Ident(); ident != nil {
 		// Insert the original identifier back into the new value (if possible)
-		newValue = insertValueMetadata(newValue, *ident, newValue.Span())
+		//newValue = insertValueMetadata(newValue, *ident, newValue.Span())
+
+		// Perform actual assignment
+		*base.Value = newValue
+
+		return Result{Value: &newValue}, nil, nil
 
 		// Need to manually search through the scopes to find the right stack frame
 		for idx := len(self.scopes) - 1; idx >= 0; idx-- {
@@ -851,7 +863,7 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 			if exist {
 				// Type equality validation is omitted due to check above (in add / .. / div)
 				// Perform actual assignment
-				self.scopes[idx][*ident] = newValue
+				self.scopes[idx][*ident] = &newValue
 				// Return the rhs as the return value of the entire assignment
 				return Result{Value: &newValue}, nil, nil
 			}
@@ -1034,7 +1046,7 @@ func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors
 		defer self.popScope()
 
 		// Add the error variable to the scope (as an error object)
-		self.addVar(node.ErrorIdentifier, ValueObject{
+		errVal := Value(ValueObject{
 			ObjFields: map[string]Value{
 				"kind":    makeStr(errors.Span{}, err.Kind.String()),
 				"message": makeStr(errors.Span{}, err.Message),
@@ -1058,6 +1070,7 @@ func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors
 				},
 			},
 		})
+		self.addVar(node.ErrorIdentifier, &errVal)
 
 		// Visit the catch block
 		catchResult, code, err := self.visitStatements(node.CatchBlock)
@@ -1071,12 +1084,12 @@ func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors
 }
 
 func (self *Interpreter) visitFunctionDeclaration(node AtomFunction) (Value, *errors.Error) {
-	function := ValueFunction{
+	function := Value(ValueFunction{
 		Identifier: node.Ident,
 		Args:       node.ArgIdentifiers,
 		Body:       node.Body,
 		Range:      node.Span(),
-	}
+	})
 
 	// If the function declaration contains no identifier, just return the function's value
 	if node.Ident != nil {
@@ -1086,7 +1099,8 @@ func (self *Interpreter) visitFunctionDeclaration(node AtomFunction) (Value, *er
 			return nil, errors.NewError(node.Span(), fmt.Sprintf("cannot declare function with name %s: name already taken in scope", *node.Ident), errors.SyntaxError)
 		}
 		// Add the function to the current scope if there are no conflicts
-		self.addVar(*node.Ident, function)
+
+		self.addVar(*node.Ident, &function)
 	}
 
 	// Return the functions value so that assignments like `let a = fn foo() ...` are possible
@@ -1233,7 +1247,8 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 		}
 
 		// Add the head identifier to the scope (so that loop code can access the iteration variable)
-		self.addVar(node.HeadIdentifier, ValueNumber{Value: float64(loopIter)})
+		num := Value(ValueNumber{Value: float64(loopIter)})
+		self.addVar(node.HeadIdentifier, &num)
 
 		// Enable the `inLoop` flag on the interpreter
 		self.inLoopCount++
@@ -1375,7 +1390,7 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 				return nil, code, err
 			}
 			// Add the computed value to the new (current) scope
-			self.addVar(arg.Identifier, *argValue.Value)
+			self.addVar(arg.Identifier, argValue.Value)
 		}
 
 		// Visit the function's body
@@ -1426,7 +1441,7 @@ func (self *Interpreter) pushScope(span errors.Span) *errors.Error {
 		return errors.NewError(span, fmt.Sprintf("Maximum stack size of %d was exceeded", self.stackLimit), errors.StackOverflow)
 	}
 	// Push a new stack frame onto the stack
-	self.scopes = append(self.scopes, make(map[string]Value))
+	self.scopes = append(self.scopes, make(map[string]*Value))
 	if self.debug {
 		self.debugScope()
 	}
@@ -1446,8 +1461,8 @@ func (self *Interpreter) popScope() {
 	}
 }
 
-// Adds a varable to the top of the stack
-func (self *Interpreter) addVar(key string, value Value) {
+// Adds a variable to the top of the stack
+func (self *Interpreter) addVar(key string, value *Value) {
 	// Add the entry to the top hashmap
 	self.scopes[len(self.scopes)-1][key] = value
 	if self.debug {
@@ -1458,7 +1473,7 @@ func (self *Interpreter) addVar(key string, value Value) {
 // Debug function for printing the scope(s)
 func (self *Interpreter) debugScope() {
 	for k, v := range self.scopes[len(self.scopes)-1] {
-		dis, err := v.Display(self.executor, errors.Span{})
+		dis, err := (*v).Display(self.executor, errors.Span{})
 		if err != nil {
 			panic(err.Message)
 		}
@@ -1479,7 +1494,7 @@ func (self *Interpreter) getVar(key string) *Value {
 		scopeValue, exists := self.scopes[idx][key]
 		// If the correct value has been found, return early
 		if exists {
-			return &scopeValue
+			return scopeValue
 		}
 	}
 	return nil
@@ -1489,7 +1504,7 @@ func (self *Interpreter) getVar(key string) *Value {
 // The builtin just has the task of providing the target module code
 // This function then runs the target module code and returns the value of the target function (analyzes the root scope)
 // If the target module contains top level code, it is also executed
-func (self Interpreter) ResolveModule(span errors.Span, module string, function string) (Value, *errors.Error) {
+func (self Interpreter) ResolveModule(span errors.Span, module string, function string) (*Value, *errors.Error) {
 	moduleCode, found, err := self.executor.ResolveModule(module)
 	if err != nil {
 		return nil, errors.NewError(

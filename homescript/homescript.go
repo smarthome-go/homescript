@@ -20,7 +20,7 @@ func Run(
 ) (
 	returnValue Value,
 	exitCode int,
-	rootScope map[string]Value,
+	rootScope map[string]*Value,
 	hmsErrors []hmsError.Error,
 ) {
 	// Parse the source code
