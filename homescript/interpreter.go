@@ -227,10 +227,10 @@ func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.
 	}
 
 	// Insert an identifier into the value (if possible)
-	// value := insertValueMetadata(*rightResult.Value, node.Left.Identifier, node.Left.Span)
+	value := insertValueMetadata(*rightResult.Value, node.Left.Identifier, node.Left.Span)
 
 	// Add the value to the scope
-	self.addVar(node.Left.Identifier, rightResult.Value)
+	self.addVar(node.Left.Identifier, &value)
 	// Also update the result value to include the new Identifier
 	// rightResult.Value =
 	// Finially, return the result
@@ -768,6 +768,35 @@ func (self *Interpreter) visitEpxExpression(node ExpExpression) (Result, *int, *
 	return Result{Value: &powRes}, nil, nil
 }
 
+func assign(left *Value, right Value, span errors.Span) (Value, *errors.Error) {
+	// Validate that the left hand side can be assigned to
+	if (*left).Ident() == nil {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("cannot assign to value of type %v", (*left).Type()),
+			errors.TypeError,
+		)
+	}
+	// Check type equality
+	if (*left).Type() != right.Type() {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("cannot assign %v to %v: type inequality", right.Type(), (*left).Type()),
+			errors.TypeError,
+		)
+	}
+	// Insert identifier and new span into the right value
+	value := insertValueMetadata(
+		right,
+		*(*left).Ident(),
+		right.Span(),
+	)
+	// Perform actual assignment
+	*left = value
+	// Return the value of the right hand side
+	return value, nil
+}
+
 func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *int, *errors.Error) {
 	base, code, err := self.visitCallExpression(node.Base)
 	if code != nil || err != nil {
@@ -785,39 +814,8 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 
 	// Perform a simple assignment
 	if node.Other.Operator == OpAssign {
-		// Assignment
-		*base.Value = *rhsValue.Value
-		return rhsValue, nil, nil
-
-		// Unreachable
-		if ident := (*base.Value).Ident(); ident != nil {
-			// Insert the original identifier back into the new value (if possible)
-			*rhsValue.Value = insertValueMetadata(*rhsValue.Value, *ident, (*rhsValue.Value).Span())
-
-			// Need to manually search through the scopes to find the right stack frame
-			for idx := len(self.scopes) - 1; idx >= 0; idx-- {
-				_, exist := self.scopes[idx][*ident]
-				if exist {
-					// Validate type equality (left side may be null)
-					if (*base.Value).Type() != (*rhsValue.Value).Type() && (*base.Value).Type() != TypeNull {
-						return Result{}, nil, errors.NewError(
-							node.Span,
-							fmt.Sprintf("cannot assign %v to %v: type inequality", (*rhsValue.Value).Type(), (*base.Value).Type()),
-							errors.TypeError,
-						)
-					}
-
-					// Perform actual assignment
-					self.scopes[idx][*ident] = rhsValue.Value
-					// Return the rhs as the return value of the entire assignment
-					return rhsValue, nil, nil
-				}
-			}
-			panic("BUG: value holds an identifer but is not present in scope")
-		}
-		// Return an error, which states that this type is not assignable to
-		return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("cannot assign to %v", (*base.Value).Type()), errors.TypeError)
-
+		value, err := assign(base.Value, *rhsValue.Value, node.Span)
+		return Result{Value: &value}, nil, err
 	}
 	// Check that the base is a type that can be safely assigned to using the complex operators
 	if (*base.Value).Type() != TypeString && (*base.Value).Type() != TypeNumber {
@@ -847,31 +845,8 @@ func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *i
 	if assignErr != nil {
 		return Result{}, nil, assignErr
 	}
-	// Perform actual (complex) assignment
-	if ident := (*base.Value).Ident(); ident != nil {
-		// Insert the original identifier back into the new value (if possible)
-		//newValue = insertValueMetadata(newValue, *ident, newValue.Span())
-
-		// Perform actual assignment
-		*base.Value = newValue
-
-		return Result{Value: &newValue}, nil, nil
-
-		// Need to manually search through the scopes to find the right stack frame
-		for idx := len(self.scopes) - 1; idx >= 0; idx-- {
-			_, exist := self.scopes[idx][*ident]
-			if exist {
-				// Type equality validation is omitted due to check above (in add / .. / div)
-				// Perform actual assignment
-				self.scopes[idx][*ident] = &newValue
-				// Return the rhs as the return value of the entire assignment
-				return Result{Value: &newValue}, nil, nil
-			}
-		}
-		panic("BUG: value holds an identifer but is not present in scope")
-	}
-	// Return an error, which states that this type is not assignable to
-	return Result{}, nil, errors.NewError(node.Base.Span, fmt.Sprintf("cannot assign to %v", (*base.Value).Type()), errors.TypeError)
+	value, err := assign(base.Value, newValue, node.Span)
+	return Result{Value: &value}, nil, err
 }
 
 // Functions from here on downstream return a pointer to a value so that it can be modified in a assign expression
