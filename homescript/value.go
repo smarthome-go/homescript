@@ -224,13 +224,15 @@ type ValueObject struct {
 	// Such a dynamic object could be the global `ARGS` object
 	IsDynamic bool
 	// The fields of the object
-	ObjFields map[string]Value
+	ObjFields  map[string]Value
+	Identifier *string
+	Range      errors.Span
 }
 
 func (self ValueObject) Type() ValueType          { return TypeObject }
-func (self ValueObject) Span() errors.Span        { return errors.Span{} }
+func (self ValueObject) Span() errors.Span        { return self.Range }
 func (self ValueObject) Fields() map[string]Value { return self.ObjFields }
-func (self ValueObject) Ident() *string           { return nil }
+func (self ValueObject) Ident() *string           { return self.Identifier }
 func (self ValueObject) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	fields := make([]string, 0)
 	for key, value := range self.ObjFields {

@@ -1255,7 +1255,7 @@ func (self *parser) letStmt() (LetStmt, *errors.Error) {
 		}
 	}
 	// Copy the assignment identifier name
-	assignIdentifier := self.currToken.Value
+	assignIdentifier := self.currToken
 	if err := self.advance(); err != nil {
 		return LetStmt{}, err
 	}
@@ -1284,8 +1284,11 @@ func (self *parser) letStmt() (LetStmt, *errors.Error) {
 			Identifier string
 			Span       errors.Span
 		}{
-			Identifier: assignIdentifier,
-			// TODO: here
+			Identifier: assignIdentifier.Value,
+			Span: errors.Span{
+				Start: assignIdentifier.StartLocation,
+				End:   assignIdentifier.EndLocation,
+			},
 		},
 		Right: assignExpression,
 		Range: errors.Span{

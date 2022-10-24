@@ -209,11 +209,11 @@ func (self *Interpreter) visitStatement(node Statement) (Result, *int, *errors.E
 
 func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.Error) {
 	// Check that the left hand side will cause no conflicts
-	fromScope := self.getVar(node.Left)
+	fromScope := self.getVar(node.Left.Identifier)
 	if fromScope != nil {
 		return Result{}, nil, errors.NewError(
 			node.Span(),
-			fmt.Sprintf("cannot declare variable with name %s: name already taken in scope", node.Left),
+			fmt.Sprintf("cannot declare variable with name %s: name already taken in scope", node.Left.Identifier),
 			errors.SyntaxError,
 		)
 	}
@@ -225,10 +225,10 @@ func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.
 	}
 
 	// Insert an identifier into the value (if possible)
-	value := insertValueMetadata(*rightResult.Value, node.Left, (*rightResult.Value).Span())
+	value := insertValueMetadata(*rightResult.Value, node.Left.Identifier, node.Left.Span)
 
 	// Add the value to the scope
-	self.addVar(node.Left, value)
+	self.addVar(node.Left.Identifier, value)
 	// Also update the result value to include the new Identifier
 	rightResult.Value = &value
 	// Finially, return the result
@@ -269,6 +269,14 @@ func insertValueMetadata(value Value, identifier string, span errors.Span) Value
 		value = ValuePair{
 			Key:        value.(ValuePair).Key,
 			Value:      value.(ValuePair).Value,
+			Identifier: &identifier,
+			Range:      span,
+		}
+	case TypeObject:
+		value = ValueObject{
+			DataType:   value.(ValueObject).DataType,
+			IsDynamic:  value.(ValueObject).IsDynamic,
+			ObjFields:  value.(ValueObject).ObjFields,
 			Identifier: &identifier,
 			Range:      span,
 		}
