@@ -45,7 +45,10 @@ type Statement interface {
 }
 
 type LetStmt struct {
-	Left  string
+	Left struct {
+		Identifier string
+		Span       errors.Span
+	}
 	Right Expression
 	Range errors.Span
 }

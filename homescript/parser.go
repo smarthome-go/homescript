@@ -1280,7 +1280,13 @@ func (self *parser) letStmt() (LetStmt, *errors.Error) {
 	}
 
 	return LetStmt{
-		Left:  assignIdentifier,
+		Left: struct {
+			Identifier string
+			Span       errors.Span
+		}{
+			Identifier: assignIdentifier,
+			// TODO: here
+		},
 		Right: assignExpression,
 		Range: errors.Span{
 			Start: startLocation,
@@ -1489,7 +1495,7 @@ func (self *parser) statement() (Statement, *errors.Error) {
 	}
 }
 
-func (self *parser) statements() ([]Statement, *errors.Error) {
+func (self *parser) statements(insideCurlyBlock bool) ([]Statement, *errors.Error) {
 	statements := make([]Statement, 0)
 
 	// If statements is invoked in an empty block or at the end of the file, quit immediately
@@ -1499,7 +1505,7 @@ func (self *parser) statements() ([]Statement, *errors.Error) {
 
 	// Make additional statements
 	for {
-		if self.currToken.Kind == RCurly || self.currToken.Kind == EOF {
+		if (insideCurlyBlock && self.currToken.Kind == RCurly) || self.currToken.Kind == EOF {
 			break
 		}
 
@@ -1552,10 +1558,12 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 		}
 	}
 
-	statements, err := self.statements()
+	// Invoke statements with the curly block flag
+	statements, err := self.statements(true)
 	if err != nil {
 		return nil, err
 	}
+
 	if self.currToken.Kind != RCurly {
 		return nil, &errors.Error{
 			Kind:    errors.SyntaxError,
@@ -1578,7 +1586,8 @@ func (self *parser) parse() ([]Statement, []errors.Error, bool) {
 		self.errors = append(self.errors, *err)
 		return nil, self.errors, true
 	}
-	statements, err := self.statements()
+	// Do not accept a lone }
+	statements, err := self.statements(false)
 	if err != nil {
 		self.errors = append(self.errors, *err)
 		return nil, self.errors, true
