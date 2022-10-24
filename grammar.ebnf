@@ -84,11 +84,13 @@ CallExpr        = MemberExpr , [ Args , { CallExprPart } ] ;
   A <MemberExpr> accesses fields of a value. The only types that have fields are `Pair` and `Time`.
 *)
 MemberExpr      = Atom , { MemberExprPart } ;
-MemberExprPart  = '.' , identifier ;
+MemberExprPart  = '.' , identifier
+                | '[' , Expression , ']' ;
 CallExprPart    = MemberExprPart | Args ;
 Atom            = number
                 | bool
                 | string
+                | ListLiteral
                 | PairExpr (* <- also starts with <string>, but identifiable by the following `=>` *)
                 | 'null'
                 | identifier
@@ -99,6 +101,14 @@ Atom            = number
                 | FnExpr
                 | TryExpr
                 | '(' , Expression , ')' ;
+
+(*
+  A <ListLiteral> creates a value of type `List` given an arbitraty amount of <Expression>
+  Additionaly, the runtime should check that every element in the list is of the same type Lists can
+  be indexed using the value[index] syntax, where index must be an integer and value a list. The
+  length of the list can be accessed using the `.len()` method
+*)
+ListLiteral = '[' , [ Expression , { ',' , Expression } , [ ',' ] ] , ']' ;
 
 (*
   A <PairExpr> creates a value of type `Pair` given a <string> as the key and an arbitrary
