@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
 
@@ -1689,7 +1688,6 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 
 		// Prevent recursion here
 		for idx := len(self.scopes) - 2; idx >= 0; idx-- {
-			spew.Dump(self.scopes[idx].identifier)
 			if self.scopes[idx].identifier != nil && function.Identifier != nil && *self.scopes[idx].identifier == *function.Identifier {
 				return nil, nil
 			}
