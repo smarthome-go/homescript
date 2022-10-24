@@ -29,13 +29,13 @@ type Interpreter struct {
 	// Can be used to terminate the script at any point in time
 	sigTerm *chan int
 
-	// If the interpreter is currently handling a loop
-	// Will unlock the use of the `break` and `continue` statements inside a statement list
-	inLoop bool
+	// Will unlock the use of the `break` and `continue` statements inside a statement list (if > 0)
+	// If a loop is entered, it is incremented, once the loop exists, it is decremented
+	inLoopCount uint
 
-	// If the Interpreter is currently handling a function
-	// Will unlock the use of the `return` statement inside a statement list
-	inFunction bool
+	// Will unlock the use of the `return` statement inside a statement list (if > 0)
+	// If a function is entered, it is incremented, once a function exists, it is decremented
+	inFunctionCount uint
 
 	// Will enable debug output of the scopes
 	debug bool
@@ -97,15 +97,15 @@ func NewInterpreter(
 	// Append the current script to the module stack
 	moduleStack = append(moduleStack, moduleName)
 	return Interpreter{
-		program:     program,
-		executor:    executor,
-		scopes:      scopes,
-		stackLimit:  stackLimit,
-		sigTerm:     sigTerm,
-		inLoop:      false,
-		inFunction:  false,
-		debug:       debug,
-		moduleStack: moduleStack,
+		program:         program,
+		executor:        executor,
+		scopes:          scopes,
+		stackLimit:      stackLimit,
+		sigTerm:         sigTerm,
+		inLoopCount:     0,
+		inFunctionCount: 0,
+		debug:           debug,
+		moduleStack:     moduleStack,
 	}
 }
 
@@ -148,7 +148,7 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 		// Handle potential break or return statements
 		if lastResult.BreakValue != nil {
 			// Check if the use of break is legal here
-			if !self.inLoop {
+			if self.inLoopCount == 0 {
 				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the break statement inside loops", errors.SyntaxError)
 			}
 			return lastResult, nil, nil
@@ -157,7 +157,7 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 		// If continue is used, return null for this iteration
 		if lastResult.ShouldContinue {
 			// Check if the use of continue is legal here
-			if !self.inLoop {
+			if self.inLoopCount == 0 {
 				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the continue statement inside loops", errors.SyntaxError)
 			}
 			return makeNullResult(statement.Span()), nil, nil
@@ -166,7 +166,7 @@ func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, 
 		// Handle potential break or return statements
 		if lastResult.ReturnValue != nil {
 			// Check if the use of return is legal here
-			if !self.inFunction {
+			if self.inFunctionCount == 0 {
 				return Result{}, nil, errors.NewError(statement.Span(), "Can only use the return statement inside function bodies", errors.SyntaxError)
 			}
 			return lastResult, nil, nil
@@ -868,12 +868,6 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
-	// TODO: fix this
-	for _, part := range node.Parts {
-		if part.MemberExpressionPart != nil {
-			fmt.Println(*part.MemberExpressionPart)
-		}
-	}
 	// Evaluate call / member parts
 	for _, part := range node.Parts {
 		// Handle args -> function call
@@ -1242,13 +1236,13 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 		self.addVar(node.HeadIdentifier, ValueNumber{Value: float64(loopIter)})
 
 		// Enable the `inLoop` flag on the interpreter
-		self.inLoop = true
+		self.inLoopCount++
 
 		value, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		self.inLoop = false
+		self.inLoopCount--
 
 		if value.BreakValue != nil {
 			return Result{
@@ -1299,7 +1293,7 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 			return Result{}, nil, err
 		}
 		// Enable the `inLoop` flag
-		self.inLoop = true
+		self.inLoopCount++
 
 		result, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
@@ -1307,7 +1301,7 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 		}
 
 		self.popScope()
-		self.inLoop = false
+		self.inLoopCount--
 
 		// Check if there is a break statement
 		if result.BreakValue != nil {
@@ -1326,7 +1320,7 @@ func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *erro
 		if err := self.pushScope(node.Span()); err != nil {
 			return Result{}, nil, err
 		}
-		self.inLoop = true
+		self.inLoopCount++
 
 		result, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
@@ -1334,7 +1328,7 @@ func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *erro
 		}
 
 		self.popScope()
-		self.inLoop = false
+		self.inLoopCount--
 
 		// Check if there is a break statement
 		if result.BreakValue != nil {
@@ -1363,9 +1357,9 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 		}
 
 		// Enable the `inFunction` flag on the interpreter
-		self.inFunction = true
+		self.inFunctionCount++
 		// Release the `inFunction` flag as soon as possible
-		defer func() { self.inFunction = false }()
+		defer func() { self.inFunctionCount-- }()
 
 		// Add a new scope for the running function and handle a potential stack overflow
 		if err := self.pushScope(span); err != nil {
