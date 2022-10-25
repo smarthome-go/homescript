@@ -7,37 +7,37 @@ import (
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
 
-type ValueType uint8
+type AnalyzerValueType uint8
 
 const (
-	TypeNull ValueType = iota
-	TypeNumber
-	TypeBoolean
-	TypeString
-	TypePair
-	TypeObject
-	TypeFunction
-	TypeBuiltinFunction
-	TypeBuiltinVariable
+	AnalyzerTypeNull AnalyzerValueType = iota
+	AnalyzerTypeNumber
+	AnalyzerTypeBoolean
+	AnalyzerTypeString
+	AnalyzerTypePair
+	AnalyzerTypeObject
+	AnalyzerTypeFunction
+	AnalyzerTypeBuiltinFunction
+	AnalyzerTypeBuiltinVariable
 )
 
-func (self ValueType) String() string {
+func (self AnalyzerValueType) String() string {
 	switch self {
-	case TypeNull:
+	case AnalyzerTypeNull:
 		return "null"
-	case TypeNumber:
+	case AnalyzerTypeNumber:
 		return "number"
-	case TypeBoolean:
+	case AnalyzerTypeBoolean:
 		return "boolean"
-	case TypeString:
+	case AnalyzerTypeString:
 		return "string"
-	case TypePair:
+	case AnalyzerTypePair:
 		return "pair"
-	case TypeObject:
+	case AnalyzerTypeObject:
 		return "object"
-	case TypeFunction, TypeBuiltinFunction:
+	case AnalyzerTypeFunction, AnalyzerTypeBuiltinFunction:
 		return "function"
-	case TypeBuiltinVariable:
+	case AnalyzerTypeBuiltinVariable:
 		return "builtinVariable"
 	default:
 		// Unreachable
@@ -46,79 +46,83 @@ func (self ValueType) String() string {
 }
 
 // Value interfaces
-type Value interface {
-	Type() ValueType
+type AnalyzerValue interface {
+	Type() AnalyzerValueType
 	Protected() bool
 	Span() errors.Span
-	Fields() map[string]Value
+	Fields() map[string]AnalyzerValue
 	// Is also used for `as str` and printing
 	Display(executor Executor, span errors.Span) (string, *errors.Error)
 	Debug(executor Executor, span errors.Span) (string, *errors.Error)
 	IsTrue(executor Executor, span errors.Span) (bool, *errors.Error)
-	IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error)
+	IsEqual(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error)
 }
 
-type ValueRelational interface {
-	IsLessThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error)
-	IsLessThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error)
-	IsGreaterThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error)
-	IsGreaterThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error)
+type AnalyzerValueRelational interface {
+	IsLessThan(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error)
+	IsLessThanOrEqual(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error)
+	IsGreaterThan(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error)
+	IsGreaterThanOrEqual(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error)
 }
 
-type ValueAlg interface {
-	Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
-	Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
-	Mul(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
-	Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
-	IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
-	Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
-	Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
+type AnalyzerValueAlg interface {
+	Add(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error)
+	Sub(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error)
+	Mul(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error)
+	Div(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error)
+	IntDiv(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error)
+	Rem(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error)
+	Pow(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error)
 }
 
 // Null value
-type ValueNull struct {
+type AnalyzerValueNull struct {
 	Range       errors.Span
 	IsProtected bool
 }
 
-func (self ValueNull) Type() ValueType          { return TypeNull }
-func (self ValueNull) Span() errors.Span        { return self.Range }
-func (self ValueNull) Fields() map[string]Value { return make(map[string]Value) }
-func (self ValueNull) Protected() bool          { return self.IsProtected }
-func (self ValueNull) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
+func (self AnalyzerValueNull) Type() AnalyzerValueType { return AnalyzerTypeNull }
+func (self AnalyzerValueNull) Span() errors.Span       { return self.Range }
+func (self AnalyzerValueNull) Fields() map[string]AnalyzerValue {
+	return make(map[string]AnalyzerValue)
+}
+func (self AnalyzerValueNull) Protected() bool { return self.IsProtected }
+func (self AnalyzerValueNull) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "null", nil
 }
-func (self ValueNull) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
+func (self AnalyzerValueNull) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "null", nil
 }
-func (self ValueNull) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
+func (self AnalyzerValueNull) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return false, nil
 }
-func (self ValueNull) IsEqual(_ Executor, _ errors.Span, other Value) (bool, *errors.Error) {
+func (self AnalyzerValueNull) IsEqual(_ Executor, _ errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	return false, nil
 }
 
 // Boolean value
-type ValueBool struct {
+type AnalyzerValueBool struct {
 	Value       bool
 	Range       errors.Span
 	IsProtected bool
 }
 
-func (self ValueBool) Type() ValueType          { return TypeBoolean }
-func (self ValueBool) Span() errors.Span        { return self.Range }
-func (self ValueBool) Fields() map[string]Value { return make(map[string]Value) }
-func (self ValueBool) Protected() bool          { return self.IsProtected }
-func (self ValueBool) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
+func (self AnalyzerValueBool) Type() AnalyzerValueType { return AnalyzerTypeBoolean }
+func (self AnalyzerValueBool) Span() errors.Span       { return self.Range }
+func (self AnalyzerValueBool) Fields() map[string]AnalyzerValue {
+	return make(map[string]AnalyzerValue)
+}
+func (self AnalyzerValueBool) Protected() bool { return self.IsProtected }
+func (self AnalyzerValueBool) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return fmt.Sprintf("%t", self.Value), nil
 }
-func (self ValueBool) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
+func (self AnalyzerValueBool) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return fmt.Sprintf("%t", self.Value), nil
 }
-func (self ValueBool) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
+func (self AnalyzerValueBool) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return self.Value, nil
 }
-func (self ValueBool) IsEqual(_ Executor, span errors.Span, other Value) (bool, *errors.Error) {
+func (self AnalyzerValueBool) IsEqual(_ Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
@@ -126,21 +130,21 @@ func (self ValueBool) IsEqual(_ Executor, span errors.Span, other Value) (bool, 
 			errors.TypeError,
 		)
 	}
-	return self.Value == other.(ValueBool).Value, nil
+	return self.Value == other.(AnalyzerValueBool).Value, nil
 }
 
-func (self ValueBool) Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self AnalyzerValueBool) Add(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error) {
 	switch other.Type() {
-	case TypeString:
+	case AnalyzerTypeString:
 		// Convert the boolean to a display representation
 		display, err := self.Display(executor, span)
 		if err != nil {
 			return nil, err
 		}
 		// Return a string concatonation
-		return ValueString{Value: display + other.(ValueString).Value}, nil
-	case TypeBuiltinVariable:
-		otherCallback, err := other.(ValueBuiltinVariable).Callback(executor, span)
+		return AnalyzerValueString{Value: display + other.(AnalyzerValueString).Value}, nil
+	case AnalyzerTypeBuiltinVariable:
+		otherCallback, err := other.(AnalyzerValueBuiltinVariable).Callback(executor, span)
 		if err != nil {
 			return nil, err
 		}
@@ -148,59 +152,59 @@ func (self ValueBool) Add(executor Executor, span errors.Span, other Value) (Val
 	}
 	return nil, errors.NewError(span, fmt.Sprintf("cannot add %v to %v", other.Type(), self.Type()), errors.TypeError)
 }
-func (self ValueBool) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self AnalyzerValueBool) Sub(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
-func (self ValueBool) Mul(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self AnalyzerValueBool) Mul(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
-func (self ValueBool) Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self AnalyzerValueBool) Div(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
-func (self ValueBool) IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self AnalyzerValueBool) IntDiv(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
-func (self ValueBool) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self AnalyzerValueBool) Rem(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
-func (self ValueBool) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self AnalyzerValueBool) Pow(executor Executor, span errors.Span, other AnalyzerValue) (AnalyzerValue, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
 
 // Pair value
-type ValuePair struct {
+type AnalyzerValuePair struct {
 	Key         string
-	Value       Value
+	Value       AnalyzerValue
 	Range       errors.Span
 	IsProtected bool
 }
 
-func (self ValuePair) Type() ValueType          { return TypePair }
-func (self ValuePair) Span() errors.Span        { return self.Range }
-func (self ValuePair) Fields() map[string]Value { return make(map[string]Value) }
-func (self ValuePair) Protected() bool          { return self.IsProtected }
-func (self ValuePair) Display(executor Executor, span errors.Span) (string, *errors.Error) {
+func (self AnalyzerValuePair) Type() AnalyzerValueType  { return AnalyzerTypePair }
+func (self AnalyzerValuePair) Span() errors.Span        { return self.Range }
+func (self AnalyzerValuePair) Fields() map[string]Value { return make(map[string]AnalyzerValue) }
+func (self AnalyzerValuePair) Protected() bool          { return self.IsProtected }
+func (self AnalyzerValuePair) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	value, err := self.Value.Display(executor, span)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s => %s", self.Key, value), nil
 }
-func (self ValuePair) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
+func (self AnalyzerValuePair) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
 	value, err := self.Value.Debug(executor, span)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("(Key: %s | Value: %s)", self.Key, value), nil
 }
-func (self ValuePair) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
+func (self AnalyzerValuePair) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
 	value, err := self.Value.IsTrue(executor, span)
 	if err != nil {
 		return false, err
 	}
 	return self.Key != "" && value, nil
 }
-func (self ValuePair) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+func (self AnalyzerValuePair) IsEqual(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
@@ -208,11 +212,11 @@ func (self ValuePair) IsEqual(executor Executor, span errors.Span, other Value) 
 			errors.TypeError,
 		)
 	}
-	value, err := self.Value.IsEqual(executor, span, other.(ValuePair).Value)
+	value, err := self.Value.IsEqual(executor, span, other.(AnalyzerValuePair).Value)
 	if err != nil {
 		return false, err
 	}
-	return self.Key == other.(ValuePair).Key && value, nil
+	return self.Key == other.(AnalyzerValuePair).Key && value, nil
 }
 
 // Object value
@@ -267,7 +271,7 @@ func (self ValueObject) IsTrue(executor Executor, span errors.Span) (bool, *erro
 	}
 	return true, nil
 }
-func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+func (self ValueObject) IsEqual(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
@@ -315,7 +319,7 @@ func (self ValueFunction) Debug(_ Executor, _ errors.Span) (string, *errors.Erro
 func (self ValueFunction) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return true, nil
 }
-func (self ValueFunction) IsEqual(_ Executor, span errors.Span, other Value) (bool, *errors.Error) {
+func (self ValueFunction) IsEqual(_ Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,
@@ -344,7 +348,7 @@ func (self ValueBuiltinFunction) Debug(_ Executor, _ errors.Span) (string, *erro
 func (self ValueBuiltinFunction) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return true, nil
 }
-func (self ValueBuiltinFunction) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+func (self ValueBuiltinFunction) IsEqual(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	if self.Type() != other.Type() && other.Type() != TypeFunction {
 		return false, errors.NewError(
 			span,
@@ -364,7 +368,7 @@ func (self ValueBuiltinVariable) Type() ValueType          { return TypeBuiltinV
 func (self ValueBuiltinVariable) Span() errors.Span        { return errors.Span{} }
 func (self ValueBuiltinVariable) Fields() map[string]Value { return make(map[string]Value) }
 func (self ValueBuiltinVariable) Protected() bool {
-	return true
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	panic("A bare builtin variable should not exist")
@@ -375,42 +379,42 @@ func (self ValueBuiltinVariable) Debug(executor Executor, span errors.Span) (str
 func (self ValueBuiltinVariable) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+func (self ValueBuiltinVariable) IsEqual(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) IsLessThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+func (self ValueBuiltinVariable) IsLessThan(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) IsLessThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+func (self ValueBuiltinVariable) IsLessThanOrEqual(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) IsGreaterThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+func (self ValueBuiltinVariable) IsGreaterThan(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) IsGreaterThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	panic("A bare builtin variable should not exist")
-}
-
-func (self ValueBuiltinVariable) Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self ValueBuiltinVariable) IsGreaterThanOrEqual(executor Executor, span errors.Span, other AnalyzerValue) (bool, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
 
-func (self ValueBuiltinVariable) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self ValueBuiltinVariable) Add(executor Executor, span errors.Span, other AnalyzerValue) (Value, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) Mul(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+
+func (self ValueBuiltinVariable) Sub(executor Executor, span errors.Span, other AnalyzerValue) (Value, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self ValueBuiltinVariable) Mul(executor Executor, span errors.Span, other AnalyzerValue) (Value, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self ValueBuiltinVariable) Div(executor Executor, span errors.Span, other AnalyzerValue) (Value, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self ValueBuiltinVariable) IntDiv(executor Executor, span errors.Span, other AnalyzerValue) (Value, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
-func (self ValueBuiltinVariable) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
+func (self ValueBuiltinVariable) Rem(executor Executor, span errors.Span, other AnalyzerValue) (Value, *errors.Error) {
+	panic("A bare builtin variable should not exist")
+}
+func (self ValueBuiltinVariable) Pow(executor Executor, span errors.Span, other AnalyzerValue) (Value, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
 
@@ -425,7 +429,7 @@ func getField(executor Executor, span errors.Span, self Value, fieldKey string) 
 
 // Helper factory functions
 func makeNull(span errors.Span) Value {
-	return ValueNull{Range: span}
+	return AnalyzerValueNull{Range: span}
 }
 
 func makeNullResult(span errors.Span) Result {
@@ -434,7 +438,7 @@ func makeNullResult(span errors.Span) Result {
 }
 
 func makeBool(span errors.Span, value bool) Value {
-	return ValueBool{Value: value, Range: span}
+	return AnalyzerValueBool{Value: value, Range: span}
 }
 
 func makeBoolResult(span errors.Span, value bool) Result {
@@ -451,7 +455,7 @@ func makeStr(span errors.Span, value string) Value {
 }
 
 func makePair(span errors.Span, key string, value Value) Value {
-	return ValuePair{Key: key, Value: value, Range: span}
+	return AnalyzerValuePair{Key: key, Value: value, Range: span}
 }
 
 func makeFn(identifier *string, span errors.Span) Value {
@@ -460,43 +464,4 @@ func makeFn(identifier *string, span errors.Span) Value {
 
 func valPtr(input Value) *Value {
 	return &input
-}
-
-func setValueSpan(value Value, span errors.Span) Value {
-	switch value.Type() {
-	case TypeNull:
-		return ValueNull{
-			Range: span,
-		}
-	case TypeNumber:
-		return ValueNumber{
-			Value: value.(ValueNumber).Value,
-			Range: span,
-		}
-	case TypeBoolean:
-		return ValueBool{
-			Value: value.(ValueBool).Value,
-			Range: span,
-		}
-	case TypeString:
-		value = ValueString{
-			Value: value.(ValueString).Value,
-			Range: span,
-		}
-	case TypePair:
-		value = ValuePair{
-			Key:   value.(ValuePair).Key,
-			Value: value.(ValuePair).Value,
-			Range: span,
-		}
-	case TypeObject:
-		value = ValueObject{
-			DataType:  value.(ValueObject).DataType,
-			IsDynamic: value.(ValueObject).IsDynamic,
-			ObjFields: value.(ValueObject).ObjFields,
-			Range:     span,
-		}
-	}
-	// For other types, it is not possible to insert an identifier, so just return it as is
-	return value
 }

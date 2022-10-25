@@ -10,13 +10,14 @@ import (
 
 // String value
 type ValueString struct {
-	Value      string
-	Identifier *string
-	Range      errors.Span
+	Value       string
+	Range       errors.Span
+	IsProtected bool
 }
 
 func (self ValueString) Type() ValueType   { return TypeString }
 func (self ValueString) Span() errors.Span { return self.Range }
+func (self ValueString) Protected() bool   { return self.IsProtected }
 func (self ValueString) Fields() map[string]Value {
 	return map[string]Value{
 		// Replaces the first occurence of the first argument in `self.Value` with the content of the second argument
@@ -62,7 +63,6 @@ func (self ValueString) Fields() map[string]Value {
 		},
 	}
 }
-func (self ValueString) Ident() *string { return self.Identifier }
 func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return self.Value, nil
 }

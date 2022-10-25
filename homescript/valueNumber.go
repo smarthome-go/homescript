@@ -9,13 +9,14 @@ import (
 
 // Number value
 type ValueNumber struct {
-	Value      float64
-	Identifier *string
-	Range      errors.Span
+	Value       float64
+	Range       errors.Span
+	IsProtected bool
 }
 
 func (self ValueNumber) Type() ValueType   { return TypeNumber }
 func (self ValueNumber) Span() errors.Span { return self.Range }
+func (self ValueNumber) Protected() bool   { return self.IsProtected }
 func (self ValueNumber) Fields() map[string]Value {
 	return map[string]Value{
 		// Specifies whether this number can be represented as an integer without loss of information
@@ -54,7 +55,6 @@ func (self ValueNumber) Fields() map[string]Value {
 		},
 	}
 }
-func (self ValueNumber) Ident() *string { return self.Identifier }
 func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	// Check if the value is actually an integer
 	if float64(int(self.Value)) == self.Value {

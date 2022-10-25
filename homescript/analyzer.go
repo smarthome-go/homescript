@@ -21,6 +21,12 @@ type Analyzer struct {
 
 	// Holds the analyzer's diagnostics
 	diagnostics []Diagnostic
+
+	// If > 0, the interpreter is currently in a loop
+	inLoopCount uint
+
+	// If > 0, the interpreter is currently in a function body
+	inFunctionCount uint
 }
 
 type symbol struct {
@@ -154,7 +160,7 @@ const (
 
 type scope struct {
 	// Holds the actual scope
-	this map[string]Value
+	this map[string]*Value
 	// If this scope belongs to a function its identifier is put here
 	identifier *string
 	// Where the scope was pushed
@@ -171,14 +177,6 @@ type scope struct {
 	// Saves which functions were imported
 	// Because import is currently not implemented, the function should not be analyzed
 	importedFunctions []string
-	// Specifies whether the current scope is inside a function body / is a function body
-	// Is used for backtracking the original caller of a function
-	// Used for showing where a in-function type error was caused
-	// Unlocks the use of the `return` statement
-	inFunction bool
-	// Specifies whether the current scope is inside a loop
-	// Unlocks the use of the `break` and `continue` statements
-	inLoop bool
 }
 
 func throwDummy(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
@@ -202,31 +200,30 @@ func NewAnalyzer(
 	scopes := make([]scope, 0)
 	// Adds the root scope
 	scopes = append(scopes, scope{
-		this: map[string]Value{
+		this: map[string]*Value{
 			// Builtin functions implemented by Homescript
-			"exit":   ValueBuiltinFunction{Callback: Exit},
-			"throw":  ValueBuiltinFunction{Callback: throwDummy},
-			"assert": ValueBuiltinFunction{Callback: Assert},
-			// Builtin functions implemented by the executor
-			"print":     ValueBuiltinFunction{Callback: Print},
-			"println":   ValueBuiltinFunction{Callback: Print},
-			"sleep":     ValueBuiltinFunction{Callback: Sleep},
-			"switch_on": ValueBuiltinFunction{Callback: SwitchOn},
-			"switch":    ValueBuiltinFunction{Callback: Switch},
-			"notify":    ValueBuiltinFunction{Callback: Notify},
-			"log":       ValueBuiltinFunction{Callback: Log},
-			"exec":      ValueBuiltinFunction{Callback: Exec},
-			"get":       ValueBuiltinFunction{Callback: Get},
-			"http":      ValueBuiltinFunction{Callback: Http},
-			// Builtin variables implemented by the executor
-			"user":    ValueBuiltinVariable{Callback: GetUser},
-			"weather": ValueBuiltinVariable{Callback: GetWeather},
-			"time":    ValueBuiltinVariable{Callback: GetTime},
-			"ARGS": ValueObject{
-				DataType:  "args",
-				IsDynamic: true,
-				ObjFields: make(map[string]Value),
-			},
+			"exit":      valPtr(ValueBuiltinFunction{Callback: Exit}),
+			"throw":     valPtr(ValueBuiltinFunction{Callback: throwDummy}),
+			"assert":    valPtr(ValueBuiltinFunction{Callback: Assert}),
+			"print":     valPtr(ValueBuiltinFunction{Callback: Print}),
+			"println":   valPtr(ValueBuiltinFunction{Callback: Print}),
+			"sleep":     valPtr(ValueBuiltinFunction{Callback: Sleep}),
+			"switch_on": valPtr(ValueBuiltinFunction{Callback: SwitchOn}),
+			"switch":    valPtr(ValueBuiltinFunction{Callback: Switch}),
+			"notify":    valPtr(ValueBuiltinFunction{Callback: Notify}),
+			"log":       valPtr(ValueBuiltinFunction{Callback: Log}),
+			"exec":      valPtr(ValueBuiltinFunction{Callback: Exec}),
+			"get":       valPtr(ValueBuiltinFunction{Callback: Get}),
+			"http":      valPtr(ValueBuiltinFunction{Callback: Http}),
+			"user":      valPtr(ValueBuiltinVariable{Callback: GetUser}),
+			"weather":   valPtr(ValueBuiltinVariable{Callback: GetWeather}),
+			"time":      valPtr(ValueBuiltinVariable{Callback: GetTime}),
+			"ARGS": valPtr(ValueObject{
+				DataType:    "args",
+				IsDynamic:   true,
+				IsProtected: true,
+				ObjFields:   make(map[string]Value),
+			}),
 		},
 		identifier: nil,
 	},
@@ -239,7 +236,7 @@ func NewAnalyzer(
 			panic(fmt.Sprintf("Cannot insert scope addition with key %s: this key is already taken by a builtin value", key))
 		}
 		// Insert the value into the scope
-		scopes[0].this[key] = value
+		scopes[0].this[key] = &value
 	}
 	return Analyzer{
 		program:  program,
@@ -258,9 +255,9 @@ func (self *Analyzer) diagnostic(span errors.Span, message string, severity Diag
 }
 
 // Can be used to create a diagnostic message at the point where the current function was called
-func (self *Analyzer) badArgError(kind errors.ErrorKind, errSpan errors.Span) {
+func (self *Analyzer) highlightCaller(kind errors.ErrorKind, errSpan errors.Span) {
 	// Only continue if invoked inside a function
-	if !self.getScope().inFunction {
+	if self.inFunctionCount == 0 {
 		return
 	}
 	// Backtracking to the point where the scope is no longer inside a function
@@ -270,11 +267,10 @@ func (self *Analyzer) badArgError(kind errors.ErrorKind, errSpan errors.Span) {
 		curr := self.scopes[idx]
 		// If the current scope is no longer in a function, the correct scope has been found
 		// If the current scope is no longer in the same function, the correct scope has been found as well
-		if !curr.inFunction ||
-			(prevIdent != nil && curr.identifier != nil && *prevIdent != *curr.identifier) {
+		if prevIdent != nil && curr.identifier != nil && *prevIdent != *curr.identifier {
 			self.info(
 				self.scopes[idx+1].span,
-				fmt.Sprintf("%v at line %d:%d caused here", kind, errSpan.Start.Line, errSpan.Start.Column),
+				fmt.Sprintf("function with %v at line %d:%d called here", kind, errSpan.Start.Line, errSpan.Start.Column),
 			)
 			break
 		}
@@ -354,7 +350,7 @@ func (self *Analyzer) visitStatements(statements []Statement) (Result, *errors.E
 		// Handle potential break or return statements
 		if lastResult.BreakValue != nil {
 			// Check if the use of break is legal here
-			if !self.getScope().inLoop {
+			if self.inFunctionCount == 0 {
 				self.issue(statement.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
 			} else {
 				unreachable = true
@@ -364,7 +360,7 @@ func (self *Analyzer) visitStatements(statements []Statement) (Result, *errors.E
 		// If continue is used, return null for this iteration
 		if lastResult.ShouldContinue {
 			// Check if the use of continue is legal here
-			if !self.getScope().inLoop {
+			if self.inFunctionCount == 0 {
 				self.issue(statement.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
 			} else {
 				unreachable = true
@@ -374,7 +370,7 @@ func (self *Analyzer) visitStatements(statements []Statement) (Result, *errors.E
 		// Handle potential break or return statements
 		if lastResult.ReturnValue != nil {
 			// Check if the use of return is legal here
-			if !self.getScope().inFunction {
+			if self.inFunctionCount == 0 {
 				self.issue(statement.Span(), "Can only use the return statement iside function bodies", errors.SyntaxError)
 			} else {
 				unreachable = true
@@ -421,27 +417,20 @@ func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 		self.issue(node.Range, fmt.Sprintf("cannot declare variable with name %s: name already taken in scope", node.Left.Identifier), errors.SyntaxError)
 		return Result{}, nil
 	}
-
 	// Evaluate the right hand side
 	rightResult, err := self.visitExpression(node.Right)
 	if err != nil {
 		return Result{}, err
 	}
-
 	if rightResult.Value == nil || *rightResult.Value == nil {
 		// If the right hand side evaluates to nil, still add a placeholder to the scope
-		// TODO: set this to node.span?
 		self.addVar(node.Left.Identifier, nil, node.Left.Span)
 		return Result{}, nil
 	}
-
-	// Insert an identifier into the value (if possible)
-	value := insertValueMetadata(*rightResult.Value, node.Left.Identifier, node.Left.Span)
-
+	// Insert a span into the value
+	right := setValueSpan(*rightResult.Value, node.Left.Span)
 	// Add the value to the scope
-	self.addVar(node.Left.Identifier, value, node.Left.Span)
-	// Also update the result value to include the new Identifier
-	rightResult.Value = &value
+	self.addVar(node.Left.Identifier, right, node.Left.Span)
 	// Finially, return the result
 	return rightResult, nil
 }
@@ -697,7 +686,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 	}
 
 	// Prevent further analysis if the base value is nil
-	if base.Value == nil {
+	if base.Value == nil || *base.Value == nil {
 		self.info(node.Span, "manual type validation required")
 		return Result{}, nil
 	}
@@ -714,15 +703,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 	case TypeBoolean:
 		baseVal = (*base.Value).(ValueBool)
 	default:
-		if base.Value != nil && (*base.Value).Ident() != nil {
-			for _, arg := range self.getScope().args {
-				if arg == *(*base.Value).Ident() {
-					// Only show the function caller if the type error was caused by an argument
-					self.badArgError(errors.TypeError, node.Span)
-					break
-				}
-			}
-		}
+		self.highlightCaller(errors.TypeError, node.Span)
 		self.issue(node.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
 		return Result{}, nil
 	}
@@ -756,23 +737,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 		}
 
 		if algError != nil {
-			if followingValue.Value != nil && (*followingValue.Value).Ident() != nil {
-				for _, arg := range self.getScope().args {
-					if arg == *(*followingValue.Value).Ident() {
-						// Only show the function caller if the type error was caused by an argument
-						self.badArgError(algError.Kind, algError.Span)
-						break
-					}
-				}
-			} else if base.Value != nil && (*base.Value).Ident() != nil {
-				for _, arg := range self.getScope().args {
-					if arg == *(*base.Value).Ident() {
-						// Only show the function caller if the type error was caused by an argument
-						self.badArgError(algError.Kind, algError.Span)
-						break
-					}
-				}
-			}
+			self.highlightCaller(algError.Kind, algError.Span)
 			self.diagnosticError(*algError)
 			// Must return a blank result in order to prevent other functions from using a nil value
 			return Result{}, nil
@@ -795,9 +760,12 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 		return base, nil
 	}
 
+	manualInfoIssued := false
+
 	// Prevent further analysis if the base value is nil
-	if base.Value == nil {
-		return Result{}, nil
+	if base.Value == nil || *base.Value == nil {
+		self.info(node.Span, "manual type validation required")
+		manualInfoIssued = true
 	}
 
 	// Check that the base holds a valid type to perform the requested operations
@@ -808,15 +776,7 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 	case TypeBuiltinVariable:
 		baseVal = (*base.Value).(ValueBuiltinVariable)
 	default:
-		if base.Value != nil && (*base.Value).Ident() != nil {
-			for _, arg := range self.getScope().args {
-				if arg == *(*base.Value).Ident() {
-					// Only show the function caller if the type error was caused by an argument
-					self.badArgError(errors.TypeError, node.Span)
-					break
-				}
-			}
-		}
+		self.highlightCaller(errors.TypeError, (*base.Value).Span())
 		self.issue(node.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
 		return Result{}, nil
 	}
@@ -834,8 +794,12 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 		}
 
 		// Terminate this function's analysis if the followingValue is nil
-		if followingValue.Value == nil {
-			return Result{}, nil
+		if baseAlg == nil || followingValue.Value == nil || *followingValue.Value == nil {
+			if !manualInfoIssued {
+				self.info(node.Span, "manual type validation required")
+				manualInfoIssued = true
+			}
+			continue
 		}
 
 		switch following.MulOperator {
@@ -851,17 +815,9 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 			panic("BUG: a new mul operator has been added without updating this code")
 		}
 		if algError != nil {
-			if base.Value != nil && (*base.Value).Ident() != nil {
-				for _, arg := range self.getScope().args {
-					if arg == *(*base.Value).Ident() {
-						// Only show the function caller if the type error was caused by an argument
-						self.badArgError(errors.TypeError, node.Span)
-						break
-					}
-				}
-			}
+			self.highlightCaller(errors.TypeError, (*followingValue.Value).Span())
+			//(*algError).Span = (*followingValue.Value).Span()
 			self.diagnosticError(*algError)
-			return Result{}, nil
 		}
 	}
 	return Result{Value: base.Value}, nil
@@ -1044,30 +1000,17 @@ func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *erro
 		return Result{}, nil
 	}
 
-	// Perform a simple assignment
 	if node.Other.Operator == OpAssign {
-		if ident := (*base.Value).Ident(); ident != nil {
-			// Need to manually search through the scopes to find the right stack frame
-			for _, scope := range self.scopes {
-				_, exist := scope.this[*ident]
-				if exist {
-					// Validate type equality (if the left type is null, anything can be assigned to it)
-					if (*base.Value).Type() != (*rhsValue.Value).Type() && (*base.Value).Type() != TypeNull {
-						self.issue(node.Span, fmt.Sprintf("cannot assign %v to %v: type inequality", (*rhsValue.Value).Type(), (*base.Value).Type()), errors.TypeError)
-						return Result{}, nil
-					}
-					// Perform actual assignment (required for checking against null)
-					value := insertValueMetadata(*rhsValue.Value, *ident, (*rhsValue.Value).Span())
-					scope.this[*ident] = value
-					// Return the rhs as the return value of the entire assignment
-					return Result{Value: &value}, nil
-				}
-			}
-			panic("BUG: value holds an identifer but is not present in scope")
+		// Insert an identifier
+		right := setValueSpan(*rhsValue.Value, node.Base.Span)
+		value, err := assign(base.Value, right, node.Span)
+		if err != nil {
+			self.diagnosticError(*err)
+			return Result{}, nil
 		}
-		self.issue(node.Base.Span, fmt.Sprintf("cannot assign to value of type %v", (*base.Value).Type()), errors.TypeError)
-		return Result{}, nil
+		return Result{Value: &value}, nil
 	}
+
 	// Check that the base is a type that can be safely assigned to using the complex operators
 	if (*base.Value).Type() != TypeString && (*base.Value).Type() != TypeNumber {
 		self.issue(node.Base.Span, fmt.Sprintf("cannot use algebraic assignment operators on type %v", (*base.Value).Type()), errors.TypeError)
@@ -1098,27 +1041,13 @@ func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *erro
 	if assignErr != nil {
 		return Result{}, assignErr
 	}
-
-	// Perform actual (complex) assignment
-	if ident := (*base.Value).Ident(); ident != nil {
-		// Insert the original identifier back into the new value (if possible)
-		newValue = insertValueMetadata(newValue, *ident, newValue.Span())
-
-		// Need to manually search through the scopes to find the right stack frame
-		for _, scope := range self.scopes {
-			_, exist := scope.this[*ident]
-			if exist {
-				// Perform actual assignment
-				scope.this[*ident] = newValue
-				// Return the rhs as the return value of the entire assignment
-				return Result{Value: &newValue}, nil
-			}
-		}
-		panic("BUG: value holds an identifer but is not present in scope")
+	right := setValueSpan(newValue, node.Base.Span)
+	value, err := assign(base.Value, right, node.Span)
+	if err != nil {
+		self.diagnosticError(*err)
+		return Result{}, nil
 	}
-	// Return an error, which states that this type is not assignable to
-	self.issue(node.Base.Span, fmt.Sprintf("cannot assign to value of type %v", (*base.Value).Type()), errors.TypeError)
-	return rhsValue, nil
+	return Result{Value: &value}, nil
 }
 
 func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.Error) {
@@ -1312,7 +1241,7 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		if err != nil {
 			return Result{}, err
 		}
-		result.Value = &valueTemp
+		result.Value = valueTemp
 	case AtomKindTryExpr:
 		valueTemp, err := self.visitTryExpression(node.(AtomTry))
 		if err != nil {
@@ -1338,7 +1267,7 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 
 func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 	// Add a new scope to the try block
-	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction, self.getScope().inLoop, make([]string, 0)); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), make([]string, 0)); err != nil {
 		return Result{}, err
 	}
 	_, err := self.visitStatements(node.TryBlock)
@@ -1349,7 +1278,7 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 	self.popScope()
 
 	// Add a new scope for the catch block
-	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction, self.getScope().inLoop, make([]string, 0)); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), make([]string, 0)); err != nil {
 		return Result{}, err
 	}
 	defer self.popScope()
@@ -1389,7 +1318,7 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 	return Result{}, nil
 }
 
-func (self *Analyzer) visitFunctionDeclaration(node AtomFunction) (Value, *errors.Error) {
+func (self *Analyzer) visitFunctionDeclaration(node AtomFunction) (*Value, *errors.Error) {
 	function := ValueFunction{
 		Identifier: node.Ident,
 		Args:       node.ArgIdentifiers,
@@ -1436,7 +1365,7 @@ func (self *Analyzer) visitFunctionDeclaration(node AtomFunction) (Value, *error
 
 	// Return the functions value so that assignments like `let a = fn foo() ...` are possible
 
-	return function, nil
+	return valPtr(function), nil
 }
 
 func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
@@ -1446,7 +1375,7 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 	}
 
 	// If branch
-	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction, self.getScope().inLoop, make([]string, 0)); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), make([]string, 0)); err != nil {
 		return Result{}, err
 	}
 	_, err = self.visitStatements(node.Block)
@@ -1465,7 +1394,7 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 		return Result{}, nil
 	}
 
-	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction, self.getScope().inLoop, make([]string, 0)); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), make([]string, 0)); err != nil {
 		return Result{}, err
 	}
 
@@ -1544,7 +1473,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	// Performs one iteration
 
 	// Add a new scope for the iteration
-	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction, true, make([]string, 0)); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), make([]string, 0)); err != nil {
 		return Result{}, err
 	}
 
@@ -1552,10 +1481,15 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	// TODO: improve indent here
 	self.addVar(node.HeadIdentifier, ValueNumber{Value: 0.0}, node.Range)
 
+	// Enable the inLoop flag
+	self.inLoopCount++
+
 	_, err = self.visitStatements(node.IterationCode)
 	if err != nil {
 		return Result{}, err
 	}
+
+	self.inFunctionCount--
 
 	// Remove the scope again
 	self.popScope()
@@ -1578,14 +1512,17 @@ func (self *Analyzer) visitWhileExpression(node AtomWhile) (Result, *errors.Erro
 
 	// Actual loop iteration code
 	// Add a new scope for the loop
-	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction, true, make([]string, 0)); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), make([]string, 0)); err != nil {
 		return Result{}, err
 	}
 
+	self.inLoopCount++
 	_, err = self.visitStatements(node.IterationCode)
 	if err != nil {
 		return Result{}, err
 	}
+
+	self.inLoopCount--
 
 	// Remove it as soon as the function is finished
 	self.popScope()
@@ -1594,14 +1531,16 @@ func (self *Analyzer) visitWhileExpression(node AtomWhile) (Result, *errors.Erro
 
 func (self *Analyzer) visitLoopExpression(node AtomLoop) (Result, *errors.Error) {
 	// Add a new scope for the loop
-	if err := self.pushScope(self.getScope().identifier, node.Span(), self.getScope().inFunction, true, make([]string, 0)); err != nil {
+	if err := self.pushScope(self.getScope().identifier, node.Span(), make([]string, 0)); err != nil {
 		return Result{}, err
 	}
 
+	self.inFunctionCount++
 	_, err := self.visitStatements(node.IterationCode)
 	if err != nil {
 		return Result{}, err
 	}
+	self.inFunctionCount--
 
 	// Remove it as soon as the function is finished
 	self.popScope()
@@ -1646,7 +1585,7 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		for _, arg := range function.Args {
 			params = append(params, arg.Identifier)
 		}
-		if err := self.pushScope(function.Identifier, span, true, false, params); err != nil {
+		if err := self.pushScope(function.Identifier, span, params); err != nil {
 			return nil, err
 		}
 		// Remove the function scope again
@@ -1677,10 +1616,10 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 						self.addVar(arg.Identifier, nil, span)
 					} else {
 						// This will highlight the param identifier as the location
-						val := insertValueMetadata(*argValue.Value, arg.Identifier, arg.Span)
+						//val := setValueSpan(*argValue.Value, arg.Span)
 
 						// This hithlights the entire function
-						self.addVar(arg.Identifier, val, span)
+						self.addVar(arg.Identifier, *argValue.Value, span)
 					}
 				}
 			}
@@ -1693,11 +1632,16 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 			}
 		}
 
+		// Enable the inFunction flag
+		self.inFunctionCount++
+
 		// Visit the function's body
 		_, err := self.visitStatements(function.Body)
 		if err != nil {
 			return nil, err
 		}
+
+		self.inFunctionCount--
 
 		// Check if there are unused arguments
 		for _, arg := range function.Args {
@@ -1745,7 +1689,7 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 
 // Pushes a new scope on top of the scopes stack
 // Can return a runtime error if the maximum stack size would be exceeded by this operation
-func (self *Analyzer) pushScope(ident *string, span errors.Span, inFunction bool, inLoop bool, args []string) *errors.Error {
+func (self *Analyzer) pushScope(ident *string, span errors.Span, args []string) *errors.Error {
 	max := 20
 	// Check that the stack size will be legal after this operation
 	if len(self.scopes) >= max {
@@ -1753,13 +1697,11 @@ func (self *Analyzer) pushScope(ident *string, span errors.Span, inFunction bool
 	}
 	// Push a new stack frame onto the stack
 	self.scopes = append(self.scopes, scope{
-		this:          make(map[string]Value),
+		this:          make(map[string]*Value),
 		span:          span,
 		identifier:    ident,
 		functionCalls: make([]string, 0),
 		args:          args,
-		inFunction:    inFunction,
-		inLoop:        inLoop,
 	})
 	return nil
 }
@@ -1771,30 +1713,11 @@ func (self *Analyzer) popScope() *errors.Error {
 	}
 	// Check for unused variables before dropping the scope
 	scope := self.scopes[len(self.scopes)-1]
-	for key, value := range scope.this {
-		// If the current value is a variable, analyze variable accesses
-		if value != nil && value.Ident() != nil {
-			isUsed := false
-			for _, access := range scope.variableAccesses {
-				if access == key {
-					isUsed = true
-					break
-				}
-			}
-
-			// Check if the current value is also an argument
-			// If this is the case, stop here, it's uses will be checked in `callValue`
-			isArg := false
-			for _, arg := range scope.args {
-				if arg == key {
-					isArg = true
-					break
-				}
-			}
-			if !isUsed && !isArg {
-				self.warn(value.Span(), fmt.Sprintf("variable '%s' is unused", key))
-			}
+	for key, valueTemp := range scope.this {
+		if valueTemp == nil {
+			continue
 		}
+		value := *valueTemp
 
 		// If the current value is a function, check if it has been used
 		if value != nil && value.Type() == TypeFunction {
@@ -1825,7 +1748,7 @@ func (self *Analyzer) popScope() *errors.Error {
 				for _, param := range value.(ValueFunction).Args {
 					args = append(args, param.Identifier)
 				}
-				if err := self.pushScope(&key, scope.span, true, false, args); err != nil {
+				if err := self.pushScope(&key, scope.span, args); err != nil {
 					return err
 				}
 				// Add dummy values for the parameters
@@ -1852,6 +1775,29 @@ func (self *Analyzer) popScope() *errors.Error {
 					return err
 				}
 			}
+			// If the current value is a variable, analyze variable accesses
+			// Only analyze variable access if the variable is not protected
+		} else if value != nil && !value.Protected() {
+			isUsed := false
+			for _, access := range scope.variableAccesses {
+				if access == key {
+					isUsed = true
+					break
+				}
+			}
+
+			// Check if the current value is also an argument
+			// If this is the case, stop here, it's uses will be checked in `callValue`
+			isArg := false
+			for _, arg := range scope.args {
+				if arg == key {
+					isArg = true
+					break
+				}
+			}
+			if !isUsed && !isArg {
+				self.warn(value.Span(), fmt.Sprintf("variable '%s' is unused", key))
+			}
 		}
 	}
 	// Delete the scope
@@ -1861,6 +1807,9 @@ func (self *Analyzer) popScope() *errors.Error {
 
 // Adds a varable to the top of the stack
 func (self *Analyzer) addVar(key string, value Value, span errors.Span) {
+	// Add the entry to the top hashmap
+	self.scopes[len(self.scopes)-1].this[key] = &value
+
 	if value != nil {
 		// Add the value to the symbols list
 		self.symbols = append(self.symbols, symbol{
@@ -1871,12 +1820,10 @@ func (self *Analyzer) addVar(key string, value Value, span errors.Span) {
 	} else {
 		self.symbols = append(self.symbols, symbol{
 			Span:  span,
-			Value: value,
+			Value: nil,
 			Type:  SymbolTypeUnknown,
 		})
 	}
-	// Add the entry to the top hashmap
-	self.scopes[len(self.scopes)-1].this[key] = value
 }
 
 // Helper function for accessing the scope(s)
@@ -1892,7 +1839,7 @@ func (self *Analyzer) accessVar(key string) *Value {
 		// If the correct value has been found, return early
 		if exists {
 			// Append the access to either function access or variable access
-			if scopeValue != nil && scopeValue.Type() == TypeFunction {
+			if scopeValue != nil && *scopeValue != nil && (*scopeValue).Type() == TypeFunction {
 				isMarked := false
 				for _, funAccess := range self.scopes[idx].functionCalls {
 					if funAccess == key {
@@ -1915,7 +1862,7 @@ func (self *Analyzer) accessVar(key string) *Value {
 					self.scopes[idx].variableAccesses = append(self.scopes[idx].variableAccesses, key)
 				}
 			}
-			return &scopeValue
+			return scopeValue
 		}
 	}
 	return nil
@@ -1933,7 +1880,7 @@ func (self *Analyzer) getVar(key string) *Value {
 		scopeValue, exists := self.scopes[idx].this[key]
 		// If the correct value has been found, return early
 		if exists {
-			return &scopeValue
+			return scopeValue
 		}
 	}
 	return nil

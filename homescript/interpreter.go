@@ -41,10 +41,6 @@ type Interpreter struct {
 	debug bool
 }
 
-func valPtr(input Value) *Value {
-	return &input
-}
-
 func NewInterpreter(
 	program []Statement,
 	executor Executor,
@@ -227,64 +223,15 @@ func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.
 	}
 
 	// Insert an identifier into the value (if possible)
-	value := insertValueMetadata(*rightResult.Value, node.Left.Identifier, node.Left.Span)
+	// TODO: contemplate whether to insert a value span
+	//value := setValueSpan(*rightResult.Value, node.Left.Span)
 
 	// Add the value to the scope
-	self.addVar(node.Left.Identifier, &value)
+	self.addVar(node.Left.Identifier, rightResult.Value)
 	// Also update the result value to include the new Identifier
 	// rightResult.Value =
 	// Finially, return the result
 	return rightResult, nil, nil
-}
-
-// This function is used in order to destructure most of the possible types
-// Then, each type is constructed manually using the correct constructor,
-// However, the constructor includes the assignment of an identifier and a new span
-// The identifier is used in the `AssignExpression` due to Go's untransparent memory model
-// The span is updated if the variable's location should e.g. be set to the one of it's let statement
-func insertValueMetadata(value Value, identifier string, span errors.Span) Value {
-	switch value.Type() {
-	case TypeNull:
-		return ValueNull{
-			Identifier: &identifier,
-			Range:      span,
-		}
-	case TypeNumber:
-		return ValueNumber{
-			Value:      value.(ValueNumber).Value,
-			Identifier: &identifier,
-			Range:      span,
-		}
-	case TypeBoolean:
-		return ValueBool{
-			Value:      value.(ValueBool).Value,
-			Identifier: &identifier,
-			Range:      span,
-		}
-	case TypeString:
-		value = ValueString{
-			Value:      value.(ValueString).Value,
-			Identifier: &identifier,
-			Range:      span,
-		}
-	case TypePair:
-		value = ValuePair{
-			Key:        value.(ValuePair).Key,
-			Value:      value.(ValuePair).Value,
-			Identifier: &identifier,
-			Range:      span,
-		}
-	case TypeObject:
-		value = ValueObject{
-			DataType:   value.(ValueObject).DataType,
-			IsDynamic:  value.(ValueObject).IsDynamic,
-			ObjFields:  value.(ValueObject).ObjFields,
-			Identifier: &identifier,
-			Range:      span,
-		}
-	}
-	// For other types, it is not possible to insert an identifier, so just return it as is
-	return value
 }
 
 func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *errors.Error) {
@@ -770,10 +717,10 @@ func (self *Interpreter) visitEpxExpression(node ExpExpression) (Result, *int, *
 
 func assign(left *Value, right Value, span errors.Span) (Value, *errors.Error) {
 	// Validate that the left hand side can be assigned to
-	if (*left).Ident() == nil {
+	if (*left).Protected() {
 		return nil, errors.NewError(
 			span,
-			fmt.Sprintf("cannot assign to value of type %v", (*left).Type()),
+			fmt.Sprintf("cannot assign to protected value of type %v", (*left).Type()),
 			errors.TypeError,
 		)
 	}
@@ -785,16 +732,16 @@ func assign(left *Value, right Value, span errors.Span) (Value, *errors.Error) {
 			errors.TypeError,
 		)
 	}
-	// Insert identifier and new span into the right value
-	value := insertValueMetadata(
-		right,
-		*(*left).Ident(),
-		right.Span(),
-	)
+	// Insert new span into the right value
+	// value := setValueSpan(
+	//right,
+	// *(*left).Span(),
+	//right.Span(),
+	//)
 	// Perform actual assignment
-	*left = value
+	*left = right
 	// Return the value of the right hand side
-	return value, nil
+	return right, nil
 }
 
 func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *int, *errors.Error) {
