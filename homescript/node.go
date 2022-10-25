@@ -169,6 +169,7 @@ type MulExpression struct {
 	Following []struct {
 		MulOperator MulOperator
 		Other       CastExpression
+		Span        errors.Span
 	}
 	Span errors.Span
 }

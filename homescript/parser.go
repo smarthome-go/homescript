@@ -261,9 +261,11 @@ func (self *parser) mulExpr() (MulExpression, *errors.Error) {
 	following := make([]struct {
 		MulOperator MulOperator
 		Other       CastExpression
+		Span        errors.Span
 	}, 0)
 
 	for self.currToken.Kind == Multiply || self.currToken.Kind == Divide || self.currToken.Kind == IntDivide || self.currToken.Kind == Reminder {
+		otherStart := self.currToken.StartLocation
 		var mulOp MulOperator
 		switch self.currToken.Kind {
 		case Multiply:
@@ -288,9 +290,14 @@ func (self *parser) mulExpr() (MulExpression, *errors.Error) {
 		following = append(following, struct {
 			MulOperator MulOperator
 			Other       CastExpression
+			Span        errors.Span
 		}{
 			MulOperator: mulOp,
 			Other:       other,
+			Span: errors.Span{
+				Start: otherStart,
+				End:   self.prevToken.EndLocation,
+			},
 		})
 	}
 
@@ -339,7 +346,7 @@ func (self *parser) castExpr() (CastExpression, *errors.Error) {
 	default:
 		return CastExpression{}, &errors.Error{
 			Kind:    errors.SyntaxError,
-			Message: fmt.Sprintf("Typecast requires a valid type: expected type name, found %v", self.currToken.Kind),
+			Message: fmt.Sprintf("typecast requires a valid type: expected type name, found %v", self.currToken.Kind),
 			Span: errors.Span{
 				Start: self.prevToken.StartLocation,
 				End:   self.currToken.EndLocation,
