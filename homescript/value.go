@@ -48,7 +48,7 @@ func (self ValueType) String() string {
 // Value interfaces
 type Value interface {
 	Type() ValueType
-	Ident() *string
+	Protected() bool
 	Span() errors.Span
 	Fields() map[string]Value
 	// Is also used for `as str` and printing
@@ -77,14 +77,14 @@ type ValueAlg interface {
 
 // Null value
 type ValueNull struct {
-	Identifier *string
-	Range      errors.Span
+	Range       errors.Span
+	IsProtected bool
 }
 
 func (self ValueNull) Type() ValueType          { return TypeNull }
 func (self ValueNull) Span() errors.Span        { return self.Range }
 func (self ValueNull) Fields() map[string]Value { return make(map[string]Value) }
-func (self ValueNull) Ident() *string           { return self.Identifier }
+func (self ValueNull) Protected() bool          { return self.IsProtected }
 func (self ValueNull) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "null", nil
 }
@@ -100,15 +100,15 @@ func (self ValueNull) IsEqual(_ Executor, _ errors.Span, other Value) (bool, *er
 
 // Boolean value
 type ValueBool struct {
-	Value      bool
-	Identifier *string
-	Range      errors.Span
+	Value       bool
+	Range       errors.Span
+	IsProtected bool
 }
 
 func (self ValueBool) Type() ValueType          { return TypeBoolean }
 func (self ValueBool) Span() errors.Span        { return self.Range }
 func (self ValueBool) Fields() map[string]Value { return make(map[string]Value) }
-func (self ValueBool) Ident() *string           { return self.Identifier }
+func (self ValueBool) Protected() bool          { return self.IsProtected }
 func (self ValueBool) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return fmt.Sprintf("%t", self.Value), nil
 }
@@ -169,16 +169,16 @@ func (self ValueBool) Pow(executor Executor, span errors.Span, other Value) (Val
 
 // Pair value
 type ValuePair struct {
-	Key        string
-	Value      Value
-	Identifier *string
-	Range      errors.Span
+	Key         string
+	Value       Value
+	Range       errors.Span
+	IsProtected bool
 }
 
 func (self ValuePair) Type() ValueType          { return TypePair }
 func (self ValuePair) Span() errors.Span        { return self.Range }
 func (self ValuePair) Fields() map[string]Value { return make(map[string]Value) }
-func (self ValuePair) Ident() *string           { return self.Identifier }
+func (self ValuePair) Protected() bool          { return self.IsProtected }
 func (self ValuePair) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	value, err := self.Value.Display(executor, span)
 	if err != nil {
@@ -224,15 +224,15 @@ type ValueObject struct {
 	// Such a dynamic object could be the global `ARGS` object
 	IsDynamic bool
 	// The fields of the object
-	ObjFields  map[string]Value
-	Identifier *string
-	Range      errors.Span
+	ObjFields   map[string]Value
+	Range       errors.Span
+	IsProtected bool
 }
 
 func (self ValueObject) Type() ValueType          { return TypeObject }
 func (self ValueObject) Span() errors.Span        { return self.Range }
 func (self ValueObject) Fields() map[string]Value { return self.ObjFields }
-func (self ValueObject) Ident() *string           { return self.Identifier }
+func (self ValueObject) Protected() bool          { return self.IsProtected }
 func (self ValueObject) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	fields := make([]string, 0)
 	for key, value := range self.ObjFields {
@@ -292,19 +292,19 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 
 // Function value
 type ValueFunction struct {
-	Identifier *string
-	Args       []struct {
+	Args []struct {
 		Identifier string
 		Span       errors.Span
 	}
-	Body  []Statement
-	Range errors.Span
+	Body        []Statement
+	Range       errors.Span
+	IsProtected bool
 }
 
 func (self ValueFunction) Type() ValueType          { return TypeFunction }
 func (self ValueFunction) Span() errors.Span        { return self.Range }
 func (self ValueFunction) Fields() map[string]Value { return make(map[string]Value) }
-func (self ValueFunction) Ident() *string           { return nil }
+func (self ValueFunction) Protected() bool          { return self.IsProtected }
 func (self ValueFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<function>", nil
 }
@@ -336,7 +336,7 @@ type ValueBuiltinFunction struct {
 func (self ValueBuiltinFunction) Type() ValueType          { return TypeBuiltinFunction }
 func (self ValueBuiltinFunction) Span() errors.Span        { return errors.Span{} }
 func (self ValueBuiltinFunction) Fields() map[string]Value { return make(map[string]Value) }
-func (self ValueBuiltinFunction) Ident() *string           { return nil }
+func (self ValueBuiltinFunction) Protected() bool          { return true }
 func (self ValueBuiltinFunction) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return "<builtin-function>", nil
 }
@@ -365,7 +365,9 @@ type ValueBuiltinVariable struct {
 func (self ValueBuiltinVariable) Type() ValueType          { return TypeBuiltinVariable }
 func (self ValueBuiltinVariable) Span() errors.Span        { return errors.Span{} }
 func (self ValueBuiltinVariable) Fields() map[string]Value { return make(map[string]Value) }
-func (self ValueBuiltinVariable) Ident() *string           { return nil }
+func (self ValueBuiltinVariable) Protected() bool {
+	panic("A bare builtin variable should not exist")
+}
 func (self ValueBuiltinVariable) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	panic("A bare builtin variable should not exist")
 }
@@ -373,169 +375,45 @@ func (self ValueBuiltinVariable) Debug(executor Executor, span errors.Span) (str
 	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return false, err
-	}
-	valueIsTrue, err := value.IsTrue(executor, span)
-	if err != nil {
-		return false, err
-	}
-	return valueIsTrue, nil
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return false, err
-	}
-	if value.Type() != other.Type() {
-		return false, errors.NewError(
-			span,
-			fmt.Sprintf("cannot compare %v to %v", self.Type(), other.Type()),
-			errors.TypeError,
-		)
-	}
-	return value.IsEqual(executor, span, other)
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) IsLessThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return false, err
-	}
-	if value.Type() != TypeNumber {
-		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", value.Type(), other.Type()), errors.TypeError)
-	}
-	return value.(ValueNumber).IsLessThan(executor, span, other)
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) IsLessThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return false, err
-	}
-	if value.Type() != TypeNumber {
-		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", value.Type(), other.Type()), errors.TypeError)
-	}
-	return value.(ValueNumber).IsLessThanOrEqual(executor, span, other)
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) IsGreaterThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return false, err
-	}
-	if value.Type() != TypeNumber {
-		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", value.Type(), other.Type()), errors.TypeError)
-	}
-	return value.(ValueNumber).IsGreaterThan(executor, span, other)
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) IsGreaterThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return false, err
-	}
-	if value.Type() != TypeNumber {
-		return false, errors.NewError(span, fmt.Sprintf("cannot compare %v to %v", value.Type(), other.Type()), errors.TypeError)
-	}
-	return value.(ValueNumber).IsGreaterThanOrEqual(executor, span, other)
+	panic("A bare builtin variable should not exist")
 }
 
 func (self ValueBuiltinVariable) Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return nil, err
-	}
-	switch value.Type() {
-	case TypeNumber:
-		return value.(ValueNumber).Add(executor, span, other)
-	case TypeString:
-		return value.(ValueString).Add(executor, span, other)
-	default:
-		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
-	}
+	panic("A bare builtin variable should not exist")
 }
 
 func (self ValueBuiltinVariable) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return nil, err
-	}
-	switch value.Type() {
-	case TypeNumber:
-		return value.(ValueNumber).Sub(executor, span, other)
-	case TypeString:
-		return value.(ValueString).Sub(executor, span, other)
-	default:
-		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
-	}
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) Mul(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return nil, err
-	}
-	switch value.Type() {
-	case TypeNumber:
-		return value.(ValueNumber).Mul(executor, span, other)
-	case TypeString:
-		return value.(ValueString).Mul(executor, span, other)
-	default:
-		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
-	}
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return nil, err
-	}
-	switch value.Type() {
-	case TypeNumber:
-		return value.(ValueNumber).Div(executor, span, other)
-	case TypeString:
-		return value.(ValueString).Div(executor, span, other)
-	default:
-		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
-	}
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return nil, err
-	}
-	switch value.Type() {
-	case TypeNumber:
-		return value.(ValueNumber).IntDiv(executor, span, other)
-	case TypeString:
-		return value.(ValueString).IntDiv(executor, span, other)
-	default:
-		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
-	}
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return nil, err
-	}
-	switch value.Type() {
-	case TypeNumber:
-		return value.(ValueNumber).Rem(executor, span, other)
-	case TypeString:
-		return value.(ValueString).Rem(executor, span, other)
-	default:
-		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
-	}
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	value, err := self.Callback(executor, span)
-	if err != nil {
-		return nil, err
-	}
-	switch value.Type() {
-	case TypeNumber:
-		return value.(ValueNumber).Pow(executor, span, other)
-	case TypeString:
-		return value.(ValueString).Pow(executor, span, other)
-	default:
-		return nil, errors.NewError(span, fmt.Sprintf("Invalid operation on type %v", self.Type()), errors.TypeError)
-	}
+	panic("A bare builtin variable should not exist")
 }
 
 // Helper functions for values
