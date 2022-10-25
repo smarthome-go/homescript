@@ -1,2 +1,5 @@
-let res = exec("");
-res.output;
+fn hello(x, y) {
+    println(x * 5 * y);
+};
+
+hello(false, 1);
