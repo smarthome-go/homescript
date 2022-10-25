@@ -259,10 +259,14 @@ type CallExprPart struct {
 
 // Member expression
 type MemberExpression struct {
-	Base    Atom
+	Base Atom
+	// Each member is either an identifier 'foo.bar.baz' where `foo` is the base and `bar` and `baz` are the members
+	// However, each member can also be an index access: `[1]`, where 1 is an expression
 	Members []struct {
-		// Each member is an identifier 'foo.bar.baz' where `foo` is the base and `bar` and `baz` are the members
-		Identifier string
+		// Normal member identifier with a dot
+		Identifier *string
+		// List index access
+		Index *Expression
 		// Span is used in order to deliver better error messages
 		Span errors.Span
 	}
@@ -278,6 +282,7 @@ const (
 	AtomKindNumber AtomKind = iota
 	AtomKindBoolean
 	AtomKindString
+	AtomKindListLiteral
 	AtomKindPair
 	AtomKindNull
 	AtomKindIdentifier
@@ -330,6 +335,15 @@ type AtomIdentifier struct {
 
 func (self AtomIdentifier) Kind() AtomKind    { return AtomKindIdentifier }
 func (self AtomIdentifier) Span() errors.Span { return self.Range }
+
+// List literals
+type AtomListLiteral struct {
+	Values []Expression
+	Range  errors.Span
+}
+
+func (self AtomListLiteral) Kind() AtomKind    { return AtomKindListLiteral }
+func (self AtomListLiteral) Span() errors.Span { return self.Range }
 
 // Pair
 type AtomPair struct {

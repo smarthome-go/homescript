@@ -10,6 +10,7 @@ import (
 // A list of possible tokens which can start an expression
 var firstExpr = []TokenKind{
 	LParen,
+	LBracket,
 	Not,
 	Plus,
 	Minus,
@@ -675,33 +676,94 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 	}
 
 	members := make([]struct {
-		Identifier string
+		Identifier *string
+		Index      *Expression
 		Span       errors.Span
 	}, 0)
 
-	for self.currToken.Kind == Dot {
+	for self.currToken.Kind == Dot || self.currToken.Kind == LBracket {
 		if err := self.advance(); err != nil {
 			return MemberExpression{}, err
 		}
-		if self.currToken.Kind != Identifier {
-			return MemberExpression{}, &errors.Error{
-				Kind:    errors.SyntaxError,
-				Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
+		if self.prevToken.Kind == Dot {
+			if self.currToken.Kind != Identifier {
+				return MemberExpression{}, &errors.Error{
+					Kind:    errors.SyntaxError,
+					Message: fmt.Sprintf("expected identifier, found %v", self.currToken.Kind),
+					Span: errors.Span{
+						Start: self.currToken.StartLocation,
+						End:   self.currToken.EndLocation,
+					},
+				}
+			}
+			ident := self.currToken.Value
+			members = append(members, struct {
+				Identifier *string
+				Index      *Expression
+				Span       errors.Span
+			}{
+				Identifier: &ident,
+				Index:      nil,
 				Span: errors.Span{
 					Start: self.currToken.StartLocation,
 					End:   self.currToken.EndLocation,
-				},
+				}})
+			if err := self.advance(); err != nil {
+				return MemberExpression{}, err
 			}
-		}
-		members = append(members, struct {
-			Identifier string
-			Span       errors.Span
-		}{Identifier: self.currToken.Value, Span: errors.Span{
-			Start: self.currToken.StartLocation,
-			End:   self.currToken.EndLocation,
-		}})
-		if err := self.advance(); err != nil {
-			return MemberExpression{}, err
+		} else if self.prevToken.Kind == LBracket {
+			exprStart := self.currToken.StartLocation
+			isPossible := false
+			for _, option := range firstExpr {
+				if option == self.currToken.Kind {
+					isPossible = true
+					break
+				}
+			}
+			if !isPossible {
+				return MemberExpression{}, errors.NewError(
+					errors.Span{
+						Start: self.currToken.StartLocation,
+						End:   self.currToken.EndLocation,
+					},
+					fmt.Sprintf("expected expression, found %v", self.currToken.Kind),
+					errors.SyntaxError,
+				)
+			}
+			expression, err := self.expression()
+			if err != nil {
+				return MemberExpression{}, nil
+			}
+			if self.currToken.Kind != RBracket {
+				self.errors = append(self.errors,
+					errors.Error{
+						Kind:    errors.SyntaxError,
+						Message: fmt.Sprintf("unclosed indexing: expected %v, found %v", RBracket, self.currToken.Kind),
+						Span: errors.Span{
+							Start: self.currToken.StartLocation,
+							End:   self.currToken.EndLocation,
+						},
+					},
+				)
+			} else {
+				if err := self.advance(); err != nil {
+					return MemberExpression{}, err
+				}
+			}
+			members = append(members, struct {
+				Identifier *string
+				Index      *Expression
+				Span       errors.Span
+			}{
+				Identifier: nil,
+				Index:      &expression,
+				Span: errors.Span{
+					Start: exprStart,
+					End:   self.prevToken.EndLocation,
+				},
+			})
+		} else {
+			panic("BUG: this should be unreachable")
 		}
 	}
 	return MemberExpression{
@@ -775,6 +837,8 @@ func (self *parser) atom() (Atom, *errors.Error) {
 				End:   self.prevToken.EndLocation,
 			},
 		}, nil
+	case LBracket:
+		return self.listLiteral()
 	case Identifier:
 		if err := self.advance(); err != nil {
 			return nil, err
@@ -858,6 +922,88 @@ func (self *parser) atom() (Atom, *errors.Error) {
 		fmt.Sprintf("unexpected token %v found here", self.currToken.Kind),
 		errors.SyntaxError,
 	)
+}
+
+func (self *parser) listLiteral() (AtomListLiteral, *errors.Error) {
+	startLocation := self.currToken.StartLocation
+	if err := self.advance(); err != nil {
+		return AtomListLiteral{}, err
+	}
+	// If there is a closing bracket, stop here
+	if self.currToken.Kind == RBracket {
+		if err := self.advance(); err != nil {
+			return AtomListLiteral{}, err
+		}
+		return AtomListLiteral{
+			Values: make([]Expression, 0),
+			Range: errors.Span{
+				Start: startLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}, nil
+	}
+
+	// Make initial expression
+	isValidExpr := false
+	for _, possible := range firstExpr {
+		if possible == self.currToken.Kind {
+			isValidExpr = true
+			break
+		}
+	}
+	if !isValidExpr {
+		return AtomListLiteral{}, errors.NewError(errors.Span{
+			Start: self.currToken.StartLocation,
+			End:   self.currToken.EndLocation,
+		},
+			fmt.Sprintf("expected expression, found %v", self.currToken.Kind),
+			errors.SyntaxError,
+		)
+	}
+
+	expressions := make([]Expression, 0)
+	expression, err := self.expression()
+	if err != nil {
+		return AtomListLiteral{}, err
+	}
+	expressions = append(expressions, expression)
+
+	// Add more values if possible
+	for self.currToken.Kind == Comma {
+		if err := self.advance(); err != nil {
+			return AtomListLiteral{}, err
+		}
+		if self.currToken.Kind == RBracket {
+			break
+		}
+		expression, err := self.expression()
+		if err != nil {
+			return AtomListLiteral{}, err
+		}
+		expressions = append(expressions, expression)
+	}
+
+	// Expect a closing bracket
+	if self.currToken.Kind != RBracket {
+		return AtomListLiteral{}, errors.NewError(
+			errors.Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+			fmt.Sprintf("unclosed list literal: expected %v, found %v", RBracket, self.currToken.Kind),
+			errors.SyntaxError,
+		)
+	}
+	if err := self.advance(); err != nil {
+		return AtomListLiteral{}, err
+	}
+	return AtomListLiteral{
+		Range: errors.Span{
+			Start: startLocation,
+			End:   self.prevToken.EndLocation,
+		},
+		Values: expressions,
+	}, nil
 }
 
 func (self *parser) ifExpr() (IfExpr, *errors.Error) {
@@ -1010,7 +1156,7 @@ func (self *parser) whileExpr() (AtomWhile, *errors.Error) {
 		return AtomWhile{}, err
 	}
 
-	// Expect an exression or return an error
+	// Expect an expression or return an error
 	isValidExpr := false
 	for _, possible := range firstExpr {
 		if possible == self.currToken.Kind {
