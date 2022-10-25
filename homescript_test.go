@@ -297,3 +297,27 @@ func TestAnalyzer(t *testing.T) {
 		})
 	}
 }
+
+func TestRunDev(t *testing.T) {
+	path := "./test/programs/dev.hms"
+	program, err := os.ReadFile(path)
+	assert.NoError(t, err)
+	sigTerm := make(chan int)
+	moduleName := strings.ReplaceAll(strings.Split(path, "/")[len(strings.Split(path, "/"))-1], ".hms", "")
+	value, code, _, hmsErrors := homescript.Run(
+		dummyExecutor{},
+		&sigTerm,
+		string(program),
+		make(map[string]homescript.Value),
+		make(map[string]homescript.Value),
+		false,
+		10,
+		make([]string, 0),
+		moduleName,
+	)
+	for _, err := range hmsErrors {
+		fmt.Println(err.Display(string(program), moduleName))
+	}
+	fmt.Printf(">>> %v\n", value.Type())
+	fmt.Printf("Program terminated with exit-code %d\n", code)
+}

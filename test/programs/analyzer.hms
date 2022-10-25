@@ -1,5 +1,10 @@
-fn hello(x, y) {
-    println(x * 5 * y);
+fn a() {
+    if true {
+        hello(false, "");
+    };
 };
 
-hello(false, 1);
+fn hello(x, y) {
+    println(x % 1);
+    println(x - 1 + "" => 1);
+};
