@@ -152,6 +152,7 @@ type AddExpression struct {
 	Following []struct {
 		AddOperator AddOperator
 		Other       MulExpression
+		Span        errors.Span
 	}
 	Span errors.Span
 }

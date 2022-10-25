@@ -267,7 +267,7 @@ func (self *Analyzer) highlightCaller(kind errors.ErrorKind, errSpan errors.Span
 		curr := self.scopes[idx]
 		// If the current scope is no longer in a function, the correct scope has been found
 		// If the current scope is no longer in the same function, the correct scope has been found as well
-		if prevIdent != nil && curr.identifier != nil && *prevIdent != *curr.identifier {
+		if prevIdent != nil && (curr.identifier != nil && *prevIdent != *curr.identifier) || curr.identifier == nil {
 			self.info(
 				self.scopes[idx+1].span,
 				fmt.Sprintf("function with %v at line %d:%d called here", kind, errSpan.Start.Line, errSpan.Start.Column),
@@ -687,12 +687,26 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 
 	// Prevent further analysis if the base value is nil
 	if base.Value == nil || *base.Value == nil {
-		self.info(node.Span, "manual type validation required")
+		hadError := false
+		// Still lint the other parts
+		for _, following := range node.Following {
+			followingValue, err := self.visitMulExression(following.Other)
+			if err != nil {
+				return Result{}, err
+			}
+			if followingValue.Value != nil && *followingValue.Value != nil && (*followingValue.Value).Type() != TypeNumber {
+				self.issue(following.Span, fmt.Sprintf("cannot apply operation on type %v", (*followingValue.Value).Type()), errors.TypeError)
+				hadError = true
+			}
+		}
+		if !hadError {
+			self.info(node.Span, "manual type validation required")
+		}
 		return Result{}, nil
 	}
 
-	// Check that the base holds a valid type to perform the requested operations
 	var baseVal Value
+	// Check that the base holds a valid type to perform the requested operations
 	switch (*base.Value).Type() {
 	case TypeNumber:
 		baseVal = (*base.Value).(ValueNumber)
@@ -705,11 +719,24 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 	default:
 		self.highlightCaller(errors.TypeError, node.Span)
 		self.issue(node.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
+
+		// Still lint the other parts
+		for _, following := range node.Following {
+			followingValue, err := self.visitMulExression(following.Other)
+			if err != nil {
+				return Result{}, err
+			}
+			if followingValue.Value != nil && *followingValue.Value != nil && (*followingValue.Value).Type() != TypeNumber {
+				self.issue(following.Span, fmt.Sprintf("cannot apply operation on type %v", (*followingValue.Value).Type()), errors.TypeError)
+			}
+		}
 		return Result{}, nil
 	}
 
 	// Performs typecase so that the algebraic functions are available on the base type
 	baseAlg := baseVal.(ValueAlg)
+
+	manualInfoIssued := false
 
 	for _, following := range node.Following {
 		// Is later filled and evaluated once the correct operator has been applied
@@ -723,8 +750,11 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 
 		// Terminate this function's analysis if the followingValue is nil
 		if followingValue.Value == nil || *followingValue.Value == nil {
-			self.info(node.Span, "manual type validation required")
-			return Result{}, nil
+			if !manualInfoIssued {
+				self.info(node.Span, "manual type validation required")
+				manualInfoIssued = true
+			}
+			continue
 		}
 
 		switch following.AddOperator {
@@ -738,10 +768,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 
 		if algError != nil {
 			self.highlightCaller(algError.Kind, algError.Span)
-			algError.Span = errors.Span{
-				Start: baseVal.Span().Start,
-				End:   algError.Span.End,
-			}
+			algError.Span = following.Span
 			self.diagnosticError(*algError)
 			// Must return a blank result in order to prevent other functions from using a nil value
 			return Result{}, nil
@@ -764,23 +791,18 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 		return base, nil
 	}
 
-	manualInfoIssued := false
-
-	// Prevent further analysis if the base value is nil
-	if base.Value == nil || *base.Value == nil {
-		self.info(node.Span, "manual type validation required")
-		manualInfoIssued = true
-	}
-
 	// Check that the base holds a valid type to perform the requested operations
 	var baseVal Value
 
 	if base.Value != nil && *base.Value != nil && (*base.Value).Type() == TypeNumber {
 		baseVal = (*base.Value).(ValueNumber)
 	} else {
+		fmt.Println("ca")
+		hadError := false
 		if base.Value != nil && *base.Value != nil {
-			self.highlightCaller(errors.TypeError, (*base.Value).Span())
+			self.highlightCaller(errors.TypeError, node.Span)
 			self.issue(node.Base.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
+			hadError = true
 		}
 		// Still lint the other parts
 		for _, following := range node.Following {
@@ -791,13 +813,19 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 			if followingValue.Value != nil && *followingValue.Value != nil && (*followingValue.Value).Type() != TypeNumber {
 				// TODO: here
 				self.issue(following.Span, fmt.Sprintf("cannot apply operation on type %v", (*followingValue.Value).Type()), errors.TypeError)
+				hadError = true
 			}
+		}
+		if !hadError && (base.Value == nil || *base.Value == nil) {
+			self.info(node.Span, "manual type validation required")
 		}
 		return Result{}, nil
 	}
 
 	// Performs typecase so that the algebraic functions are available on the base type
 	baseAlg := baseVal.(ValueAlg)
+
+	manualInfoIssued := false
 
 	for _, following := range node.Following {
 		// Is later filled and evaluated once the correct operator has been applied

@@ -215,8 +215,10 @@ func (self *parser) addExpr() (AddExpression, *errors.Error) {
 	following := make([]struct {
 		AddOperator AddOperator
 		Other       MulExpression
+		Span        errors.Span
 	}, 0)
 	for self.currToken.Kind == Minus || self.currToken.Kind == Plus {
+		otherStart := self.currToken.StartLocation
 		var addOp AddOperator
 		switch self.currToken.Kind {
 		case Minus:
@@ -236,9 +238,14 @@ func (self *parser) addExpr() (AddExpression, *errors.Error) {
 		following = append(following, struct {
 			AddOperator AddOperator
 			Other       MulExpression
+			Span        errors.Span
 		}{
 			AddOperator: addOp,
 			Other:       other,
+			Span: errors.Span{
+				Start: otherStart,
+				End:   self.prevToken.EndLocation,
+			},
 		})
 	}
 
