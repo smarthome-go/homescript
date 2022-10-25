@@ -63,6 +63,24 @@ func (self ValueString) Fields() map[string]Value {
 		},
 	}
 }
+func (self ValueString) Index(_ Executor, index int, span errors.Span) (Value, *errors.Error) {
+	// Check the string len
+	valLen := len(self.Value)
+	if index < 0 {
+		index = index + valLen
+	}
+	if index < 0 || index >= valLen {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("index out of bounds: index is %d, but length is %d", index, valLen, self.Type()),
+			errors.OutOfBoundsError,
+		)
+	}
+	return ValueString{
+		Value: string([]rune(self.Value)[index]),
+		Range: self.Range,
+	}, nil
+}
 func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return self.Value, nil
 }

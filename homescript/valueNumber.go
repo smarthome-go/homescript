@@ -55,6 +55,9 @@ func (self ValueNumber) Fields() map[string]Value {
 		},
 	}
 }
+func (self ValueNumber) Index(_ Executor, _ int, span errors.Span) (Value, *errors.Error) {
+	return nil, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
+}
 func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	// Check if the value is actually an integer
 	if float64(int(self.Value)) == self.Value {
