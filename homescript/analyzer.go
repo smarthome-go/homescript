@@ -794,15 +794,15 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 	// Check that the base holds a valid type to perform the requested operations
 	var baseVal Value
 
+	hideValidationHint := false
+
 	if base.Value != nil && *base.Value != nil && (*base.Value).Type() == TypeNumber {
 		baseVal = (*base.Value).(ValueNumber)
 	} else {
-		fmt.Println("ca")
-		hadError := false
 		if base.Value != nil && *base.Value != nil {
 			self.highlightCaller(errors.TypeError, node.Span)
 			self.issue(node.Base.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
-			hadError = true
+			hideValidationHint = true
 		}
 		// Still lint the other parts
 		for _, following := range node.Following {
@@ -811,12 +811,11 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 				return Result{}, err
 			}
 			if followingValue.Value != nil && *followingValue.Value != nil && (*followingValue.Value).Type() != TypeNumber {
-				// TODO: here
 				self.issue(following.Span, fmt.Sprintf("cannot apply operation on type %v", (*followingValue.Value).Type()), errors.TypeError)
-				hadError = true
+				hideValidationHint = true
 			}
 		}
-		if !hadError && (base.Value == nil || *base.Value == nil) {
+		if !hideValidationHint && (base.Value == nil || *base.Value == nil) {
 			self.info(node.Span, "manual type validation required")
 		}
 		return Result{}, nil
@@ -824,8 +823,6 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 
 	// Performs typecase so that the algebraic functions are available on the base type
 	baseAlg := baseVal.(ValueAlg)
-
-	manualInfoIssued := false
 
 	for _, following := range node.Following {
 		// Is later filled and evaluated once the correct operator has been applied
@@ -838,9 +835,9 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 
 		// Terminate this function's analysis if the followingValue is nil
 		if baseAlg == nil || followingValue.Value == nil || *followingValue.Value == nil {
-			if !manualInfoIssued {
+			if !hideValidationHint {
 				self.info(node.Span, "manual type validation required")
-				manualInfoIssued = true
+				hideValidationHint = true
 			}
 			continue
 		}
@@ -860,6 +857,7 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 		if algError != nil {
 			self.highlightCaller(errors.TypeError, (*followingValue.Value).Span())
 			self.diagnosticError(*algError)
+			hideValidationHint = true
 		}
 	}
 	return Result{Value: base.Value}, nil
