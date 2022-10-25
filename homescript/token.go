@@ -21,10 +21,12 @@ const (
 	Range     // ..
 	Arrow     // =>
 
-	LParen // (
-	RParen // )
-	LCurly // {
-	RCurly // }
+	LParen   // (
+	RParen   // )
+	LCurly   // {
+	RCurly   // }
+	LBracket // [
+	RBracket // ]
 
 	Or               // ||
 	And              // &&
@@ -117,6 +119,10 @@ func (self TokenKind) String() string {
 		display = "l-curly"
 	case RCurly:
 		display = "r-curly"
+	case LBracket:
+		display = "left-bracket"
+	case RBracket:
+		display = "right-bracket"
 	case Or:
 		display = "or"
 	case And:

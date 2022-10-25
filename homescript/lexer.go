@@ -686,6 +686,10 @@ func (self *lexer) nextToken() (Token, *errors.Error) {
 			return self.makeSingleChar(LCurly, '{'), nil
 		case '}':
 			return self.makeSingleChar(RCurly, '}'), nil
+		case '[':
+			return self.makeSingleChar(LBracket, '['), nil
+		case ']':
+			return self.makeSingleChar(RBracket, ']'), nil
 		case '|':
 			return self.makeOr()
 		case '&':
