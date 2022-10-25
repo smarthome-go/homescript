@@ -41,6 +41,7 @@ const (
 	ValueError
 	ReferenceError
 	StackOverflow
+	OutOfBoundsError
 	// Can be caught using `catch`
 	ThrowError
 	RuntimeError
@@ -63,6 +64,8 @@ func (self ErrorKind) String() string {
 		return "ThrowError"
 	case StackOverflow:
 		return "StackOverflow"
+	case OutOfBoundsError:
+		return "OutOfBoundsError"
 	case ReferenceError:
 		return "ReferenceError"
 	case Warning:

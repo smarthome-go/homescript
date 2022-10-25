@@ -153,3 +153,26 @@ func (self ValueList) IsEqual(executor Executor, span errors.Span, other Value) 
 	// If every item so far was equal, return here
 	return true, nil
 }
+
+// Creates a new list whilst validating type equality (if called with more than 0 values)
+// Also assigns the list value type here (if called with more than 0 values)
+func newList(values []Value, span errors.Span) (ValueList, *errors.Error) {
+	// Validate that all types are the same
+	var valueType *ValueType
+	for idx, value := range values {
+		if valueType != nil && *valueType != value.Type() {
+			return ValueList{}, errors.NewError(
+				span,
+				fmt.Sprintf("value at index %d is of type %v, but this is a %v<%v>", idx, value.Type(), TypeList, *valueType),
+				errors.TypeError,
+			)
+		}
+		*valueType = value.Type()
+	}
+	return ValueList{
+		Values:      values,
+		ValueType:   valueType,
+		Range:       span,
+		IsProtected: false,
+	}, nil
+}

@@ -835,14 +835,44 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 	}
 	// Evaluate member expressions
 	for _, member := range node.Members {
+		// If the current member is a regular member access, perform it
+		if member.Identifier != nil {
+			result, err := getField(self.executor, member.Span, *base.Value, *member.Identifier)
+			if err != nil {
+				return Result{}, nil, err
+			}
+			// Swap the result and the base so that the next iteration uses this result
+			base.Value = &result
+		} else if member.Index != nil {
+			indexValue, code, err := self.visitExpression(*member.Index)
+			if code != nil || err != nil {
+				return Result{}, code, err
+			}
+			// Check that the index is a number which is also an integer
+			if (*indexValue.Value).Type() != TypeNumber {
+				return Result{}, nil, errors.NewError(
+					member.Span,
+					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
+					errors.TypeError,
+				)
+			}
+			index := (*indexValue.Value).(ValueNumber).Value
+			// Check that the number is whole
+			if index != float64(int(index)) {
+				return Result{}, nil, errors.NewError(
+					member.Span,
+					"indices must be integer numbers",
+					errors.ValueError,
+				)
+			}
+			result, err := (*base.Value).Index(self.executor, int(index), member.Span)
+			// Swap the result and the base so that the next iteration uses this result
+			base.Value = &result
+		} else {
+			panic("BUG: a new member kind was introduced without updating this code")
+		}
 		// TODO: maybe include the base + member in the span (foo.bar.baz)
 		// Like this	     									  ~~~~~~~
-		result, err := getField(self.executor, member.Span, *base.Value, member.Identifier)
-		if err != nil {
-			return Result{}, nil, err
-		}
-		// Swap the result and the base so that the next iteration uses this result
-		base.Value = &result
 	}
 	return base, nil, nil
 }
