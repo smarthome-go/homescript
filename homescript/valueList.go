@@ -8,7 +8,7 @@ import (
 
 // List value
 type ValueList struct {
-	Values []Value
+	Values *[]Value
 	// Is set to a value type the first time the list contains at least 1 element
 	ValueType   *ValueType
 	Range       errors.Span
@@ -22,7 +22,7 @@ func (self ValueList) Fields() map[string]Value {
 	return map[string]Value{
 		"len": ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-				panic("Not yet implemented")
+				return ValueNumber{Value: float64(len(*self.Values))}, nil, nil
 			},
 		},
 		"concat": ValueBuiltinFunction{
@@ -32,7 +32,26 @@ func (self ValueList) Fields() map[string]Value {
 		},
 		"push": ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-				panic("Not yet implemented")
+				if len(args) != 1 {
+					return nil, nil, errors.NewError(
+						span,
+						fmt.Sprintf("function 'push' takes exactly 1 argument but %d were given", len(args)),
+						errors.TypeError,
+					)
+				}
+				if self.ValueType != nil {
+					if args[0].Type() != *self.ValueType {
+						return nil, nil, errors.NewError(
+							span,
+							fmt.Sprintf("cannot push value of type %v into %v<%v>", args[0].Type(), TypeList, self.ValueType),
+							errors.TypeError,
+						)
+					}
+				} else {
+					*self.ValueType = args[0].Type()
+				}
+				(*self.Values) = append((*self.Values), args[0])
+				return ValueNull{}, nil, nil
 			},
 		},
 		"pop": ValueBuiltinFunction{
@@ -64,44 +83,44 @@ func (self ValueList) Fields() map[string]Value {
 }
 func (self ValueList) Index(executor Executor, index int, span errors.Span) (Value, *errors.Error) {
 	// Check the length
-	length := len(self.Values)
+	length := len(*self.Values)
 	if index < 0 {
 		index = index + length
 	}
 	if index < 0 || index >= length {
 		return nil, errors.NewError(
 			span,
-			fmt.Sprintf("index out of bounds: index is %d, but length is %d", index, length, self.Type()),
+			fmt.Sprintf("index out of bounds: index is %d, but length is %d", index, length),
 			errors.OutOfBoundsError,
 		)
 	}
-	return self.Values[index], nil
+	return (*self.Values)[index], nil
 }
 func (self ValueList) Display(executor Executor, span errors.Span) (string, *errors.Error) {
-	length := len(self.Values)
+	length := len(*self.Values)
 	output := "["
-	for idx, value := range self.Values {
+	for idx, value := range *self.Values {
 		display, err := value.Display(executor, span)
 		if err != nil {
 			return "", err
 		}
 		output += display
-		if idx < length {
+		if idx < length-1 {
 			output += ", "
 		}
 	}
 	return output + "]", nil
 }
 func (self ValueList) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
-	length := len(self.Values)
+	length := len(*self.Values)
 	output := "["
-	for idx, value := range self.Values {
+	for idx, value := range *self.Values {
 		display, err := value.Display(executor, span)
 		if err != nil {
 			return "", err
 		}
 		output += display
-		if idx < length {
+		if idx < length-1 {
 			output += ", "
 			if len(display) > 10 {
 				output += "\n"
@@ -133,15 +152,15 @@ func (self ValueList) IsEqual(executor Executor, span errors.Span, other Value) 
 		)
 	}
 	// Check that length is identical
-	if len(self.Values) != len(otherList.Values) {
+	if len(*self.Values) != len(*otherList.Values) {
 		return false, nil
 	}
 	// Check for equality of every index
-	for idx, left := range self.Values {
+	for idx, left := range *self.Values {
 		isEqual, err := left.IsEqual(
 			executor,
 			span,
-			otherList.Values[idx],
+			(*otherList.Values)[idx],
 		)
 		if err != nil {
 			return false, err
@@ -170,7 +189,7 @@ func newList(values []Value, span errors.Span) (ValueList, *errors.Error) {
 		*valueType = value.Type()
 	}
 	return ValueList{
-		Values:      values,
+		Values:      &values,
 		ValueType:   valueType,
 		Range:       span,
 		IsProtected: false,

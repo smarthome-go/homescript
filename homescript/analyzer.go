@@ -1141,12 +1141,38 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 		if base.Value == nil || *base.Value == nil {
 			return Result{}, nil
 		}
-		value := self.getField(*base.Value, member.Span, member.Identifier)
-		if value == nil {
-			continue
+		if member.Identifier != nil {
+			value := self.getField(*base.Value, member.Span, *member.Identifier)
+			if value == nil {
+				continue
+			}
+			// Swap the result and the base so that the next iteration uses this result
+			base.Value = &value
 		}
+		indexValue, err := self.visitExpression(*member.Index)
+		if err != nil || indexValue.Value == nil || *indexValue.Value == nil {
+			return Result{}, err
+		}
+		// Check that the index is a number which is also an integer
+		if (*indexValue.Value).Type() != TypeNumber {
+			return Result{}, errors.NewError(
+				member.Span,
+				fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
+				errors.TypeError,
+			)
+		}
+		index := (*indexValue.Value).(ValueNumber).Value
+		// Check that the number is whole
+		if index != float64(int(index)) {
+			return Result{}, errors.NewError(
+				member.Span,
+				"indices must be integer numbers",
+				errors.ValueError,
+			)
+		}
+		result, err := (*base.Value).Index(self.executor, int(index), member.Span)
 		// Swap the result and the base so that the next iteration uses this result
-		base.Value = &value
+		base.Value = &result
 	}
 	return base, nil
 }

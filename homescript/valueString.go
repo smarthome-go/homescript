@@ -72,7 +72,7 @@ func (self ValueString) Index(_ Executor, index int, span errors.Span) (Value, *
 	if index < 0 || index >= valLen {
 		return nil, errors.NewError(
 			span,
-			fmt.Sprintf("index out of bounds: index is %d, but length is %d", index, valLen, self.Type()),
+			fmt.Sprintf("index out of bounds: index is %d, but length is %d", index, valLen),
 			errors.OutOfBoundsError,
 		)
 	}

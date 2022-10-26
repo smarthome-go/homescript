@@ -888,6 +888,8 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 	case AtomKindString:
 		str := makeStr(node.Span(), node.(AtomString).Content)
 		return Result{Value: &str}, nil, nil
+	case AtomKindListLiteral:
+		return self.makeList(node.(AtomListLiteral))
 	case AtomKindPair:
 		pairNode := node.(AtomPair)
 		// Make the pair's value
@@ -966,6 +968,39 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		return valueTemp, nil, nil
 	}
 	panic("BUG: A new atom was introduced without updating this code")
+}
+
+func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.Error) {
+	// Validate that all types are the same
+	var valueType *ValueType
+	typ := TypeUnknown
+	valueType = &typ
+	values := make([]Value, 0)
+	for idx, expression := range node.Values {
+		result, code, err := self.visitExpression(expression)
+		if code != nil || err != nil {
+			return Result{}, code, err
+		}
+		value := *result.Value
+		if valueType != nil && *valueType != value.Type() {
+			return Result{}, nil, errors.NewError(
+				expression.Span,
+				fmt.Sprintf("value at index %d is of type %v, but this is a %v<%v>", idx, value.Type(), TypeList, *valueType),
+				errors.TypeError,
+			)
+		}
+		typ := value.Type()
+		valueType = &typ
+		values = append(values, value)
+	}
+	return Result{
+		Value: valPtr(ValueList{
+			Values:      &values,
+			ValueType:   valueType,
+			Range:       node.Span(),
+			IsProtected: false,
+		}),
+	}, nil, nil
 }
 
 func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors.Error) {

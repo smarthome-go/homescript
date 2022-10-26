@@ -10,7 +10,8 @@ import (
 type ValueType uint8
 
 const (
-	TypeNull ValueType = iota
+	TypeUnknown ValueType = iota
+	TypeNull
 	TypeNumber
 	TypeBoolean
 	TypeString
@@ -24,6 +25,8 @@ const (
 
 func (self ValueType) String() string {
 	switch self {
+	case TypeUnknown:
+		return "unknown"
 	case TypeNull:
 		return "null"
 	case TypeNumber:

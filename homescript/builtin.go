@@ -9,10 +9,10 @@ import (
 )
 
 var numberNames = []string{
-	"First",
-	"Second",
-	"Third",
-	"Fourth",
+	"first",
+	"second",
+	"third",
+	"fourth",
 }
 
 // Helper function which checks the validity of args provided to builtin functions
@@ -24,7 +24,7 @@ func checkArgs(name string, span errors.Span, args []Value, types ...ValueType) 
 		}
 		return errors.NewError(
 			span,
-			fmt.Sprintf("Function '%s' takes %d argument%s but %d were given", name, len(types), s, len(args)),
+			fmt.Sprintf("function '%s' takes %d argument%s but %d were given", name, len(types), s, len(args)),
 			errors.TypeError,
 		)
 	}
