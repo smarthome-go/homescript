@@ -822,6 +822,38 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = &result
 		}
+		// Handle index access
+		if part.Index != nil {
+			// Make the index expression
+			indexValue, code, err := self.visitExpression(*part.Index)
+			if code != nil || err != nil {
+				return Result{}, code, err
+			}
+			// Check that the index is a number which is also an integer
+			if (*indexValue.Value).Type() != TypeNumber {
+				return Result{}, nil, errors.NewError(
+					part.Span,
+					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
+					errors.TypeError,
+				)
+			}
+			index := (*indexValue.Value).(ValueNumber).Value
+			// Check that the number is whole
+			if index != float64(int(index)) {
+				return Result{}, nil, errors.NewError(
+					part.Span,
+					"indices must be integer numbers",
+					errors.ValueError,
+				)
+			}
+			result, err := (*base.Value).Index(self.executor, int(index), part.Span)
+			if err != nil {
+				return Result{}, nil, err
+			}
+
+			// Swap the result and the base so that the next iteration uses this result
+			base.Value = &result
+		}
 	}
 	// Return the last base (the result)
 	return base, nil, nil
