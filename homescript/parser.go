@@ -712,7 +712,7 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 				return MemberExpression{}, err
 			}
 		} else if self.prevToken.Kind == LBracket {
-			exprStart := self.currToken.StartLocation
+			exprStart := self.prevToken.StartLocation
 			isPossible := false
 			for _, option := range firstExpr {
 				if option == self.currToken.Kind {
