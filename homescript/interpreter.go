@@ -865,6 +865,10 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 				)
 			}
 			result, err := (*base.Value).Index(self.executor, int(index), member.Span)
+			if err != nil {
+				return Result{}, nil, err
+			}
+
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = &result
 		} else {
