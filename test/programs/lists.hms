@@ -54,6 +54,7 @@ println(list_4);
 list_4.insert(3, 9);
 println(list_4);
 
+# Remove specific index
 println("list.remove");
 let list_5 = [1, 2, 3, 4];
 println(list_5);
@@ -65,11 +66,14 @@ println("index test");
 let list_6 = [0, 1, 2, 3, 4];
 println("last element:", list_6[-1]);
 
-# Pair k / v test
-let pair = "my key" => 42;
-println(pair.k, pair.v);
+# Concat test
+println("concat test");
+let list_7 = [1, 2];
+println(list_7);
+list_7.concat([3, 4, 5]);
+println(list_7);
 
-# Function which takes a list and returns a new list with another item
+# Function which takes a list and returns a new list with another (appended) item
 fn append(list, item) {
     list.push(item);
     return list;
@@ -77,3 +81,18 @@ fn append(list, item) {
 
 let new = append([1, 2], 3)[-1];
 println(new);
+
+# All list builtins listed below
+let demo = [];
+
+demo.len();
+
+demo.push(1);
+demo.pop();
+
+demo.push_front(0);
+demo.pop_front();
+
+demo.concat([2, 3, 4]);
+demo.insert(1, 42);
+demo.remove(1);
