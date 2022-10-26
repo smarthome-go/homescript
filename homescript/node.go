@@ -378,7 +378,10 @@ func (self IfExpr) Span() errors.Span { return self.Range }
 
 // For loop
 type AtomFor struct {
-	HeadIdentifier string
+	HeadIdentifier struct {
+		Identifier string
+		Span       errors.Span
+	}
 	RangeLowerExpr Expression
 	RangeUpperExpr Expression
 	IterationCode  Block

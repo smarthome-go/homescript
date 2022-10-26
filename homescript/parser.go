@@ -1090,7 +1090,17 @@ func (self *parser) forExpr() (AtomFor, *errors.Error) {
 			},
 		}
 	}
-	headIdentifier := self.currToken.Value
+	headIdentifier := struct {
+		Identifier string
+		Span       errors.Span
+	}{
+		Identifier: self.currToken.Value,
+		Span: errors.Span{
+			Start: self.currToken.StartLocation,
+			End:   self.currToken.EndLocation,
+		},
+	}
+
 	if err := self.advance(); err != nil {
 		return AtomFor{}, err
 	}
