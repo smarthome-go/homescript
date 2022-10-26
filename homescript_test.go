@@ -157,7 +157,7 @@ var tests = []test{
 	{
 		Name:              "PrimeNumbers",
 		File:              "./test/programs/primes.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNumber,
@@ -166,7 +166,7 @@ var tests = []test{
 	{
 		Name:              "FizzBuzz",
 		File:              "./test/programs/fizzbuzz.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -175,7 +175,16 @@ var tests = []test{
 	{
 		Name:              "Box",
 		File:              "./test/programs/box.hms",
-		Skip:              true,
+		Skip:              false,
+		Debug:             false,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors:    nil,
+	},
+	{
+		Name:              "Lists",
+		File:              "./test/programs/lists.hms",
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
