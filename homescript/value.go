@@ -512,19 +512,28 @@ func setValueSpan(value Value, span errors.Span) Value {
 			Range: span,
 		}
 	case TypePair:
+		pair := value.(ValuePair)
 		value = ValuePair{
-			Key:   value.(ValuePair).Key,
-			Value: value.(ValuePair).Value,
+			Key:   pair.Key,
+			Value: pair.Value,
 			Range: span,
 		}
 	case TypeObject:
+		object := value.(ValueObject)
 		value = ValueObject{
-			DataType:  value.(ValueObject).DataType,
-			IsDynamic: value.(ValueObject).IsDynamic,
-			ObjFields: value.(ValueObject).ObjFields,
+			DataType:  object.DataType,
+			IsDynamic: object.IsDynamic,
+			ObjFields: object.ObjFields,
+			Range:     span,
+		}
+	case TypeList:
+		list := value.(ValueList)
+		value = ValueList{
+			Values:    list.Values,
+			ValueType: list.ValueType,
 			Range:     span,
 		}
 	}
-	// For other types, it is not possible to insert an identifier, so just return it as is
+	// For other types, it is not possible to insert the span, so just return it as is
 	return value
 }
