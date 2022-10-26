@@ -252,8 +252,9 @@ type CallExpression struct {
 // If member expr part is nil, args is used
 // if args is nil, member expr part is used
 type CallExprPart struct {
-	MemberExpressionPart *string       // Optional: `.identifier`
+	MemberExpressionPart *string       // Optional: .identifier as a member
 	Args                 *[]Expression // Optional: (arg1, arg2) to call the function
+	Index                *Expression   // Optional: [42] to index a value
 	Span                 errors.Span
 }
 

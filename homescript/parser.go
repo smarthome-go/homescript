@@ -546,7 +546,7 @@ func (self *parser) callExpr() (CallExpression, *errors.Error) {
 
 func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 	var parts []CallExprPart = nil
-	for self.currToken.Kind == LParen || self.currToken.Kind == Dot {
+	for self.currToken.Kind == LParen || self.currToken.Kind == Dot || self.currToken.Kind == LBracket {
 		switch self.currToken.Kind {
 		case LParen:
 			startLocation := self.currToken.StartLocation
@@ -591,8 +591,60 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 			if err := self.advance(); err != nil {
 				return nil, err
 			}
+		case LBracket:
+			if err := self.advance(); err != nil {
+				return nil, err
+			}
+			// Make index
+			exprStart := self.prevToken.StartLocation
+			isPossible := false
+			for _, option := range firstExpr {
+				if option == self.currToken.Kind {
+					isPossible = true
+					break
+				}
+			}
+			if !isPossible {
+				return nil, errors.NewError(
+					errors.Span{
+						Start: self.currToken.StartLocation,
+						End:   self.currToken.EndLocation,
+					},
+					fmt.Sprintf("expected expression, found %v", self.currToken.Kind),
+					errors.SyntaxError,
+				)
+			}
+			expression, err := self.expression()
+			if err != nil {
+				return nil, err
+			}
+			if self.currToken.Kind != RBracket {
+				self.errors = append(self.errors,
+					errors.Error{
+						Kind:    errors.SyntaxError,
+						Message: fmt.Sprintf("unclosed indexing: expected %v, found %v", RBracket, self.currToken.Kind),
+						Span: errors.Span{
+							Start: self.currToken.StartLocation,
+							End:   self.currToken.EndLocation,
+						},
+					},
+				)
+			} else {
+				if err := self.advance(); err != nil {
+					return nil, err
+				}
+			}
+			parts = append(parts, CallExprPart{
+				MemberExpressionPart: nil,
+				Args:                 nil,
+				Index:                &expression,
+				Span: errors.Span{
+					Start: exprStart,
+					End:   self.prevToken.EndLocation,
+				},
+			})
 		default:
-			return parts, nil
+			panic("This should be unreachable")
 		}
 	}
 	return parts, nil
@@ -732,7 +784,7 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 			}
 			expression, err := self.expression()
 			if err != nil {
-				return MemberExpression{}, nil
+				return MemberExpression{}, err
 			}
 			if self.currToken.Kind != RBracket {
 				self.errors = append(self.errors,
