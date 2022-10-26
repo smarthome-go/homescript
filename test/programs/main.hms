@@ -12,7 +12,7 @@ println(println);               # Functions
 let string_value = "any string";
 string_value = 1 as str;    # Once a variable is bound to a value, it must not change its type
 # string_value = 1;         # Illegal assignment
-let object_value = weather;
+let _object_value = weather;
 
 # on / off are synonyms for true / false
 let boolean_value = true;
