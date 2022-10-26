@@ -70,3 +70,12 @@ println("last element:", list_6[-1]);
 # Pair k / v test
 let pair = "my key" => 42;
 println(pair.k, pair.v);
+
+# Function which takes a list and returns a new list with another item
+fn append(list, item) {
+    list.push(item);
+    return list;
+};
+
+let new = append([1, 2], 3)[-1];
+println(new);
