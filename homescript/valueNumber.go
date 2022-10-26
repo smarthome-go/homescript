@@ -166,7 +166,7 @@ func (self ValueNumber) Rem(executor Executor, span errors.Span, other Value) (V
 		return nil, errors.NewError(span, fmt.Sprintf("cannot calculate reminder of %v / %v", self.Type(), other.Type()), errors.TypeError)
 	}
 	return ValueNumber{
-		Value: math.Remainder(self.Value, other.(ValueNumber).Value),
+		Value: math.Mod(self.Value, other.(ValueNumber).Value),
 	}, nil
 }
 
