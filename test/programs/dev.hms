@@ -1,9 +1,65 @@
 # This file is used for implementing new language features
 
-let list = [];
-list.push(1);
-list.push(false);
+let list = [1, 2, 3, 4];
+list.push(5);
+
+# This should be true
+assert(list == [1, 2, 3, 4, 5]);
+
+# This results in a type error
+#list.push(false);
 
 for i in 0..list.len(){
-    println(list[i]);
+    #println(list[i]);
 };
+
+# This results in a type error
+#println(list == []);
+# This as well
+#println(list == ["foo", "bar", "baz"]);
+
+# Pushing list elements
+let list_1 = [];
+list_1.push(1);
+assert(list_1.len() == 1);
+
+# Popping list elements
+println("list.pop");
+let list_2 = [1, 2, 3, 4, 5, 6];
+for _ in 0..list_2.len() {
+    # Pop returns the element popped
+    list_2.pop();
+    println(list_2);
+};
+
+# Pushing elements to the front
+println("list.push_front");
+let list_3 = [];
+for i in 0..10 {
+    # Adds an element to the front
+    list_3.push_front(i);
+    println(list_3);
+};
+
+# Popping elements from the front
+println("list.pop_front");
+for _ in 0..list_3.len() {
+    # Removes the first element of the list
+    list_3.pop_front();
+    println(list_3);
+};
+
+# Insert at specific location
+println("list.insert");
+let list_4 = [1, 2, 3, 4];
+#list_4.insert(3, 9);
+#println(list_4);
+println(list_4);
+list_4.remove(-1);
+println(list_4);
+print(-1);
+
+# Index test
+println("index test");
+let list_5 = [0, 1, 2, 3, 4];
+println("LAST", list_5[-1]);
