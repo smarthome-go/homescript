@@ -191,6 +191,15 @@ var tests = []test{
 		ExpectedErrors:    nil,
 	},
 	{
+		Name:              "Binary",
+		File:              "./test/programs/binary.hms",
+		Skip:              false,
+		Debug:             false,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors:    nil,
+	},
+	{
 		Name:              "Analyzer",
 		File:              "./test/programs/analyzer.hms",
 		Skip:              true,
