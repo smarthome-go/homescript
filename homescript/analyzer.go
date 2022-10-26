@@ -565,7 +565,7 @@ func (self *Analyzer) visitAndExpression(node AndExpression) (Result, *errors.Er
 	}
 
 	// Only continue analysis if the base value is not nil
-	if base.Value != nil {
+	if base.Value != nil && *base.Value != nil {
 		_, err = (*base.Value).IsTrue(self.executor, node.Base.Span)
 		if err != nil {
 			self.diagnosticError(*err)
@@ -637,7 +637,13 @@ func (self *Analyzer) visitRelExression(node RelExpression) (Result, *errors.Err
 	}
 
 	// Prevent further analysis if either the base or the other values are nil
-	if base.Value == nil || otherValue.Value == nil {
+	if otherValue.Value == nil || *otherValue.Value == nil {
+		self.info(node.Other.Node.Span, "manual type validation required")
+		return makeBoolResult(node.Span, false), nil
+	}
+
+	if base.Value == nil || *base.Value == nil {
+		self.info(node.Base.Span, "manual type validation required")
 		return makeBoolResult(node.Span, false), nil
 	}
 
@@ -703,7 +709,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 			}
 		}
 		if !hadError {
-			self.info(node.Span, "manual type validation required")
+			self.info(node.Base.Span, "manual type validation required")
 		}
 		return Result{}, nil
 	}
@@ -754,7 +760,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 		// Terminate this function's analysis if the followingValue is nil
 		if followingValue.Value == nil || *followingValue.Value == nil {
 			if !manualInfoIssued {
-				self.info(node.Span, "manual type validation required")
+				self.info(following.Span, "manual type validation required")
 				manualInfoIssued = true
 			}
 			continue
@@ -819,7 +825,7 @@ func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Err
 			}
 		}
 		if !hideValidationHint && (base.Value == nil || *base.Value == nil) {
-			self.info(node.Span, "manual type validation required")
+			self.info(node.Base.Span, "manual type validation required")
 		}
 		return Result{}, nil
 	}
@@ -944,16 +950,16 @@ func (self *Analyzer) visitUnaryExpression(node UnaryExpression) (Result, *error
 	}
 
 	// Stop here if the base value is nil
-	if unaryBase.Value == nil {
+	if unaryBase.Value == nil || *unaryBase.Value == nil {
 		return Result{}, nil
 	}
 
 	var unaryErr *errors.Error
 	switch node.UnaryExpression.UnaryOp {
 	case UnaryOpPlus:
-		_, unaryErr = ValueNumber{Value: 0.0}.Sub(self.executor, node.UnaryExpression.UnaryExpression.Span, *unaryBase.Value)
-	case UnaryOpMinus:
 		_, unaryErr = ValueNumber{Value: 0.0}.Add(self.executor, node.UnaryExpression.UnaryExpression.Span, *unaryBase.Value)
+	case UnaryOpMinus:
+		_, unaryErr = ValueNumber{Value: 0.0}.Sub(self.executor, node.UnaryExpression.UnaryExpression.Span, *unaryBase.Value)
 	case UnaryOpNot:
 		_, err := (*unaryBase.Value).IsTrue(self.executor, node.UnaryExpression.UnaryExpression.Span)
 		if err != nil {
@@ -1135,54 +1141,64 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 		return Result{}, err
 	}
 
-	if base.Value == nil || *base.Value == nil {
-		return Result{}, nil
-	}
-
 	// Evaluate member expressions
+	manualInfo := false
 	for _, member := range node.Members {
-		if base.Value == nil || *base.Value == nil {
-			return Result{}, nil
-		}
 		// Handle member (field) access
 		if member.Identifier != nil {
+			if base.Value == nil || *base.Value == nil {
+				manualInfo = true
+				continue
+			}
 			value := self.getField(*base.Value, member.Span, *member.Identifier)
 			if value == nil {
-				continue
+				return Result{}, nil
 			}
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = &value
 		}
 		if member.Index != nil {
 			indexValue, err := self.visitExpression(*member.Index)
-			if err != nil || indexValue.Value == nil || *indexValue.Value == nil {
+			if err != nil {
 				return Result{}, err
+			}
+			if indexValue.Value == nil || *indexValue.Value == nil || base.Value == nil || *base.Value == nil {
+				manualInfo = true
+				continue
+			}
+			typeName := "unknown"
+			if base.Value != nil && *base.Value != nil {
+				typeName = (*base.Value).Type().String()
 			}
 			// Check that the index is a number which is also an integer
 			if (*indexValue.Value).Type() != TypeNumber {
-				return Result{}, errors.NewError(
+				self.issue(
 					member.Span,
-					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
+					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", typeName, (*indexValue.Value).Type()),
 					errors.TypeError,
 				)
+				return Result{}, nil
 			}
 			index := (*indexValue.Value).(ValueNumber).Value
 			// Check that the value is a whole number
 			if index != float64(int(index)) {
-				return Result{}, errors.NewError(
-					member.Span,
-					"indices must be integer numbers",
-					errors.ValueError,
-				)
+				self.issue(member.Span, "indices must be integer numbers", errors.ValueError)
+				return Result{}, nil
 			}
 			result, err := (*base.Value).Index(self.executor, int(index), member.Span)
 			if err != nil {
 				self.diagnosticError(*err)
-				continue
+				return Result{}, nil
 			}
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = &result
 		}
+	}
+	if manualInfo {
+		self.info(errors.Span{
+			Start: node.Members[0].Span.Start,
+			End:   node.Members[len(node.Members)-1].Span.End,
+		}, "manual validation required")
 	}
 	return base, nil
 }
