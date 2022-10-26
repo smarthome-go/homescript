@@ -26,7 +26,7 @@ func (self ValueList) Fields() map[string]Value {
 				return ValueNumber{Value: float64(len(*self.Values))}, nil, nil
 			},
 		},
-		// Appeds a list to the end of another list
+		// Appends a list to the end of another list
 		"concat": ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("concat", span, args, TypeList); err != nil {
@@ -43,6 +43,29 @@ func (self ValueList) Fields() map[string]Value {
 				}
 				*self.Values = append(*self.Values, *other.Values...)
 				return ValueNull{}, nil, nil
+			},
+		},
+		// Joins the list together into a string using the specified seperator
+		"join": ValueBuiltinFunction{
+			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+				if err := checkArgs("join", span, args, TypeString); err != nil {
+					return nil, nil, err
+				}
+				seperator := args[0].(ValueString).Value
+				var output string
+
+				for idx, value := range *self.Values {
+					display, err := value.Display(executor, span)
+					if err != nil {
+						return nil, nil, err
+					}
+					if idx == 0 {
+						output = display
+					} else {
+						output += (seperator + display)
+					}
+				}
+				return ValueString{Value: output}, nil, nil
 			},
 		},
 		// Adds an element to the end of the list
