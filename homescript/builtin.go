@@ -467,7 +467,7 @@ func GetTime(executor Executor, _ errors.Span) (Value, *errors.Error) {
 			"hour": ValueNumber{
 				Value: float64(time.Hour()),
 			},
-			"minue": ValueNumber{
+			"minute": ValueNumber{
 				Value: float64(time.Minute()),
 			},
 			"second": ValueNumber{
