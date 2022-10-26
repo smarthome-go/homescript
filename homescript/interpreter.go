@@ -975,9 +975,7 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 
 func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.Error) {
 	// Validate that all types are the same
-	var valueType *ValueType
-	typ := TypeUnknown
-	valueType = &typ
+	valueType := TypeUnknown
 	values := make([]Value, 0)
 	for idx, expression := range node.Values {
 		result, code, err := self.visitExpression(expression)
@@ -985,21 +983,20 @@ func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.E
 			return Result{}, code, err
 		}
 		value := *result.Value
-		if valueType != nil && *valueType != value.Type() {
+		if valueType != TypeUnknown && valueType != value.Type() {
 			return Result{}, nil, errors.NewError(
 				expression.Span,
-				fmt.Sprintf("value at index %d is of type %v, but this is a %v<%v>", idx, value.Type(), TypeList, *valueType),
+				fmt.Sprintf("value at index %d is of type %v, but this is a %v<%v>", idx, value.Type(), TypeList, valueType),
 				errors.TypeError,
 			)
 		}
-		typ := value.Type()
-		valueType = &typ
+		valueType = value.Type()
 		values = append(values, value)
 	}
 	return Result{
 		Value: valPtr(ValueList{
 			Values:      &values,
-			ValueType:   valueType,
+			ValueType:   &valueType,
 			Range:       node.Span(),
 			IsProtected: false,
 		}),
