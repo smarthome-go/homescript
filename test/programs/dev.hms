@@ -1,4 +1,9 @@
 # This file is used for implementing new language features
 
-let list = [1, 2, 3];
-println(list[0]);
+let list = [];
+list.push(1);
+list.push(false);
+
+for i in 0..list.len(){
+    println(list[i]);
+};
