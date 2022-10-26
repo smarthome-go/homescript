@@ -46,6 +46,7 @@ type Executor interface {
 	Println(args ...string)
 	SwitchOn(name string) (bool, error)
 	Switch(name string, on bool) error
+	Ping(ip string, timeout float64) (bool, error)
 	Notify(title string, description string, level NotificationLevel) error
 	Log(title string, description string, level LogLevel) error
 	Exec(homescriptId string, args map[string]string) (ExecResponse, error)
