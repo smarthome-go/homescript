@@ -660,14 +660,13 @@ func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (Result, *in
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
-
 	var unaryResult Value
 	var unaryErr *errors.Error
 	switch node.UnaryExpression.UnaryOp {
 	case UnaryOpPlus:
-		unaryResult, unaryErr = ValueNumber{Value: 0.0}.Sub(self.executor, node.UnaryExpression.UnaryExpression.Span, *unaryBase.Value)
-	case UnaryOpMinus:
 		unaryResult, unaryErr = ValueNumber{Value: 0.0}.Add(self.executor, node.UnaryExpression.UnaryExpression.Span, *unaryBase.Value)
+	case UnaryOpMinus:
+		unaryResult, unaryErr = ValueNumber{Value: 0.0}.Sub(self.executor, node.UnaryExpression.UnaryExpression.Span, *unaryBase.Value)
 	case UnaryOpNot:
 		unaryBaseIsTrueTemp, err := (*unaryBase.Value).IsTrue(self.executor, node.UnaryExpression.UnaryExpression.Span)
 		if err != nil {
