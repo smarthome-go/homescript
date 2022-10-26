@@ -1235,7 +1235,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 
 		// Add the head identifier to the scope (so that loop code can access the iteration variable)
 		num := Value(ValueNumber{Value: float64(loopIter)})
-		self.addVar(node.HeadIdentifier, &num)
+		self.addVar(node.HeadIdentifier.Identifier, &num)
 
 		// Enable the `inLoop` flag on the interpreter
 		self.inLoopCount++
