@@ -609,7 +609,8 @@ func (self *Analyzer) visitEqExpression(node EqExpression) (Result, *errors.Erro
 	}
 
 	// Prevent further analysis if either the base or the other values are nil
-	if base.Value == nil || otherValue.Value == nil {
+	if base.Value == nil || *base.Value == nil || otherValue.Value == nil || *otherValue.Value == nil {
+		self.info(node.Span, "manual validation required")
 		return makeBoolResult(node.Span, false), nil
 	}
 
@@ -1396,6 +1397,11 @@ func (self *Analyzer) makeList(node AtomListLiteral) (Result, *errors.Error) {
 		if err != nil {
 			return Result{}, err
 		}
+		if result.Value == nil || *result.Value == nil {
+			self.info(expression.Span, "manual validation required")
+			continue
+		}
+
 		value := *result.Value
 		if valueType != TypeUnknown && valueType != value.Type() {
 			return Result{}, errors.NewError(
