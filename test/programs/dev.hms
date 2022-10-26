@@ -9,7 +9,7 @@ assert(list == [1, 2, 3, 4, 5]);
 # This results in a type error
 #list.push(false);
 
-for i in 0..list.len(){
+for _ in 0..list.len(){
     #println(list[i]);
 };
 
