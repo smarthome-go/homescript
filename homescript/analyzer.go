@@ -373,7 +373,7 @@ func (self *Analyzer) visitStatements(statements []Statement) (Result, *errors.E
 		// Handle potential break or return statements
 		if lastResult.ReturnValue != nil {
 			// Check if the use of return is legal here
-			if !self.getScope().inLoop {
+			if !self.getScope().inFunction {
 				self.issue(statement.Span(), "Can only use the return statement iside function bodies", errors.SyntaxError)
 			} else {
 				unreachable = true
@@ -1572,7 +1572,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 
 	// Only check the upper value's type if it is not nil
 	rangeUpperNumeric := 0.0
-	if rangeUpperValue.Value != nil {
+	if rangeUpperValue.Value != nil && *rangeUpperValue.Value != nil {
 		switch (*rangeUpperValue.Value).Type() {
 		case TypeNumber:
 			rangeUpperNumeric = (*rangeUpperValue.Value).(ValueNumber).Value
@@ -1609,7 +1609,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 		self.getScope().identifier,
 		node.Span(),
 		make([]string, 0),
-		self.getScope().inLoop,
+		true,
 		self.getScope().inFunction,
 	); err != nil {
 		return Result{}, err
@@ -1648,7 +1648,7 @@ func (self *Analyzer) visitWhileExpression(node AtomWhile) (Result, *errors.Erro
 		self.getScope().identifier,
 		node.Span(),
 		make([]string, 0),
-		self.getScope().inLoop,
+		true,
 		self.getScope().inFunction,
 	); err != nil {
 		return Result{}, err
@@ -1892,7 +1892,7 @@ func (self *Analyzer) popScope() *errors.Error {
 				for _, param := range value.(ValueFunction).Args {
 					args = append(args, param.Identifier)
 				}
-				if err := self.pushScope(&key, scope.span, args, true, false); err != nil {
+				if err := self.pushScope(&key, scope.span, args, false, true); err != nil {
 					return err
 				}
 				// Add dummy values for the parameters
