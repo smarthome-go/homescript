@@ -29,7 +29,20 @@ func (self ValueList) Fields() map[string]Value {
 		// Appeds a list to the end of another list
 		"concat": ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-				panic("Not yet implemented")
+				if err := checkArgs("concat", span, args, TypeList); err != nil {
+					return nil, nil, err
+				}
+				other := args[0].(ValueList)
+				// Check that the types overlap
+				if *self.ValueType != TypeUnknown && *other.ValueType != TypeUnknown && *self.ValueType != *other.ValueType {
+					return nil, nil, errors.NewError(
+						span,
+						fmt.Sprintf("cannot concatenate %v<%v> to %v<%v>", TypeList, other.ValueType, TypeList, self.ValueType),
+						errors.TypeError,
+					)
+				}
+				*self.Values = append(*self.Values, *other.Values...)
+				return ValueNull{}, nil, nil
 			},
 		},
 		// Adds an element to the end of the list
