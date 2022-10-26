@@ -1574,8 +1574,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	}
 
 	// Add the head identifier to the scope (so that loop code can access the iteration variable)
-	// TODO: improve indent here
-	self.addVar(node.HeadIdentifier, ValueNumber{Value: 0.0}, node.Range)
+	self.addVar(node.HeadIdentifier.Identifier, ValueNumber{Value: 0.0, Range: node.HeadIdentifier.Span}, node.HeadIdentifier.Span)
 
 	_, err = self.visitStatements(node.IterationCode)
 	if err != nil {
