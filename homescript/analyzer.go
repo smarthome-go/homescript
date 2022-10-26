@@ -39,6 +39,7 @@ const (
 	SymbolTypeNumber          symbolType = "number"
 	SymbolTypeBoolean         symbolType = "boolean"
 	SymbolTypeString          symbolType = "string"
+	SymbolTypeList            symbolType = "list"
 	SymbolTypePair            symbolType = "pair"
 	SymbolTypeObject          symbolType = "object"
 	SymbolDynamicMember       symbolType = "dynamic member"
@@ -57,6 +58,8 @@ func (self ValueType) toSymbolType() symbolType {
 		return SymbolTypeBoolean
 	case TypeString:
 		return SymbolTypeString
+	case TypeList:
+		return SymbolTypeList
 	case TypePair:
 		return SymbolTypePair
 	case TypeObject:
@@ -1141,6 +1144,7 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 		if base.Value == nil || *base.Value == nil {
 			return Result{}, nil
 		}
+		// Handle member (field) access
 		if member.Identifier != nil {
 			value := self.getField(*base.Value, member.Span, *member.Identifier)
 			if value == nil {
@@ -1149,30 +1153,36 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = &value
 		}
-		indexValue, err := self.visitExpression(*member.Index)
-		if err != nil || indexValue.Value == nil || *indexValue.Value == nil {
-			return Result{}, err
+		if member.Index != nil {
+			indexValue, err := self.visitExpression(*member.Index)
+			if err != nil || indexValue.Value == nil || *indexValue.Value == nil {
+				return Result{}, err
+			}
+			// Check that the index is a number which is also an integer
+			if (*indexValue.Value).Type() != TypeNumber {
+				return Result{}, errors.NewError(
+					member.Span,
+					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
+					errors.TypeError,
+				)
+			}
+			index := (*indexValue.Value).(ValueNumber).Value
+			// Check that the value is a whole number
+			if index != float64(int(index)) {
+				return Result{}, errors.NewError(
+					member.Span,
+					"indices must be integer numbers",
+					errors.ValueError,
+				)
+			}
+			result, err := (*base.Value).Index(self.executor, int(index), member.Span)
+			if err != nil {
+				self.diagnosticError(*err)
+				continue
+			}
+			// Swap the result and the base so that the next iteration uses this result
+			base.Value = &result
 		}
-		// Check that the index is a number which is also an integer
-		if (*indexValue.Value).Type() != TypeNumber {
-			return Result{}, errors.NewError(
-				member.Span,
-				fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
-				errors.TypeError,
-			)
-		}
-		index := (*indexValue.Value).(ValueNumber).Value
-		// Check that the number is whole
-		if index != float64(int(index)) {
-			return Result{}, errors.NewError(
-				member.Span,
-				"indices must be integer numbers",
-				errors.ValueError,
-			)
-		}
-		result, err := (*base.Value).Index(self.executor, int(index), member.Span)
-		// Swap the result and the base so that the next iteration uses this result
-		base.Value = &result
 	}
 	return base, nil
 }
@@ -1213,6 +1223,8 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 	case AtomKindString:
 		str := makeStr(node.Span(), node.(AtomString).Content)
 		result = Result{Value: &str}
+	case AtomKindListLiteral:
+		return self.makeList(node.(AtomListLiteral))
 	case AtomKindPair:
 		pairNode := node.(AtomPair)
 		// Make the pair's value
@@ -1229,22 +1241,6 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		// Search the scope for the correct key
 		key := node.(AtomIdentifier).Identifier
 		scopeValue := self.accessVar(key)
-
-		// TODO: remove this
-		/*
-			// Add this variable to the variable accesses
-			// Only add the access if it is not already in the list
-			isMarked := false
-			for _, access := range self.getScope().variableAccesses {
-				if access == key {
-					isMarked = true
-					break
-				}
-			}
-			if !isMarked {
-				self.getScope().variableAccesses = append(self.getScope().variableAccesses, key)
-			}
-		*/
 
 		// If the key is associated with a value, return it
 		if scopeValue != nil {
@@ -1329,6 +1325,36 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		})
 	}
 	return result, nil
+}
+
+func (self *Analyzer) makeList(node AtomListLiteral) (Result, *errors.Error) {
+	// Validate that all types are the same
+	valueType := TypeUnknown
+	values := make([]Value, 0)
+	for idx, expression := range node.Values {
+		result, err := self.visitExpression(expression)
+		if err != nil {
+			return Result{}, err
+		}
+		value := *result.Value
+		if valueType != TypeUnknown && valueType != value.Type() {
+			return Result{}, errors.NewError(
+				expression.Span,
+				fmt.Sprintf("value at index %d is of type %v, but this is a %v<%v>", idx, value.Type(), TypeList, valueType),
+				errors.TypeError,
+			)
+		}
+		valueType = value.Type()
+		values = append(values, value)
+	}
+	return Result{
+		Value: valPtr(ValueList{
+			Values:      &values,
+			ValueType:   &valueType,
+			Range:       node.Span(),
+			IsProtected: false,
+		}),
+	}, nil
 }
 
 func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
