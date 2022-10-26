@@ -1437,11 +1437,12 @@ func (self *Interpreter) pushScope(span errors.Span) *errors.Error {
 
 // Pops a scope from the top of the stack
 func (self *Interpreter) popScope() {
+	length := len(self.scopes)
 	// Check that the root scope is not popped
-	if len(self.scopes) == 1 {
+	if length == 1 {
 		panic("BUG: cannot pop root scope")
 	}
-	self.scopes = self.scopes[:len(self.scopes)-1]
+	self.scopes = self.scopes[:length-1]
 	// Remove the last (top) element from the slice / stack
 	if self.debug {
 		self.debugScope()
