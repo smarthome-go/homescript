@@ -66,3 +66,7 @@ println(list_5);
 println("index test");
 let list_6 = [0, 1, 2, 3, 4];
 println("last element:", list_6[-1]);
+
+# Pair k / v test
+let pair = "my key" => 42;
+println(pair.k, pair.v);
