@@ -1106,12 +1106,13 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 	}
 	// Evaluate call / member parts
 	for _, part := range node.Parts {
+		if base.Value == nil || *base.Value == nil {
+			self.info(part.Span, "manual call validation required")
+			return Result{}, nil
+		}
 		// Handle args -> function call
 		if part.Args != nil {
 			// Call the base using the following args
-			if base.Value == nil || *base.Value == nil {
-				return Result{}, nil
-			}
 			result, err := self.callValue(part.Span, *base.Value, *part.Args)
 			if err != nil {
 				self.diagnosticError(*err)
@@ -1123,10 +1124,53 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 		}
 		// Handle member access
 		if part.MemberExpressionPart != nil {
+			if base.Value == nil || *base.Value == nil {
+				self.info(part.Span, "manual validation required")
+				return Result{}, nil
+			}
 			result := self.getField(*base.Value, part.Span, *part.MemberExpressionPart)
 			if result == nil {
 				return Result{}, nil
 			}
+			// Swap the result and the base so that the next iteration uses this result
+			base.Value = &result
+		}
+		// Handle index access
+		if part.Index != nil {
+			// Make the index expression
+			indexValue, err := self.visitExpression(*part.Index)
+			if err != nil {
+				return Result{}, err
+			}
+			if base.Value == nil || *base.Value == nil || indexValue.Value == nil || *indexValue.Value == nil {
+				self.info(part.Span, "manual index validation required")
+				return Result{}, nil
+			}
+			// Check that the index is a number which is also an integer
+			if (*indexValue.Value).Type() != TypeNumber {
+				self.issue(
+					part.Span,
+					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
+					errors.TypeError,
+				)
+				return Result{}, nil
+			}
+			index := (*indexValue.Value).(ValueNumber).Value
+			// Check that the number is whole
+			if index != float64(int(index)) {
+				self.issue(
+					part.Span,
+					"indices but be integer numbers",
+					errors.ValueError,
+				)
+				return Result{}, nil
+			}
+			result, err := (*base.Value).Index(self.executor, int(index), part.Span)
+			if err != nil {
+				self.diagnosticError(*err)
+				return Result{}, nil
+			}
+
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = &result
 		}
@@ -1772,7 +1816,7 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		}
 
 		// Visit the function's body
-		_, err := self.visitStatements(function.Body)
+		returnValue, err := self.visitStatements(function.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -1789,6 +1833,12 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 			if !isUsed {
 				self.warn(arg.Span, fmt.Sprintf("function argument '%s' is unused", arg.Identifier))
 			}
+		}
+		if returnValue.ReturnValue != nil && *returnValue.ReturnValue != nil {
+			return *returnValue.ReturnValue, nil
+		}
+		if returnValue.Value != nil && *returnValue.Value != nil {
+			return *returnValue.Value, nil
 		}
 		return nil, nil
 	case TypeBuiltinFunction:
