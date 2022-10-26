@@ -318,6 +318,8 @@ func TestRunDev(t *testing.T) {
 	for _, err := range hmsErrors {
 		fmt.Println(err.Display(string(program), moduleName))
 	}
-	fmt.Printf(">>> %v\n", value.Type())
+	if value != nil {
+		fmt.Printf(">>> %v\n", value.Type())
+	}
 	fmt.Printf("Program terminated with exit-code %d\n", code)
 }
