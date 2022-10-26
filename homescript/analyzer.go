@@ -1837,11 +1837,13 @@ func (self *Analyzer) popScope() *errors.Error {
 						break
 					}
 				}
-				// Issue a warning
-				if imported {
-					self.warn(value.Span(), fmt.Sprintf("import '%s' is unused", key))
-				} else {
-					self.warn(value.Span(), fmt.Sprintf("function '%s' is unused", key))
+				// Issue a warning if the identifier does not start with an underscore _
+				if !strings.HasPrefix(key, "_") {
+					if imported {
+						self.warn(value.Span(), fmt.Sprintf("import '%s' is unused", key))
+					} else {
+						self.warn(value.Span(), fmt.Sprintf("function '%s' is unused", key))
+					}
 				}
 				// Analyze the function
 				args := make([]string, 0)
@@ -1867,7 +1869,7 @@ func (self *Analyzer) popScope() *errors.Error {
 							break
 						}
 					}
-					if !isUsed {
+					if !isUsed && !strings.HasPrefix(arg.Identifier, "_") {
 						self.warn(arg.Span, fmt.Sprintf("function argument '%s' is unused", arg.Identifier))
 					}
 				}
@@ -1895,7 +1897,8 @@ func (self *Analyzer) popScope() *errors.Error {
 					break
 				}
 			}
-			if !isUsed && !isArg {
+			// Do not show a warning if the identifier starts with an underscore _
+			if !isUsed && !isArg && !strings.HasPrefix(key, "_") {
 				self.warn(value.Span(), fmt.Sprintf("variable '%s' is unused", key))
 			}
 		}
