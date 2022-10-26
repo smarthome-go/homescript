@@ -281,32 +281,6 @@ func TestHomescripts(t *testing.T) {
 	}
 }
 
-func TestAnalyzer(t *testing.T) {
-	for idx, test := range tests {
-		t.Run(fmt.Sprintf("(%d/%d): %s", idx, len(tests), test.Name), func(t *testing.T) {
-			if test.Skip {
-				t.SkipNow()
-				return
-			}
-			program, err := os.ReadFile(test.File)
-			if err != nil {
-				t.Error(err.Error())
-			}
-			diagnostics, _ := homescript.Analyze(
-				dummyExecutor{},
-				string(program),
-				make(map[string]homescript.Value),
-			)
-			for _, diagnostic := range diagnostics {
-				fmt.Printf("\n%s\n", diagnostic.Display(string(program), test.File))
-			}
-			if len(diagnostics) == 0 {
-				fmt.Println("no diagnostics")
-			}
-		})
-	}
-}
-
 func TestRunDev(t *testing.T) {
 	path := "./test/programs/dev.hms"
 	program, err := os.ReadFile(path)
