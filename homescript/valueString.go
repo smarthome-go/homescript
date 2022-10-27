@@ -92,7 +92,7 @@ func (self ValueString) Index(_ Executor, indexValue Value, span errors.Span) (*
 	if float64(int(indexValue.(ValueNumber).Value)) != indexValue.(ValueNumber).Value {
 		return nil, errors.NewError(
 			span,
-			fmt.Sprintf("cannot index value of type '%v' by a float number", TypeList, indexValue.Type()),
+			fmt.Sprintf("cannot index value of type '%v' by a float number", TypeList),
 			errors.ValueError,
 		)
 	}
