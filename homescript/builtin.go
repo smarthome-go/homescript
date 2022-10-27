@@ -112,6 +112,25 @@ func Sleep(executor Executor, span errors.Span, args ...Value) (Value, *int, *er
 	return ValueNull{}, nil, nil
 }
 
+// Displays the given arguments as debug output
+func Debug(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if len(args) == 0 {
+		return nil, nil, errors.NewError(
+			span,
+			fmt.Sprintf("function 'debug' requires at least 1 argument but %d were given", len(args)),
+			errors.TypeError,
+		)
+	}
+	for _, value := range args {
+		debug, err := value.Debug(executor, span)
+		if err != nil {
+			return nil, nil, err
+		}
+		executor.Println(debug)
+	}
+	return ValueNull{}, nil, nil
+}
+
 // Outputs a string
 func Print(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 	msgs := make([]string, 0)
