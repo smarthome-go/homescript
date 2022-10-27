@@ -837,24 +837,7 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 			if code != nil || err != nil {
 				return Result{}, code, err
 			}
-			// Check that the index is a number which is also an integer
-			if (*indexValue.Value).Type() != TypeNumber {
-				return Result{}, nil, errors.NewError(
-					part.Span,
-					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
-					errors.TypeError,
-				)
-			}
-			index := (*indexValue.Value).(ValueNumber).Value
-			// Check that the number is whole
-			if index != float64(int(index)) {
-				return Result{}, nil, errors.NewError(
-					part.Span,
-					"indices must be integer numbers",
-					errors.ValueError,
-				)
-			}
-			result, err := (*base.Value).Index(self.executor, int(index), part.Span)
+			result, err := (*base.Value).Index(self.executor, *indexValue.Value, part.Span)
 			if err != nil {
 				return Result{}, nil, err
 			}
@@ -887,24 +870,7 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 			if code != nil || err != nil {
 				return Result{}, code, err
 			}
-			// Check that the index is a number which is also an integer
-			if (*indexValue.Value).Type() != TypeNumber {
-				return Result{}, nil, errors.NewError(
-					member.Span,
-					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
-					errors.TypeError,
-				)
-			}
-			index := (*indexValue.Value).(ValueNumber).Value
-			// Check that the number is whole
-			if index != float64(int(index)) {
-				return Result{}, nil, errors.NewError(
-					member.Span,
-					"indices must be integer numbers",
-					errors.ValueError,
-				)
-			}
-			result, err := (*base.Value).Index(self.executor, int(index), member.Span)
+			result, err := (*base.Value).Index(self.executor, *indexValue.Value, member.Span)
 			if err != nil {
 				return Result{}, nil, err
 			}

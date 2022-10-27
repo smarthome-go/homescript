@@ -28,7 +28,8 @@ func (self ValueObject) Fields() map[string]*Value {
 	self.ObjFields["to_json_indent"] = marshalIndentHelper(self)
 	return self.ObjFields
 }
-func (self ValueObject) Index(_ Executor, _ int, span errors.Span) (*Value, *errors.Error) {
+func (self ValueObject) Index(_ Executor, _ Value, span errors.Span) (*Value, *errors.Error) {
+	// TODO: implement value access
 	return nil, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
 }
 func (self ValueObject) Protected() bool { return self.IsProtected }

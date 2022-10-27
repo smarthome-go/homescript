@@ -251,8 +251,24 @@ func (self ValueList) Fields() map[string]*Value {
 		"to_json_indent": marshalIndentHelper(self),
 	}
 }
-func (self ValueList) Index(executor Executor, index int, span errors.Span) (*Value, *errors.Error) {
+func (self ValueList) Index(executor Executor, indexValue Value, span errors.Span) (*Value, *errors.Error) {
+	// Check the type
+	if indexValue.Type() != TypeNumber {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("cannot index value of type '%v' by a value of type '%v'", TypeList, indexValue.Type()),
+			errors.TypeError,
+		)
+	}
+	if float64(int(indexValue.(ValueNumber).Value)) != indexValue.(ValueNumber).Value {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("cannot index value of type '%v' by a float number", TypeList),
+			errors.ValueError,
+		)
+	}
 	// Check the length
+	index := int(indexValue.(ValueNumber).Value)
 	length := len(*self.Values)
 	if index < 0 {
 		index = index + length

@@ -1158,26 +1158,7 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 				self.info(part.Span, "manual index validation required")
 				return Result{}, nil
 			}
-			// Check that the index is a number which is also an integer
-			if (*indexValue.Value).Type() != TypeNumber {
-				self.issue(
-					part.Span,
-					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", (*base.Value).Type(), (*indexValue.Value).Type()),
-					errors.TypeError,
-				)
-				return Result{}, nil
-			}
-			index := (*indexValue.Value).(ValueNumber).Value
-			// Check that the number is whole
-			if index != float64(int(index)) {
-				self.issue(
-					part.Span,
-					"indices but be integer numbers",
-					errors.ValueError,
-				)
-				return Result{}, nil
-			}
-			result, err := (*base.Value).Index(self.executor, int(index), part.Span)
+			result, err := (*base.Value).Index(self.executor, *indexValue.Value, part.Span)
 			if err != nil {
 				self.diagnosticError(*err)
 				return Result{}, nil
@@ -1223,26 +1204,7 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 				manualInfo = true
 				continue
 			}
-			typeName := "unknown"
-			if base.Value != nil && *base.Value != nil {
-				typeName = (*base.Value).Type().String()
-			}
-			// Check that the index is a number which is also an integer
-			if (*indexValue.Value).Type() != TypeNumber {
-				self.issue(
-					member.Span,
-					fmt.Sprintf("type '%v' cannot be indexed by type '%v'", typeName, (*indexValue.Value).Type()),
-					errors.TypeError,
-				)
-				return Result{}, nil
-			}
-			index := (*indexValue.Value).(ValueNumber).Value
-			// Check that the value is a whole number
-			if index != float64(int(index)) {
-				self.issue(member.Span, "indices must be integer numbers", errors.ValueError)
-				return Result{}, nil
-			}
-			result, err := (*base.Value).Index(self.executor, int(index), member.Span)
+			result, err := (*base.Value).Index(self.executor, *indexValue.Value, member.Span)
 			if err != nil {
 				self.diagnosticError(*err)
 				return Result{}, nil

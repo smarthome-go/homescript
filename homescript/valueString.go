@@ -80,8 +80,24 @@ func (self ValueString) Fields() map[string]*Value {
 	}
 }
 
-func (self ValueString) Index(_ Executor, index int, span errors.Span) (*Value, *errors.Error) {
+func (self ValueString) Index(_ Executor, indexValue Value, span errors.Span) (*Value, *errors.Error) {
+	// Check the type
+	if indexValue.Type() != TypeNumber {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("cannot index value of type '%v' by a value of type '%v'", TypeList, indexValue.Type()),
+			errors.TypeError,
+		)
+	}
+	if float64(int(indexValue.(ValueNumber).Value)) != indexValue.(ValueNumber).Value {
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("cannot index value of type '%v' by a float number", TypeList, indexValue.Type()),
+			errors.ValueError,
+		)
+	}
 	// Check the string len
+	index := int(indexValue.(ValueNumber).Value)
 	valLen := len(self.Value)
 	if index < 0 {
 		index = index + valLen
