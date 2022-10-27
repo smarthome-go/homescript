@@ -691,7 +691,7 @@ func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (Result, *in
 }
 
 func (self *Interpreter) visitEpxExpression(node ExpExpression) (Result, *int, *errors.Error) {
-	base, code, err := self.visitAssignExression(node.Base)
+	base, code, err := self.visitAssignExpression(node.Base)
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
@@ -745,7 +745,7 @@ func assign(left *Value, right Value, span errors.Span) (Value, *errors.Error) {
 	return right, nil
 }
 
-func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *int, *errors.Error) {
+func (self *Interpreter) visitAssignExpression(node AssignExpression) (Result, *int, *errors.Error) {
 	if node.Other != nil {
 		self.isAssignLHSCount++
 	}

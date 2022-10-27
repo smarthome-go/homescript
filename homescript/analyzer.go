@@ -985,7 +985,7 @@ func (self *Analyzer) visitUnaryExpression(node UnaryExpression) (Result, *error
 }
 
 func (self *Analyzer) visitEpxExpression(node ExpExpression) (Result, *errors.Error) {
-	base, err := self.visitAssignExression(node.Base)
+	base, err := self.visitAssignExpression(node.Base)
 	if err != nil {
 		return Result{}, err
 	}
@@ -1030,7 +1030,7 @@ func (self *Analyzer) visitEpxExpression(node ExpExpression) (Result, *errors.Er
 	return Result{Value: base.Value}, nil
 }
 
-func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *errors.Error) {
+func (self *Analyzer) visitAssignExpression(node AssignExpression) (Result, *errors.Error) {
 	if node.Other != nil {
 		self.isAssignLHSCount++
 	}
