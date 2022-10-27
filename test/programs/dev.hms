@@ -1,14 +1,6 @@
 # This file is used for implementing new language features
-let a = [1, 2, 3, 4];
-a.push(5);
-debug(a);
-a[4] = 42;
-debug(a);
+let json = '{
 
-let test = {
-    test:       42,
-    hello:      1,
-    a_function: fn () {
-        println("Hallo");
-    },
-};
+}';
+#debug('{ "hallo": "test" }'.parse_json());
+#debug('[1, 2, 3]'.parse_json());
