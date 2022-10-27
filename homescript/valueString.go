@@ -90,6 +90,13 @@ func (self ValueString) Fields() map[string]*Value {
 			}
 			return ValueList{ValueType: &typ, Values: &pieces}, nil, nil
 		}}),
+		"contains": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if err := checkArgs("contains", span, args, TypeString); err != nil {
+				return nil, nil, err
+			}
+			contains := strings.Contains(self.Value, args[0].(ValueString).Value)
+			return ValueBool{Value: contains}, nil, nil
+		}}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
 	}

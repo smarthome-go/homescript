@@ -6,4 +6,9 @@ let object = {
 object.foo = "bar";
 debug(object);
 
-println("a,b,c,d,e,f".split(","));
+let letters = "a,b,c,d,e,f".split(",");
+println(letters);
+println(letters.contains("a"));
+
+println("hello world!".contains("z"));
+println("hello world!".contains("hello "));

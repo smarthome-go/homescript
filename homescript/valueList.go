@@ -26,6 +26,26 @@ func (self ValueList) Fields() map[string]*Value {
 				return ValueNumber{Value: float64(len(*self.Values))}, nil, nil
 			},
 		}),
+		// Checks if the given element is included in the list
+		"contains": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if len(args) != 1 {
+				return nil, nil, errors.NewError(
+					span,
+					fmt.Sprintf("function 'contains' requires exactly 1 argument but %d were given", len(args)),
+					errors.TypeError,
+				)
+			}
+			for _, value := range *self.Values {
+				equal, err := (*value).IsEqual(executor, span, args[0])
+				if err != nil {
+					return nil, nil, err
+				}
+				if equal {
+					return ValueBool{Value: true}, nil, nil
+				}
+			}
+			return ValueBool{Value: false}, nil, nil
+		}}),
 		// Appends a list to the end of another list
 		"concat": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
