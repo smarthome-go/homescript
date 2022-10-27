@@ -1,6 +1,8 @@
 package homescript
 
-import "github.com/smarthome-go/homescript/homescript/errors"
+import (
+	"github.com/smarthome-go/homescript/homescript/errors"
+)
 
 type Token struct {
 	Kind          TokenKind
@@ -104,6 +106,8 @@ func (self TokenKind) String() string {
 		display = "EOF"
 	case Semicolon:
 		display = "semicolon"
+	case Colon:
+		display = "colon"
 	case Comma:
 		display = "comma"
 	case Dot:
@@ -222,6 +226,8 @@ func (self TokenKind) String() string {
 		display = "from"
 	case In:
 		display = "in"
+	default:
+		panic("A new token was introduced without updating this code")
 	}
 	return display
 }

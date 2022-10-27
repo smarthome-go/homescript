@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
 
@@ -979,7 +980,135 @@ func (self *parser) atom() (Atom, *errors.Error) {
 }
 
 func (self *parser) makeObject() (AtomObject, *errors.Error) {
-	return AtomObject{}, nil
+	startLocation := self.currToken.StartLocation
+	if err := self.advance(); err != nil {
+		return AtomObject{}, err
+	}
+	// If there are no fields, return here
+	if self.currToken.Kind == RCurly {
+		if err := self.advance(); err != nil {
+			return AtomObject{}, err
+		}
+		return AtomObject{Range: errors.Span{
+			Start: self.prevToken.StartLocation,
+			End:   self.currToken.EndLocation,
+		}}, nil
+	}
+
+	// Make initial field
+	fields := make([]AtomObjectField, 0)
+	field, err := self.objectField()
+	if err != nil {
+		return AtomObject{}, err
+	}
+	fields = append(fields, field)
+
+	// Make other fields
+	for self.currToken.Kind == Comma {
+		if err := self.advance(); err != nil {
+			return AtomObject{}, err
+		}
+		if self.currToken.Kind == RCurly {
+			break
+		}
+		field, err := self.objectField()
+		if err != nil {
+			return AtomObject{}, err
+		}
+		fields = append(fields, field)
+
+	}
+	// Expect a RCurly
+	if self.currToken.Kind != RCurly {
+		return AtomObject{}, errors.NewError(
+			errors.Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+			fmt.Sprintf("unclosed object literal: expected %v, found %v", RCurly, self.currToken.Kind),
+			errors.SyntaxError,
+		)
+	}
+	if err := self.advance(); err != nil {
+		return AtomObject{}, err
+	}
+
+	return AtomObject{
+		Range: errors.Span{
+			Start: startLocation,
+			End:   self.prevToken.EndLocation,
+		},
+		Fields: fields,
+	}, nil
+}
+
+func (self *parser) objectField() (AtomObjectField, *errors.Error) {
+	startLocation := self.currToken.StartLocation
+	if self.currToken.Kind != Identifier {
+		return AtomObjectField{}, &errors.Error{
+			Kind:    errors.SyntaxError,
+			Message: fmt.Sprintf("expected identifier, found %v", self.currToken.Kind),
+			Span: errors.Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+
+	identifier, identSpan := self.currToken.Value, errors.Span{
+		Start: self.currToken.StartLocation,
+		End:   self.currToken.EndLocation,
+	}
+
+	if err := self.advance(); err != nil {
+		return AtomObjectField{}, err
+
+	}
+
+	// Expect a `:` colon
+	if self.currToken.Kind != Colon {
+		return AtomObjectField{}, errors.NewError(errors.Span{
+			Start: self.currToken.StartLocation,
+			End:   self.currToken.EndLocation,
+		},
+			fmt.Sprintf("expected %v, found %v", Colon, self.currToken.Kind),
+			errors.SyntaxError,
+		)
+	}
+	if err := self.advance(); err != nil {
+		return AtomObjectField{}, err
+	}
+
+	isValidExpr := false
+	for _, possible := range firstExpr {
+		if possible == self.currToken.Kind {
+			isValidExpr = true
+			break
+		}
+	}
+	if !isValidExpr {
+		return AtomObjectField{}, errors.NewError(errors.Span{
+			Start: self.currToken.StartLocation,
+			End:   self.currToken.EndLocation,
+		},
+			fmt.Sprintf("expected expression, found %v", self.currToken.Kind),
+			errors.SyntaxError,
+		)
+	}
+	expression, err := self.expression()
+	if err != nil {
+		return AtomObjectField{}, err
+	}
+	spew.Dump(self.currToken)
+	return AtomObjectField{
+		Span: errors.Span{
+			Start: startLocation,
+			End:   self.prevToken.EndLocation,
+		},
+		Identifier: identifier,
+		IdentSpan:  identSpan,
+		Expression: expression,
+	}, nil
 }
 
 func (self *parser) listLiteral() (AtomListLiteral, *errors.Error) {

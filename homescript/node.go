@@ -284,6 +284,7 @@ const (
 	AtomKindBoolean
 	AtomKindString
 	AtomKindListLiteral
+	AtomKindObject
 	AtomKindPair
 	AtomKindNull
 	AtomKindIdentifier
@@ -358,7 +359,19 @@ func (self AtomPair) Span() errors.Span { return self.Range }
 
 // Object
 type AtomObject struct {
+	Range  errors.Span
+	Fields []AtomObjectField
 }
+
+type AtomObjectField struct {
+	Span       errors.Span
+	Identifier string
+	IdentSpan  errors.Span
+	Expression Expression
+}
+
+func (self AtomObject) Kind() AtomKind    { return AtomKindObject }
+func (self AtomObject) Span() errors.Span { return self.Range }
 
 // Null
 type AtomNull struct {
