@@ -275,20 +275,28 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 				errors.TypeError,
 			)
 		}
-		_, alreadyExists := callArgsFinal[arg.(ValuePair).Key]
+		key, err := (*arg.(ValuePair).Key).Display(executor, span)
+		if err != nil {
+			return nil, nil, err
+		}
+		_, alreadyExists := callArgsFinal[key]
 		if alreadyExists {
+			key, err := (*arg.(ValuePair).Key).Display(executor, span)
+			if err != nil {
+				return nil, nil, err
+			}
 			return nil, nil, errors.NewError(
 				span,
-				fmt.Sprintf("call argument (value pair) %d of function 'exec' has duplicate key entry '%s'", indexArg+2, arg.(ValuePair).Key),
+				fmt.Sprintf("call argument (value pair) %d of function 'exec' has duplicate key entry '%s'", indexArg+2, key),
 				errors.TypeError,
 			)
 		}
 		// Add the argument to the argument map
-		value, err := arg.(ValuePair).Value.Display(executor, span)
+		value, err := (*arg.(ValuePair).Value).Display(executor, span)
 		if err != nil {
 			return nil, nil, err
 		}
-		callArgsFinal[arg.(ValuePair).Key] = value
+		callArgsFinal[key] = value
 	}
 	// Execute Homescript
 	homescriptId := args[0].(ValueString).Value
@@ -300,14 +308,14 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		panic("return value is nil: please implement this correctly")
 	}
 	return ValueObject{
-		ObjFields: map[string]Value{
-			"output": ValueString{
+		ObjFields: map[string]*Value{
+			"output": valPtr(ValueString{
 				Value: output.Output,
-			},
-			"elapsed": ValueNumber{
+			}),
+			"elapsed": valPtr(ValueNumber{
 				Value: output.RuntimeSecs,
-			},
-			"value": output.ReturnValue,
+			}),
+			"value": valPtr(output.ReturnValue),
 		},
 	}, nil, nil
 }
@@ -322,16 +330,16 @@ func Get(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 		return ValueNumber{}, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
 	return ValueObject{
-		ObjFields: map[string]Value{
-			"status": ValueString{
+		ObjFields: map[string]*Value{
+			"status": valPtr(ValueString{
 				Value: res.Status,
-			},
-			"status_code": ValueNumber{
+			}),
+			"status_code": valPtr(ValueNumber{
 				Value: float64(res.StatusCode),
-			},
-			"body": ValueString{
+			}),
+			"body": valPtr(ValueString{
 				Value: res.Body,
-			},
+			}),
 		},
 	}, nil, nil
 }
@@ -369,21 +377,29 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 				errors.TypeError,
 			)
 		}
-		_, alreadyExists := headers[header.(ValuePair).Key]
+		key, err := (*header.(ValuePair).Key).Display(executor, span)
+		if err != nil {
+			return nil, nil, err
+		}
+		_, alreadyExists := headers[key]
 		if alreadyExists {
+			key, err := (*header.(ValuePair).Key).Display(executor, span)
+			if err != nil {
+				return nil, nil, err
+			}
 			return nil, nil, errors.NewError(
 				span,
-				fmt.Sprintf("header entry (value pair) %d of function 'http' has duplicate key entry '%s'", headerIndex+4, header.(ValuePair).Key),
+				fmt.Sprintf("header entry (value pair) %d of function 'http' has duplicate key entry '%s'", headerIndex+4, key),
 				errors.ValueError,
 			)
 		}
 		// Add the argument to the argument map
-		value, err := header.(ValuePair).Value.Display(executor, span)
+		value, err := (*header.(ValuePair).Value).Display(executor, span)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		headers[header.(ValuePair).Key] = value
+		headers[key] = value
 	}
 	res, err := executor.Http(
 		args[0].(ValueString).Value,
@@ -395,16 +411,16 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		return ValueNull{}, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
 	return ValueObject{
-		ObjFields: map[string]Value{
-			"status": ValueString{
+		ObjFields: map[string]*Value{
+			"status": valPtr(ValueString{
 				Value: res.Status,
-			},
-			"status_code": ValueNumber{
+			}),
+			"status_code": valPtr(ValueNumber{
 				Value: float64(res.StatusCode),
-			},
-			"body": ValueString{
+			}),
+			"body": valPtr(ValueString{
 				Value: res.Body,
-			},
+			}),
 		},
 	}, nil, nil
 }
@@ -420,22 +436,22 @@ func GetWeather(executor Executor, span errors.Span) (Value, *errors.Error) {
 		return nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
 	return ValueObject{
-		ObjFields: map[string]Value{
-			"title": ValueString{
+		ObjFields: map[string]*Value{
+			"title": valPtr(ValueString{
 				Value: data.WeatherTitle,
-			},
-			"description": ValueString{
+			}),
+			"description": valPtr(ValueString{
 				Value: data.WeatherDescription,
-			},
-			"temperature": ValueNumber{
+			}),
+			"temperature": valPtr(ValueNumber{
 				Value: data.Temperature,
-			},
-			"feels_like": ValueNumber{
+			}),
+			"feels_like": valPtr(ValueNumber{
 				Value: data.FeelsLike,
-			},
-			"humidity": ValueNumber{
+			}),
+			"humidity": valPtr(ValueNumber{
 				Value: float64(data.Humidity),
-			},
+			}),
 		},
 	}, nil
 }
@@ -445,38 +461,38 @@ func GetTime(executor Executor, _ errors.Span) (Value, *errors.Error) {
 	_, week := time.ISOWeek()
 	return ValueObject{
 		DataType: "time",
-		ObjFields: map[string]Value{
-			"year": ValueNumber{
+		ObjFields: map[string]*Value{
+			"year": valPtr(ValueNumber{
 				Value: float64(time.Year()),
-			},
-			"month": ValueNumber{
+			}),
+			"month": valPtr(ValueNumber{
 				Value: float64(time.Month()),
-			},
-			"week": ValueNumber{
+			}),
+			"week": valPtr(ValueNumber{
 				Value: float64(week),
-			},
-			"week_day_text": ValueString{
+			}),
+			"week_day_text": valPtr(ValueString{
 				Value: time.Weekday().String(),
-			},
-			"week_day": ValueNumber{
+			}),
+			"week_day": valPtr(ValueNumber{
 				Value: float64(time.Weekday()),
-			},
-			"calendar_day": ValueNumber{
+			}),
+			"calendar_day": valPtr(ValueNumber{
 				Value: float64(time.Day()),
-			},
-			"hour": ValueNumber{
+			}),
+			"hour": valPtr(ValueNumber{
 				Value: float64(time.Hour()),
-			},
-			"minute": ValueNumber{
+			}),
+			"minute": valPtr(ValueNumber{
 				Value: float64(time.Minute()),
-			},
-			"second": ValueNumber{
+			}),
+			"second": valPtr(ValueNumber{
 				Value: float64(time.Second()),
-			},
-			"unix": ValueNumber{
+			}),
+			"unix": valPtr(ValueNumber{
 				Value: float64(time.UnixMilli()),
-			},
-			"since": ValueBuiltinFunction{Callback: timeSince},
+			}),
+			"since": valPtr(ValueBuiltinFunction{Callback: timeSince}),
 		},
 	}, nil
 }
@@ -494,23 +510,23 @@ func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int,
 		)
 	}
 	millis, ok := arg.ObjFields["unix"]
-	if !ok || millis.Type() != TypeNumber {
+	if !ok || millis == nil || (*millis).Type() != TypeNumber {
 		return nil, nil, errors.NewError(
 			span,
 			"no field of type number named 'unix' found on time object",
 			errors.RuntimeError,
 		)
 	}
-	then := time.UnixMilli(int64(millis.(ValueNumber).Value))
+	then := time.UnixMilli(int64((*millis).(ValueNumber).Value))
 	since := time.Since(then)
 	return ValueObject{
 		DataType: "duration",
-		ObjFields: map[string]Value{
-			"millis":  ValueNumber{Value: float64(since.Milliseconds())},
-			"seconds": ValueNumber{Value: float64(since.Seconds())},
-			"minutes": ValueNumber{Value: float64(since.Minutes())},
-			"hours":   ValueNumber{Value: float64(since.Hours())},
-			"display": ValueString{Value: fmt.Sprintf("%v", since)},
+		ObjFields: map[string]*Value{
+			"millis":  valPtr(ValueNumber{Value: float64(since.Milliseconds())}),
+			"seconds": valPtr(ValueNumber{Value: float64(since.Seconds())}),
+			"minutes": valPtr(ValueNumber{Value: float64(since.Minutes())}),
+			"hours":   valPtr(ValueNumber{Value: float64(since.Hours())}),
+			"display": valPtr(ValueString{Value: fmt.Sprintf("%v", since)}),
 		},
 	}, nil, nil
 }

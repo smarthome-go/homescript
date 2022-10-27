@@ -18,10 +18,10 @@ type ValueString struct {
 func (self ValueString) Type() ValueType   { return TypeString }
 func (self ValueString) Span() errors.Span { return self.Range }
 func (self ValueString) Protected() bool   { return self.IsProtected }
-func (self ValueString) Fields() map[string]Value {
-	return map[string]Value{
+func (self ValueString) Fields() map[string]*Value {
+	return map[string]*Value{
 		// Replaces the first occurence of the first argument in `self.Value` with the content of the second argument
-		"replace": ValueBuiltinFunction{
+		"replace": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("replace", span, args, TypeString, TypeString); err != nil {
 					return nil, nil, err
@@ -30,9 +30,9 @@ func (self ValueString) Fields() map[string]Value {
 					Value: strings.Replace(self.Value, args[0].(ValueString).Value, args[1].(ValueString).Value, 1),
 				}, nil, nil
 			},
-		},
+		}),
 		// Replaces all occurences of the first argument in `self.Value` with the content of the second argument
-		"replace_all": ValueBuiltinFunction{
+		"replace_all": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("replace_all", span, args, TypeString, TypeString); err != nil {
 					return nil, nil, err
@@ -41,9 +41,9 @@ func (self ValueString) Fields() map[string]Value {
 					Value: strings.ReplaceAll(self.Value, args[0].(ValueString).Value, args[1].(ValueString).Value),
 				}, nil, nil
 			},
-		},
+		}),
 		// Repeats `self.Value` n times, where n is the first argument
-		"repeat": ValueBuiltinFunction{
+		"repeat": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("replace_all", span, args, TypeNumber); err != nil {
 					return nil, nil, err
@@ -60,10 +60,10 @@ func (self ValueString) Fields() map[string]Value {
 					Value: strings.Repeat(self.Value, int(num.Value)),
 				}, nil, nil
 			},
-		},
+		}),
 	}
 }
-func (self ValueString) Index(_ Executor, index int, span errors.Span) (Value, *errors.Error) {
+func (self ValueString) Index(_ Executor, index int, span errors.Span) (*Value, *errors.Error) {
 	// Check the string len
 	valLen := len(self.Value)
 	if index < 0 {
@@ -76,16 +76,16 @@ func (self ValueString) Index(_ Executor, index int, span errors.Span) (Value, *
 			errors.OutOfBoundsError,
 		)
 	}
-	return ValueString{
+	return valPtr(ValueString{
 		Value: string([]rune(self.Value)[index]),
 		Range: self.Range,
-	}, nil
+	}), nil
 }
 func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return self.Value, nil
 }
 func (self ValueString) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
-	return fmt.Sprintf("%s (len %d)", self.Value, utf8.RuneCountInString(self.Value)), nil
+	return fmt.Sprintf("%s (len = %d)", self.Value, utf8.RuneCountInString(self.Value)), nil
 }
 func (self ValueString) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return self.Value != "", nil

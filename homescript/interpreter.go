@@ -47,7 +47,7 @@ func NewInterpreter(
 	sigTerm *chan int,
 	stackLimit uint,
 	scopeAdditions map[string]Value, // Allows the user to add more entries to the scope
-	args map[string]Value, // Just like scopeAdditions but already named `ARGS.x`
+	args map[string]*Value, // Just like scopeAdditions but already named `ARGS.x`
 	debug bool,
 	moduleStack []string,
 	moduleName string,
@@ -59,6 +59,7 @@ func NewInterpreter(
 		"exit":      valPtr(ValueBuiltinFunction{Callback: Exit}),
 		"throw":     valPtr(ValueBuiltinFunction{Callback: Throw}),
 		"assert":    valPtr(ValueBuiltinFunction{Callback: Assert}),
+		"debug":     valPtr(ValueBuiltinFunction{Callback: Debug}),
 		"print":     valPtr(ValueBuiltinFunction{Callback: Print}), // Builtin functions implemented by the executor
 		"println":   valPtr(ValueBuiltinFunction{Callback: Println}),
 		"sleep":     valPtr(ValueBuiltinFunction{Callback: Sleep}),
@@ -820,7 +821,7 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 				return Result{}, nil, err
 			}
 			// Swap the result and the base so that the next iteration uses this result
-			base.Value = &result
+			*base.Value = *result
 		}
 		// Handle index access
 		if part.Index != nil {
@@ -852,7 +853,7 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 			}
 
 			// Swap the result and the base so that the next iteration uses this result
-			base.Value = &result
+			*base.Value = *result
 		}
 	}
 	// Return the last base (the result)
@@ -873,7 +874,7 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 				return Result{}, nil, err
 			}
 			// Swap the result and the base so that the next iteration uses this result
-			base.Value = &result
+			base.Value = result
 		} else if member.Index != nil {
 			indexValue, code, err := self.visitExpression(*member.Index)
 			if code != nil || err != nil {
@@ -902,7 +903,7 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 			}
 
 			// Swap the result and the base so that the next iteration uses this result
-			base.Value = &result
+			base.Value = result
 		} else {
 			panic("BUG: a new member kind was introduced without updating this code")
 		}
@@ -932,7 +933,7 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		pair := makePair(node.Span(), pairNode.Key, *pairValue.Value)
+		pair := makePair(node.Span(), ValueString{Value: pairNode.Key}, *pairValue.Value)
 		return Result{Value: &pair}, nil, nil
 	case AtomKindNull:
 		null := makeNull(node.Span())
@@ -1008,7 +1009,7 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.Error) {
 	// Validate that all types are the same
 	valueType := TypeUnknown
-	values := make([]Value, 0)
+	values := make([]*Value, 0)
 	for idx, expression := range node.Values {
 		result, code, err := self.visitExpression(expression)
 		if code != nil || err != nil {
@@ -1023,7 +1024,7 @@ func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.E
 			)
 		}
 		valueType = value.Type()
-		values = append(values, value)
+		values = append(values, &value)
 	}
 	return Result{
 		Value: valPtr(ValueList{
@@ -1066,27 +1067,27 @@ func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors
 
 		// Add the error variable to the scope (as an error object)
 		errVal := Value(ValueObject{
-			ObjFields: map[string]Value{
-				"kind":    makeStr(errors.Span{}, err.Kind.String()),
-				"message": makeStr(errors.Span{}, err.Message),
-				"location": ValueObject{
-					ObjFields: map[string]Value{
-						"start": ValueObject{
-							ObjFields: map[string]Value{
-								"index":  makeNum(errors.Span{}, float64(err.Span.Start.Index)),
-								"line":   makeNum(errors.Span{}, float64(err.Span.Start.Line)),
-								"column": makeNum(errors.Span{}, float64(err.Span.Start.Column)),
+			ObjFields: map[string]*Value{
+				"kind":    valPtr(makeStr(errors.Span{}, err.Kind.String())),
+				"message": valPtr(makeStr(errors.Span{}, err.Message)),
+				"location": valPtr(ValueObject{
+					ObjFields: map[string]*Value{
+						"start": valPtr(ValueObject{
+							ObjFields: map[string]*Value{
+								"index":  valPtr(makeNum(errors.Span{}, float64(err.Span.Start.Index))),
+								"line":   valPtr(makeNum(errors.Span{}, float64(err.Span.Start.Line))),
+								"column": valPtr(makeNum(errors.Span{}, float64(err.Span.Start.Column))),
 							},
-						},
-						"end": ValueObject{
-							ObjFields: map[string]Value{
-								"index":  makeNum(errors.Span{}, float64(err.Span.End.Index)),
-								"line":   makeNum(errors.Span{}, float64(err.Span.End.Line)),
-								"column": makeNum(errors.Span{}, float64(err.Span.End.Column)),
+						}),
+						"end": valPtr(ValueObject{
+							ObjFields: map[string]*Value{
+								"index":  valPtr(makeNum(errors.Span{}, float64(err.Span.End.Index))),
+								"line":   valPtr(makeNum(errors.Span{}, float64(err.Span.End.Line))),
+								"column": valPtr(makeNum(errors.Span{}, float64(err.Span.End.Column))),
 							},
-						},
+						}),
 					},
-				},
+				}),
 			},
 		})
 		self.addVar(node.ErrorIdentifier, &errVal)

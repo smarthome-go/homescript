@@ -17,11 +17,11 @@ type ValueNumber struct {
 func (self ValueNumber) Type() ValueType   { return TypeNumber }
 func (self ValueNumber) Span() errors.Span { return self.Range }
 func (self ValueNumber) Protected() bool   { return self.IsProtected }
-func (self ValueNumber) Fields() map[string]Value {
-	return map[string]Value{
+func (self ValueNumber) Fields() map[string]*Value {
+	return map[string]*Value{
 		// Specifies whether this number can be represented as an integer without loss of information
 		// For example, 42.00 can be represented as 42 whilst 3.14159264 cannot be easily represented as an integer
-		"is_int": ValueBuiltinFunction{
+		"is_int": valPtr(ValueBuiltinFunction{
 			Callback: func(_ Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("is_int", span, args); err != nil {
 					return nil, nil, err
@@ -30,9 +30,9 @@ func (self ValueNumber) Fields() map[string]Value {
 					Value: float64(int(self.Value)) == self.Value,
 				}, nil, nil
 			},
-		},
+		}),
 		// Returns the integer value of `self.Value`
-		"trunc": ValueBuiltinFunction{
+		"trunc": valPtr(ValueBuiltinFunction{
 			Callback: func(_ Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("trunc", span, args); err != nil {
 					return nil, nil, err
@@ -41,9 +41,9 @@ func (self ValueNumber) Fields() map[string]Value {
 					Value: math.Trunc(self.Value),
 				}, nil, nil
 			},
-		},
+		}),
 		// Rounds the float to the neares integer
-		"round": ValueBuiltinFunction{
+		"round": valPtr(ValueBuiltinFunction{
 			Callback: func(_ Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("round", span, args); err != nil {
 					return nil, nil, err
@@ -52,10 +52,10 @@ func (self ValueNumber) Fields() map[string]Value {
 					Value: math.Round(self.Value),
 				}, nil, nil
 			},
-		},
+		}),
 	}
 }
-func (self ValueNumber) Index(_ Executor, _ int, span errors.Span) (Value, *errors.Error) {
+func (self ValueNumber) Index(_ Executor, _ int, span errors.Span) (*Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
 }
 func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *errors.Error) {
@@ -66,6 +66,10 @@ func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *e
 	return fmt.Sprintf("%f", self.Value), nil
 }
 func (self ValueNumber) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
+	// Check if the value is actually an integer
+	if float64(int(self.Value)) == self.Value {
+		return fmt.Sprintf("%d", int(self.Value)), nil
+	}
 	return fmt.Sprintf("%f", self.Value), nil
 }
 func (self ValueNumber) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {

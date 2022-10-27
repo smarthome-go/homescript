@@ -208,6 +208,7 @@ func NewAnalyzer(
 			"exit":      valPtr(ValueBuiltinFunction{Callback: Exit}),
 			"throw":     valPtr(ValueBuiltinFunction{Callback: throwDummy}),
 			"assert":    valPtr(ValueBuiltinFunction{Callback: Assert}),
+			"debug":     valPtr(ValueBuiltinFunction{Callback: Debug}),
 			"print":     valPtr(ValueBuiltinFunction{Callback: Print}),
 			"println":   valPtr(ValueBuiltinFunction{Callback: Print}),
 			"sleep":     valPtr(ValueBuiltinFunction{Callback: Sleep}),
@@ -225,7 +226,7 @@ func NewAnalyzer(
 				DataType:    "args",
 				IsDynamic:   true,
 				IsProtected: true,
-				ObjFields:   make(map[string]Value),
+				ObjFields:   make(map[string]*Value),
 			}),
 		},
 		identifier: nil,
@@ -1134,7 +1135,7 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 				return Result{}, nil
 			}
 			// Swap the result and the base so that the next iteration uses this result
-			base.Value = &result
+			*base.Value = *result
 		}
 		// Handle index access
 		if part.Index != nil {
@@ -1173,7 +1174,8 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 			}
 
 			// Swap the result and the base so that the next iteration uses this result
-			base.Value = &result
+			// TODO: is this safe?
+			*base.Value = *result
 		}
 	}
 	// Return the last base (the result)
@@ -1200,7 +1202,7 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 				return Result{}, nil
 			}
 			// Swap the result and the base so that the next iteration uses this result
-			base.Value = &value
+			base.Value = value
 		}
 		if member.Index != nil {
 			indexValue, err := self.visitExpression(*member.Index)
@@ -1236,7 +1238,7 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 				return Result{}, nil
 			}
 			// Swap the result and the base so that the next iteration uses this result
-			base.Value = &result
+			base.Value = result
 		}
 	}
 	if manualInfo {
@@ -1248,7 +1250,7 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 	return base, nil
 }
 
-func (self *Analyzer) getField(value Value, span errors.Span, key string) Value {
+func (self *Analyzer) getField(value Value, span errors.Span, key string) *Value {
 	val, exists := value.Fields()[key]
 	if !exists {
 		if value.Type() == TypeObject && value.(ValueObject).IsDynamic {
@@ -1265,8 +1267,8 @@ func (self *Analyzer) getField(value Value, span errors.Span, key string) Value 
 	}
 	self.symbols = append(self.symbols, symbol{
 		Span:  span,
-		Value: val,
-		Type:  val.Type().toSymbolType(),
+		Value: *val,
+		Type:  (*val).Type().toSymbolType(),
 	})
 	return val
 }
@@ -1293,7 +1295,7 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		if err != nil {
 			return Result{}, err
 		}
-		pair := makePair(node.Span(), pairNode.Key, *pairValue.Value)
+		pair := makePair(node.Span(), ValueString{Value: pairNode.Key}, *pairValue.Value)
 		result = Result{Value: &pair}
 	case AtomKindNull:
 		null := makeNull(node.Span())
@@ -1391,7 +1393,7 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 func (self *Analyzer) makeList(node AtomListLiteral) (Result, *errors.Error) {
 	// Validate that all types are the same
 	valueType := TypeUnknown
-	values := make([]Value, 0)
+	values := make([]*Value, 0)
 	for idx, expression := range node.Values {
 		result, err := self.visitExpression(expression)
 		if err != nil {
@@ -1411,7 +1413,7 @@ func (self *Analyzer) makeList(node AtomListLiteral) (Result, *errors.Error) {
 			)
 		}
 		valueType = value.Type()
-		values = append(values, value)
+		values = append(values, &value)
 	}
 	return Result{
 		Value: valPtr(ValueList{
@@ -1455,27 +1457,27 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 
 	// Add the error variable to the scope (as an error object)
 	self.addVar(node.ErrorIdentifier, ValueObject{
-		ObjFields: map[string]Value{
-			"kind":    makeStr(errors.Span{}, ""),
-			"message": makeStr(errors.Span{}, ""),
-			"location": ValueObject{
-				ObjFields: map[string]Value{
-					"start": ValueObject{
-						ObjFields: map[string]Value{
-							"index":  makeNum(errors.Span{}, 0.0),
-							"line":   makeNum(errors.Span{}, 0.0),
-							"column": makeNum(errors.Span{}, 0.0),
+		ObjFields: map[string]*Value{
+			"kind":    valPtr(makeStr(errors.Span{}, "error")),
+			"message": valPtr(makeStr(errors.Span{}, "")),
+			"location": valPtr(ValueObject{
+				ObjFields: map[string]*Value{
+					"start": valPtr(ValueObject{
+						ObjFields: map[string]*Value{
+							"index":  valPtr(makeNum(errors.Span{}, 0.0)),
+							"line":   valPtr(makeNum(errors.Span{}, 0.0)),
+							"column": valPtr(makeNum(errors.Span{}, 0.0)),
 						},
-					},
-					"end": ValueObject{
-						ObjFields: map[string]Value{
-							"index":  makeNum(errors.Span{}, 0.0),
-							"line":   makeNum(errors.Span{}, 0.0),
-							"column": makeNum(errors.Span{}, 0.0),
+					}),
+					"end": valPtr(ValueObject{
+						ObjFields: map[string]*Value{
+							"index":  valPtr(makeNum(errors.Span{}, 0.0)),
+							"line":   valPtr(makeNum(errors.Span{}, 0.0)),
+							"column": valPtr(makeNum(errors.Span{}, 0.0)),
 						},
-					},
+					}),
 				},
-			},
+			}),
 		},
 		// TODO: improve location here
 	}, node.Range)

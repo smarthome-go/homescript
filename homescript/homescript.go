@@ -29,6 +29,11 @@ func Run(
 	if len(errors) > 0 {
 		return nil, 1, nil, errors
 	}
+	argsTemp := make(map[string]*Value)
+	for key, val := range args {
+		temp := val
+		argsTemp[key] = &temp
+	}
 	// Create the interpreter
 	interpreter := NewInterpreter(
 		ast,
@@ -36,7 +41,7 @@ func Run(
 		sigTerm,
 		stackSize,
 		scopeAdditions,
-		args,
+		argsTemp,
 		debug,
 		moduleStack,
 		moduleName,
