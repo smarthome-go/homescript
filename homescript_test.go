@@ -204,6 +204,15 @@ var tests = []test{
 		ExpectedErrors:    nil,
 	},
 	{
+		Name:              "JSON",
+		File:              "./test/programs/json.hms",
+		Skip:              false,
+		Debug:             false,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors:    nil,
+	},
+	{
 		Name:              "Analyzer",
 		File:              "./test/programs/analyzer.hms",
 		Skip:              true,

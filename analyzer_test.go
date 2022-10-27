@@ -124,6 +124,11 @@ var analysisTasks = []analysis{
 		Skip: false,
 	},
 	{
+		Name: "JSON",
+		File: "./test/programs/json.hms",
+		Skip: false,
+	},
+	{
 		Name: "Analyzer",
 		File: "./test/programs/analyzer.hms",
 		Skip: false,
