@@ -64,6 +64,9 @@ func (self ValueString) Fields() map[string]*Value {
 		}),
 		"parse_json": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+				if err := checkArgs("parse_json", span, args); err != nil {
+					return nil, nil, err
+				}
 				var raw interface{}
 				if err := json.Unmarshal([]byte(self.Value), &raw); err != nil {
 					return nil, nil, errors.NewError(span, err.Error(), errors.ValueError)
@@ -75,6 +78,18 @@ func (self ValueString) Fields() map[string]*Value {
 				return value, nil, nil
 			},
 		}),
+		"split": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if err := checkArgs("split", span, args, TypeString); err != nil {
+				return nil, nil, err
+			}
+			typ := TypeString
+			pieces := make([]*Value, 0)
+			stringPieces := strings.Split(self.Value, args[0].(ValueString).Value)
+			for _, piece := range stringPieces {
+				pieces = append(pieces, valPtr(ValueString{Value: piece}))
+			}
+			return ValueList{ValueType: &typ, Values: &pieces}, nil, nil
+		}}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
 	}

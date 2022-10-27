@@ -95,6 +95,7 @@ demo.pop_front();
 
 demo.concat([2, 3, 4]);
 demo.join("-");
+"a b c".split(" ");
 
 demo.insert(1, 42);
 demo.remove(1);

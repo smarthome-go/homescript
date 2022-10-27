@@ -1,6 +1,9 @@
 # This file is used for implementing new language features
-let json = '{
+let object = {
+    key: 42,
+};
 
-}';
-#debug('{ "hallo": "test" }'.parse_json());
-#debug('[1, 2, 3]'.parse_json());
+object.foo = "bar";
+debug(object);
+
+println("a,b,c,d,e,f".split(","));
