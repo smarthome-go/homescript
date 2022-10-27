@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
 
@@ -12,6 +11,7 @@ import (
 var firstExpr = []TokenKind{
 	LParen,
 	LBracket,
+	LCurly,
 	Not,
 	Plus,
 	Minus,
@@ -1099,7 +1099,6 @@ func (self *parser) objectField() (AtomObjectField, *errors.Error) {
 	if err != nil {
 		return AtomObjectField{}, err
 	}
-	spew.Dump(self.currToken)
 	return AtomObjectField{
 		Span: errors.Span{
 			Start: startLocation,

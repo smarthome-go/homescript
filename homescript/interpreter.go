@@ -37,6 +37,10 @@ type Interpreter struct {
 	// If a function is entered, it is incremented, once a function exists, it is decremented
 	inFunctionCount uint
 
+	// Will allow assignment to invalid object members
+	// For exampls, `a.foo = 1;` will still be valid even though a has no member named `foo`
+	isAssignLHSCount uint
+
 	// Will enable debug output of the scopes
 	debug bool
 }
@@ -96,15 +100,16 @@ func NewInterpreter(
 	// Append the current script to the module stack
 	moduleStack = append(moduleStack, moduleName)
 	return Interpreter{
-		program:         program,
-		executor:        executor,
-		scopes:          scopes,
-		stackLimit:      stackLimit,
-		sigTerm:         sigTerm,
-		inLoopCount:     0,
-		inFunctionCount: 0,
-		debug:           debug,
-		moduleStack:     moduleStack,
+		program:          program,
+		executor:         executor,
+		scopes:           scopes,
+		stackLimit:       stackLimit,
+		sigTerm:          sigTerm,
+		inLoopCount:      0,
+		inFunctionCount:  0,
+		isAssignLHSCount: 0,
+		debug:            debug,
+		moduleStack:      moduleStack,
 	}
 }
 
@@ -724,20 +729,16 @@ func assign(left *Value, right Value, span errors.Span) (Value, *errors.Error) {
 			errors.TypeError,
 		)
 	}
-	// Check type equality
-	if (*left).Type() != right.Type() {
+	// Check type equality (but allow null placeholders)
+	leftType := (*left).Type()
+	rightType := right.Type()
+	if leftType != rightType && leftType != TypeNull && rightType != TypeNull {
 		return nil, errors.NewError(
 			span,
 			fmt.Sprintf("cannot assign %v to %v: type inequality", right.Type(), (*left).Type()),
 			errors.TypeError,
 		)
 	}
-	// Insert new span into the right value
-	// value := setValueSpan(
-	//right,
-	// *(*left).Span(),
-	//right.Span(),
-	//)
 	// Perform actual assignment
 	*left = right
 	// Return the value of the right hand side
@@ -745,9 +746,15 @@ func assign(left *Value, right Value, span errors.Span) (Value, *errors.Error) {
 }
 
 func (self *Interpreter) visitAssignExression(node AssignExpression) (Result, *int, *errors.Error) {
+	if node.Other != nil {
+		self.isAssignLHSCount++
+	}
 	base, code, err := self.visitCallExpression(node.Base)
 	if code != nil || err != nil {
 		return Result{}, code, err
+	}
+	if node.Other != nil {
+		self.isAssignLHSCount--
 	}
 	// If there is no assignment, return the base value here
 	if node.Other == nil {
@@ -816,7 +823,7 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 		}
 		// Handle member access
 		if part.MemberExpressionPart != nil {
-			result, err := getField(self.executor, part.Span, *base.Value, *part.MemberExpressionPart)
+			result, err := getField(self.executor, part.Span, *base.Value, *part.MemberExpressionPart, self.isAssignLHSCount != 0)
 			if err != nil {
 				return Result{}, nil, err
 			}
@@ -869,7 +876,7 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 	for _, member := range node.Members {
 		// If the current member is a regular member access, perform it
 		if member.Identifier != nil {
-			result, err := getField(self.executor, member.Span, *base.Value, *member.Identifier)
+			result, err := getField(self.executor, member.Span, *base.Value, *member.Identifier, self.isAssignLHSCount != 0)
 			if err != nil {
 				return Result{}, nil, err
 			}
@@ -907,7 +914,6 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 		} else {
 			panic("BUG: a new member kind was introduced without updating this code")
 		}
-		// TODO: maybe include the base + member in the span (foo.bar.baz)
 		// Like this	     									  ~~~~~~~
 	}
 	return base, nil, nil
@@ -926,6 +932,8 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		return Result{Value: &str}, nil, nil
 	case AtomKindListLiteral:
 		return self.makeList(node.(AtomListLiteral))
+	case AtomKindObject:
+		return self.makeObject(node.(AtomObject))
 	case AtomKindPair:
 		pairNode := node.(AtomPair)
 		// Make the pair's value
@@ -1034,6 +1042,31 @@ func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.E
 			IsProtected: false,
 		}),
 	}, nil, nil
+}
+
+func (self *Interpreter) makeObject(node AtomObject) (Result, *int, *errors.Error) {
+	fields := make(map[string]*Value)
+	for _, field := range node.Fields {
+		_, exists := fields[field.Identifier]
+		if exists {
+			return Result{}, nil, errors.NewError(
+				field.IdentSpan,
+				fmt.Sprintf("illegal duplicate key '%s' in object declaration", field.Identifier),
+				errors.TypeError,
+			)
+		}
+		value, code, err := self.visitExpression(field.Expression)
+		if code != nil || err != nil {
+			return Result{}, code, err
+		}
+		fields[field.Identifier] = value.Value
+	}
+	return Result{Value: valPtr(ValueObject{
+		IsDynamic:   true,
+		ObjFields:   fields,
+		Range:       node.Range,
+		IsProtected: false,
+	})}, nil, nil
 }
 
 func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors.Error) {
@@ -1443,7 +1476,9 @@ func (self *Interpreter) callValue(span errors.Span, value Value, args []Express
 		if code != nil || err != nil {
 			return nil, code, err
 		}
-
+		if returnValue == nil {
+			panic(fmt.Sprintf("Builtin function called at line %d:%d returned nil value", span.Start.Line, span.Start.Column))
+		}
 		// Return the functions return value
 		return returnValue, nil, nil
 	default:

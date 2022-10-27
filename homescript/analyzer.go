@@ -21,6 +21,10 @@ type Analyzer struct {
 
 	// Holds the analyzer's diagnostics
 	diagnostics []Diagnostic
+
+	// Will allow assignment to invalid object members
+	// For exampls, `a.foo = 1;` will still be valid even though a has no member named `foo`
+	isAssignLHSCount uint
 }
 
 type symbol struct {
@@ -1027,9 +1031,15 @@ func (self *Analyzer) visitEpxExpression(node ExpExpression) (Result, *errors.Er
 }
 
 func (self *Analyzer) visitAssignExression(node AssignExpression) (Result, *errors.Error) {
+	if node.Other != nil {
+		self.isAssignLHSCount++
+	}
 	base, err := self.visitCallExpression(node.Base)
 	if err != nil {
 		return Result{}, err
+	}
+	if node.Other != nil {
+		self.isAssignLHSCount--
 	}
 	// If there is no assignment, return the base value here
 	if node.Other == nil {
@@ -1130,7 +1140,7 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 				self.info(part.Span, "manual validation required")
 				return Result{}, nil
 			}
-			result := self.getField(*base.Value, part.Span, *part.MemberExpressionPart)
+			result := self.getField(*base.Value, part.Span, *part.MemberExpressionPart, self.isAssignLHSCount != 0)
 			if result == nil {
 				return Result{}, nil
 			}
@@ -1197,7 +1207,7 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 				manualInfo = true
 				continue
 			}
-			value := self.getField(*base.Value, member.Span, *member.Identifier)
+			value := self.getField(*base.Value, member.Span, *member.Identifier, self.isAssignLHSCount != 0)
 			if value == nil {
 				return Result{}, nil
 			}
@@ -1250,9 +1260,14 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 	return base, nil
 }
 
-func (self *Analyzer) getField(value Value, span errors.Span, key string) *Value {
+func (self *Analyzer) getField(value Value, span errors.Span, key string, isAssignLHS bool) *Value {
 	val, exists := value.Fields()[key]
 	if !exists {
+		if isAssignLHS {
+			ptr := valPtr(ValueNull{})
+			value.Fields()[key] = ptr
+			return ptr
+		}
 		if value.Type() == TypeObject && value.(ValueObject).IsDynamic {
 			self.symbols = append(self.symbols, symbol{
 				Span:  span,
@@ -1288,6 +1303,8 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		result = Result{Value: &str}
 	case AtomKindListLiteral:
 		return self.makeList(node.(AtomListLiteral))
+	case AtomKindObject:
+		return self.makeObject(node.(AtomObject))
 	case AtomKindPair:
 		pairNode := node.(AtomPair)
 		// Make the pair's value
@@ -1423,6 +1440,31 @@ func (self *Analyzer) makeList(node AtomListLiteral) (Result, *errors.Error) {
 			IsProtected: false,
 		}),
 	}, nil
+}
+
+func (self *Analyzer) makeObject(node AtomObject) (Result, *errors.Error) {
+	fields := make(map[string]*Value)
+	for _, field := range node.Fields {
+		_, exists := fields[field.Identifier]
+		if exists {
+			return Result{}, errors.NewError(
+				field.IdentSpan,
+				fmt.Sprintf("illegal duplicate key '%s' in object declaration", field.Identifier),
+				errors.TypeError,
+			)
+		}
+		value, err := self.visitExpression(field.Expression)
+		if err != nil {
+			return Result{}, err
+		}
+		fields[field.Identifier] = value.Value
+	}
+	return Result{Value: valPtr(ValueObject{
+		IsDynamic:   true,
+		ObjFields:   fields,
+		Range:       node.Range,
+		IsProtected: false,
+	})}, nil
 }
 
 func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
