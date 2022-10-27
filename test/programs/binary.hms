@@ -14,8 +14,23 @@ fn binary_clock() {
         hours -= 12;
     };
 
+    println("--- self made binary clock ---");
     println(to_bin(hours).join(""));
     println(to_bin(time.minute).join(""));
 };
 
 binary_clock();
+
+
+# This is an alternative function using the builtin `bin` function
+fn binary_clock2() {
+    let hours = time.hour;
+    if hours > 12 {
+        hours -= 12;
+    };
+    println("--- binary clock v2 ---");
+    println(hours.bin());
+    println(time.minute.bin());
+};
+
+binary_clock2();
