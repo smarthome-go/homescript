@@ -1,7 +1,8 @@
 (*
   -- Grammar for Homescript --
 
-  Author: RubixDev Contributors: MikMuellerDev
+  Author: RubixDev
+  Contributors: MikMuellerDev
 
   This grammar is written in the EBNF notation defined by the ISO/IEC 14977 standard. A lesser known
   feature of that standard is used here: the `{ ... }-` syntax to describe a repetition of _one_ or
