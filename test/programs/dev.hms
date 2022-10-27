@@ -1,1 +1,14 @@
 # This file is used for implementing new language features
+let a = [1, 2, 3, 4];
+a.push(5);
+debug(a);
+a[4] = 42;
+debug(a);
+
+let test = {
+    test:       42,
+    hello:      1,
+    a_function: fn () {
+        println("Hallo");
+    },
+};

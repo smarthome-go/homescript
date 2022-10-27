@@ -356,6 +356,10 @@ type AtomPair struct {
 func (self AtomPair) Kind() AtomKind    { return AtomKindPair }
 func (self AtomPair) Span() errors.Span { return self.Range }
 
+// Object
+type AtomObject struct {
+}
+
 // Null
 type AtomNull struct {
 	Range errors.Span

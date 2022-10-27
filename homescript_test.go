@@ -286,7 +286,6 @@ func TestHomescripts(t *testing.T) {
 				}
 				return
 			}
-
 			if value.Type() != test.ExpectedValueType {
 				valueStr, displayErr := value.Display(dummyExecutor{}, errors.Span{})
 				if displayErr != nil {

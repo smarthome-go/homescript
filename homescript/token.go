@@ -17,6 +17,7 @@ const (
 
 	Semicolon // ;
 	Comma     // ,
+	Colon     // :
 	Dot       // .
 	Range     // ..
 	Arrow     // =>

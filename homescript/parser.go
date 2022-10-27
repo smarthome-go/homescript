@@ -858,6 +858,8 @@ func (self *parser) atom() (Atom, *errors.Error) {
 				End:   self.prevToken.EndLocation,
 			},
 		}, nil
+	case LCurly:
+		return self.makeObject()
 	case String:
 		if err := self.advance(); err != nil {
 			return nil, err
@@ -974,6 +976,10 @@ func (self *parser) atom() (Atom, *errors.Error) {
 		fmt.Sprintf("unexpected token %v found here", self.currToken.Kind),
 		errors.SyntaxError,
 	)
+}
+
+func (self *parser) makeObject() (AtomObject, *errors.Error) {
+	return AtomObject{}, nil
 }
 
 func (self *parser) listLiteral() (AtomListLiteral, *errors.Error) {

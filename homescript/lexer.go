@@ -674,6 +674,8 @@ func (self *lexer) nextToken() (Token, *errors.Error) {
 			return self.makeSingleChar(Semicolon, ';'), nil
 		case ',':
 			return self.makeSingleChar(Comma, ','), nil
+		case ':':
+			return self.makeSingleChar(Colon, ':'), nil
 		case '.':
 			return self.makeDots(), nil
 		case '=':
