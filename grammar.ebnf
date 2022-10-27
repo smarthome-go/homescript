@@ -92,6 +92,7 @@ Atom            = number
                 | string
                 | ListLiteral
                 | PairExpr (* <- also starts with <string>, but identifiable by the following `=>` *)
+                | ObjExpr
                 | 'null'
                 | identifier
                 | IfExpr
@@ -123,18 +124,41 @@ ListLiteral = '[' , [ Expression , { ',' , Expression } , [ ',' ] ] , ']' ;
   ```
 *)
 PairExpr = string , '=>' , Expression ;
+
+(*
+  A <ObjExpr> creates a value of type `Object` given a sequence of <ObjField> values as the fields.
+  Note: Each identifier must only appear once in the object
+
+  ```
+  let my_object = {
+    my_field:       42,
+    another_field:  "Hello World!",
+    function:       fn () {
+        println("Objects are cool");
+    },
+  };
+  ```
+*)
+ObjExpr = '{' , [ ObjField , { ',' , ObjField } , [ ',' ] , ] '}' ;
+
+(*
+  An <ObjField> is a field of an object. It starts with a identifier followed a `:` colon by an
+  expression.
+*)
+ObjField = identifier , ':' , Expression ;
+
 (*
   A <Block> always creates a new scope for variables. It contains a sequence of <Statement>s and
   returns the result of the one after the last semicolon, or `null` otherwise.
 *)
-Block    = '{' , Program , '}' ;
+Block  = '{' , Program , '}' ;
 (*
   An <IfExpr> checks a condition and executes code based on whether that condition evaluates to
   `true` or `false`. The resulting value is the result of the executed
   <Block>, either the `if` or `else` block. When the condition evaluates to `false` and no `else`
   <Block> is specified, the result will be `null`.
 *)
-IfExpr   = 'if' , Expression , Block , [ 'else' , ( IfExpr | Block ) ] ;
+IfExpr = 'if' , Expression , Block , [ 'else' , ( IfExpr | Block ) ] ;
 
 (*
   A <ForExpr> loops over the given (inclusive) range of numbers, assigning the current number to the
