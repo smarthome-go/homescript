@@ -3,6 +3,7 @@ package homescript
 import (
 	"fmt"
 	"math"
+	"strconv"
 
 	"github.com/smarthome-go/homescript/homescript/errors"
 )
@@ -53,6 +54,22 @@ func (self ValueNumber) Fields() map[string]*Value {
 				}, nil, nil
 			},
 		}),
+		// Convert the number into its binary representation
+		"bin": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if err := checkArgs("bin", span, args); err != nil {
+				return nil, nil, err
+			}
+			if float64(int(self.Value)) != self.Value {
+				return nil, nil, errors.NewError(
+					span,
+					"can only create binary representation on integer numbers, found float",
+					errors.TypeError,
+				)
+			}
+			return ValueString{Value: strconv.FormatInt(int64(self.Value), 2)}, nil, nil
+		}}),
+		"to_json":        marshalHelper(self),
+		"to_json_indent": marshalIndentHelper(self),
 	}
 }
 func (self ValueNumber) Index(_ Executor, _ int, span errors.Span) (*Value, *errors.Error) {

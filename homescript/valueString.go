@@ -75,61 +75,8 @@ func (self ValueString) Fields() map[string]*Value {
 				return value, nil, nil
 			},
 		}),
-	}
-}
-
-func unmarshalValue(span errors.Span, self interface{}) (Value, *errors.Error) {
-	switch self := self.(type) {
-	case string:
-		return ValueString{Value: self}, nil
-	case float64:
-		return ValueNumber{Value: self}, nil
-	case int:
-		return ValueNumber{Value: float64(self)}, nil
-	case bool:
-		return ValueBool{Value: self}, nil
-	case map[string]interface{}:
-		output := ValueObject{ObjFields: make(map[string]*Value)}
-		for key, field := range self {
-			value, err := unmarshalValue(span, field)
-			if err != nil {
-				return nil, err
-			}
-			output.ObjFields[key] = &value
-		}
-		return output, nil
-	case []interface{}:
-		values := make([]*Value, 0)
-		valueType := TypeUnknown
-		for _, item := range self {
-			value, err := unmarshalValue(span, item)
-			if err != nil {
-				return nil, err
-			}
-			// Check type equality
-			if valueType != TypeUnknown {
-				if valueType != value.Type() {
-					return nil, errors.NewError(
-						span,
-						fmt.Sprintf("type inconsistency in list: cannot insert value of type '%v' into %v<%v>", value.Type(), TypeList, valueType),
-						errors.RuntimeError,
-					)
-				}
-			} else {
-				valueType = value.Type()
-			}
-			values = append(values, &value)
-		}
-		return ValueList{
-			Values:    &values,
-			ValueType: &valueType,
-		}, nil
-	default:
-		return nil, errors.NewError(
-			span,
-			fmt.Sprintf("cannot parse unknown JSON to HMS value: %v", self),
-			errors.RuntimeError,
-		)
+		"to_json":        marshalHelper(self),
+		"to_json_indent": marshalIndentHelper(self),
 	}
 }
 

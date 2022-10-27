@@ -21,9 +21,13 @@ type ValueObject struct {
 	IsProtected bool
 }
 
-func (self ValueObject) Type() ValueType           { return TypeObject }
-func (self ValueObject) Span() errors.Span         { return self.Range }
-func (self ValueObject) Fields() map[string]*Value { return self.ObjFields }
+func (self ValueObject) Type() ValueType   { return TypeObject }
+func (self ValueObject) Span() errors.Span { return self.Range }
+func (self ValueObject) Fields() map[string]*Value {
+	self.ObjFields["to_json"] = marshalHelper(self)
+	self.ObjFields["to_json_indent"] = marshalIndentHelper(self)
+	return self.ObjFields
+}
 func (self ValueObject) Index(_ Executor, _ int, span errors.Span) (*Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
 }

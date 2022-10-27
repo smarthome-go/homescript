@@ -247,6 +247,8 @@ func (self ValueList) Fields() map[string]*Value {
 				return ValueNull{}, nil, nil
 			},
 		}),
+		"to_json":        marshalHelper(self),
+		"to_json_indent": marshalIndentHelper(self),
 	}
 }
 func (self ValueList) Index(executor Executor, index int, span errors.Span) (*Value, *errors.Error) {

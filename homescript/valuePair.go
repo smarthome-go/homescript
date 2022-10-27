@@ -18,8 +18,10 @@ func (self ValuePair) Type() ValueType   { return TypePair }
 func (self ValuePair) Span() errors.Span { return self.Range }
 func (self ValuePair) Fields() map[string]*Value {
 	return map[string]*Value{
-		"k": self.Key,
-		"v": self.Value,
+		"k":              self.Key,
+		"v":              self.Value,
+		"to_json":        marshalHelper(self),
+		"to_json_indent": marshalIndentHelper(self),
 	}
 }
 func (self ValuePair) Index(_ Executor, _ int, span errors.Span) (*Value, *errors.Error) {

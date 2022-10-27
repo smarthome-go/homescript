@@ -87,9 +87,14 @@ type ValueNull struct {
 	IsProtected bool
 }
 
-func (self ValueNull) Type() ValueType           { return TypeNull }
-func (self ValueNull) Span() errors.Span         { return self.Range }
-func (self ValueNull) Fields() map[string]*Value { return make(map[string]*Value) }
+func (self ValueNull) Type() ValueType   { return TypeNull }
+func (self ValueNull) Span() errors.Span { return self.Range }
+func (self ValueNull) Fields() map[string]*Value {
+	return map[string]*Value{
+		"to_json":        marshalHelper(self),
+		"to_json_indent": marshalIndentHelper(self),
+	}
+}
 func (self ValueNull) Index(_ Executor, _ int, span errors.Span) (*Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
 }
@@ -118,7 +123,12 @@ func (self ValueBool) Type() ValueType   { return TypeBoolean }
 func (self ValueBool) Span() errors.Span { return self.Range }
 
 // Fields also return a pointer so that member assignments are possible
-func (self ValueBool) Fields() map[string]*Value { return make(map[string]*Value) }
+func (self ValueBool) Fields() map[string]*Value {
+	return map[string]*Value{
+		"to_json":        marshalHelper(self),
+		"to_json_indent": marshalHelper(self),
+	}
+}
 
 // Index returns a pointer so that index assignments are possible
 func (self ValueBool) Index(_ Executor, _ int, span errors.Span) (*Value, *errors.Error) {
@@ -263,7 +273,7 @@ func (self ValueBuiltinVariable) Type() ValueType           { return TypeBuiltin
 func (self ValueBuiltinVariable) Span() errors.Span         { return errors.Span{} }
 func (self ValueBuiltinVariable) Fields() map[string]*Value { return make(map[string]*Value) }
 func (self ValueBuiltinVariable) Index(_ Executor, _ int, span errors.Span) (*Value, *errors.Error) {
-	return nil, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
+	panic("A bare builtin variable should not exist")
 }
 func (self ValueBuiltinVariable) Protected() bool {
 	return true
