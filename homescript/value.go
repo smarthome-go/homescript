@@ -57,7 +57,7 @@ type Value interface {
 	Protected() bool
 	Span() errors.Span
 	Fields() map[string]Value
-	Index(executor Executor, index int, span errors.Span) (Value, *errors.Error)
+	Index(executor Executor, index int, span errors.Span) (*Value, *errors.Error)
 	// Is also used for `as str` and printing
 	Display(executor Executor, span errors.Span) (string, *errors.Error)
 	Debug(executor Executor, span errors.Span) (string, *errors.Error)
@@ -115,9 +115,13 @@ type ValueBool struct {
 	IsProtected bool
 }
 
-func (self ValueBool) Type() ValueType          { return TypeBoolean }
-func (self ValueBool) Span() errors.Span        { return self.Range }
+func (self ValueBool) Type() ValueType   { return TypeBoolean }
+func (self ValueBool) Span() errors.Span { return self.Range }
+
+// Fields also return a pointer so that member assignments are possible
 func (self ValueBool) Fields() map[string]Value { return make(map[string]Value) }
+
+// Index returns a pointer so that index assignments are possible
 func (self ValueBool) Index(_ Executor, _ int, span errors.Span) (Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
 }
