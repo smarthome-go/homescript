@@ -39,6 +39,10 @@ func (self analyzerExecutor) Switch(name string, power bool) error {
 	return nil
 }
 
+func (self analyzerExecutor) Ping(ip string, timeout float64) (bool, error) {
+	return false, nil
+}
+
 func (self analyzerExecutor) Notify(title string, description string, level homescript.NotificationLevel) error {
 	return nil
 }

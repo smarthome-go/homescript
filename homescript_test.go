@@ -46,6 +46,10 @@ func (self dummyExecutor) Switch(name string, power bool) error {
 	return nil
 }
 
+func (self dummyExecutor) Ping(ip string, timeout float64) (bool, error) {
+	return false, nil
+}
+
 func (self dummyExecutor) Notify(title string, description string, level homescript.NotificationLevel) error {
 	return nil
 }
