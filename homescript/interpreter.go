@@ -1046,12 +1046,21 @@ func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.E
 
 func (self *Interpreter) makeObject(node AtomObject) (Result, *int, *errors.Error) {
 	fields := make(map[string]*Value)
+
 	for _, field := range node.Fields {
 		_, exists := fields[field.Identifier]
 		if exists {
 			return Result{}, nil, errors.NewError(
 				field.IdentSpan,
 				fmt.Sprintf("illegal duplicate key '%s' in object declaration", field.Identifier),
+				errors.TypeError,
+			)
+		}
+		_, isBuiltin := ValueObject{ObjFields: map[string]*Value{}}.Fields()[field.Identifier]
+		if isBuiltin {
+			return Result{}, nil, errors.NewError(
+				field.IdentSpan,
+				fmt.Sprintf("key '%s' in object declaration is reserved for builtin function", field.Identifier),
 				errors.TypeError,
 			)
 		}
