@@ -253,15 +253,6 @@ func NewAnalyzer(
 	}
 }
 
-func (self *Analyzer) diagnostic(span errors.Span, message string, severity DiagnosticSeverity, kind errors.ErrorKind) {
-	self.diagnostics = append(self.diagnostics, Diagnostic{
-		Severity: severity,
-		Kind:     kind,
-		Message:  message,
-		Span:     span,
-	})
-}
-
 // Can be used to create a diagnostic message at the point where the current function was called
 func (self *Analyzer) highlightCaller(kind errors.ErrorKind, errSpan errors.Span) {
 	// Only continue if invoked inside a function
@@ -1165,7 +1156,6 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 			}
 
 			// Swap the result and the base so that the next iteration uses this result
-			// TODO: is this safe?
 			*base.Value = *result
 		}
 	}
@@ -1515,32 +1505,7 @@ func (self *Analyzer) visitFunctionDeclaration(node AtomFunction) (*Value, *erro
 		self.addVar(*node.Ident, function, node.Range)
 	}
 
-	// TODO: move this
-	/*
-
-		if err := self.pushScope(node.Ident, node.Range); err != nil {
-			return nil, err
-		}
-
-		self.inFunction = true
-
-		// Add the function's parameters into the new scope
-		for _, param := range node.ArgIdentifiers {
-			self.addVar(param, nil)
-		}
-
-		// Before returning the function, analyze its body
-		if _, err := self.visitStatements(node.Body); err != nil {
-			return nil, err
-		}
-
-		self.inFunction = false
-		self.popScope()
-
-	*/
-
 	// Return the functions value so that assignments like `let a = fn foo() ...` are possible
-
 	return valPtr(function), nil
 }
 

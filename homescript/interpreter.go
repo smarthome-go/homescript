@@ -228,14 +228,9 @@ func (self *Interpreter) visitLetStatement(node LetStmt) (Result, *int, *errors.
 		return Result{}, code, err
 	}
 
-	// Insert an identifier into the value (if possible)
-	// TODO: contemplate whether to insert a value span
-	//value := setValueSpan(*rightResult.Value, node.Left.Span)
-
 	// Add the value to the scope
 	self.addVar(node.Left.Identifier, rightResult.Value)
-	// Also update the result value to include the new Identifier
-	// rightResult.Value =
+
 	// Finially, return the result
 	return rightResult, nil, nil
 }
