@@ -54,7 +54,7 @@ func Run(
 	return returnValue,
 		exitCode,
 		interpreter.scopes[0], // Return the root scope
-		nil
+		make([]hmsError.Error, 0) // Easier for the user
 }
 
 // Analyzes the given Homescript code

@@ -5,16 +5,22 @@ import (
 	"strings"
 )
 
+type Error struct {
+	Kind    ErrorKind
+	Message string
+	Span    Span
+}
+
 // All ranges inclusive
 type Span struct {
-	Start Location
-	End   Location
+	Start Location `json:"start"`
+	End   Location `json:"end"`
 }
 
 type Location struct {
-	Line   uint
-	Column uint
-	Index  uint
+	Line   uint `json:"line"`
+	Column uint `json:"column"`
+	Index  uint `json:"index"`
 }
 
 func (self *Location) Advance(newline bool) {
@@ -25,12 +31,6 @@ func (self *Location) Advance(newline bool) {
 	} else {
 		self.Column += 1
 	}
-}
-
-type Error struct {
-	Kind    ErrorKind
-	Message string
-	Span    Span
 }
 
 type ErrorKind uint8
