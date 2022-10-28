@@ -1,4 +1,4 @@
-module github.com/smarthome-go/homescript
+module github.com/smarthome-go/homescript/v2
 
 go 1.19
 
