@@ -40,11 +40,17 @@ type HttpResponse struct {
 	Body       string
 }
 
+type SwitchResponse struct {
+	Name  string
+	Power bool
+	Watts uint
+}
+
 type Executor interface {
 	Sleep(float64)
 	Print(args ...string)
 	Println(args ...string)
-	SwitchOn(name string) (bool, error)
+	GetSwitch(id string) (SwitchResponse, error)
 	Switch(name string, on bool) error
 	Ping(ip string, timeout float64) (bool, error)
 	Notify(title string, description string, level NotificationLevel) error

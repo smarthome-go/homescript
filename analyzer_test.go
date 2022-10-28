@@ -31,12 +31,11 @@ func (self analyzerExecutor) Print(args ...string) {
 func (self analyzerExecutor) Println(args ...string) {
 }
 
-func (self analyzerExecutor) SwitchOn(name string) (bool, error) {
-	return false, nil
-}
-
 func (self analyzerExecutor) Switch(name string, power bool) error {
 	return nil
+}
+func (self analyzerExecutor) GetSwitch(id string) (homescript.SwitchResponse, error) {
+	return homescript.SwitchResponse{}, nil
 }
 
 func (self analyzerExecutor) Ping(ip string, timeout float64) (bool, error) {

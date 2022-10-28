@@ -60,23 +60,23 @@ func NewInterpreter(
 	// Adds the root scope
 	scopes = append(scopes, map[string]*Value{
 		// Builtin functions implemented by Homescript
-		"exit":      valPtr(ValueBuiltinFunction{Callback: Exit}),
-		"throw":     valPtr(ValueBuiltinFunction{Callback: Throw}),
-		"assert":    valPtr(ValueBuiltinFunction{Callback: Assert}),
-		"debug":     valPtr(ValueBuiltinFunction{Callback: Debug}),
-		"print":     valPtr(ValueBuiltinFunction{Callback: Print}), // Builtin functions implemented by the executor
-		"println":   valPtr(ValueBuiltinFunction{Callback: Println}),
-		"sleep":     valPtr(ValueBuiltinFunction{Callback: Sleep}),
-		"switch_on": valPtr(ValueBuiltinFunction{Callback: SwitchOn}),
-		"switch":    valPtr(ValueBuiltinFunction{Callback: Switch}),
-		"notify":    valPtr(ValueBuiltinFunction{Callback: Notify}),
-		"log":       valPtr(ValueBuiltinFunction{Callback: Log}),
-		"exec":      valPtr(ValueBuiltinFunction{Callback: Exec}),
-		"get":       valPtr(ValueBuiltinFunction{Callback: Get}),
-		"http":      valPtr(ValueBuiltinFunction{Callback: Http}),
-		"user":      valPtr(ValueBuiltinVariable{Callback: GetUser}), // Builtin variables implemented by the executor
-		"weather":   valPtr(ValueBuiltinVariable{Callback: GetWeather}),
-		"time":      valPtr(ValueBuiltinVariable{Callback: GetTime}),
+		"exit":       valPtr(ValueBuiltinFunction{Callback: Exit}),
+		"throw":      valPtr(ValueBuiltinFunction{Callback: Throw}),
+		"assert":     valPtr(ValueBuiltinFunction{Callback: Assert}),
+		"debug":      valPtr(ValueBuiltinFunction{Callback: Debug}),
+		"print":      valPtr(ValueBuiltinFunction{Callback: Print}), // Builtin functions implemented by the executor
+		"println":    valPtr(ValueBuiltinFunction{Callback: Println}),
+		"sleep":      valPtr(ValueBuiltinFunction{Callback: Sleep}),
+		"switch":     valPtr(ValueBuiltinFunction{Callback: Switch}),
+		"get_switch": valPtr(ValueBuiltinFunction{Callback: GetSwitch}),
+		"notify":     valPtr(ValueBuiltinFunction{Callback: Notify}),
+		"log":        valPtr(ValueBuiltinFunction{Callback: Log}),
+		"exec":       valPtr(ValueBuiltinFunction{Callback: Exec}),
+		"get":        valPtr(ValueBuiltinFunction{Callback: Get}),
+		"http":       valPtr(ValueBuiltinFunction{Callback: Http}),
+		"user":       valPtr(ValueBuiltinVariable{Callback: GetUser}), // Builtin variables implemented by the executor
+		"weather":    valPtr(ValueBuiltinVariable{Callback: GetWeather}),
+		"time":       valPtr(ValueBuiltinVariable{Callback: GetTime}),
 		"ARGS": valPtr(ValueObject{
 			DataType:  "args",
 			IsDynamic: true,

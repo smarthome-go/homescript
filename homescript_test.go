@@ -38,8 +38,8 @@ func (self dummyExecutor) Println(args ...string) {
 	fmt.Println(strings.Join(args, " "))
 }
 
-func (self dummyExecutor) SwitchOn(name string) (bool, error) {
-	return false, nil
+func (self dummyExecutor) GetSwitch(id string) (homescript.SwitchResponse, error) {
+	return homescript.SwitchResponse{}, nil
 }
 
 func (self dummyExecutor) Switch(name string, power bool) error {

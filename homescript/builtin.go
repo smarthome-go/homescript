@@ -159,18 +159,23 @@ func Println(executor Executor, span errors.Span, args ...Value) (Value, *int, *
 	return ValueNull{}, nil, nil
 }
 
-// Retrieves the current power state of the provided switch
-func SwitchOn(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-	if err := checkArgs("switchOn", span, args, TypeString); err != nil {
+// Retrieves data about a Smarthome switch
+func GetSwitch(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if err := checkArgs("get_switch", span, args, TypeString); err != nil {
 		return nil, nil, err
 	}
 	name := args[0].(ValueString).Value
-	value, err := executor.SwitchOn(name)
+	res, err := executor.GetSwitch(name)
 	if err != nil {
 		return nil, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
-	return ValueBool{
-		Value: value,
+	return ValueObject{
+		IsProtected: true,
+		ObjFields: map[string]*Value{
+			"name":  valPtr(ValueString{Value: res.Name}),
+			"power": valPtr(ValueBool{Value: res.Power}),
+			"watts": valPtr(ValueNumber{Value: float64(res.Watts)}),
+		},
 	}, nil, nil
 }
 
