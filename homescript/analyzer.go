@@ -132,7 +132,8 @@ func (self Diagnostic) Display(program string, filename string) string {
 	marker := fmt.Sprintf("%s\x1b[1;3%dm%s\x1b[0m", strings.Repeat(" ", int(self.Span.Start.Column+6)), color, markers)
 
 	return fmt.Sprintf(
-		"\x1b[1;36m%v\x1b[39m at %s:%d:%d\x1b[0m\n%s\n%s\n%s%s\n\n\x1b[1;3%dm%s\x1b[0m\n",
+		"\x1b[1;3%dm%v\x1b[39m at %s:%d:%d\x1b[0m\n%s\n%s\n%s%s\n\n\x1b[1;3%dm%s\x1b[0m\n",
+		color,
 		self.Kind,
 		filename,
 		self.Span.Start.Line,
