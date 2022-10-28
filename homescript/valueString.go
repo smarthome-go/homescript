@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/smarthome-go/homescript/homescript/errors"
+	"github.com/smarthome-go/homescript/v2/homescript/errors"
 )
 
 // String value

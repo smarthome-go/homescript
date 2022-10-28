@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smarthome-go/homescript/homescript"
-	"github.com/smarthome-go/homescript/homescript/errors"
+	"github.com/smarthome-go/homescript/v2/homescript"
+	"github.com/smarthome-go/homescript/v2/homescript/errors"
 	"github.com/stretchr/testify/assert"
 )
 

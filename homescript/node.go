@@ -1,7 +1,7 @@
 package homescript
 
 import (
-	"github.com/smarthome-go/homescript/homescript/errors"
+	"github.com/smarthome-go/homescript/v2/homescript/errors"
 )
 
 type Block []Statement

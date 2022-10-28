@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/smarthome-go/homescript/homescript"
+	"github.com/smarthome-go/homescript/v2/homescript"
 )
 
 type analyzerExecutor struct{}

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/smarthome-go/homescript/homescript/errors"
+	"github.com/smarthome-go/homescript/v2/homescript/errors"
 )
 
 type Analyzer struct {

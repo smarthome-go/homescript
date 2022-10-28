@@ -1,7 +1,7 @@
 package homescript
 
 import (
-	hmsError "github.com/smarthome-go/homescript/homescript/errors"
+	hmsError "github.com/smarthome-go/homescript/v2/homescript/errors"
 )
 
 // Executes the given Homescript code

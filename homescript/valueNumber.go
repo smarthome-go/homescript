@@ -5,7 +5,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/smarthome-go/homescript/homescript/errors"
+	"github.com/smarthome-go/homescript/v2/homescript/errors"
 )
 
 // Number value
