@@ -118,6 +118,15 @@ func (self *Interpreter) run() (Value, int, *errors.Error) {
 	if err != nil {
 		return makeNull(errors.Span{}), 1, err
 	}
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+		This is required at the end in case the last statement of a statements block received a sigTerm
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return nil, code, nil
+	}
 	if code != nil {
 		return makeNull(errors.Span{}), *code, err
 	}
@@ -140,6 +149,14 @@ func (self *Interpreter) checkSigTerm() (int, bool) {
 
 // Interpreter code
 func (self *Interpreter) visitStatements(statements []Statement) (Result, *int, *errors.Error) {
+	/*
+		SIGTERM catching
+		Pre-execution validation of potential sigTerm checks if the function has to be aborted
+		If a signal is received, the current function aborts using the provided exit-code
+	*/
+	if code, receivedSignal := self.checkSigTerm(); receivedSignal {
+		return Result{}, &code, nil
+	}
 	lastResult := makeNullResult(errors.Span{})
 	var code *int
 	var err *errors.Error
