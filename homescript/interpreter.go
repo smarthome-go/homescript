@@ -1057,7 +1057,7 @@ func (self *Interpreter) makeObject(node AtomObject) (Result, *int, *errors.Erro
 		if isBuiltin {
 			return Result{}, nil, errors.NewError(
 				field.IdentSpan,
-				fmt.Sprintf("key '%s' in object declaration is reserved for builtin function", field.Identifier),
+				fmt.Sprintf("key '%s' in object declaration is reserved for a builtin function", field.Identifier),
 				errors.TypeError,
 			)
 		}

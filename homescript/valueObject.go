@@ -26,6 +26,19 @@ func (self ValueObject) Span() errors.Span { return self.Range }
 func (self ValueObject) Fields() map[string]*Value {
 	self.ObjFields["to_json"] = marshalHelper(self)
 	self.ObjFields["to_json_indent"] = marshalIndentHelper(self)
+	self.ObjFields["keys"] = valPtr(ValueBuiltinFunction{
+		Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			typ := TypeString
+			keys := make([]*Value, 0)
+			for key, value := range self.ObjFields {
+				// Do not include builtin functions in this list
+				if (*value).Type() != TypeBuiltinFunction {
+					keys = append(keys, valPtr(ValueString{Value: key}))
+				}
+			}
+			return ValueList{ValueType: &typ, Values: &keys}, nil, nil
+		},
+	})
 	return self.ObjFields
 }
 func (self ValueObject) Index(_ Executor, indexValue Value, span errors.Span) (*Value, bool, *errors.Error) {

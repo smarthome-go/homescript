@@ -1414,6 +1414,14 @@ func (self *Analyzer) makeObject(node AtomObject) (Result, *errors.Error) {
 				errors.TypeError,
 			)
 		}
+		_, isBuiltin := ValueObject{ObjFields: map[string]*Value{}}.Fields()[field.Identifier]
+		if isBuiltin {
+			self.issue(
+				field.IdentSpan,
+				fmt.Sprintf("key '%s' in object declaration is reserved for a builtin function", field.Identifier),
+				errors.TypeError,
+			)
+		}
 		value, err := self.visitExpression(field.Expression)
 		if err != nil {
 			return Result{}, err
