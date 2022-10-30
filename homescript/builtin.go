@@ -496,11 +496,12 @@ func Time(executor Executor, _ errors.Span) (Value, *errors.Error) {
 	time := time.Now()
 	_, week := time.ISOWeek()
 	return ValueObject{
-		DataType: "time",
+		DataType: "time_module",
 		ObjFields: map[string]*Value{
 			"now": valPtr(ValueBuiltinFunction{
 				Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 					return ValueObject{
+						DataType: "time",
 						ObjFields: map[string]*Value{
 							"year": valPtr(ValueNumber{
 								Value: float64(time.Year()),
