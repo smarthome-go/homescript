@@ -840,7 +840,7 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 				return Result{}, nil, err
 			}
 			// Swap the result and the base so that the next iteration uses this result
-			*base.Value = *result
+			base.Value = result
 		}
 		// Handle index access
 		if part.Index != nil {
@@ -849,13 +849,22 @@ func (self *Interpreter) visitCallExpression(node CallExpression) (Result, *int,
 			if code != nil || err != nil {
 				return Result{}, code, err
 			}
-			result, err := (*base.Value).Index(self.executor, *indexValue.Value, part.Span)
+			result, fieldExists, err := (*base.Value).Index(self.executor, *indexValue.Value, part.Span)
 			if err != nil {
 				return Result{}, nil, err
 			}
-
+			// The only time the value was not found and NO error was returned is indexing of an object
+			// Because the analyzer shall not return false positives, this edge case must be handled here
+			if !fieldExists {
+				return Result{}, nil, errors.NewError(
+					part.Span,
+					// Type assertion should be legal here
+					fmt.Sprintf("object has no member named '%s'", (*indexValue.Value).(ValueString).Value),
+					errors.TypeError,
+				)
+			}
 			// Swap the result and the base so that the next iteration uses this result
-			*base.Value = *result
+			base.Value = result
 		}
 	}
 	// Return the last base (the result)
@@ -882,11 +891,20 @@ func (self *Interpreter) visitMemberExpression(node MemberExpression) (Result, *
 			if code != nil || err != nil {
 				return Result{}, code, err
 			}
-			result, err := (*base.Value).Index(self.executor, *indexValue.Value, member.Span)
+			result, fieldExists, err := (*base.Value).Index(self.executor, *indexValue.Value, member.Span)
 			if err != nil {
 				return Result{}, nil, err
 			}
-
+			// The only time the value was not found and NO error was returned is indexing of an object
+			// Because the analyzer shall not return false positives, this edge case must be handled here
+			if !fieldExists {
+				return Result{}, nil, errors.NewError(
+					member.Span,
+					// Type assertion should be legal here
+					fmt.Sprintf("object has no member named '%s'", (*indexValue.Value).(ValueString).Value),
+					errors.TypeError,
+				)
+			}
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = result
 		} else {

@@ -271,17 +271,17 @@ func (self ValueList) Fields() map[string]*Value {
 		"to_json_indent": marshalIndentHelper(self),
 	}
 }
-func (self ValueList) Index(executor Executor, indexValue Value, span errors.Span) (*Value, *errors.Error) {
+func (self ValueList) Index(executor Executor, indexValue Value, span errors.Span) (*Value, bool, *errors.Error) {
 	// Check the type
 	if indexValue.Type() != TypeNumber {
-		return nil, errors.NewError(
+		return nil, false, errors.NewError(
 			span,
 			fmt.Sprintf("cannot index value of type '%v' by a value of type '%v'", TypeList, indexValue.Type()),
 			errors.TypeError,
 		)
 	}
 	if float64(int(indexValue.(ValueNumber).Value)) != indexValue.(ValueNumber).Value {
-		return nil, errors.NewError(
+		return nil, false, errors.NewError(
 			span,
 			fmt.Sprintf("cannot index value of type '%v' by a float number", TypeList),
 			errors.ValueError,
@@ -294,13 +294,13 @@ func (self ValueList) Index(executor Executor, indexValue Value, span errors.Spa
 		index = index + length
 	}
 	if index < 0 || index >= length {
-		return nil, errors.NewError(
+		return nil, false, errors.NewError(
 			span,
 			fmt.Sprintf("index out of bounds: index is %d, but length is %d", index, length),
 			errors.OutOfBoundsError,
 		)
 	}
-	return (*self.Values)[index], nil
+	return (*self.Values)[index], true, nil
 }
 func (self ValueList) Display(executor Executor, span errors.Span) (string, *errors.Error) {
 	length := len(*self.Values)

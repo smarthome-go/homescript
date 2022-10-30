@@ -28,10 +28,10 @@ func (self ValueObject) Fields() map[string]*Value {
 	self.ObjFields["to_json_indent"] = marshalIndentHelper(self)
 	return self.ObjFields
 }
-func (self ValueObject) Index(_ Executor, indexValue Value, span errors.Span) (*Value, *errors.Error) {
+func (self ValueObject) Index(_ Executor, indexValue Value, span errors.Span) (*Value, bool, *errors.Error) {
 	// Check that the indexValue is of type string
 	if indexValue.Type() != TypeString {
-		return nil, errors.NewError(
+		return nil, false, errors.NewError(
 			span,
 			fmt.Sprintf("cannot index value of type '%v' by a value of type '%v'", TypeObject, indexValue.Type()),
 			errors.TypeError,
@@ -39,13 +39,18 @@ func (self ValueObject) Index(_ Executor, indexValue Value, span errors.Span) (*
 	}
 	value, exists := self.ObjFields[indexValue.(ValueString).Value]
 	if !exists {
-		return nil, errors.NewError(
+		// Only allow this in dynamic objects
+		if self.IsDynamic {
+			return nil, false, nil
+
+		}
+		return nil, false, errors.NewError(
 			span,
 			fmt.Sprintf("%v has no member named %s", self.Type(), indexValue.(ValueString).Value),
 			errors.TypeError,
 		)
 	}
-	return value, nil
+	return value, true, nil
 }
 func (self ValueObject) Protected() bool { return self.IsProtected }
 func (self ValueObject) Display(executor Executor, span errors.Span) (string, *errors.Error) {

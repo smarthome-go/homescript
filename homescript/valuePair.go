@@ -24,8 +24,8 @@ func (self ValuePair) Fields() map[string]*Value {
 		"to_json_indent": marshalIndentHelper(self),
 	}
 }
-func (self ValuePair) Index(_ Executor, _ Value, span errors.Span) (*Value, *errors.Error) {
-	return nil, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
+func (self ValuePair) Index(_ Executor, _ Value, span errors.Span) (*Value, bool, *errors.Error) {
+	return nil, false, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
 }
 func (self ValuePair) Protected() bool { return self.IsProtected }
 func (self ValuePair) Display(executor Executor, span errors.Span) (string, *errors.Error) {

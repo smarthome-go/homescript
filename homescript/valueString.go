@@ -102,17 +102,17 @@ func (self ValueString) Fields() map[string]*Value {
 	}
 }
 
-func (self ValueString) Index(_ Executor, indexValue Value, span errors.Span) (*Value, *errors.Error) {
+func (self ValueString) Index(_ Executor, indexValue Value, span errors.Span) (*Value, bool, *errors.Error) {
 	// Check the type
 	if indexValue.Type() != TypeNumber {
-		return nil, errors.NewError(
+		return nil, true, errors.NewError(
 			span,
 			fmt.Sprintf("cannot index value of type '%v' by a value of type '%v'", TypeList, indexValue.Type()),
 			errors.TypeError,
 		)
 	}
 	if float64(int(indexValue.(ValueNumber).Value)) != indexValue.(ValueNumber).Value {
-		return nil, errors.NewError(
+		return nil, true, errors.NewError(
 			span,
 			fmt.Sprintf("cannot index value of type '%v' by a float number", TypeList),
 			errors.ValueError,
@@ -125,7 +125,7 @@ func (self ValueString) Index(_ Executor, indexValue Value, span errors.Span) (*
 		index = index + valLen
 	}
 	if index < 0 || index >= valLen {
-		return nil, errors.NewError(
+		return nil, true, errors.NewError(
 			span,
 			fmt.Sprintf("index out of bounds: index is %d, but length is %d", index, valLen),
 			errors.OutOfBoundsError,
@@ -134,7 +134,7 @@ func (self ValueString) Index(_ Executor, indexValue Value, span errors.Span) (*
 	return valPtr(ValueString{
 		Value: string([]rune(self.Value)[index]),
 		Range: self.Range,
-	}), nil
+	}), true, nil
 }
 func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return self.Value, nil

@@ -1137,7 +1137,7 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 				return Result{}, nil
 			}
 			// Swap the result and the base so that the next iteration uses this result
-			*base.Value = *result
+			base.Value = result
 		}
 		// Handle index access
 		if part.Index != nil {
@@ -1150,14 +1150,17 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 				self.info(part.Span, "manual index validation required")
 				return Result{}, nil
 			}
-			result, err := (*base.Value).Index(self.executor, *indexValue.Value, part.Span)
+			result, fieldExists, err := (*base.Value).Index(self.executor, *indexValue.Value, part.Span)
 			if err != nil {
 				self.diagnosticError(*err)
 				return Result{}, nil
 			}
-
+			// If there was no error but the field does not exist, only create an info
+			if !fieldExists {
+				self.info(part.Span, "dynamic object: manual validation required")
+			}
 			// Swap the result and the base so that the next iteration uses this result
-			*base.Value = *result
+			base.Value = result
 		}
 	}
 	// Return the last base (the result)
@@ -1195,10 +1198,14 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 				manualInfo = true
 				continue
 			}
-			result, err := (*base.Value).Index(self.executor, *indexValue.Value, member.Span)
+			result, fieldExists, err := (*base.Value).Index(self.executor, *indexValue.Value, member.Span)
 			if err != nil {
 				self.diagnosticError(*err)
 				return Result{}, nil
+			}
+			// If there was no error but the field does not exist, only create an info
+			if !fieldExists {
+				self.info(member.Span, "dynamic object: manual validation required")
 			}
 			// Swap the result and the base so that the next iteration uses this result
 			base.Value = result
