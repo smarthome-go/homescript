@@ -22,3 +22,5 @@ let some_object = {
 };
 
 println(some_object.keys());
+
+time.sleep(1);

@@ -492,43 +492,52 @@ func GetWeather(executor Executor, span errors.Span) (Value, *errors.Error) {
 	}, nil
 }
 
-func GetTime(executor Executor, _ errors.Span) (Value, *errors.Error) {
+func Time(executor Executor, _ errors.Span) (Value, *errors.Error) {
 	time := time.Now()
 	_, week := time.ISOWeek()
 	return ValueObject{
 		DataType: "time",
 		ObjFields: map[string]*Value{
-			"year": valPtr(ValueNumber{
-				Value: float64(time.Year()),
-			}),
-			"month": valPtr(ValueNumber{
-				Value: float64(time.Month()),
-			}),
-			"week": valPtr(ValueNumber{
-				Value: float64(week),
-			}),
-			"week_day_text": valPtr(ValueString{
-				Value: time.Weekday().String(),
-			}),
-			"week_day": valPtr(ValueNumber{
-				Value: float64(time.Weekday()),
-			}),
-			"calendar_day": valPtr(ValueNumber{
-				Value: float64(time.Day()),
-			}),
-			"hour": valPtr(ValueNumber{
-				Value: float64(time.Hour()),
-			}),
-			"minute": valPtr(ValueNumber{
-				Value: float64(time.Minute()),
-			}),
-			"second": valPtr(ValueNumber{
-				Value: float64(time.Second()),
-			}),
-			"unix": valPtr(ValueNumber{
-				Value: float64(time.UnixMilli()),
+			"now": valPtr(ValueBuiltinFunction{
+				Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+					return ValueObject{
+						ObjFields: map[string]*Value{
+							"year": valPtr(ValueNumber{
+								Value: float64(time.Year()),
+							}),
+							"month": valPtr(ValueNumber{
+								Value: float64(time.Month()),
+							}),
+							"week": valPtr(ValueNumber{
+								Value: float64(week),
+							}),
+							"week_day_text": valPtr(ValueString{
+								Value: time.Weekday().String(),
+							}),
+							"week_day": valPtr(ValueNumber{
+								Value: float64(time.Weekday()),
+							}),
+							"calendar_day": valPtr(ValueNumber{
+								Value: float64(time.Day()),
+							}),
+							"hour": valPtr(ValueNumber{
+								Value: float64(time.Hour()),
+							}),
+							"minute": valPtr(ValueNumber{
+								Value: float64(time.Minute()),
+							}),
+							"second": valPtr(ValueNumber{
+								Value: float64(time.Second()),
+							}),
+							"unix": valPtr(ValueNumber{
+								Value: float64(time.UnixMilli()),
+							}),
+						},
+					}, nil, nil
+				},
 			}),
 			"since": valPtr(ValueBuiltinFunction{Callback: timeSince}),
+			"sleep": valPtr(ValueBuiltinFunction{Callback: Sleep}),
 		},
 	}, nil
 }

@@ -66,7 +66,6 @@ func NewInterpreter(
 		"debug":      valPtr(ValueBuiltinFunction{Callback: Debug}),
 		"print":      valPtr(ValueBuiltinFunction{Callback: Print}), // Builtin functions implemented by the executor
 		"println":    valPtr(ValueBuiltinFunction{Callback: Println}),
-		"sleep":      valPtr(ValueBuiltinFunction{Callback: Sleep}),
 		"switch":     valPtr(ValueBuiltinFunction{Callback: Switch}),
 		"get_switch": valPtr(ValueBuiltinFunction{Callback: GetSwitch}),
 		"notify":     valPtr(ValueBuiltinFunction{Callback: Notify}),
@@ -77,7 +76,7 @@ func NewInterpreter(
 		"ping":       valPtr(ValueBuiltinFunction{Callback: Ping}),
 		"user":       valPtr(ValueBuiltinVariable{Callback: GetUser}), // Builtin variables implemented by the executor
 		"weather":    valPtr(ValueBuiltinVariable{Callback: GetWeather}),
-		"time":       valPtr(ValueBuiltinVariable{Callback: GetTime}),
+		"time":       valPtr(ValueBuiltinVariable{Callback: Time}),
 		"ARGS": valPtr(ValueObject{
 			DataType:  "args",
 			IsDynamic: true,

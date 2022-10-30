@@ -216,7 +216,6 @@ func NewAnalyzer(
 			"debug":      valPtr(ValueBuiltinFunction{Callback: Debug}),
 			"print":      valPtr(ValueBuiltinFunction{Callback: Print}),
 			"println":    valPtr(ValueBuiltinFunction{Callback: Print}),
-			"sleep":      valPtr(ValueBuiltinFunction{Callback: Sleep}),
 			"switch":     valPtr(ValueBuiltinFunction{Callback: Switch}),
 			"get_switch": valPtr(ValueBuiltinFunction{Callback: GetSwitch}),
 			"notify":     valPtr(ValueBuiltinFunction{Callback: Notify}),
@@ -227,7 +226,7 @@ func NewAnalyzer(
 			"ping":       valPtr(ValueBuiltinFunction{Callback: Ping}),
 			"user":       valPtr(ValueBuiltinVariable{Callback: GetUser}),
 			"weather":    valPtr(ValueBuiltinVariable{Callback: GetWeather}),
-			"time":       valPtr(ValueBuiltinVariable{Callback: GetTime}),
+			"time":       valPtr(ValueBuiltinVariable{Callback: Time}),
 			"ARGS": valPtr(ValueObject{
 				DataType:    "args",
 				IsDynamic:   true,
