@@ -1272,6 +1272,9 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		if err != nil {
 			return Result{}, err
 		}
+		if pairValue.Value == nil || *&pairValue.Value == nil {
+			return Result{}, nil
+		}
 		pair := makePair(node.Span(), ValueString{Value: pairNode.Key}, *pairValue.Value)
 		result = Result{Value: &pair}
 	case AtomKindNull:

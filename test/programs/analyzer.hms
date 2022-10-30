@@ -1,14 +1,11 @@
-let res = exec('').a;
-println(res.a);
-println(res['a']);
-
-println(ARGS["key"]);
-println(ARGS.key);
-
-fn a () {
-    return {a: 1};
+let body = {
+    command: ARGS.command,
 };
 
-a()["a"];
-
-a().a;
+print(http(
+    'http://192.168.178.204:7070/exec',
+    'POST',
+    body.to_json(),
+    "Content-Type"=> "application/json",
+    "Token"=> "test",
+));

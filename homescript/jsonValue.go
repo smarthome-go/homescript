@@ -21,6 +21,9 @@ func marshalValue(self Value, span errors.Span, isInner bool) (interface{}, bool
 	case ValueObject:
 		output := make(map[string]interface{}, 0)
 		for key, value := range self.Fields() {
+			if value == nil {
+				return nil, false, nil
+			}
 			marshaled, skipNull, err := marshalValue(*value, span, true)
 			if err != nil {
 				return nil, false, err
