@@ -12,3 +12,5 @@ println(letters.contains("a"));
 
 println("hello world!".contains("z"));
 println("hello world!".contains("hello "));
+
+println("Stringlength:", "foo-bar".len());

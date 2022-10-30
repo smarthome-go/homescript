@@ -21,6 +21,17 @@ func (self ValueString) Span() errors.Span { return self.Range }
 func (self ValueString) Protected() bool   { return self.IsProtected }
 func (self ValueString) Fields() map[string]*Value {
 	return map[string]*Value{
+		// Calculates the utf-8 (rune) length of the string
+		"len": valPtr(ValueBuiltinFunction{
+			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+				if err := checkArgs("len", span, args); err != nil {
+					return nil, nil, err
+				}
+				return ValueNumber{
+					Value: float64(utf8.RuneCountInString(self.Value)),
+				}, nil, nil
+			},
+		}),
 		// Replaces the first occurence of the first argument in `self.Value` with the content of the second argument
 		"replace": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
