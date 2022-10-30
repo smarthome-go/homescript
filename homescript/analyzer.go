@@ -224,6 +224,7 @@ func NewAnalyzer(
 			"exec":       valPtr(ValueBuiltinFunction{Callback: Exec}),
 			"get":        valPtr(ValueBuiltinFunction{Callback: Get}),
 			"http":       valPtr(ValueBuiltinFunction{Callback: Http}),
+			"ping":       valPtr(ValueBuiltinFunction{Callback: Ping}),
 			"user":       valPtr(ValueBuiltinVariable{Callback: GetUser}),
 			"weather":    valPtr(ValueBuiltinVariable{Callback: GetWeather}),
 			"time":       valPtr(ValueBuiltinVariable{Callback: GetTime}),

@@ -449,6 +449,18 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 	}, nil, nil
 }
 
+// Performs a ping given the target-ip and a maximum timeout
+func Ping(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if err := checkArgs("ping", span, args, TypeString, TypeNumber); err != nil {
+		return nil, nil, err
+	}
+	hostAlive, err := executor.Ping(args[0].(ValueString).Value, args[1].(ValueNumber).Value)
+	if err != nil {
+		return nil, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
+	}
+	return ValueBool{Value: hostAlive}, nil, nil
+}
+
 // //////////// Variables //////////////
 func GetUser(executor Executor, _ errors.Span) (Value, *errors.Error) {
 	return ValueString{Value: executor.GetUser()}, nil
