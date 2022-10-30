@@ -1821,15 +1821,24 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		return nil, nil
 	case TypeBuiltinFunction:
 		callArgs := make([]Value, 0)
+		manualValidationShown := false
 		for _, arg := range args {
 			value, err := self.visitExpression(arg)
 			if err != nil {
 				return nil, err
 			}
 			if value.Value == nil || *value.Value == nil {
-				return nil, nil
+				if !manualValidationShown {
+					self.info(span, "manual argument type validation required")
+					manualValidationShown = true
+				}
+				continue
 			}
 			callArgs = append(callArgs, *value.Value)
+		}
+		// Dont call the function if one or more arguments are nil
+		if manualValidationShown {
+			return nil, nil
 		}
 		res, _, err := value.(ValueBuiltinFunction).Callback(self.executor, span, callArgs...)
 		if err != nil {
