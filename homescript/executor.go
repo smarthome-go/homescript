@@ -48,8 +48,8 @@ type SwitchResponse struct {
 
 type Executor interface {
 	Sleep(float64)
-	Print(args ...string)
-	Println(args ...string)
+	Print(args ...string) error
+	Println(args ...string) error
 	GetSwitch(id string) (SwitchResponse, error)
 	Switch(name string, on bool) error
 	Ping(ip string, timeout float64) (bool, error)

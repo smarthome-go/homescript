@@ -30,12 +30,14 @@ func (self dummyExecutor) Sleep(sleepTime float64) {
 	time.Sleep(time.Duration(sleepTime * 1000 * float64(time.Millisecond)))
 }
 
-func (self dummyExecutor) Print(args ...string) {
+func (self dummyExecutor) Print(args ...string) error {
 	fmt.Printf("%s", strings.Join(args, " "))
+	return nil
 }
 
-func (self dummyExecutor) Println(args ...string) {
+func (self dummyExecutor) Println(args ...string) error {
 	fmt.Println(strings.Join(args, " "))
+	return nil
 }
 
 func (self dummyExecutor) GetSwitch(id string) (homescript.SwitchResponse, error) {

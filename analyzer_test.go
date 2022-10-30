@@ -25,10 +25,12 @@ func (self analyzerExecutor) ResolveModule(id string) (string, bool, error) {
 func (self analyzerExecutor) Sleep(sleepTime float64) {
 }
 
-func (self analyzerExecutor) Print(args ...string) {
+func (self analyzerExecutor) Print(args ...string) error {
+	return nil
 }
 
-func (self analyzerExecutor) Println(args ...string) {
+func (self analyzerExecutor) Println(args ...string) error {
+	return nil
 }
 
 func (self analyzerExecutor) Switch(name string, power bool) error {
