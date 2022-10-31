@@ -62,7 +62,7 @@ func marshalValue(self Value, span errors.Span, isInner bool) (interface{}, bool
 		}
 		output[(*self.Key).(ValueString).Value] = marshaledValue
 		return output, false, nil
-	case ValueNull:
+	case ValueNull, nil:
 		return nil, false, nil
 	default:
 		inner := ""
