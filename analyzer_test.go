@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/smarthome-go/homescript/v2/homescript"
@@ -10,16 +11,16 @@ import (
 
 type analyzerExecutor struct{}
 
-func (self analyzerExecutor) ResolveModule(id string) (string, bool, error) {
+func (self analyzerExecutor) ResolveModule(id string) (string, bool, bool, error) {
 	path := "test/programs/" + id + ".hms"
 	file, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", false, nil
+			return "", false, false, nil
 		}
-		return "", false, fmt.Errorf("read file: %s", err.Error())
+		return "", false, false, fmt.Errorf("read file: %s", err.Error())
 	}
-	return string(file), true, nil
+	return string(file), true, true, nil
 }
 
 func (self analyzerExecutor) Sleep(sleepTime float64) {
@@ -152,10 +153,13 @@ func TestAnalyzer(t *testing.T) {
 			if err != nil {
 				t.Error(err.Error())
 			}
-			diagnostics, _ := homescript.Analyze(
+			moduleName := strings.ReplaceAll(strings.Split(test.File, "/")[len(strings.Split(test.File, "/"))-1], ".hms", "")
+			diagnostics, _, _ := homescript.Analyze(
 				analyzerExecutor{},
 				string(program),
 				make(map[string]homescript.Value),
+				make([]string, 0),
+				moduleName,
 			)
 			for _, diagnostic := range diagnostics {
 				fmt.Printf("\n%s\n", diagnostic.Display(string(program), test.File))

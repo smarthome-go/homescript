@@ -22,6 +22,10 @@ type Analyzer struct {
 	// Holds the analyzer's diagnostics
 	diagnostics []Diagnostic
 
+	// Holds the modules visited so far (by import statements)
+	// in order to prevent a circular import
+	moduleStack []string
+
 	// Will allow assignment to invalid object members
 	// For exampls, `a.foo = 1;` will still be valid even though a has no member named `foo`
 	isAssignLHSCount uint
@@ -204,6 +208,7 @@ func NewAnalyzer(
 	program []Statement,
 	executor Executor,
 	scopeAdditions map[string]Value, // Allows the user to add more entries to the scope
+	moduleStack []string,
 ) Analyzer {
 	scopes := make([]scope, 0)
 	// Adds the root scope
@@ -248,9 +253,10 @@ func NewAnalyzer(
 		scopes[0].this[key] = &value
 	}
 	return Analyzer{
-		program:  program,
-		executor: executor,
-		scopes:   scopes,
+		program:     program,
+		executor:    executor,
+		scopes:      scopes,
+		moduleStack: moduleStack,
 	}
 }
 
@@ -317,17 +323,18 @@ func (self *Analyzer) issue(span errors.Span, message string, kind errors.ErrorK
 	})
 }
 
-func (self *Analyzer) analyze() []Diagnostic {
+func (self *Analyzer) analyze() ([]Diagnostic, map[string]*Value) {
 	_, err := self.visitStatements(self.program)
 	if err != nil {
 		self.diagnosticError(*err)
-		return self.diagnostics
+		return self.diagnostics, nil
 	}
+	lastScope := self.scopes[len(self.scopes)-1]
 	// Pop the last scope from the scopes in order to analyze top-level functions
 	if err := self.popScope(); err != nil {
 		self.diagnosticError(*err)
 	}
-	return self.diagnostics
+	return self.diagnostics, lastScope.this
 }
 
 // Interpreter code
@@ -436,9 +443,51 @@ func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
 }
 
 func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Error) {
+	// Prevent possible circular import
+	for _, module := range self.moduleStack {
+		if module == node.FromModule {
+			// Would import a script which is located (upstream) in the moduleStack
+			// Stack is unwided and displayed in order to show the problem to the user
+			visual := "=== Import Stack ===\n"
+			for idx, visited := range self.moduleStack {
+				if idx == 0 {
+					visual += fmt.Sprintf("             %2d: %-10s (ORIGIN)\n", 1, self.moduleStack[0])
+				} else {
+					visual += fmt.Sprintf("  imports -> %2d: %-10s\n", idx+1, visited)
+				}
+			}
+			visual += fmt.Sprintf("  imports -> %2d: %-10s (HERE)\n", len(self.moduleStack)+1, node.FromModule)
+			self.issue(
+				node.Range,
+				fmt.Sprintf("illegal import: circular import detected:\n%s", visual),
+				errors.ImportError,
+			)
+			return Result{}, nil
+		}
+	}
+
 	actualImport := node.Function
 	if node.RewriteAs != nil {
 		actualImport = *node.RewriteAs
+	}
+
+	// Check if the function can be imported
+	moduleCode, exists, proceed, err := self.executor.ResolveModule(node.FromModule)
+	if err != nil {
+		self.issue(
+			node.Range,
+			fmt.Sprintf("resolve module: %s", err.Error()),
+			errors.ImportError,
+		)
+		return Result{}, nil
+	}
+	if !exists {
+		self.issue(
+			node.Range,
+			"resolve module: module not found",
+			errors.ImportError,
+		)
+		return Result{}, nil
 	}
 
 	// Check if the function conflicts with existing values
@@ -448,9 +497,10 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 	// Only report this non-critical error
 	if value != nil {
 		self.issue(node.Range,
-			fmt.Sprintf("import error: the name '%s' is already present in the current scope", actualImport),
-			errors.TypeError,
+			fmt.Sprintf("the name '%s' is already present in the current scope", actualImport),
+			errors.ImportError,
 		)
+		return Result{}, nil
 	} else {
 		// Push a dummy function into the current scope
 		self.addVar(actualImport, function, node.Range)
@@ -458,7 +508,45 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		self.getScope().importedFunctions = append(self.getScope().importedFunctions, actualImport)
 	}
 
-	return Result{Value: &function}, nil
+	if !proceed {
+		return Result{Value: &function}, nil
+	}
+	diagnostics, _, rootScope := Analyze(
+		self.executor,
+		moduleCode,
+		make(map[string]Value),
+		self.moduleStack,
+		node.FromModule,
+	)
+	moduleErrors := 0
+	firstErrMessage := ""
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity == Error {
+			moduleErrors++
+			if firstErrMessage == "" {
+				firstErrMessage = diagnostic.Message
+			}
+		}
+	}
+	if moduleErrors > 0 {
+		self.issue(
+			node.Range,
+			fmt.Sprintf("target module contains %d error(s): %s", moduleErrors, firstErrMessage),
+			errors.ImportError,
+		)
+		return Result{}, nil
+	}
+	functionValue, found := rootScope[actualImport]
+	if !found {
+		self.issue(
+			node.Range,
+			fmt.Sprintf("no function named '%s' found in module '%s'", actualImport, node.FromModule),
+			errors.ImportError,
+		)
+		return Result{}, nil
+	}
+
+	return Result{Value: functionValue}, nil
 }
 
 func (self *Analyzer) visitBreakStatement(node BreakStmt) (Result, *errors.Error) {

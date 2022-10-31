@@ -14,16 +14,16 @@ import (
 
 type dummyExecutor struct{}
 
-func (self dummyExecutor) ResolveModule(id string) (string, bool, error) {
+func (self dummyExecutor) ResolveModule(id string) (string, bool, bool, error) {
 	path := "test/programs/" + id + ".hms"
 	file, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", false, nil
+			return "", false, false, nil
 		}
-		return "", false, fmt.Errorf("read file: %s", err.Error())
+		return "", false, false, fmt.Errorf("read file: %s", err.Error())
 	}
-	return string(file), true, nil
+	return string(file), true, true, nil
 }
 
 func (self dummyExecutor) Sleep(sleepTime float64) {
@@ -62,7 +62,6 @@ func (self dummyExecutor) Log(title string, description string, level homescript
 
 func (self dummyExecutor) Exec(id string, args map[string]string) (homescript.ExecResponse, error) {
 	return homescript.ExecResponse{
-		Output:      "homescript test output",
 		RuntimeSecs: 0.2,
 		ReturnValue: homescript.ValueNull{},
 	}, nil

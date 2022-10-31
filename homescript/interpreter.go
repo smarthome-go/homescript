@@ -269,8 +269,8 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 			visual += fmt.Sprintf("  imports -> %2d: %-10s (HERE)\n", len(self.moduleStack)+1, node.FromModule)
 			return Result{}, nil, errors.NewError(
 				node.Range,
-				fmt.Sprintf("Illegal import: circular import detected:\n%s", visual),
-				errors.RuntimeError,
+				fmt.Sprintf("illegal import: circular import detected:\n%s", visual),
+				errors.ImportError,
 			)
 		}
 	}
@@ -292,8 +292,8 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 	if value != nil {
 		return Result{}, nil, errors.NewError(
 			node.Span(),
-			fmt.Sprintf("Import error: the name '%s' is already present in the current scope", actualImport),
-			errors.ValueError,
+			fmt.Sprintf("the name '%s' is already present in the current scope", actualImport),
+			errors.ImportError,
 		)
 	}
 	// Push the function into the current scope
@@ -1566,19 +1566,19 @@ func (self *Interpreter) getVar(key string) *Value {
 // This function then runs the target module code and returns the value of the target function (analyzes the root scope)
 // If the target module contains top level code, it is also executed
 func (self Interpreter) ResolveModule(span errors.Span, module string, function string) (*Value, *errors.Error) {
-	moduleCode, found, err := self.executor.ResolveModule(module)
+	moduleCode, found, _, err := self.executor.ResolveModule(module)
 	if err != nil {
 		return nil, errors.NewError(
 			span,
-			fmt.Sprintf("Import error: resolve module: %s", err.Error()),
-			errors.RuntimeError,
+			fmt.Sprintf("resolve module: %s", err.Error()),
+			errors.ImportError,
 		)
 	}
 	if !found {
 		return nil, errors.NewError(
 			span,
-			fmt.Sprintf("Import error: cannot resolve module '%s' no such module", module),
-			errors.RuntimeError,
+			fmt.Sprintf("resolve module: '%s' no such module", module),
+			errors.ImportError,
 		)
 	}
 	_, exitCode, rootScope, runErr := Run(
@@ -1594,7 +1594,8 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, function 
 	)
 	if len(runErr) > 0 {
 		if runErr != nil {
-			runErr[0].Message = "Import error: target returned error: " + runErr[0].Message
+			runErr[0].Message = "target returned error: " + runErr[0].Message
+			runErr[0].Kind = errors.ImportError
 			runErr[0].Span = span
 			return nil, &runErr[0]
 		}
@@ -1602,16 +1603,16 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, function 
 	if exitCode != 0 {
 		return nil, errors.NewError(
 			span,
-			fmt.Sprintf("Import error: resolve module: script '%s' terminated with exit-code %d", module, exitCode),
-			errors.RuntimeError,
+			fmt.Sprintf("resolve module: script '%s' terminated with exit-code %d", module, exitCode),
+			errors.ImportError,
 		)
 	}
 	functionValue, found := rootScope[function]
 	if !found {
 		return nil, errors.NewError(
 			span,
-			fmt.Sprintf("Import error: no function named '%s' found in module '%s'", function, module),
-			errors.RuntimeError,
+			fmt.Sprintf("no function named '%s' found in module '%s'", function, module),
+			errors.ImportError,
 		)
 	}
 	return functionValue, nil

@@ -42,6 +42,7 @@ const (
 	ReferenceError
 	StackOverflow
 	OutOfBoundsError
+	ImportError
 	// Can be caught using `catch`
 	ThrowError
 	RuntimeError

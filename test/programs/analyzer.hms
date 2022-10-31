@@ -1,12 +1,1 @@
-fn command(command) {
-  print(http(
-      'http://192.168.178.204:7070/exec',
-      'POST',
-      {command: command}.to_json(),
-      "Content-Type"=> "application/json",
-      "Token"=> "test",
-  ));
-};
-
-
-
+import foo from a;

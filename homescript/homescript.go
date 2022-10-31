@@ -62,9 +62,12 @@ func Analyze(
 	executor Executor,
 	program string,
 	scopeAdditions map[string]Value,
+	moduleStack []string,
+	moduleName string,
 ) (
 	diagnostics []Diagnostic,
 	symbols []symbol,
+	rootScope map[string]*Value,
 ) {
 	// Parse the source code
 	parser := newParser(program)
@@ -81,17 +84,20 @@ func Analyze(
 		}
 		// If there was a critical error, return only the syntax errors
 		if critical {
-			return diagnostics, nil
+			return diagnostics, nil, nil
 		}
 	}
+	// Append the current script to the module stack
+	moduleStack = append(moduleStack, moduleName)
 	// Create the analyzer
 	analyzer := NewAnalyzer(
 		ast,
 		executor,
 		scopeAdditions,
+		moduleStack,
 	)
 	// Finally, analyze the AST
-	semanticDiagnostics := analyzer.analyze()
+	semanticDiagnostics, rootScope := analyzer.analyze()
 	diagnostics = append(diagnostics, semanticDiagnostics...)
-	return diagnostics, analyzer.symbols
+	return diagnostics, analyzer.symbols, rootScope
 }

@@ -55,7 +55,7 @@ type Executor interface {
 	Notify(title string, description string, level NotificationLevel) error
 	Log(title string, description string, level LogLevel) error
 	Exec(homescriptId string, args map[string]string) (ExecResponse, error)
-	ResolveModule(homescriptId string) (string, bool, error) // Returns (module code, was found, err)
+	ResolveModule(homescriptId string) (string, bool, bool, error) // Returns (module code, was found, contains userful code, err)
 	Get(url string) (HttpResponse, error)
 	Http(url string, method string, body string, headers map[string]string) (HttpResponse, error)
 
