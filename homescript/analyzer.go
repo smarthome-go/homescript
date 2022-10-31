@@ -1675,7 +1675,7 @@ func (self *Analyzer) visitWhileExpression(node AtomWhile) (Result, *errors.Erro
 		return Result{}, err
 	}
 	// Only check the condition value's type if it is not null
-	if condValue.Value != nil {
+	if condValue.Value != nil && *condValue.Value != nil {
 		_, err := (*condValue.Value).IsTrue(self.executor, node.HeadCondition.Span)
 		if err != nil {
 			self.diagnosticError(*err)
