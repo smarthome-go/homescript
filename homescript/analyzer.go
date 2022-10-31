@@ -536,11 +536,11 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		)
 		return Result{}, nil
 	}
-	functionValue, found := rootScope[actualImport]
+	functionValue, found := rootScope[node.Function]
 	if !found {
 		self.issue(
 			node.Range,
-			fmt.Sprintf("no function named '%s' found in module '%s'", actualImport, node.FromModule),
+			fmt.Sprintf("no function named '%s' found in module '%s'", node.Function, node.FromModule),
 			errors.ImportError,
 		)
 		return Result{}, nil
