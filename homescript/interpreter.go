@@ -266,7 +266,7 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 					visual += fmt.Sprintf("  imports -> %2d: %-10s\n", idx+1, visited)
 				}
 			}
-			visual += fmt.Sprintf("  imports -> %2d: %-10s (HERE)\n", len(self.moduleStack)+1, node.FromModule)
+			visual += fmt.Sprintf("  imports -> %2d: %-10s (ILLEGAL)\n", len(self.moduleStack)+1, node.FromModule)
 			return Result{}, nil, errors.NewError(
 				node.Range,
 				fmt.Sprintf("illegal import: circular import detected:\n%s", visual),
