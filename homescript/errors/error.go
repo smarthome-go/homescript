@@ -67,6 +67,8 @@ func (self ErrorKind) String() string {
 		return "StackOverflow"
 	case OutOfBoundsError:
 		return "OutOfBoundsError"
+	case ImportError:
+		return "ImportError"
 	case ReferenceError:
 		return "ReferenceError"
 	case Warning:
