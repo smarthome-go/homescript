@@ -37,7 +37,7 @@ func (self ValuePair) Display(executor Executor, span errors.Span) (string, *err
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s => %s", key, value), nil
+	return fmt.Sprintf("%s => %s (type = pair)", key, value), nil
 }
 func (self ValuePair) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
 	key, err := (*self.Key).Debug(executor, span)

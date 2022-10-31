@@ -103,7 +103,7 @@ func (self ValueNull) Display(_ Executor, _ errors.Span) (string, *errors.Error)
 	return "null", nil
 }
 func (self ValueNull) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
-	return "null", nil
+	return "null (type = null)", nil
 }
 func (self ValueNull) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return false, nil
@@ -139,7 +139,7 @@ func (self ValueBool) Display(_ Executor, _ errors.Span) (string, *errors.Error)
 	return fmt.Sprintf("%t", self.Value), nil
 }
 func (self ValueBool) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
-	return fmt.Sprintf("%t", self.Value), nil
+	return fmt.Sprintf("%t (type = bool)", self.Value), nil
 }
 func (self ValueBool) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return self.Value, nil

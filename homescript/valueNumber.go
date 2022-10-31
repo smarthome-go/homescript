@@ -85,9 +85,9 @@ func (self ValueNumber) Display(executor Executor, span errors.Span) (string, *e
 func (self ValueNumber) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
 	// Check if the value is actually an integer
 	if float64(int(self.Value)) == self.Value {
-		return fmt.Sprintf("%d", int(self.Value)), nil
+		return fmt.Sprintf("%d (type = int)", int(self.Value)), nil
 	}
-	return fmt.Sprintf("%f", self.Value), nil
+	return fmt.Sprintf("%f (type = float)", self.Value), nil
 }
 func (self ValueNumber) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
 	return self.Value != 0, nil

@@ -151,7 +151,7 @@ func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Erro
 	return self.Value, nil
 }
 func (self ValueString) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
-	return fmt.Sprintf("%s (len = %d)", self.Value, utf8.RuneCountInString(self.Value)), nil
+	return fmt.Sprintf("%s (type = string; len = %d)", self.Value, utf8.RuneCountInString(self.Value)), nil
 }
 func (self ValueString) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return self.Value != "", nil

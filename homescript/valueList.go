@@ -319,7 +319,7 @@ func (self ValueList) Display(executor Executor, span errors.Span) (string, *err
 }
 func (self ValueList) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
 	length := len(*self.Values)
-	output := fmt.Sprintf("(\n    len = %d\n    type = %s\n    values = [", length, self.ValueType.String())
+	output := fmt.Sprintf("(\n    len = %d\n    type = list<%s>\n    values = [", length, self.ValueType.String())
 	values := make([]string, 0)
 	multiline := false
 	for _, value := range *self.Values {
