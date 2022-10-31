@@ -28,7 +28,6 @@ type Weather struct {
 }
 
 type ExecResponse struct {
-	Output      string
 	RuntimeSecs float64
 	ReturnValue Value
 	RootScope   map[string]*Value

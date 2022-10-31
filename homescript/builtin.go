@@ -333,9 +333,6 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 	}
 	return ValueObject{
 		ObjFields: map[string]*Value{
-			"output": valPtr(ValueString{
-				Value: output.Output,
-			}),
 			"elapsed": valPtr(ValueNumber{
 				Value: output.RuntimeSecs,
 			}),
