@@ -86,11 +86,14 @@ func (self ValueObject) Debug(executor Executor, span errors.Span) (string, *err
 		}
 		fields = append(fields, fmt.Sprintf("    %s: %s", key, valueDisplay))
 	}
-	output := "(\n"
+	output := "("
+	if len(fields) > 0 {
+		output += "\n"
+	}
 	for _, field := range fields {
 		output += field + "\n"
 	}
-	return output + "\n)", nil
+	return output + ")", nil
 }
 func (self ValueObject) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
 	for _, value := range self.ObjFields {
