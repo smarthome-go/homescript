@@ -56,6 +56,10 @@ func (self dummyExecutor) Notify(title string, description string, level homescr
 	return nil
 }
 
+func (self dummyExecutor) Remind(title string, description string, urgency homescript.ReminderUrgency, dueDate time.Time) (uint, error) {
+	return 0, nil
+}
+
 func (self dummyExecutor) Log(title string, description string, level homescript.LogLevel) error {
 	return nil
 }

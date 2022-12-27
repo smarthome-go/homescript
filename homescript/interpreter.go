@@ -69,6 +69,7 @@ func NewInterpreter(
 		"switch":     valPtr(ValueBuiltinFunction{Callback: Switch}),
 		"get_switch": valPtr(ValueBuiltinFunction{Callback: GetSwitch}),
 		"notify":     valPtr(ValueBuiltinFunction{Callback: Notify}),
+		"remind":     valPtr(ValueBuiltinFunction{Callback: Remind}),
 		"log":        valPtr(ValueBuiltinFunction{Callback: Log}),
 		"exec":       valPtr(ValueBuiltinFunction{Callback: Exec}),
 		"get":        valPtr(ValueBuiltinFunction{Callback: Get}),

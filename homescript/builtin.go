@@ -192,7 +192,7 @@ func Switch(executor Executor, span errors.Span, args ...Value) (Value, *int, *e
 	return ValueNull{}, nil, nil
 }
 
-// If a notification system is provided in the runtime environment a notification is sent to the current user
+// If a notification system is provided in the runtime environment, a notification is sent to the current user
 func Notify(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 	if err := checkArgs("notify", span, args, TypeString, TypeString, TypeNumber); err != nil {
 		return nil, nil, err
@@ -226,6 +226,94 @@ func Notify(executor Executor, span errors.Span, args ...Value) (Value, *int, *e
 		return nil, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
 	return ValueNull{}, nil, nil
+}
+
+// Adds a new reminder to the current user's reminders.
+func Remind(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if err := checkArgs("remind", span, args, TypeString, TypeString, TypeNumber, TypeObject); err != nil {
+		return nil, nil, err
+	}
+	title := args[0].(ValueString).Value
+	description := args[1].(ValueString).Value
+	rawUrgency := args[2].(ValueNumber).Value
+
+	var urgency ReminderUrgency
+	switch rawUrgency {
+	case 1:
+		urgency = UrgencyLow
+	case 2:
+		urgency = UrgencyNormal
+	case 3:
+		urgency = UrgencyMedium
+	case 4:
+		urgency = UrgencyHigh
+	case 5:
+		urgency = UrgencyUrgent
+	default:
+		return nil, nil, errors.NewError(
+			span,
+			fmt.Sprintf("reminder urgency has to be 0 < and < 6, got %d", int(math.Round(rawUrgency))),
+			errors.ValueError,
+		)
+	}
+
+	if rawUrgency != float64(int(math.Round(rawUrgency))) {
+		return nil, nil, errors.NewError(
+			span,
+			"third argument of function 'remind' has to be an integer",
+			errors.TypeError,
+		)
+	}
+
+	date := args[3].(ValueObject)
+
+	day, ok := date.ObjFields["day"]
+	if !ok || day == nil || (*day).Type() != TypeNumber {
+		return nil, nil, errors.NewError(
+			date.Span(),
+			"no field of type number named 'day' found on date object",
+			errors.TypeError,
+		)
+	}
+
+	month, ok := date.ObjFields["month"]
+	if !ok || month == nil || (*month).Type() != TypeNumber {
+		return nil, nil, errors.NewError(
+			date.Span(),
+			"no field of type number named 'month' found on date object",
+			errors.TypeError,
+		)
+	}
+
+	year, ok := date.ObjFields["year"]
+	if !ok || year == nil || (*year).Type() != TypeNumber {
+		return nil, nil, errors.NewError(
+			date.Span(),
+			"no field of type number named 'year' found on date object",
+			errors.TypeError,
+		)
+	}
+
+	goDate, valid := parseDate(int((*year).(ValueNumber).Value), int((*month).(ValueNumber).Value), int((*day).(ValueNumber).Value))
+	if !valid {
+		return nil, nil, errors.NewError(date.Span(), "date object contains invalid date", errors.RuntimeError)
+	}
+	id, err := executor.Remind(title, description, urgency, goDate)
+	if err != nil {
+		return nil, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
+	}
+
+	return ValueNumber{
+		Value:       float64(id),
+		Range:       span,
+		IsProtected: false,
+	}, nil, nil
+}
+
+func parseDate(year, month, day int) (time.Time, bool) {
+	t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)
+	y, m, d := t.Date()
+	return t, y == year && int(m) == month && d == day
 }
 
 // Adds a event to the logging system

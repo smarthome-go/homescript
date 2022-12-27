@@ -1,5 +1,7 @@
 package homescript
 
+import "time"
+
 type LogLevel uint8
 
 const (
@@ -17,6 +19,16 @@ const (
 	NotiInfo NotificationLevel = iota
 	NotiWarning
 	NotiCritical
+)
+
+type ReminderUrgency uint8
+
+const (
+	UrgencyLow ReminderUrgency = iota
+	UrgencyNormal
+	UrgencyMedium
+	UrgencyHigh
+	UrgencyUrgent
 )
 
 type Weather struct {
@@ -53,6 +65,7 @@ type Executor interface {
 	Switch(name string, on bool) error
 	Ping(ip string, timeout float64) (bool, error)
 	Notify(title string, description string, level NotificationLevel) error
+	Remind(title string, description string, urgency ReminderUrgency, dueDate time.Time) (uint, error)
 	Log(title string, description string, level LogLevel) error
 	Exec(homescriptId string, args map[string]string) (ExecResponse, error)
 	ResolveModule(homescriptId string) (string, bool, bool, error) // Returns (module code, was found, contains userful code, err)

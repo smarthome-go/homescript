@@ -224,6 +224,7 @@ func NewAnalyzer(
 			"switch":     valPtr(ValueBuiltinFunction{Callback: Switch}),
 			"get_switch": valPtr(ValueBuiltinFunction{Callback: GetSwitch}),
 			"notify":     valPtr(ValueBuiltinFunction{Callback: Notify}),
+			"remind":     valPtr(ValueBuiltinFunction{Callback: Remind}),
 			"log":        valPtr(ValueBuiltinFunction{Callback: Log}),
 			"exec":       valPtr(ValueBuiltinFunction{Callback: Exec}),
 			"get":        valPtr(ValueBuiltinFunction{Callback: Get}),
@@ -1360,7 +1361,7 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 		if err != nil {
 			return Result{}, err
 		}
-		if pairValue.Value == nil || *&pairValue.Value == nil {
+		if pairValue.Value == nil || *pairValue.Value == nil {
 			return Result{}, nil
 		}
 		pair := makePair(node.Span(), ValueString{Value: pairNode.Key}, *pairValue.Value)
@@ -1744,7 +1745,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	}
 
 	// Add the head identifier to the scope (so that loop code can access the iteration variable)
-	self.addVar(node.HeadIdentifier.Identifier, ValueNumber{Value: 0.0, Range: node.HeadIdentifier.Span}, node.HeadIdentifier.Span)
+	self.addVar(node.HeadIdentifier.Identifier, nil, node.HeadIdentifier.Span)
 
 	_, err = self.visitStatements(node.IterationCode)
 	if err != nil {
