@@ -123,10 +123,12 @@ func unmarshalValue(span errors.Span, self interface{}) (Value, *errors.Error) {
 			Values:    &values,
 			ValueType: &valueType,
 		}, nil
+	case nil:
+		return ValueNull{}, nil
 	default:
 		return nil, errors.NewError(
 			span,
-			fmt.Sprintf("cannot parse unknown JSON to HMS value: %v", self),
+			fmt.Sprintf("cannot parse unknown JSON value: `%v` to HMS value", self),
 			errors.RuntimeError,
 		)
 	}

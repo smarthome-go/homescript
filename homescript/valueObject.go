@@ -108,6 +108,9 @@ func (self ValueObject) IsTrue(executor Executor, span errors.Span) (bool, *erro
 	return true, nil
 }
 func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+	if other.Type() == TypeNull {
+		return false, nil
+	}
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,

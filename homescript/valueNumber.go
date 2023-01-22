@@ -28,7 +28,9 @@ func (self ValueNumber) Fields() map[string]*Value {
 					return nil, nil, err
 				}
 				return ValueBool{
-					Value: float64(int(self.Value)) == self.Value,
+					Value:       float64(int(self.Value)) == self.Value,
+					Range:       span,
+					IsProtected: true,
 				}, nil, nil
 			},
 		}),
@@ -39,7 +41,9 @@ func (self ValueNumber) Fields() map[string]*Value {
 					return nil, nil, err
 				}
 				return ValueNumber{
-					Value: math.Trunc(self.Value),
+					Value:       math.Trunc(self.Value),
+					Range:       span,
+					IsProtected: true,
 				}, nil, nil
 			},
 		}),
@@ -50,7 +54,9 @@ func (self ValueNumber) Fields() map[string]*Value {
 					return nil, nil, err
 				}
 				return ValueNumber{
-					Value: math.Round(self.Value),
+					Value:       math.Round(self.Value),
+					Range:       span,
+					IsProtected: true,
 				}, nil, nil
 			},
 		}),
@@ -66,7 +72,21 @@ func (self ValueNumber) Fields() map[string]*Value {
 					errors.TypeError,
 				)
 			}
-			return ValueString{Value: strconv.FormatInt(int64(self.Value), 2)}, nil, nil
+			return ValueString{Value: strconv.FormatInt(int64(self.Value), 2), Range: span, IsProtected: true}, nil, nil
+		}}),
+		"to_string": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if err := checkArgs("to_string", span, args); err != nil {
+				return nil, nil, err
+			}
+			display, err := self.Display(executor, span)
+			if err != nil {
+				return nil, nil, err
+			}
+			return ValueString{
+				Value:       display,
+				Range:       span,
+				IsProtected: true,
+			}, nil, nil
 		}}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
@@ -93,6 +113,9 @@ func (self ValueNumber) IsTrue(executor Executor, span errors.Span) (bool, *erro
 	return self.Value != 0, nil
 }
 func (self ValueNumber) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+	if other.Type() == TypeNull {
+		return false, nil
+	}
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,

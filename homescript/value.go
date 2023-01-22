@@ -108,8 +108,8 @@ func (self ValueNull) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
 func (self ValueNull) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return false, nil
 }
-func (self ValueNull) IsEqual(_ Executor, _ errors.Span, other Value) (bool, *errors.Error) {
-	return false, nil
+func (self ValueNull) IsEqual(_ Executor, span errors.Span, other Value) (bool, *errors.Error) {
+	return self.Type() == other.Type(), nil
 }
 
 // Boolean value

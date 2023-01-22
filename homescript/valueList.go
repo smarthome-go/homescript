@@ -359,6 +359,9 @@ func (self ValueList) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
 	return false, nil
 }
 func (self ValueList) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+	if other.Type() == TypeNull {
+		return false, nil
+	}
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,

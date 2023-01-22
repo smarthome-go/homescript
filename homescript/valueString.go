@@ -3,6 +3,7 @@ package homescript
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -108,6 +109,13 @@ func (self ValueString) Fields() map[string]*Value {
 			contains := strings.Contains(self.Value, args[0].(ValueString).Value)
 			return ValueBool{Value: contains}, nil, nil
 		}}),
+		"to_num": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			res, err := strconv.ParseFloat(self.Value, 64)
+			if err != nil {
+				return nil, nil, errors.NewError(span, err.Error(), errors.ValueError)
+			}
+			return ValueNumber{Value: res, Range: span, IsProtected: true}, nil, nil
+		}}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
 	}
@@ -157,6 +165,9 @@ func (self ValueString) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) 
 	return self.Value != "", nil
 }
 func (self ValueString) IsEqual(_ Executor, span errors.Span, other Value) (bool, *errors.Error) {
+	if other.Type() == TypeNull {
+		return false, nil
+	}
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,

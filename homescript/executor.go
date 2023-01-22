@@ -71,6 +71,8 @@ type Executor interface {
 	ResolveModule(homescriptId string) (string, bool, bool, error) // Returns (module code, was found, contains userful code, err)
 	Get(url string) (HttpResponse, error)
 	Http(url string, method string, body string, headers map[string]string) (HttpResponse, error)
+	GetStorage(key string) (*string, error)
+	SetStorage(key string, value string) error
 
 	// Builtin variables
 	GetUser() string

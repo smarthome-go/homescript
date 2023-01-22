@@ -233,6 +233,8 @@ func NewAnalyzer(
 			"user":       valPtr(ValueBuiltinVariable{Callback: GetUser}),
 			"weather":    valPtr(ValueBuiltinVariable{Callback: GetWeather}),
 			"time":       valPtr(ValueBuiltinVariable{Callback: Time}),
+			"fmt":        valPtr(ValueBuiltinFunction{Callback: Fmt}),
+			"STORAGE":    valPtr(ValueBuiltinVariable{Callback: Storage}),
 			"ARGS": valPtr(ValueObject{
 				DataType:    "args",
 				IsDynamic:   true,
@@ -667,7 +669,7 @@ func (self *Analyzer) visitAndExpression(node AndExpression) (Result, *errors.Er
 		}
 
 		// Only continue analysis if the current value is not nil
-		if followingValue.Value != nil {
+		if followingValue.Value != nil && *followingValue.Value != nil {
 			_, err = (*followingValue.Value).IsTrue(self.executor, following.Span)
 			if err != nil {
 				self.diagnosticError(*err)

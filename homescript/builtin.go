@@ -661,3 +661,84 @@ func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int,
 		},
 	}, nil, nil
 }
+
+func Storage(executor Executor, _ errors.Span) (Value, *errors.Error) {
+	return ValueObject{
+		DataType: "storage",
+		ObjFields: map[string]*Value{
+			"get": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+				if err := checkArgs("STORAGE.get", span, args, TypeString); err != nil {
+					return nil, nil, err
+				}
+				key := args[0].(ValueString).Value
+				value, err := executor.GetStorage(key)
+
+				if err != nil {
+					return nil, nil, errors.NewError(span, fmt.Sprintf("could not get entry from storage: %s", err.Error()), errors.RuntimeError)
+				}
+
+				if value != nil {
+					return ValueString{Value: *value, Range: span, IsProtected: true}, nil, nil
+				} else {
+
+					return ValueNull{Range: span, IsProtected: true}, nil, nil
+				}
+			}}),
+			"set": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+				if len(args) != 2 {
+					return nil, nil, errors.NewError(
+						span,
+						fmt.Sprintf("function 'STORAGE.set' takes 2 arguments but %d were given", len(args)),
+						errors.TypeError,
+					)
+				}
+
+				if args[0].Type() != TypeString {
+					return nil, nil, errors.NewError(
+						span,
+						"First argument of function 'STORAGE.set' has to be of type string",
+						errors.TypeError,
+					)
+				}
+
+				key := args[0].(ValueString).Value
+				value, err := args[1].Display(executor, span)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				if err := executor.SetStorage(key, value); err != nil {
+					return nil, nil, errors.NewError(span, fmt.Sprintf("could not set entry in storage: %s", err.Error()), errors.RuntimeError)
+				}
+
+				return ValueNull{Range: span, IsProtected: true}, nil, nil
+			}}),
+			"fields": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+				return nil, nil, errors.NewError(span, "NOT IMPLEMENTED", errors.RuntimeError)
+			}}),
+		},
+	}, nil
+}
+
+func Fmt(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if len(args) < 2 {
+		return nil, nil, errors.NewError(span, "Function `fmt` requires at least two arguments", errors.TypeError)
+	}
+	if args[0].Type() != TypeString {
+		return nil, nil, errors.NewError(span, "First argument of function `fmt` must be of type string", errors.TypeError)
+	}
+	displays := make([]any, 0)
+	for idx, arg := range args {
+		if idx == 0 {
+			continue
+		}
+		res, err := arg.Display(executor, span)
+		if err != nil {
+			return nil, nil, err
+		}
+		displays = append(displays, res)
+	}
+
+	out := fmt.Sprintf(args[0].(ValueString).Value, displays...)
+	return ValueString{Value: out, Range: span, IsProtected: true}, nil, nil
+}

@@ -62,6 +62,9 @@ func (self ValuePair) IsTrue(executor Executor, span errors.Span) (bool, *errors
 	return key && value, nil
 }
 func (self ValuePair) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
+	if other.Type() == TypeNull {
+		return false, nil
+	}
 	if self.Type() != other.Type() {
 		return false, errors.NewError(
 			span,

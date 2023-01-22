@@ -78,6 +78,8 @@ func NewInterpreter(
 		"user":       valPtr(ValueBuiltinVariable{Callback: GetUser}), // Builtin variables implemented by the executor
 		"weather":    valPtr(ValueBuiltinVariable{Callback: GetWeather}),
 		"time":       valPtr(ValueBuiltinVariable{Callback: Time}),
+		"fmt":        valPtr(ValueBuiltinFunction{Callback: Fmt}),
+		"STORAGE":    valPtr(ValueBuiltinVariable{Callback: Storage}),
 		"ARGS": valPtr(ValueObject{
 			DataType:  "args",
 			IsDynamic: true,
@@ -96,7 +98,7 @@ func NewInterpreter(
 			panic(fmt.Sprintf("cannot insert scope addition with key %s: this key is already taken by a builtin value", key))
 		}
 		// Insert the value into the scope
-		scopes[0][key] = &value
+		scopes[0][key] = valPtr(value)
 	}
 	// Append the current script to the module stack
 	moduleStack = append(moduleStack, moduleName)
