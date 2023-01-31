@@ -1788,13 +1788,15 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	if iterator != nil {
 		next, _ = iterator()
 
-		self.symbols = append(self.symbols, symbol{
-			Span:       node.HeadIdentifier.Span,
-			Type:       next.Type().toSymbolType(),
-			Value:      next,
-			InFunction: false,
-			InLoop:     true,
-		})
+		if next != nil {
+			self.symbols = append(self.symbols, symbol{
+				Span:       node.HeadIdentifier.Span,
+				Type:       next.Type().toSymbolType(),
+				Value:      next,
+				InFunction: false,
+				InLoop:     true,
+			})
+		}
 	}
 
 	// Add the head identifier to the scope (so that loop code can access the iteration variable)
