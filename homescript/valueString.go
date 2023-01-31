@@ -12,9 +12,10 @@ import (
 
 // String value
 type ValueString struct {
-	Value       string
-	Range       errors.Span
-	IsProtected bool
+	Value            string
+	Range            errors.Span
+	CurrentIterIndex *int
+	IsProtected      bool
 }
 
 func (self ValueString) Type() ValueType   { return TypeString }
@@ -206,4 +207,25 @@ func (self ValueString) Rem(executor Executor, span errors.Span, other Value) (V
 }
 func (self ValueString) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
+}
+func (self *ValueString) Next() (Value, bool) {
+	if self.CurrentIterIndex == nil {
+		self.IterReset()
+	}
+
+	old := *self.CurrentIterIndex
+	*self.CurrentIterIndex++
+
+	shouldContinue := *self.CurrentIterIndex <= utf8.RuneCountInString(self.Value)
+
+	if shouldContinue {
+		return ValueString{Value: string([]rune(self.Value)[old])}, true
+	} else {
+		self.IterReset()
+		return nil, false
+	}
+}
+func (self *ValueString) IterReset() {
+	zero := 0
+	self.CurrentIterIndex = &zero
 }

@@ -31,7 +31,7 @@ var tests = []test{
 	{
 		Name:              "Main",
 		File:              "./test/programs/main.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -40,7 +40,7 @@ var tests = []test{
 	{
 		Name:              "Fibonacci",
 		File:              "./test/programs/fibonacci.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -49,7 +49,7 @@ var tests = []test{
 	{
 		Name:              "StackOverFlow",
 		File:              "./test/programs/stack_overflow.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      1,
 		ExpectedValueType: homescript.TypeNull,
@@ -63,7 +63,7 @@ var tests = []test{
 	{
 		Name:              "ImportExport",
 		File:              "./test/programs/import_export.hms",
-		Skip:              true,
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      1,
 		ExpectedValueType: homescript.TypeNull,
@@ -131,7 +131,16 @@ var tests = []test{
 	{
 		Name:              "Analyzer",
 		File:              "./test/programs/analyzer.hms",
-		Skip:              true,
+		Skip:              false,
+		Debug:             false,
+		ExpectedCode:      0,
+		ExpectedValueType: homescript.TypeNull,
+		ExpectedErrors:    nil,
+	},
+	{
+		Name:              "Iterators",
+		File:              "./test/programs/iterators.hms",
+		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
@@ -160,7 +169,7 @@ func TestHomescripts(t *testing.T) {
 			sigTerm := make(chan int)
 			moduleName := strings.ReplaceAll(strings.Split(test.File, "/")[len(strings.Split(test.File, "/"))-1], ".hms", "")
 			value, code, _, hmsErrors := homescript.Run(
-				dummyExecutor{},
+				homescript.DummyExecutor{},
 				&sigTerm,
 				string(program),
 				make(map[string]homescript.Value),
@@ -212,7 +221,7 @@ func TestHomescripts(t *testing.T) {
 				return
 			}
 			if value.Type() != test.ExpectedValueType {
-				valueStr, displayErr := value.Display(dummyExecutor{}, errors.Span{})
+				valueStr, displayErr := value.Display(homescript.DummyExecutor{}, errors.Span{})
 				if displayErr != nil {
 					panic(fmt.Sprintf("Display error: %v: %s", displayErr.Kind, displayErr.Message))
 				}
@@ -234,7 +243,7 @@ func TestRunDev(t *testing.T) {
 	sigTerm := make(chan int)
 	moduleName := strings.ReplaceAll(strings.Split(path, "/")[len(strings.Split(path, "/"))-1], ".hms", "")
 	value, code, _, hmsErrors := homescript.Run(
-		dummyExecutor{},
+		homescript.DummyExecutor{},
 		&sigTerm,
 		string(program),
 		make(map[string]homescript.Value),
@@ -261,7 +270,7 @@ func TestSigTerm(t *testing.T) {
 	moduleName := strings.ReplaceAll(strings.Split(path, "/")[len(strings.Split(path, "/"))-1], ".hms", "")
 	go func() {
 		value, code, _, hmsErrors := homescript.Run(
-			dummyExecutor{},
+			homescript.DummyExecutor{},
 			&sigTerm,
 			string(program),
 			make(map[string]homescript.Value),

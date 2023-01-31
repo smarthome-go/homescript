@@ -137,6 +137,10 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 }
 
 func (self *ValueObject) Next() (Value, bool) {
+	if self.CurrentIterIndex == nil {
+		self.IterReset()
+	}
+
 	keys := maps.Keys(self.ObjFields)
 	sort.Strings(keys)
 
@@ -148,6 +152,11 @@ func (self *ValueObject) Next() (Value, bool) {
 	if shouldContinue {
 		return *self.ObjFields[keys[old]], true
 	} else {
-		return nil, shouldContinue
+		self.IterReset()
+		return nil, false
 	}
+}
+func (self *ValueObject) IterReset() {
+	zero := 0
+	self.CurrentIterIndex = &zero
 }

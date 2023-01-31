@@ -8,8 +8,8 @@ import (
 
 // Range value
 type ValueRange struct {
-	Start       *float64
-	End         *float64
+	Start       *Value
+	End         *Value
 	Current     *float64
 	Range       errors.Span
 	IsProtected bool
@@ -23,24 +23,28 @@ func (self ValueRange) Fields() map[string]*Value {
 		// Returns the difference of the start and end value
 		"diff": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-				return ValueNumber{Value: float64(*self.Start - *self.End)}, nil, nil
+				return ValueNumber{Value: float64((*self.Start).(ValueNumber).Value - (*self.End).(ValueNumber).Value)}, nil, nil
 			},
 		}),
-		"start": valPtr(ValueNumber{Value: *self.Start}),
-		"end":   valPtr(ValueNumber{Value: *self.End}),
+		"start": self.Start,
+		"end":   self.End,
 	}
 }
 func (self ValueRange) Index(_ Executor, _ Value, span errors.Span) (*Value, bool, *errors.Error) {
 	return nil, false, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
 }
 func (self ValueRange) Display(executor Executor, span errors.Span) (string, *errors.Error) {
-	return fmt.Sprintf("%d..%d", int(*self.Start), int(*self.End)), nil
+	return fmt.Sprintf("%d..%d", int((*self.Start).(ValueNumber).Value), int((*self.End).(ValueNumber).Value)), nil
 }
 func (self ValueRange) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
-	return fmt.Sprintf("(%d..%d; start = %f; end = %f)", int(*self.Start), int(*self.End), *self.Start, *self.End), nil
+	start := int((*self.Start).(ValueNumber).Value)
+	end := int((*self.End).(ValueNumber).Value)
+	return fmt.Sprintf("(%d..%d; start = %d; end = %d)", start, end, start, end), nil
 }
 func (self ValueRange) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
-	return *self.Start == 0.0 && *self.End == 0.0, nil
+	start := (*self.Start).(ValueNumber).Value
+	end := (*self.End).(ValueNumber).Value
+	return start == 0.0 && end == 0.0, nil
 }
 func (self ValueRange) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
 	if other.Type() == TypeNull {
@@ -57,13 +61,35 @@ func (self ValueRange) IsEqual(executor Executor, span errors.Span, other Value)
 	return otherRange.Start == self.Start && otherRange.End == self.End, nil
 }
 func (self *ValueRange) Next() (Value, bool) {
-	if *self.Start < *self.End {
+	if self.Current == nil {
+		self.IterReset()
+	}
+
+	start := (*self.Start).(ValueNumber).Value
+	end := (*self.End).(ValueNumber).Value
+
+	if start < end {
 		old := *self.Current
 		*self.Current += 1.0
-		return ValueNumber{Value: old}, *self.Current <= *self.End
+
+		cond := *self.Current <= end
+		if !cond {
+			self.IterReset()
+		}
+
+		return ValueNumber{Value: old}, cond
 	} else {
 		old := *self.Current
 		*self.Current -= 1.0
-		return ValueNumber{Value: old}, *self.Current >= *self.Start
+
+		cond := *self.Current >= start
+		if !cond {
+			self.IterReset()
+		}
+
+		return ValueNumber{Value: old}, cond
 	}
+}
+func (self *ValueRange) IterReset() {
+	*self.Current = (*self.Start).(ValueNumber).Value
 }

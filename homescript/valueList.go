@@ -402,8 +402,11 @@ func (self ValueList) IsEqual(executor Executor, span errors.Span, other Value) 
 	// If every item so far was equal, return here
 	return true, nil
 }
-
 func (self *ValueList) Next() (Value, bool) {
+	if self.CurrentIterIndex == nil {
+		self.IterReset()
+	}
+
 	old := *self.CurrentIterIndex
 	*self.CurrentIterIndex++
 
@@ -412,6 +415,11 @@ func (self *ValueList) Next() (Value, bool) {
 	if shouldContinue {
 		return *(*self.Values)[old], true
 	} else {
-		return nil, shouldContinue
+		self.IterReset()
+		return nil, false
 	}
+}
+func (self *ValueList) IterReset() {
+	zero := 0
+	self.CurrentIterIndex = &zero
 }

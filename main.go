@@ -16,7 +16,7 @@ func main() {
 	sigTerm := make(chan int)
 
 	_, _, _ = homescript.Analyze(
-		homescript.DummyExecutor{},
+		homescript.AnalyzerDummyExecutor{},
 		string(program),
 		map[string]homescript.Value{
 			"power_on": homescript.ValueBool{Value: true},

@@ -5,87 +5,9 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/smarthome-go/homescript/v2/homescript"
 )
-
-type analyzerExecutor struct{}
-
-func (self analyzerExecutor) ResolveModule(id string) (string, bool, bool, error) {
-	path := "test/programs/" + id + ".hms"
-	file, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", false, false, nil
-		}
-		return "", false, false, fmt.Errorf("read file: %s", err.Error())
-	}
-	return string(file), true, true, nil
-}
-
-func (self analyzerExecutor) Sleep(sleepTime float64) {
-}
-
-func (self analyzerExecutor) Print(args ...string) error {
-	return nil
-}
-
-func (self analyzerExecutor) Println(args ...string) error {
-	return nil
-}
-
-func (self analyzerExecutor) Switch(name string, power bool) error {
-	return nil
-}
-func (self analyzerExecutor) GetSwitch(id string) (homescript.SwitchResponse, error) {
-	return homescript.SwitchResponse{}, nil
-}
-
-func (self analyzerExecutor) Ping(ip string, timeout float64) (bool, error) {
-	return false, nil
-}
-
-func (self analyzerExecutor) Notify(title string, description string, level homescript.NotificationLevel) error {
-	return nil
-}
-
-func (self analyzerExecutor) Remind(title string, description string, urgency homescript.ReminderUrgency, dueDate time.Time) (uint, error) {
-	return 0, nil
-}
-
-func (self analyzerExecutor) Log(title string, description string, level homescript.LogLevel) error {
-	return nil
-}
-
-func (self analyzerExecutor) Exec(id string, args map[string]string) (homescript.ExecResponse, error) {
-	return homescript.ExecResponse{ReturnValue: homescript.ValueNull{}}, nil
-}
-
-func (self analyzerExecutor) Get(url string) (homescript.HttpResponse, error) {
-	return homescript.HttpResponse{}, nil
-}
-
-func (self analyzerExecutor) Http(url string, method string, body string, headers map[string]string) (homescript.HttpResponse, error) {
-	return homescript.HttpResponse{}, nil
-}
-
-func (self analyzerExecutor) GetUser() string {
-	return ""
-}
-
-func (self analyzerExecutor) GetWeather() (homescript.Weather, error) {
-	return homescript.Weather{}, nil
-}
-
-func (self analyzerExecutor) GetStorage(_ string) (*string, error) {
-	s := ""
-	return &s, nil
-}
-
-func (self analyzerExecutor) SetStorage(key string, value string) error {
-	return nil
-}
 
 type analysis struct {
 	Name string
@@ -169,7 +91,7 @@ func TestAnalyzer(t *testing.T) {
 			}
 			moduleName := strings.ReplaceAll(strings.Split(test.File, "/")[len(strings.Split(test.File, "/"))-1], ".hms", "")
 			diagnostics, _, _ := homescript.Analyze(
-				analyzerExecutor{},
+				homescript.AnalyzerDummyExecutor{},
 				string(program),
 				make(map[string]homescript.Value),
 				make([]string, 0),

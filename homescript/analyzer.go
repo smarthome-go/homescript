@@ -50,6 +50,7 @@ const (
 	SymbolTypeList            symbolType = "list"
 	SymbolTypePair            symbolType = "pair"
 	SymbolTypeObject          symbolType = "object"
+	SymbolTypeRange           symbolType = "range"
 	SymbolDynamicMember       symbolType = "dynamic member"
 	SymbolTypeFunction        symbolType = "function"
 	SymbolTypeBuiltinFunction symbolType = "builtin function"
@@ -72,6 +73,8 @@ func (self ValueType) toSymbolType() symbolType {
 		return SymbolTypePair
 	case TypeObject:
 		return SymbolTypeObject
+	case TypeRange:
+		return SymbolTypeRange
 	case TypeFunction:
 		return SymbolTypeFunction
 	case TypeBuiltinFunction:
@@ -1345,17 +1348,69 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 	switch node.Kind() {
 	case AtomKindNumber:
 		num := makeNum(node.Span(), node.(AtomNumber).Num)
+
+		self.symbols = append(self.symbols, symbol{
+			Value: num,
+			Span:  node.Span(),
+			Type:  SymbolTypeNumber,
+		})
+
 		result = Result{Value: &num}
+
 	case AtomKindBoolean:
 		bool := makeBool(node.Span(), node.(AtomBoolean).Value)
+
+		self.symbols = append(self.symbols, symbol{
+			Value: bool,
+			Span:  node.Span(),
+			Type:  SymbolTypeBoolean,
+		})
+
 		result = Result{Value: &bool}
 	case AtomKindString:
 		str := makeStr(node.Span(), node.(AtomString).Content)
+
+		self.symbols = append(self.symbols, symbol{
+			Value: str,
+			Span:  node.Span(),
+			Type:  SymbolTypeString,
+		})
+
 		result = Result{Value: &str}
 	case AtomKindListLiteral:
+		self.symbols = append(self.symbols, symbol{
+			Value: nil,
+			Span:  node.Span(),
+			Type:  SymbolTypeList,
+		})
+
 		return self.makeList(node.(AtomListLiteral))
 	case AtomKindObject:
+		self.symbols = append(self.symbols, symbol{
+			Value: nil,
+			Span:  node.Span(),
+			Type:  SymbolTypeObject,
+		})
+
 		return self.makeObject(node.(AtomObject))
+	case AtomKindRange:
+		rangeNode := node.(AtomRange)
+		current := float64(rangeNode.Start)
+
+		val := valPtr(ValueRange{
+			Start:   valPtr(ValueNumber{Value: float64(rangeNode.Start)}),
+			End:     valPtr(ValueNumber{Value: float64(rangeNode.End)}),
+			Current: &current,
+			Range:   node.Span(),
+		})
+
+		self.symbols = append(self.symbols, symbol{
+			Value: *val,
+			Span:  node.Span(),
+			Type:  SymbolTypeRange,
+		})
+
+		return Result{Value: val}, nil
 	case AtomKindPair:
 		pairNode := node.(AtomPair)
 		// Make the pair's value
@@ -1367,9 +1422,23 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 			return Result{}, nil
 		}
 		pair := makePair(node.Span(), ValueString{Value: pairNode.Key}, *pairValue.Value)
+
+		self.symbols = append(self.symbols, symbol{
+			Value: pair,
+			Span:  node.Span(),
+			Type:  SymbolTypePair,
+		})
+
 		result = Result{Value: &pair}
 	case AtomKindNull:
 		null := makeNull(node.Span())
+
+		self.symbols = append(self.symbols, symbol{
+			Value: null,
+			Span:  node.Span(),
+			Type:  SymbolTypeNull,
+		})
+
 		result = Result{Value: &null}
 	case AtomKindIdentifier:
 		// Search the scope for the correct key
@@ -1486,14 +1555,12 @@ func (self *Analyzer) makeList(node AtomListLiteral) (Result, *errors.Error) {
 		valueType = value.Type()
 		values = append(values, &value)
 	}
-	zero := 0
 	return Result{
 		Value: valPtr(ValueList{
-			Values:           &values,
-			ValueType:        &valueType,
-			Range:            node.Span(),
-			CurrentIterIndex: &zero,
-			IsProtected:      false,
+			Values:      &values,
+			ValueType:   &valueType,
+			Range:       node.Span(),
+			IsProtected: false,
 		}),
 	}, nil
 }
@@ -1523,13 +1590,11 @@ func (self *Analyzer) makeObject(node AtomObject) (Result, *errors.Error) {
 		}
 		fields[field.Identifier] = value.Value
 	}
-	zero := 0
 	return Result{Value: valPtr(ValueObject{
-		IsDynamic:        true,
-		ObjFields:        fields,
-		Range:            node.Range,
-		CurrentIterIndex: &zero,
-		IsProtected:      false,
+		IsDynamic:   true,
+		ObjFields:   fields,
+		Range:       node.Range,
+		IsProtected: false,
 	})}, nil
 }
 
@@ -1682,6 +1747,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 
 	// Get correct iterator closure
 	var iterator func() (Value, bool)
+
 	switch (*iter.Value).Type() {
 	case TypeRange:
 		rng := (*iter.Value).(ValueRange)
@@ -1692,6 +1758,17 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	case TypeObject:
 		obj := (*iter.Value).(ValueObject)
 		iterator = obj.Next
+	case TypeString:
+		str := (*iter.Value).(ValueString)
+		iterator = str.Next
+	default:
+		iterator = nil
+
+		self.diagnosticError(errors.Error{
+			Span:    node.IterExpr.Span,
+			Message: fmt.Sprintf("a value of type %s cannot be used as an iterator", (*iter.Value).Type().String()),
+			Kind:    errors.TypeError,
+		})
 	}
 
 	// Performs one iteration
@@ -1707,7 +1784,18 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 		return Result{}, err
 	}
 
-	next, _ := iterator()
+	var next Value
+	if iterator != nil {
+		next, _ = iterator()
+
+		self.symbols = append(self.symbols, symbol{
+			Span:       node.HeadIdentifier.Span,
+			Type:       next.Type().toSymbolType(),
+			Value:      next,
+			InFunction: false,
+			InLoop:     true,
+		})
+	}
 
 	// Add the head identifier to the scope (so that loop code can access the iteration variable)
 	self.addVar(node.HeadIdentifier.Identifier, next, node.HeadIdentifier.Span)

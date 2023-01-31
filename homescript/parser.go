@@ -1339,7 +1339,7 @@ func (self *parser) rangeExpr(startTok Token) (AtomRange, *errors.Error) {
 			Message: "Expected integer, found float",
 			Span: errors.Span{
 				Start: startTok.StartLocation,
-				End:   self.currToken.EndLocation,
+				End:   startTok.EndLocation,
 			},
 		}
 	}
@@ -1357,6 +1357,17 @@ func (self *parser) rangeExpr(startTok Token) (AtomRange, *errors.Error) {
 
 	if err := self.advance(); err != nil {
 		return AtomRange{}, err
+	}
+
+	if self.currToken.Kind != Number {
+		return AtomRange{}, &errors.Error{
+			Kind:    errors.SyntaxError,
+			Message: fmt.Sprintf("Expected %v, found %v", Number, self.currToken.Kind),
+			Span: errors.Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
 	}
 
 	end, _ := strconv.ParseFloat(self.currToken.Value, 64)

@@ -74,6 +74,19 @@ func (self ValueNumber) Fields() map[string]*Value {
 			}
 			return ValueString{Value: strconv.FormatInt(int64(self.Value), 2), Range: span, IsProtected: true}, nil, nil
 		}}),
+		// Create a range from 0 to the number (0..num)
+		"range": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if float64(int(self.Value)) != self.Value {
+				return nil, nil, errors.NewError(span, "can only create a range from intgeger numbers, found float", errors.ValueError)
+			}
+
+			zero := 0.0
+			start := valPtr(ValueNumber{Value: zero})
+			end := valPtr(ValueNumber{Value: self.Value})
+			return ValueRange{Start: start, End: end, Current: &zero}, nil, nil
+		},
+		}),
+		// Convert the number into a string
 		"to_string": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 			if err := checkArgs("to_string", span, args); err != nil {
 				return nil, nil, err
@@ -213,7 +226,6 @@ func (self ValueNumber) Rem(executor Executor, span errors.Span, other Value) (V
 		Value: math.Mod(self.Value, other.(ValueNumber).Value),
 	}, nil
 }
-
 func (self ValueNumber) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	if other.Type() != TypeNumber {
 		return nil, errors.NewError(span, fmt.Sprintf("cannot calculate power of %v and %v", self.Type(), other.Type()), errors.TypeError)

@@ -170,7 +170,6 @@ func GetSwitch(executor Executor, span errors.Span, args ...Value) (Value, *int,
 		return nil, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
 
-	zero := 0
 	return ValueObject{
 		IsProtected: true,
 		ObjFields: map[string]*Value{
@@ -178,7 +177,6 @@ func GetSwitch(executor Executor, span errors.Span, args ...Value) (Value, *int,
 			"power": valPtr(ValueBool{Value: res.Power}),
 			"watts": valPtr(ValueNumber{Value: float64(res.Watts)}),
 		},
-		CurrentIterIndex: &zero,
 	}, nil, nil
 }
 
@@ -422,7 +420,6 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 	if output.ReturnValue == nil {
 		panic("return value is nil: please implement this correctly")
 	}
-	zero := 0
 	return ValueObject{
 		ObjFields: map[string]*Value{
 			"elapsed": valPtr(ValueNumber{
@@ -430,7 +427,6 @@ func Exec(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 			}),
 			"value": valPtr(output.ReturnValue),
 		},
-		CurrentIterIndex: &zero,
 	}, nil, nil
 }
 
@@ -443,7 +439,6 @@ func Get(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 	if err != nil {
 		return ValueNumber{}, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
-	zero := 0
 	return ValueObject{
 		ObjFields: map[string]*Value{
 			"status": valPtr(ValueString{
@@ -456,7 +451,6 @@ func Get(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 				Value: res.Body,
 			}),
 		},
-		CurrentIterIndex: &zero,
 	}, nil, nil
 }
 
@@ -526,7 +520,6 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 	if err != nil {
 		return ValueNull{}, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
-	zero := 0
 	return ValueObject{
 		ObjFields: map[string]*Value{
 			"status": valPtr(ValueString{
@@ -539,7 +532,6 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 				Value: res.Body,
 			}),
 		},
-		CurrentIterIndex: &zero,
 	}, nil, nil
 }
 
@@ -565,7 +557,6 @@ func GetWeather(executor Executor, span errors.Span) (Value, *errors.Error) {
 	if err != nil {
 		return nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
-	zero := 0
 	return ValueObject{
 		ObjFields: map[string]*Value{
 			"title": valPtr(ValueString{
@@ -584,14 +575,12 @@ func GetWeather(executor Executor, span errors.Span) (Value, *errors.Error) {
 				Value: float64(data.Humidity),
 			}),
 		},
-		CurrentIterIndex: &zero,
 	}, nil
 }
 
 func Time(executor Executor, _ errors.Span) (Value, *errors.Error) {
 	time := time.Now()
 	_, week := time.ISOWeek()
-	zero := 0
 	return ValueObject{
 		DataType: "time_module",
 		ObjFields: map[string]*Value{
@@ -637,7 +626,6 @@ func Time(executor Executor, _ errors.Span) (Value, *errors.Error) {
 			"since": valPtr(ValueBuiltinFunction{Callback: timeSince}),
 			"sleep": valPtr(ValueBuiltinFunction{Callback: Sleep}),
 		},
-		CurrentIterIndex: &zero,
 	}, nil
 }
 
@@ -663,7 +651,6 @@ func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int,
 	}
 	then := time.UnixMilli(int64((*millis).(ValueNumber).Value))
 	since := time.Since(then)
-	zero := 0
 	return ValueObject{
 		DataType: "duration",
 		ObjFields: map[string]*Value{
@@ -673,12 +660,10 @@ func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int,
 			"hours":   valPtr(ValueNumber{Value: float64(since.Hours())}),
 			"display": valPtr(ValueString{Value: fmt.Sprintf("%v", since)}),
 		},
-		CurrentIterIndex: &zero,
 	}, nil, nil
 }
 
 func Storage(executor Executor, _ errors.Span) (Value, *errors.Error) {
-	zero := 0
 	return ValueObject{
 		DataType: "storage",
 		ObjFields: map[string]*Value{
@@ -733,7 +718,6 @@ func Storage(executor Executor, _ errors.Span) (Value, *errors.Error) {
 				return nil, nil, errors.NewError(span, "NOT IMPLEMENTED", errors.RuntimeError)
 			}}),
 		},
-		CurrentIterIndex: &zero,
 	}, nil
 }
 

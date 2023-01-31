@@ -969,14 +969,11 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 		)
 	case AtomKindRange:
 		rangeNode := node.(AtomRange)
-
-		start := float64(rangeNode.Start)
-		end := float64(rangeNode.End)
 		current := float64(rangeNode.Start)
 
 		return Result{Value: valPtr(ValueRange{
-			Start:   &start,
-			End:     &end,
+			Start:   valPtr(ValueNumber{Value: float64(rangeNode.Start)}),
+			End:     valPtr(ValueNumber{Value: float64(rangeNode.End)}),
 			Current: &current,
 			Range:   node.Span(),
 		})}, nil, nil
@@ -1046,14 +1043,12 @@ func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.E
 		valueType = value.Type()
 		values = append(values, &value)
 	}
-	zero := 0
 	return Result{
 		Value: valPtr(ValueList{
-			Values:           &values,
-			ValueType:        &valueType,
-			Range:            node.Span(),
-			CurrentIterIndex: &zero,
-			IsProtected:      false,
+			Values:      &values,
+			ValueType:   &valueType,
+			Range:       node.Span(),
+			IsProtected: false,
 		}),
 	}, nil, nil
 }
@@ -1084,13 +1079,11 @@ func (self *Interpreter) makeObject(node AtomObject) (Result, *int, *errors.Erro
 		}
 		fields[field.Identifier] = value.Value
 	}
-	zero := 0
 	return Result{Value: valPtr(ValueObject{
-		IsDynamic:        true,
-		ObjFields:        fields,
-		Range:            node.Range,
-		CurrentIterIndex: &zero,
-		IsProtected:      false,
+		IsDynamic:   true,
+		ObjFields:   fields,
+		Range:       node.Range,
+		IsProtected: false,
 	})}, nil, nil
 }
 
@@ -1247,6 +1240,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 
 	// Get correct iterator closure
 	var iterator func() (Value, bool)
+
 	switch (*iter.Value).Type() {
 	case TypeRange:
 		rng := (*iter.Value).(ValueRange)
@@ -1257,6 +1251,15 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	case TypeObject:
 		list := (*iter.Value).(ValueObject)
 		iterator = list.Next
+	case TypeString:
+		str := (*iter.Value).(ValueString)
+		iterator = str.Next
+	default:
+		return Result{}, nil, errors.NewError(
+			node.IterExpr.Span,
+			fmt.Sprintf("a value of type %s cannot be used as an iterator", (*iter.Value).Type().String()),
+			errors.TypeError,
+		)
 	}
 
 	// Saves the last result of the loop

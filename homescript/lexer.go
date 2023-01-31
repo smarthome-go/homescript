@@ -224,6 +224,7 @@ func (self *lexer) makeNumber() Token {
 		self.advance()
 		for self.currentChar != nil && isDigit(*self.currentChar) {
 			value += string(*self.currentChar)
+			lastEnd = self.location
 			self.advance()
 		}
 	}

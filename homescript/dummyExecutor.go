@@ -104,3 +104,88 @@ func (self DummyExecutor) GetStorage(_ string) (*string, error) {
 func (self DummyExecutor) SetStorage(key string, value string) error {
 	return nil
 }
+
+///							///
+///							///
+///							///
+/// Analyzer Dummy Executor ///
+///							///
+///							///
+///							///
+
+type AnalyzerDummyExecutor struct{}
+
+func (self AnalyzerDummyExecutor) ResolveModule(id string) (string, bool, bool, error) {
+	path := "test/programs/" + id + ".hms"
+	file, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", false, false, nil
+		}
+		return "", false, false, fmt.Errorf("read file: %s", err.Error())
+	}
+	return string(file), true, true, nil
+}
+
+func (self AnalyzerDummyExecutor) Sleep(sleepTime float64) {
+}
+
+func (self AnalyzerDummyExecutor) Print(args ...string) error {
+	return nil
+}
+
+func (self AnalyzerDummyExecutor) Println(args ...string) error {
+	return nil
+}
+
+func (self AnalyzerDummyExecutor) Switch(name string, power bool) error {
+	return nil
+}
+func (self AnalyzerDummyExecutor) GetSwitch(id string) (SwitchResponse, error) {
+	return SwitchResponse{}, nil
+}
+
+func (self AnalyzerDummyExecutor) Ping(ip string, timeout float64) (bool, error) {
+	return false, nil
+}
+
+func (self AnalyzerDummyExecutor) Notify(title string, description string, level NotificationLevel) error {
+	return nil
+}
+
+func (self AnalyzerDummyExecutor) Remind(title string, description string, urgency ReminderUrgency, dueDate time.Time) (uint, error) {
+	return 0, nil
+}
+
+func (self AnalyzerDummyExecutor) Log(title string, description string, level LogLevel) error {
+	return nil
+}
+
+func (self AnalyzerDummyExecutor) Exec(id string, args map[string]string) (ExecResponse, error) {
+	return ExecResponse{ReturnValue: ValueNull{}}, nil
+}
+
+func (self AnalyzerDummyExecutor) Get(url string) (HttpResponse, error) {
+	return HttpResponse{}, nil
+}
+
+func (self AnalyzerDummyExecutor) Http(url string, method string, body string, headers map[string]string) (HttpResponse, error) {
+	return HttpResponse{}, nil
+}
+
+func (self AnalyzerDummyExecutor) GetUser() string {
+	return ""
+}
+
+func (self AnalyzerDummyExecutor) GetWeather() (Weather, error) {
+	return Weather{}, nil
+}
+
+func (self AnalyzerDummyExecutor) GetStorage(_ string) (*string, error) {
+	s := ""
+	return &s, nil
+}
+
+func (self AnalyzerDummyExecutor) SetStorage(key string, value string) error {
+	return nil
+}
