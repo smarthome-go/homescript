@@ -10,9 +10,10 @@ import (
 type ValueList struct {
 	Values *[]*Value
 	// Is set to a value type the first time the list contains at least 1 element
-	ValueType   *ValueType
-	Range       errors.Span
-	IsProtected bool
+	ValueType        *ValueType
+	Range            errors.Span
+	IsProtected      bool
+	CurrentIterIndex *int
 }
 
 func (self ValueList) Type() ValueType   { return TypeList }
@@ -400,4 +401,17 @@ func (self ValueList) IsEqual(executor Executor, span errors.Span, other Value) 
 	}
 	// If every item so far was equal, return here
 	return true, nil
+}
+
+func (self *ValueList) Next() (Value, bool) {
+	old := *self.CurrentIterIndex
+	*self.CurrentIterIndex++
+
+	shouldContinue := *self.CurrentIterIndex <= len(*self.Values)
+
+	if shouldContinue {
+		return *(*self.Values)[old], true
+	} else {
+		return nil, shouldContinue
+	}
 }

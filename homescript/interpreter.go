@@ -967,6 +967,19 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 			fmt.Sprintf("Variable or function with name %s not found", key),
 			errors.ReferenceError,
 		)
+	case AtomKindRange:
+		rangeNode := node.(AtomRange)
+
+		start := float64(rangeNode.Start)
+		end := float64(rangeNode.End)
+		current := float64(rangeNode.Start)
+
+		return Result{Value: valPtr(ValueRange{
+			Start:   &start,
+			End:     &end,
+			Current: &current,
+			Range:   node.Span(),
+		})}, nil, nil
 	case AtomKindIfExpr:
 		valueTemp, code, err := self.visitIfExpression(node.(IfExpr))
 		if code != nil || err != nil {
@@ -1033,12 +1046,14 @@ func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.E
 		valueType = value.Type()
 		values = append(values, &value)
 	}
+	zero := 0
 	return Result{
 		Value: valPtr(ValueList{
-			Values:      &values,
-			ValueType:   &valueType,
-			Range:       node.Span(),
-			IsProtected: false,
+			Values:           &values,
+			ValueType:        &valueType,
+			Range:            node.Span(),
+			CurrentIterIndex: &zero,
+			IsProtected:      false,
 		}),
 	}, nil, nil
 }
@@ -1069,11 +1084,13 @@ func (self *Interpreter) makeObject(node AtomObject) (Result, *int, *errors.Erro
 		}
 		fields[field.Identifier] = value.Value
 	}
+	zero := 0
 	return Result{Value: valPtr(ValueObject{
-		IsDynamic:   true,
-		ObjFields:   fields,
-		Range:       node.Range,
-		IsProtected: false,
+		IsDynamic:        true,
+		ObjFields:        fields,
+		Range:            node.Range,
+		CurrentIterIndex: &zero,
+		IsProtected:      false,
 	})}, nil, nil
 }
 
@@ -1222,83 +1239,35 @@ func (self *Interpreter) visitIfExpression(node IfExpr) (Result, *int, *errors.E
 }
 
 func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors.Error) {
-	// Make the value of the lower range
-	rangeLowerValue, code, err := self.visitExpression(node.RangeLowerExpr)
+	// Make the value of the iter expression
+	iter, code, err := self.visitExpression(node.IterExpr)
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
-	rangeLowerNumeric := 0.0 // Placeholder is later filled
-	// Assert that the value is of type number or builtin variable
-	switch (*rangeLowerValue.Value).Type() {
-	case TypeNumber:
-		rangeLowerNumeric = (*rangeLowerValue.Value).(ValueNumber).Value
-	case TypeBuiltinVariable:
-		callBackResult, err := (*rangeLowerValue.Value).(ValueBuiltinVariable).Callback(self.executor, node.RangeLowerExpr.Span)
-		if err != nil {
-			return Result{}, nil, err
-		}
-		if callBackResult.Type() != TypeNumber {
-			return Result{}, nil, errors.NewError(
-				node.RangeLowerExpr.Span,
-				fmt.Sprintf("cannot use value of type %v in a range", callBackResult.Type()),
-				errors.TypeError,
-			)
-		}
-		rangeLowerNumeric = callBackResult.(ValueNumber).Value
-	}
 
-	// Make the value of the upper range
-	rangeUpperValue, code, err := self.visitExpression(node.RangeUpperExpr)
-	if code != nil || err != nil {
-		return Result{}, code, err
-	}
-	// Placeholder is later filled
-	rangeUpperNumeric := 0.0
-	// Assert that the value is of type number or builtin variable
-	switch (*rangeUpperValue.Value).Type() {
-	case TypeNumber:
-		rangeUpperNumeric = (*rangeUpperValue.Value).(ValueNumber).Value
-	case TypeBuiltinVariable:
-		callBackResult, err := (*rangeUpperValue.Value).(ValueBuiltinVariable).Callback(self.executor, node.RangeUpperExpr.Span)
-		if err != nil {
-			return Result{}, nil, err
-		}
-		if callBackResult.Type() != TypeNumber {
-			return Result{}, nil, errors.NewError(
-				node.RangeUpperExpr.Span,
-				fmt.Sprintf("cannot use value of type %v in a range", callBackResult.Type()),
-				errors.TypeError,
-			)
-		}
-		rangeUpperNumeric = callBackResult.(ValueNumber).Value
-	}
-
-	// Check that both ranges are whole numbers
-	if rangeLowerNumeric != float64(int(rangeLowerNumeric)) || rangeUpperNumeric != float64(int(rangeUpperNumeric)) {
-		return Result{}, nil, errors.NewError(
-			errors.Span{
-				Start: node.RangeLowerExpr.Span.Start,
-				End:   node.RangeUpperExpr.Span.End,
-			},
-			"Range bounds have to be integers",
-			errors.ValueError,
-		)
+	// Get correct iterator closure
+	var iterator func() (Value, bool)
+	switch (*iter.Value).Type() {
+	case TypeRange:
+		rng := (*iter.Value).(ValueRange)
+		iterator = rng.Next
+	case TypeList:
+		list := (*iter.Value).(ValueList)
+		iterator = list.Next
+	case TypeObject:
+		list := (*iter.Value).(ValueObject)
+		iterator = list.Next
 	}
 
 	// Saves the last result of the loop
 	null := makeNull(node.Range)
 	var lastValue *Value = &null
 
-	// If the lower range bound is greater than the upper bound, reverse the order
-	isReversed := rangeLowerNumeric > rangeUpperNumeric
-
-	loopIter := int(rangeLowerNumeric)
-
 	// Performs the iteration code
 	for {
 		// Loop control code
-		if loopIter >= int(rangeUpperNumeric) && !isReversed || // Is normal (0..10)
-			loopIter <= int(rangeUpperNumeric) && isReversed { // Is inverted (10..0)
+		currIter, shouldContinue := iterator()
+		if !shouldContinue {
 			break
 		}
 
@@ -1307,9 +1276,8 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 			return Result{}, nil, err
 		}
 
-		// Add the head identifier to the scope (so that loop code can access the iteration variable)
-		num := Value(ValueNumber{Value: float64(loopIter)})
-		self.addVar(node.HeadIdentifier.Identifier, &num)
+		// Add the head identifier to the scope (so that loop code can access the induction variable)
+		self.addVar(node.HeadIdentifier.Identifier, &currIter)
 
 		// Enable the `inLoop` flag on the interpreter
 		self.inLoopCount++
@@ -1331,13 +1299,6 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 
 		// Remove the scope again
 		self.popScope()
-
-		// Loop iter variabel control
-		if isReversed {
-			loopIter--
-		} else {
-			loopIter++
-		}
 	}
 
 	// Returns the last of the loop's statements

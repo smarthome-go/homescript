@@ -833,15 +833,19 @@ func (self *parser) atom() (Atom, *errors.Error) {
 	startLocation := self.currToken.StartLocation
 	switch self.currToken.Kind {
 	case Number:
-		number, err := strconv.ParseFloat(self.currToken.Value, 64)
-		if err != nil {
-			panic(fmt.Sprintf("Number must be parseable: %s", err.Error()))
-		}
+		startTok := self.currToken
+
 		if err := self.advance(); err != nil {
 			return nil, err
 		}
+
+		if self.currToken.Kind == Range {
+			return self.rangeExpr(startTok)
+		}
+
+		num, _ := strconv.ParseFloat(startTok.Value, 64)
 		return AtomNumber{
-			Num: float64(number),
+			Num: num,
 			Range: errors.Span{
 				Start: startLocation,
 				End:   self.prevToken.EndLocation,
@@ -1306,25 +1310,7 @@ func (self *parser) forExpr() (AtomFor, *errors.Error) {
 		return AtomFor{}, err
 	}
 
-	// Make range
-	rangeLowerExpr, err := self.expression()
-	if err != nil {
-		return AtomFor{}, err
-	}
-	if self.currToken.Kind != Range {
-		return AtomFor{}, &errors.Error{
-			Kind:    errors.SyntaxError,
-			Message: fmt.Sprintf("Expected range (%v), found %v", Range, self.currToken.Kind),
-			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
-			},
-		}
-	}
-	if err := self.advance(); err != nil {
-		return AtomFor{}, err
-	}
-	rangeUpperExpr, err := self.expression()
+	expr, err := self.expression()
 	if err != nil {
 		return AtomFor{}, err
 	}
@@ -1336,12 +1322,65 @@ func (self *parser) forExpr() (AtomFor, *errors.Error) {
 
 	return AtomFor{
 		HeadIdentifier: headIdentifier,
-		RangeLowerExpr: rangeLowerExpr,
-		RangeUpperExpr: rangeUpperExpr,
+		IterExpr:       expr,
 		IterationCode:  iterationBlock,
 		Range: errors.Span{
 			Start: startLocation,
 			End:   self.currToken.EndLocation,
+		},
+	}, nil
+}
+
+func (self *parser) rangeExpr(startTok Token) (AtomRange, *errors.Error) {
+	start, _ := strconv.ParseFloat(startTok.Value, 64)
+	if float64(int(start)) != start {
+		return AtomRange{}, &errors.Error{
+			Kind:    errors.SyntaxError,
+			Message: "Expected integer, found float",
+			Span: errors.Span{
+				Start: startTok.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+
+	if self.currToken.Kind != Range {
+		return AtomRange{}, &errors.Error{
+			Kind:    errors.SyntaxError,
+			Message: fmt.Sprintf("Expected %v, found %v", Range, self.currToken.Kind),
+			Span: errors.Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+
+	if err := self.advance(); err != nil {
+		return AtomRange{}, err
+	}
+
+	end, _ := strconv.ParseFloat(self.currToken.Value, 64)
+	if float64(int(end)) != end {
+		return AtomRange{}, &errors.Error{
+			Kind:    errors.SyntaxError,
+			Message: "Expected integer, found float",
+			Span: errors.Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+	}
+
+	if err := self.advance(); err != nil {
+		return AtomRange{}, err
+	}
+
+	return AtomRange{
+		Start: int(start),
+		End:   int(end),
+		Range: errors.Span{
+			Start: startTok.StartLocation,
+			End:   self.prevToken.EndLocation,
 		},
 	}, nil
 }

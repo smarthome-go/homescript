@@ -88,7 +88,8 @@ func unmarshalValue(span errors.Span, self interface{}) (Value, *errors.Error) {
 	case bool:
 		return ValueBool{Value: self}, nil
 	case map[string]interface{}:
-		output := ValueObject{ObjFields: make(map[string]*Value)}
+		zero := 0
+		output := ValueObject{ObjFields: make(map[string]*Value), CurrentIterIndex: &zero}
 		for key, field := range self {
 			value, err := unmarshalValue(span, field)
 			if err != nil {
@@ -119,9 +120,11 @@ func unmarshalValue(span errors.Span, self interface{}) (Value, *errors.Error) {
 			}
 			values = append(values, &value)
 		}
+		zero := 0
 		return ValueList{
-			Values:    &values,
-			ValueType: &valueType,
+			Values:           &values,
+			ValueType:        &valueType,
+			CurrentIterIndex: &zero,
 		}, nil
 	case nil:
 		return ValueNull{}, nil

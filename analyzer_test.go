@@ -78,6 +78,15 @@ func (self analyzerExecutor) GetWeather() (homescript.Weather, error) {
 	return homescript.Weather{}, nil
 }
 
+func (self analyzerExecutor) GetStorage(_ string) (*string, error) {
+	s := ""
+	return &s, nil
+}
+
+func (self analyzerExecutor) SetStorage(key string, value string) error {
+	return nil
+}
+
 type analysis struct {
 	Name string
 	File string

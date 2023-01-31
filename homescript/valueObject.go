@@ -2,9 +2,11 @@ package homescript
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/smarthome-go/homescript/v2/homescript/errors"
+	"golang.org/x/exp/maps"
 )
 
 // Object value
@@ -16,9 +18,10 @@ type ValueObject struct {
 	// Such a dynamic object could be the global `ARGS` object
 	IsDynamic bool
 	// The fields of the object
-	ObjFields   map[string]*Value
-	Range       errors.Span
-	IsProtected bool
+	ObjFields        map[string]*Value
+	CurrentIterIndex *int
+	Range            errors.Span
+	IsProtected      bool
 }
 
 func (self ValueObject) Type() ValueType   { return TypeObject }
@@ -131,4 +134,20 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 		}
 	}
 	return true, nil
+}
+
+func (self *ValueObject) Next() (Value, bool) {
+	keys := maps.Keys(self.ObjFields)
+	sort.Strings(keys)
+
+	old := *self.CurrentIterIndex
+	*self.CurrentIterIndex++
+
+	shouldContinue := *self.CurrentIterIndex <= len(keys)
+
+	if shouldContinue {
+		return *self.ObjFields[keys[old]], true
+	} else {
+		return nil, shouldContinue
+	}
 }

@@ -17,6 +17,7 @@ const (
 	TypePair
 	TypeObject
 	TypeList
+	TypeRange
 	TypeFunction
 	TypeBuiltinFunction
 	TypeBuiltinVariable
@@ -40,6 +41,8 @@ func (self ValueType) String() string {
 		return "object"
 	case TypeList:
 		return "list"
+	case TypeRange:
+		return "range"
 	case TypeFunction, TypeBuiltinFunction:
 		return "function"
 	case TypeBuiltinVariable:
@@ -403,17 +406,27 @@ func setValueSpan(value Value, span errors.Span) Value {
 	case TypeObject:
 		object := value.(ValueObject)
 		value = ValueObject{
-			DataType:  object.DataType,
-			IsDynamic: object.IsDynamic,
-			ObjFields: object.ObjFields,
-			Range:     span,
+			DataType:         object.DataType,
+			IsDynamic:        object.IsDynamic,
+			ObjFields:        object.ObjFields,
+			Range:            span,
+			CurrentIterIndex: object.CurrentIterIndex,
 		}
 	case TypeList:
 		list := value.(ValueList)
 		value = ValueList{
-			Values:    list.Values,
-			ValueType: list.ValueType,
-			Range:     span,
+			Values:           list.Values,
+			ValueType:        list.ValueType,
+			Range:            span,
+			CurrentIterIndex: list.CurrentIterIndex,
+		}
+	case TypeRange:
+		rng := value.(ValueRange)
+		value = ValueRange{
+			Start:   rng.Start,
+			End:     rng.End,
+			Current: rng.Current,
+			Range:   rng.Range,
 		}
 	}
 	// For other types, it is not possible to insert the span, so just return it as is

@@ -1486,12 +1486,14 @@ func (self *Analyzer) makeList(node AtomListLiteral) (Result, *errors.Error) {
 		valueType = value.Type()
 		values = append(values, &value)
 	}
+	zero := 0
 	return Result{
 		Value: valPtr(ValueList{
-			Values:      &values,
-			ValueType:   &valueType,
-			Range:       node.Span(),
-			IsProtected: false,
+			Values:           &values,
+			ValueType:        &valueType,
+			Range:            node.Span(),
+			CurrentIterIndex: &zero,
+			IsProtected:      false,
 		}),
 	}, nil
 }
@@ -1521,11 +1523,13 @@ func (self *Analyzer) makeObject(node AtomObject) (Result, *errors.Error) {
 		}
 		fields[field.Identifier] = value.Value
 	}
+	zero := 0
 	return Result{Value: valPtr(ValueObject{
-		IsDynamic:   true,
-		ObjFields:   fields,
-		Range:       node.Range,
-		IsProtected: false,
+		IsDynamic:        true,
+		ObjFields:        fields,
+		Range:            node.Range,
+		CurrentIterIndex: &zero,
+		IsProtected:      false,
 	})}, nil
 }
 
@@ -1670,67 +1674,24 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 }
 
 func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
-	// Make the value of the lower range
-	rangeLowerValue, err := self.visitExpression(node.RangeLowerExpr)
-	if err != nil {
+	// Create the value of the iter expression
+	iter, err := self.visitExpression(node.IterExpr)
+	if err != nil || iter.Value == nil || (*iter.Value) == nil {
 		return Result{}, err
 	}
 
-	// Only check the lower value's type if it is not nil
-	rangeLowerNumeric := 0.0
-	if rangeLowerValue.Value != nil {
-		switch (*rangeLowerValue.Value).Type() {
-		case TypeNumber:
-			rangeLowerNumeric = (*rangeLowerValue.Value).(ValueNumber).Value
-		case TypeBuiltinVariable:
-			callBackResult, err := (*rangeLowerValue.Value).(ValueBuiltinVariable).Callback(self.executor, node.RangeLowerExpr.Span)
-			if err != nil {
-				self.diagnosticError(*err)
-				break
-			}
-			if callBackResult.Type() != TypeNumber {
-				self.issue(node.RangeLowerExpr.Span, fmt.Sprintf("cannot use value of type %v in a range", callBackResult.Type()), errors.TypeError)
-				break
-			}
-			rangeLowerNumeric = callBackResult.(ValueNumber).Value
-		}
-	}
-
-	rangeUpperValue, err := self.visitExpression(node.RangeUpperExpr)
-	if err != nil {
-		return Result{}, err
-	}
-
-	// Only check the upper value's type if it is not nil
-	rangeUpperNumeric := 0.0
-	if rangeUpperValue.Value != nil && *rangeUpperValue.Value != nil {
-		switch (*rangeUpperValue.Value).Type() {
-		case TypeNumber:
-			rangeUpperNumeric = (*rangeUpperValue.Value).(ValueNumber).Value
-		case TypeBuiltinVariable:
-			callBackResult, err := (*rangeUpperValue.Value).(ValueBuiltinVariable).Callback(self.executor, node.RangeUpperExpr.Span)
-			if err != nil {
-				self.diagnosticError(*err)
-				break
-			}
-			if callBackResult.Type() != TypeNumber {
-				self.issue(node.RangeUpperExpr.Span, fmt.Sprintf("cannot use value of type %v in a range", callBackResult.Type()), errors.TypeError)
-				break
-			}
-			rangeUpperNumeric = callBackResult.(ValueNumber).Value
-		}
-	}
-
-	// Check that both ranges are whole numbers
-	if rangeLowerNumeric != float64(int(rangeLowerNumeric)) || rangeUpperNumeric != float64(int(rangeUpperNumeric)) {
-		self.issue(
-			errors.Span{
-				Start: node.RangeLowerExpr.Span.Start,
-				End:   node.RangeUpperExpr.Span.End,
-			},
-			"range bounds have to be integers",
-			errors.TypeError,
-		)
+	// Get correct iterator closure
+	var iterator func() (Value, bool)
+	switch (*iter.Value).Type() {
+	case TypeRange:
+		rng := (*iter.Value).(ValueRange)
+		iterator = rng.Next
+	case TypeList:
+		list := (*iter.Value).(ValueList)
+		iterator = list.Next
+	case TypeObject:
+		obj := (*iter.Value).(ValueObject)
+		iterator = obj.Next
 	}
 
 	// Performs one iteration
@@ -1746,8 +1707,10 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 		return Result{}, err
 	}
 
+	next, _ := iterator()
+
 	// Add the head identifier to the scope (so that loop code can access the iteration variable)
-	self.addVar(node.HeadIdentifier.Identifier, nil, node.HeadIdentifier.Span)
+	self.addVar(node.HeadIdentifier.Identifier, next, node.HeadIdentifier.Span)
 
 	_, err = self.visitStatements(node.IterationCode)
 	if err != nil {

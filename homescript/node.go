@@ -288,6 +288,7 @@ const (
 	AtomKindPair
 	AtomKindNull
 	AtomKindIdentifier
+	AtomKindRange
 	AtomKindIfExpr
 	AtomKindForExpr
 	AtomKindWhileExpr
@@ -381,6 +382,16 @@ type AtomNull struct {
 func (self AtomNull) Kind() AtomKind    { return AtomKindNull }
 func (self AtomNull) Span() errors.Span { return self.Range }
 
+// Range
+type AtomRange struct {
+	Start int
+	End   int
+	Range errors.Span
+}
+
+func (self AtomRange) Kind() AtomKind    { return AtomKindRange }
+func (self AtomRange) Span() errors.Span { return self.Range }
+
 // If expression
 
 type IfExpr struct {
@@ -400,10 +411,9 @@ type AtomFor struct {
 		Identifier string
 		Span       errors.Span
 	}
-	RangeLowerExpr Expression
-	RangeUpperExpr Expression
-	IterationCode  Block
-	Range          errors.Span
+	IterExpr      Expression
+	IterationCode Block
+	Range         errors.Span
 }
 
 func (self AtomFor) Kind() AtomKind    { return AtomKindForExpr }

@@ -1,0 +1,20 @@
+for n in [1, 2, 3, 4, 5] {
+    println(n);
+};
+
+let obj = {
+    foo: 3,
+    bar: 2,
+    baz: 1
+};
+
+for n in obj {
+    println(n);
+};
+
+let a = 0..10;
+println(a);
+a.end = 100;
+println(a);
+a.start = 100;
+println(a);
