@@ -150,7 +150,12 @@ func (self *ValueObject) Next() (Value, bool) {
 	shouldContinue := *self.CurrentIterIndex <= len(keys)
 
 	if shouldContinue {
-		return *self.ObjFields[keys[old]], true
+		ret := ValuePair{
+			Key:         valPtr(makeStr(self.Span(), keys[old])),
+			Value:       self.ObjFields[keys[old]],
+			IsProtected: true,
+		}
+		return ret, true
 	} else {
 		self.IterReset()
 		return nil, false

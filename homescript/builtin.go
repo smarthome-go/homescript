@@ -579,63 +579,121 @@ func GetWeather(executor Executor, span errors.Span) (Value, *errors.Error) {
 }
 
 func Time(executor Executor, _ errors.Span) (Value, *errors.Error) {
-	time := time.Now()
-	_, week := time.ISOWeek()
 	return ValueObject{
 		DataType: "time_module",
 		ObjFields: map[string]*Value{
 			"now": valPtr(ValueBuiltinFunction{
 				Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-					return ValueObject{
-						DataType: "time",
-						ObjFields: map[string]*Value{
-							"year": valPtr(ValueNumber{
-								Value: float64(time.Year()),
-							}),
-							"month": valPtr(ValueNumber{
-								Value: float64(time.Month()),
-							}),
-							"week": valPtr(ValueNumber{
-								Value: float64(week),
-							}),
-							"week_day_text": valPtr(ValueString{
-								Value: time.Weekday().String(),
-							}),
-							"week_day": valPtr(ValueNumber{
-								Value: float64(time.Weekday()),
-							}),
-							"calendar_day": valPtr(ValueNumber{
-								Value: float64(time.Day()),
-							}),
-							"hour": valPtr(ValueNumber{
-								Value: float64(time.Hour()),
-							}),
-							"minute": valPtr(ValueNumber{
-								Value: float64(time.Minute()),
-							}),
-							"second": valPtr(ValueNumber{
-								Value: float64(time.Second()),
-							}),
-							"unix": valPtr(ValueNumber{
-								Value: float64(time.UnixMilli()),
-							}),
-						},
-					}, nil, nil
+					return createDateObj(time.Now()), nil, nil
 				},
 			}),
 			"since": valPtr(ValueBuiltinFunction{Callback: timeSince}),
+			// Time Methods
+			"add_days": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+				if err := checkArgs("time.add_days", span, args, TypeObject, TypeNumber); err != nil {
+					return nil, nil, err
+				}
+
+				then, err := requireTimeArgFirst(span, args...)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				days := args[1].(ValueNumber).Value
+				if float64(int(days)) != days {
+					return nil, nil, errors.NewError(span, "cannot use float number as integer argument", errors.TypeError)
+				}
+
+				added := then.AddDate(0, 0, int(days))
+
+				return createDateObj(added), nil, nil
+			}}),
+			"add_hours": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+				if err := checkArgs("time.add_hours", span, args, TypeObject, TypeNumber); err != nil {
+					return nil, nil, err
+				}
+
+				then, err := requireTimeArgFirst(span, args...)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				hours := args[1].(ValueNumber).Value
+				if float64(int(hours)) != hours {
+					return nil, nil, errors.NewError(span, "cannot use float number as integer argument", errors.TypeError)
+				}
+
+				added := then.Local().Add(time.Hour * time.Duration(hours))
+
+				return createDateObj(added), nil, nil
+			}}),
+			"add_minutes": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+				if err := checkArgs("time.add_minutes", span, args, TypeObject, TypeNumber); err != nil {
+					return nil, nil, err
+				}
+
+				then, err := requireTimeArgFirst(span, args...)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				minutes := args[1].(ValueNumber).Value
+				if float64(int(minutes)) != minutes {
+					return nil, nil, errors.NewError(span, "cannot use float number as integer argument", errors.TypeError)
+				}
+
+				added := then.Local().Add(time.Minute * time.Duration(minutes))
+
+				return createDateObj(added), nil, nil
+			}}),
 			"sleep": valPtr(ValueBuiltinFunction{Callback: Sleep}),
 		},
 	}, nil
 }
 
-func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-	if err := checkArgs("time.since", span, args, TypeObject); err != nil {
-		return nil, nil, err
+func createDateObj(tm time.Time) Value {
+	_, week := tm.ISOWeek()
+	return ValueObject{
+		DataType: "time",
+		ObjFields: map[string]*Value{
+			"year": valPtr(ValueNumber{
+				Value: float64(tm.Year()),
+			}),
+			"month": valPtr(ValueNumber{
+				Value: float64(tm.Month()),
+			}),
+			"week": valPtr(ValueNumber{
+				Value: float64(week),
+			}),
+			"week_day_text": valPtr(ValueString{
+				Value: tm.Weekday().String(),
+			}),
+			"week_day": valPtr(ValueNumber{
+				Value: float64(tm.Weekday()),
+			}),
+			"calendar_day": valPtr(ValueNumber{
+				Value: float64(tm.Day()),
+			}),
+			"hour": valPtr(ValueNumber{
+				Value: float64(tm.Hour()),
+			}),
+			"minute": valPtr(ValueNumber{
+				Value: float64(tm.Minute()),
+			}),
+			"second": valPtr(ValueNumber{
+				Value: float64(tm.Second()),
+			}),
+			"unix": valPtr(ValueNumber{
+				Value: float64(tm.UnixMilli()),
+			}),
+		},
 	}
+}
+
+func requireTimeArgFirst(span errors.Span, args ...Value) (time.Time, *errors.Error) {
 	arg := args[0].(ValueObject)
 	if arg.DataType != "time" {
-		return nil, nil, errors.NewError(
+		return time.Time{}, errors.NewError(
 			span,
 			fmt.Sprintf("function 'since' requires an object of type 'time', got '%s'", arg.DataType),
 			errors.TypeError,
@@ -643,13 +701,23 @@ func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int,
 	}
 	millis, ok := arg.ObjFields["unix"]
 	if !ok || millis == nil || (*millis).Type() != TypeNumber {
-		return nil, nil, errors.NewError(
+		return time.Time{}, errors.NewError(
 			span,
 			"no field of type number named 'unix' found on time object",
 			errors.RuntimeError,
 		)
 	}
-	then := time.UnixMilli(int64((*millis).(ValueNumber).Value))
+	return time.UnixMilli(int64((*millis).(ValueNumber).Value)), nil
+}
+
+func timeSince(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if err := checkArgs("time.since", span, args, TypeObject); err != nil {
+		return nil, nil, err
+	}
+	then, err := requireTimeArgFirst(span, args...)
+	if err != nil {
+		return nil, nil, err
+	}
 	since := time.Since(then)
 	return ValueObject{
 		DataType: "duration",

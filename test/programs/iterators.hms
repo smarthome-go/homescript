@@ -61,3 +61,14 @@ a.end = 100;
 println(a);
 a.start = 100;
 println(a);
+
+println("=== Objects ===");
+let obj2 = {
+    one: 1,
+    two: 2,
+    three: 3
+};
+
+for item in obj2 {
+    println(item);
+};
