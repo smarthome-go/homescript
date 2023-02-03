@@ -110,12 +110,22 @@ func (self ValueString) Fields() map[string]*Value {
 			contains := strings.Contains(self.Value, args[0].(ValueString).Value)
 			return ValueBool{Value: contains}, nil, nil
 		}}),
-		"to_num": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+		"parse_num": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 			res, err := strconv.ParseFloat(self.Value, 64)
 			if err != nil {
 				return nil, nil, errors.NewError(span, err.Error(), errors.ValueError)
 			}
 			return ValueNumber{Value: res, Range: span, IsProtected: true}, nil, nil
+		}}),
+		"parse_bool": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			var res bool
+			switch self.Value {
+			case "true":
+			case "false":
+			default:
+				return nil, nil, errors.NewError(span, fmt.Sprintf("not a boolean value: %s", self.Value), errors.ValueError)
+			}
+			return ValueBool{Value: res, IsProtected: true}, nil, nil
 		}}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
