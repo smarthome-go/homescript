@@ -141,7 +141,13 @@ func Print(executor Executor, span errors.Span, args ...Value) (Value, *int, *er
 		}
 		msgs = append(msgs, res)
 	}
-	executor.Print(msgs...)
+	if err := executor.Print(msgs...); err != nil {
+		return nil, nil, errors.NewError(
+			span,
+			fmt.Sprintf("function 'print' failed: %s", err.Error()),
+			errors.RuntimeError,
+		)
+	}
 	return ValueNull{}, nil, nil
 }
 
@@ -155,7 +161,13 @@ func Println(executor Executor, span errors.Span, args ...Value) (Value, *int, *
 		}
 		msgs = append(msgs, res)
 	}
-	executor.Println(msgs...)
+	if err := executor.Println(msgs...); err != nil {
+		return nil, nil, errors.NewError(
+			span,
+			fmt.Sprintf("function 'println' failed: %s", err.Error()),
+			errors.RuntimeError,
+		)
+	}
 	return ValueNull{}, nil, nil
 }
 

@@ -60,7 +60,9 @@ func (self ValueRange) IsEqual(executor Executor, span errors.Span, other Value)
 	otherRange := other.(ValueRange)
 	return otherRange.Start == self.Start && otherRange.End == self.End, nil
 }
-func (self *ValueRange) Next() (Value, bool) {
+func (self *ValueRange) Next(val *Value) bool {
+	return true
+
 	if self.Current == nil {
 		self.IterReset()
 	}
@@ -77,7 +79,8 @@ func (self *ValueRange) Next() (Value, bool) {
 			self.IterReset()
 		}
 
-		return ValueNumber{Value: old}, cond
+		*val = ValueNumber{Value: old}
+		return cond
 	} else {
 		old := *self.Current
 		*self.Current -= 1.0
@@ -87,7 +90,8 @@ func (self *ValueRange) Next() (Value, bool) {
 			self.IterReset()
 		}
 
-		return ValueNumber{Value: old}, cond
+		*val = ValueNumber{Value: old}
+		return cond
 	}
 }
 func (self *ValueRange) IterReset() {

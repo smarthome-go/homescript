@@ -1239,7 +1239,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	}
 
 	// Get correct iterator closure
-	var iterator func() (Value, bool)
+	var iterator func(*Value) bool
 
 	switch (*iter.Value).Type() {
 	case TypeRange:
@@ -1266,30 +1266,43 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	null := makeNull(node.Range)
 	var lastValue *Value = &null
 
+	// Add a new scope for the loop
+	if err := self.pushScope(node.Span()); err != nil {
+		return Result{}, nil, err
+	}
+
+	var currIter Value = ValueNull{}
+
+	// Enable the `inLoop` flag on the interpreter
+	self.inLoopCount++
+
+	defer func() {
+
+		// Remove the scope again
+		self.popScope()
+
+		// decrement loop counter again
+		self.inLoopCount--
+	}()
+
 	// Performs the iteration code
 	for {
 		// Loop control code
-		currIter, shouldContinue := iterator()
+		shouldContinue := iterator(&currIter)
 		if !shouldContinue {
 			break
 		}
 
-		// Add a new scope for the iteration
-		if err := self.pushScope(node.Span()); err != nil {
-			return Result{}, nil, err
-		}
+		// Clear the current scope
+		self.scopes[len(self.scopes)-1] = make(map[string]*Value)
 
 		// Add the head identifier to the scope (so that loop code can access the induction variable)
 		self.addVar(node.HeadIdentifier.Identifier, &currIter)
-
-		// Enable the `inLoop` flag on the interpreter
-		self.inLoopCount++
 
 		value, code, err := self.visitStatements(node.IterationCode)
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
-		self.inLoopCount--
 
 		if value.BreakValue != nil {
 			return Result{
@@ -1298,10 +1311,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 		}
 
 		// Assign to the last value
-		lastValue = value.Value
-
-		// Remove the scope again
-		self.popScope()
+		*lastValue = *value.Value
 	}
 
 	// Returns the last of the loop's statements

@@ -1746,7 +1746,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	}
 
 	// Get correct iterator closure
-	var iterator func() (Value, bool)
+	var iterator func(*Value) bool
 
 	switch (*iter.Value).Type() {
 	case TypeRange:
@@ -1786,7 +1786,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 
 	var next Value
 	if iterator != nil {
-		next, _ = iterator()
+		_ = iterator(&next)
 
 		if next != nil {
 			self.symbols = append(self.symbols, symbol{

@@ -159,7 +159,7 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 	return true, nil
 }
 
-func (self *ValueObject) Next() (Value, bool) {
+func (self *ValueObject) Next(val *Value) bool {
 	if self.CurrentIterIndex == nil {
 		self.IterReset()
 	}
@@ -178,10 +178,11 @@ func (self *ValueObject) Next() (Value, bool) {
 			Value:       self.ObjFields[keys[old]],
 			IsProtected: true,
 		}
-		return ret, true
+		*val = ret
+		return true
 	} else {
 		self.IterReset()
-		return nil, false
+		return false
 	}
 }
 func (self *ValueObject) IterReset() {
