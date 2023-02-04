@@ -171,7 +171,6 @@ func GetSwitch(executor Executor, span errors.Span, args ...Value) (Value, *int,
 	}
 
 	return ValueObject{
-		IsProtected: true,
 		ObjFields: map[string]*Value{
 			"name":  valPtr(ValueString{Value: res.Name}),
 			"power": valPtr(ValueBool{Value: res.Power}),
@@ -305,9 +304,8 @@ func Remind(executor Executor, span errors.Span, args ...Value) (Value, *int, *e
 	}
 
 	return ValueNumber{
-		Value:       float64(id),
-		Range:       span,
-		IsProtected: false,
+		Value: float64(id),
+		Range: span,
 	}, nil, nil
 }
 
@@ -747,10 +745,10 @@ func Storage(executor Executor, _ errors.Span) (Value, *errors.Error) {
 				}
 
 				if value != nil {
-					return ValueString{Value: *value, Range: span, IsProtected: true}, nil, nil
+					return ValueString{Value: *value, Range: span}, nil, nil
 				} else {
 
-					return ValueNull{Range: span, IsProtected: true}, nil, nil
+					return ValueNull{Range: span}, nil, nil
 				}
 			}}),
 			"set": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
@@ -780,7 +778,7 @@ func Storage(executor Executor, _ errors.Span) (Value, *errors.Error) {
 					return nil, nil, errors.NewError(span, fmt.Sprintf("could not set entry in storage: %s", err.Error()), errors.RuntimeError)
 				}
 
-				return ValueNull{Range: span, IsProtected: true}, nil, nil
+				return ValueNull{Range: span}, nil, nil
 			}}),
 			"fields": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				return nil, nil, errors.NewError(span, "NOT IMPLEMENTED", errors.RuntimeError)
@@ -809,5 +807,5 @@ func Fmt(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 	}
 
 	out := fmt.Sprintf(args[0].(ValueString).Value, displays...)
-	return ValueString{Value: out, Range: span, IsProtected: true}, nil, nil
+	return ValueString{Value: out, Range: span}, nil, nil
 }
