@@ -1730,6 +1730,18 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 	// Make optional name rewrite
 	var rewriteName *string = nil
 	if self.currToken.Kind == As {
+		//// TODO: implement alias imports correctly ////
+		return ImportStmt{}, &errors.Error{
+			Kind:    errors.Warning,
+			Message: "Using the `as` keyword is currently unstable",
+			Span: errors.Span{
+				Start: self.currToken.StartLocation,
+				End:   self.currToken.EndLocation,
+			},
+		}
+
+		//// TODO: remove this /////
+
 		if err := self.advance(); err != nil {
 			return ImportStmt{}, err
 		}
@@ -1778,6 +1790,7 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 	if err := self.advance(); err != nil {
 		return ImportStmt{}, err
 	}
+
 	return ImportStmt{
 		Function:   functionName,
 		RewriteAs:  rewriteName,

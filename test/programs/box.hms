@@ -1,7 +1,7 @@
 fn box(dimensions) {
     let output = "";
-    for y in 0..dimensions {
-        for x in 0..dimensions*2 {
+    for y in dimensions.range() {
+        for x in (dimensions*2).range() {
             if x == 0 || y == 0 || x == dimensions*2-1 || y == dimensions-1 {
                 output += "#";
             } else {

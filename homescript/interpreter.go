@@ -165,42 +165,44 @@ func (self *Interpreter) visitStatements(statements []StatementOrExpr) (Result, 
 	var err *errors.Error
 	for _, item := range statements {
 		if item.IsStatement() {
-			_, code, err = self.visitStatement(item.Statement)
+			res, code, err := self.visitStatement(item.Statement)
 			if code != nil || err != nil {
 				return Result{}, code, err
 			}
+
+			// Handle potential break or return statements
+			if res.BreakValue != nil {
+				// Check if the use of break is legal here
+				if self.inLoopCount == 0 {
+					return Result{}, nil, errors.NewError(item.Span(), "Can only use the break statement inside loops", errors.SyntaxError)
+				}
+				return res, nil, nil
+			}
+
+			// If continue is used, return null for this iteration
+			if res.ShouldContinue {
+				// Check if the use of continue is legal here
+				if self.inLoopCount == 0 {
+					return Result{}, nil, errors.NewError(item.Span(), "Can only use the continue statement inside loops", errors.SyntaxError)
+				}
+				return makeNullResult(item.Span()), nil, nil
+			}
+
+			// Handle potential break or return statements
+			if res.ReturnValue != nil {
+				// Check if the use of return is legal here
+				if self.inFunctionCount == 0 {
+					return Result{}, nil, errors.NewError(item.Span(), "Can only use the return statement inside function bodies", errors.SyntaxError)
+				}
+				return res, nil, nil
+			}
+
+			lastResult = makeNullResult(errors.Span{})
 		} else {
 			lastResult, code, err = self.visitExpression(*item.Expression)
 			if code != nil || err != nil {
 				return Result{}, code, err
 			}
-		}
-
-		// Handle potential break or return statements
-		if lastResult.BreakValue != nil {
-			// Check if the use of break is legal here
-			if self.inLoopCount == 0 {
-				return Result{}, nil, errors.NewError(item.Span(), "Can only use the break statement inside loops", errors.SyntaxError)
-			}
-			return lastResult, nil, nil
-		}
-
-		// If continue is used, return null for this iteration
-		if lastResult.ShouldContinue {
-			// Check if the use of continue is legal here
-			if self.inLoopCount == 0 {
-				return Result{}, nil, errors.NewError(item.Span(), "Can only use the continue statement inside loops", errors.SyntaxError)
-			}
-			return makeNullResult(item.Span()), nil, nil
-		}
-
-		// Handle potential break or return statements
-		if lastResult.ReturnValue != nil {
-			// Check if the use of return is legal here
-			if self.inFunctionCount == 0 {
-				return Result{}, nil, errors.NewError(item.Span(), "Can only use the return statement inside function bodies", errors.SyntaxError)
-			}
-			return lastResult, nil, nil
 		}
 	}
 	return lastResult, code, err
@@ -287,6 +289,7 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 	if node.RewriteAs != nil {
 		actualImport = *node.RewriteAs
 	}
+
 	// Check if the function conflicts with existing values
 	value := self.getVar(actualImport)
 	if value != nil {
@@ -958,6 +961,7 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 			}
 			return Result{Value: scopeValue}, nil, nil
 		}
+		fmt.Printf("%v\n", node.Span().Start.Line)
 		// If the value has not been found in any scope, return an error
 		return Result{}, nil, errors.NewError(
 			node.Span(),

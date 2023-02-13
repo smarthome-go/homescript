@@ -7,7 +7,7 @@ assert(list == [1, 2, 3, 4, 5]);
 # This results in a type error
 #list.push(false);
 
-for _ in 0..list.len(){
+for i in list.len().range() {
     #println(list[i]);
 };
 
@@ -24,7 +24,7 @@ assert(list_1.len() == 1);
 # Popping list elements
 println("list.pop");
 let list_2 = [1, 2, 3, 4, 5, 6];
-for _ in 0..list_2.len() {
+for _ in list_2.len().range() {
     # Pop returns the element popped
     list_2.pop();
     println(list_2);
@@ -41,7 +41,7 @@ for i in 0..10 {
 
 # Popping elements from the front
 println("list.pop_front");
-for _ in 0..list_3.len() {
+for _ in list_3.len().range() {
     # Removes the first element of the list
     list_3.pop_front();
     println(list_3);
@@ -99,3 +99,12 @@ demo.join("-");
 
 demo.insert(1, 42);
 demo.remove(1);
+
+let iter = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+let output = "";
+
+for element in iter {
+    output += element
+}
+
+assert(output == '0123456789');

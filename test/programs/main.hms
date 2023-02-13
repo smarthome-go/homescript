@@ -36,7 +36,6 @@ let exec_result = exec(
     #...                    # Many more arguments (or even none) are legal
 );
 println(                      # The result is an object
-    exec_result.output,     # The println-output of the script
     exec_result.elapsed,    # The elapsed runtime (in seconds)
     exec_result.value       # The scripts return value (value of last statement)
 );

@@ -5,8 +5,3 @@ fn fib(n) {
         fib(n - 1) + fib (n - 2)
     }
 };
-
-# Calculate some fibonacci numbers
-for n in 2..24 {
-    println(fib(n))
-};

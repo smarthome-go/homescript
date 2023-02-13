@@ -69,8 +69,8 @@ var tests = []test{
 		ExpectedValueType: homescript.TypeNull,
 		ExpectedErrors: []testError{
 			{
-				Kind:    errors.RuntimeError,
-				Message: "Illegal import: circular import detected",
+				Kind:    errors.ImportError,
+				Message: "illegal import: circular import detected",
 			},
 		},
 	},
@@ -80,7 +80,7 @@ var tests = []test{
 		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
-		ExpectedValueType: homescript.TypeNumber,
+		ExpectedValueType: homescript.TypeNull,
 		ExpectedErrors:    nil,
 	},
 	{
@@ -129,13 +129,18 @@ var tests = []test{
 		ExpectedErrors:    nil,
 	},
 	{
-		Name:              "Analyzer",
-		File:              "./test/programs/analyzer.hms",
+		Name:              "Import",
+		File:              "./test/programs/import.hms",
 		Skip:              false,
 		Debug:             false,
 		ExpectedCode:      0,
 		ExpectedValueType: homescript.TypeNull,
-		ExpectedErrors:    nil,
+		ExpectedErrors: []testError{
+			{
+				Kind:    errors.Warning,
+				Message: "Using the `as` keyword is currently unstable",
+			},
+		},
 	},
 	{
 		Name:              "Iterators",
@@ -225,7 +230,7 @@ func TestHomescripts(t *testing.T) {
 				if displayErr != nil {
 					panic(fmt.Sprintf("Display error: %v: %s", displayErr.Kind, displayErr.Message))
 				}
-				t.Errorf("Unexpected value: Type: %v | Value: %s\n", value.Type(), valueStr)
+				t.Errorf("Unexpected value: (Type: %v | Value: %s), expected: (Type: %v)\n", value.Type(), valueStr, test.ExpectedValueType)
 				return
 			}
 

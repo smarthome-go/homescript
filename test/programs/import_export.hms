@@ -1,7 +1,7 @@
-fn import_me(foo, bar) {
+fn import_me_old(foo, bar) {
     println(foo, bar);
 };
 
-import import_me as broken_import from import_export;
+import import_me from import_export;
 
-broken_import(1, 2);
+import_me(1, 2);

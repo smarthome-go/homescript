@@ -356,9 +356,38 @@ func (self *Analyzer) visitStatements(items []StatementOrExpr) (Result, *errors.
 		}
 
 		if item.IsStatement() {
-			_, err := self.visitStatement(item.Statement)
+			res, err := self.visitStatement(item.Statement)
 			if err != nil {
 				return Result{}, err
+			}
+
+			// Handle potential break or return statements
+			if res.BreakValue != nil {
+				// Check if the use of break is legal here
+				if !self.getScope().inLoop {
+					self.issue(item.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
+				} else {
+					unreachable = true
+				}
+			}
+
+			// Check if the use of continue is legal here
+			if res.ShouldContinue {
+				if !self.getScope().inLoop {
+					self.issue(item.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
+				} else {
+					unreachable = true
+				}
+			}
+
+			// Handle potential break or return statements
+			if res.ReturnValue != nil {
+				// Check if the use of return is legal here
+				if !self.getScope().inFunction {
+					self.issue(item.Span(), "Can only use the return statement iside function bodies", errors.SyntaxError)
+				} else {
+					unreachable = true
+				}
 			}
 		} else {
 			result, err := self.visitExpression(*item.Expression)
@@ -366,36 +395,6 @@ func (self *Analyzer) visitStatements(items []StatementOrExpr) (Result, *errors.
 				return Result{}, err
 			}
 			lastResult = result
-		}
-
-		// Handle potential break or return statements
-		if lastResult.BreakValue != nil {
-			// Check if the use of break is legal here
-			if !self.getScope().inLoop {
-				self.issue(item.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
-			} else {
-				unreachable = true
-			}
-		}
-
-		// If continue is used, return null for this iteration
-		if lastResult.ShouldContinue {
-			// Check if the use of continue is legal here
-			if !self.getScope().inLoop {
-				self.issue(item.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
-			} else {
-				unreachable = true
-			}
-		}
-
-		// Handle potential break or return statements
-		if lastResult.ReturnValue != nil {
-			// Check if the use of return is legal here
-			if !self.getScope().inFunction {
-				self.issue(item.Span(), "Can only use the return statement iside function bodies", errors.SyntaxError)
-			} else {
-				unreachable = true
-			}
 		}
 	}
 	if lastResult.BreakValue != nil {

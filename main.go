@@ -53,6 +53,7 @@ func main() {
 	defer fmt.Printf("Program terminated with exit-code %d\n", code)
 
 	for _, err := range hmsErrors {
+		fmt.Printf("%v\n", err)
 		fmt.Println(err.Display(string(program), os.Args[1]))
 	}
 }
