@@ -61,8 +61,6 @@ func (self ValueRange) IsEqual(executor Executor, span errors.Span, other Value)
 	return otherRange.Start == self.Start && otherRange.End == self.End, nil
 }
 func (self *ValueRange) Next(val *Value) bool {
-	return true
-
 	if self.Current == nil {
 		self.IterReset()
 	}
