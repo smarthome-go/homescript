@@ -18,18 +18,18 @@
 (*
   Start symbol: Program consists of any amount of <Statement>s each followed by a ';'
 *)
-Program = { Statement , ';' } ;
+Program = { Statement } ;
 
 (* ************************ *)
 (* ****** STATEMENTS ****** *)
 (* ************************ *)
-Statement = LetStmt | ImportStmt | BreakStmt | ContinueStmt | ReturnStmt | Expression ;
+Statement = LetStmt | ImportStmt | BreakStmt | ContinueStmt | ReturnStmt | ExprStatement ;
 (*
   A <LetStmt> is used to create new variables in the current scope. Variables propagate up to inner
   scopes, but can be shadowed by declaring a new variable with the same name. When no expression is
   provided, a value of `null` will be assigned to the new variable.
 *)
-LetStmt   = 'let' , identifier , [ '=' , Expression ] ;
+LetStmt   = 'let' , identifier , [ '=' , Expression ] , ';' ;
 
 (*
   A <ImportStmt> is used to bring a function from another Homescript into the current scope. Such
@@ -39,26 +39,29 @@ LetStmt   = 'let' , identifier , [ '=' , Expression ] ;
   in the current scope, `as` can be used to import the target function under a different specified
   name.
 *)
-ImportStmt = 'import' , identifier , [ 'as' , identifier ] , 'from' , identifier ;
+ImportStmt = 'import' , identifier , [ 'as' , identifier ] , 'from' , identifier , ';' ;
 
 (*
   A <BreakStmt> is used to stop a loop entirely. It can optionally be followed by an expression that
   will be used as the loop's resulting value.
 *)
-BreakStmt    = 'break' , [ Expression ] ;
+BreakStmt    = 'break' , [ Expression ] , ';' ;
 (*
   A <ContinueStmt> is used to skip to the next iteration of the current loop.
 *)
-ContinueStmt = 'continue' ;
+ContinueStmt = 'continue' , ';' ;
 (*
   A <ReturnStmt> is used to stop the currently running function. It can optionally be followed by an
   expression that will be used as the function's return value.
 *)
-ReturnStmt   = 'return' , [ Expression ] ;
+ReturnStmt   = 'return' , [ Expression ] , ';' ;
 
 (* ************************* *)
 (* ****** EXPRESSIONS ****** *)
 (* ************************* *)
+ExprStatement = ExprWithBlock
+              | Expression , ';' ;
+
 Expression      = OrExpr ;
 OrExpr          = AndExpr , { '||' , AndExpr } ;
 AndExpr         = EqExpr , { '&&' , EqExpr } ;
@@ -93,16 +96,12 @@ Atom            = number
                 | string
                 | ListLiteral
                 | PairExpr (* <- also starts with <string>, but identifiable by the following `=>` *)
-                | ObjExpr
                 | 'null'
                 | identifier
-                | IfExpr
-                | ForExpr
-                | WhileExpr
-                | LoopExpr
-                | FnExpr
-                | TryExpr
-                | '(' , Expression , ')' ;
+                | '(' , Expression , ')'
+                | ExprWithoutBlock ;
+
+ExprWithoutBlock = LoopExpr | WhileExpr | ForExpr | IfExpr | FnExpr | TryExpr | ObjExpr ;
 
 (*
   A <ListLiteral> creates a value of type `List` given an arbitraty amount of <Expression>
@@ -152,7 +151,7 @@ ObjField = identifier , ':' , Expression ;
   A <Block> always creates a new scope for variables. It contains a sequence of <Statement>s and
   returns the result of the one after the last semicolon, or `null` otherwise.
 *)
-Block  = '{' , Program , '}' ;
+Block  = '{' , Program , [ Expression ] '}' ;
 (*
   An <IfExpr> checks a condition and executes code based on whether that condition evaluates to
   `true` or `false`. The resulting value is the result of the executed

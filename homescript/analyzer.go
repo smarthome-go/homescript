@@ -9,7 +9,7 @@ import (
 )
 
 type Analyzer struct {
-	program  []Statement
+	program  []StatementOrExpr
 	executor Executor
 
 	// Scope stack: manages scopes (is searched in to (p -> down order)
@@ -208,7 +208,7 @@ func throwDummy(executor Executor, span errors.Span, args ...Value) (Value, *int
 }
 
 func NewAnalyzer(
-	program []Statement,
+	program []StatementOrExpr,
 	executor Executor,
 	scopeAdditions map[string]Value, // Allows the user to add more entries to the scope
 	moduleStack []string,
@@ -258,6 +258,7 @@ func NewAnalyzer(
 		// Insert the value into the scope
 		scopes[0].this[key] = &value
 	}
+
 	return Analyzer{
 		program:     program,
 		executor:    executor,
@@ -344,27 +345,34 @@ func (self *Analyzer) analyze() ([]Diagnostic, map[string]*Value) {
 }
 
 // Interpreter code
-func (self *Analyzer) visitStatements(statements []Statement) (Result, *errors.Error) {
+func (self *Analyzer) visitStatements(items []StatementOrExpr) (Result, *errors.Error) {
 	lastResult := makeNullResult(errors.Span{})
 
 	unreachable := false
-	for _, statement := range statements {
+	for _, item := range items {
 		// Check if statement is unreachable
 		if unreachable {
-			self.warn(statement.Span(), "unreachable statement")
+			self.warn(item.Span(), "unreachable statement")
 		}
 
-		result, err := self.visitStatement(statement)
-		if err != nil {
-			return Result{}, err
+		if item.IsStatement() {
+			_, err := self.visitStatement(item.Statement)
+			if err != nil {
+				return Result{}, err
+			}
+		} else {
+			result, err := self.visitExpression(*item.Expression)
+			if err != nil {
+				return Result{}, err
+			}
+			lastResult = result
 		}
-		lastResult = result
 
 		// Handle potential break or return statements
 		if lastResult.BreakValue != nil {
 			// Check if the use of break is legal here
 			if !self.getScope().inLoop {
-				self.issue(statement.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
+				self.issue(item.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
 			} else {
 				unreachable = true
 			}
@@ -374,7 +382,7 @@ func (self *Analyzer) visitStatements(statements []Statement) (Result, *errors.E
 		if lastResult.ShouldContinue {
 			// Check if the use of continue is legal here
 			if !self.getScope().inLoop {
-				self.issue(statement.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
+				self.issue(item.Span(), "Can only use the break statement iside loops", errors.SyntaxError)
 			} else {
 				unreachable = true
 			}
@@ -384,7 +392,7 @@ func (self *Analyzer) visitStatements(statements []Statement) (Result, *errors.E
 		if lastResult.ReturnValue != nil {
 			// Check if the use of return is legal here
 			if !self.getScope().inFunction {
-				self.issue(statement.Span(), "Can only use the return statement iside function bodies", errors.SyntaxError)
+				self.issue(item.Span(), "Can only use the return statement iside function bodies", errors.SyntaxError)
 			} else {
 				unreachable = true
 			}
@@ -424,12 +432,6 @@ func (self *Analyzer) visitStatement(node Statement) (Result, *errors.Error) {
 }
 
 func (self *Analyzer) visitLetStatement(node LetStmt) (Result, *errors.Error) {
-	// Check that the left hand side will cause no conflicts
-	_, exists := self.getScope().this[node.Left.Identifier]
-	if exists {
-		self.issue(node.Range, fmt.Sprintf("cannot declare variable with name %s: name already taken in scope", node.Left.Identifier), errors.SyntaxError)
-		return Result{}, nil
-	}
 	// Evaluate the right hand side
 	rightResult, err := self.visitExpression(node.Right)
 	if err != nil {
@@ -1609,7 +1611,8 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 	); err != nil {
 		return Result{}, err
 	}
-	_, err := self.visitStatements(node.TryBlock)
+
+	_, err := self.visitStatements(node.TryBlock.IntoItemsList())
 	if err != nil {
 		return Result{}, err
 	}
@@ -1655,7 +1658,7 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 		// TODO: improve location here
 	}, node.Range)
 	// Always visit the catch block
-	_, err = self.visitStatements(node.CatchBlock)
+	_, err = self.visitStatements(node.CatchBlock.IntoItemsList())
 	if err != nil {
 		return Result{}, err
 	}
@@ -1704,7 +1707,7 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 	); err != nil {
 		return Result{}, err
 	}
-	_, err = self.visitStatements(node.Block)
+	_, err = self.visitStatements(node.Block.IntoItemsList())
 	if err != nil {
 		return Result{}, err
 	}
@@ -1730,7 +1733,7 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 		return Result{}, err
 	}
 
-	_, err = self.visitStatements(*node.ElseBlock)
+	_, err = self.visitStatements((*node.ElseBlock).IntoItemsList())
 	if err != nil {
 		return Result{}, err
 	}
@@ -1802,7 +1805,7 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 	// Add the head identifier to the scope (so that loop code can access the iteration variable)
 	self.addVar(node.HeadIdentifier.Identifier, next, node.HeadIdentifier.Span)
 
-	_, err = self.visitStatements(node.IterationCode)
+	_, err = self.visitStatements(node.IterationCode.IntoItemsList())
 	if err != nil {
 		return Result{}, err
 	}
@@ -1838,7 +1841,7 @@ func (self *Analyzer) visitWhileExpression(node AtomWhile) (Result, *errors.Erro
 		return Result{}, err
 	}
 
-	_, err = self.visitStatements(node.IterationCode)
+	_, err = self.visitStatements(node.IterationCode.IntoItemsList())
 	if err != nil {
 		return Result{}, err
 	}
@@ -1860,7 +1863,7 @@ func (self *Analyzer) visitLoopExpression(node AtomLoop) (Result, *errors.Error)
 		return Result{}, err
 	}
 
-	_, err := self.visitStatements(node.IterationCode)
+	_, err := self.visitStatements(node.IterationCode.IntoItemsList())
 	if err != nil {
 		return Result{}, err
 	}
@@ -1956,7 +1959,7 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 		}
 
 		// Visit the function's body
-		returnValue, err := self.visitStatements(function.Body)
+		returnValue, err := self.visitStatements(function.Body.IntoItemsList())
 		if err != nil {
 			return nil, err
 		}
@@ -2098,7 +2101,7 @@ func (self *Analyzer) popScope() *errors.Error {
 				for _, param := range value.(ValueFunction).Args {
 					self.addVar(param.Identifier, nil, value.Span())
 				}
-				if _, err := self.visitStatements(value.(ValueFunction).Body); err != nil {
+				if _, err := self.visitStatements(value.(ValueFunction).Body.IntoItemsList()); err != nil {
 					return err
 				}
 				// Check if there are unused arguments

@@ -1864,18 +1864,42 @@ func (self *parser) returnStmt() (ReturnStmt, *errors.Error) {
 	}, nil
 }
 
-func (self *parser) statement() (Statement, *errors.Error) {
+func (self *parser) statement() (StatementOrExpr, *errors.Error) {
+	var stmt Statement
+	var expr Expression
+	isExpr := false
+
 	switch self.currToken.Kind {
 	case Let:
-		return self.letStmt()
+		res, err := self.letStmt()
+		if err != nil {
+			return StatementOrExpr{}, err
+		}
+		stmt = res
 	case Import:
-		return self.importStmt()
+		res, err := self.importStmt()
+		if err != nil {
+			return StatementOrExpr{}, err
+		}
+		stmt = res
 	case Break:
-		return self.breakStmt()
+		res, err := self.breakStmt()
+		if err != nil {
+			return StatementOrExpr{}, err
+		}
+		stmt = res
 	case Continue:
-		return self.continueStmt()
+		res, err := self.continueStmt()
+		if err != nil {
+			return StatementOrExpr{}, err
+		}
+		stmt = res
 	case Return:
-		return self.returnStmt()
+		res, err := self.returnStmt()
+		if err != nil {
+			return StatementOrExpr{}, err
+		}
+		stmt = res
 	default:
 		canBeExpr := false
 		for _, possible := range firstExpr {
@@ -1884,28 +1908,60 @@ func (self *parser) statement() (Statement, *errors.Error) {
 				break
 			}
 		}
-		if canBeExpr {
-			expr, err := self.expression()
-			if err != nil {
-				return nil, err
-			}
-			return ExpressionStmt{
-				Expression: expr,
-			}, nil
+		if !canBeExpr {
+			return StatementOrExpr{}, &errors.Error{
+				Kind:    errors.SyntaxError,
+				Message: fmt.Sprintf("Invalid expression: expected one of %d tokens, found %v", len(firstExpr), self.currToken.Kind),
+				Span: errors.Span{
+					Start: self.currToken.StartLocation,
+					End:   self.currToken.EndLocation,
+				}}
 		}
-		return nil, &errors.Error{
-			Kind:    errors.SyntaxError,
-			Message: fmt.Sprintf("Invalid expression: expected one of %d tokens, found %v", len(firstExpr), self.currToken.Kind),
-			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+
+		res, err := self.expression()
+		if err != nil {
+			return StatementOrExpr{}, err
+		}
+		isExpr = true
+		expr = res
+	}
+
+	if self.currToken.Kind == Semicolon {
+		if err := self.advance(); err != nil {
+			return StatementOrExpr{}, err
+		}
+		if isExpr {
+			stmt = ExpressionStmt{Expression: expr}
+		}
+	} else if !isExpr {
+		// Only report an error if the last node had no block
+
+		end := self.prevToken.EndLocation
+		// Increments the end column so that a missing semicolon is marked where it was expected
+		end.Column++
+
+		// Try to skip this error
+		self.errors = append(self.errors,
+			errors.Error{
+				Kind:    errors.SyntaxError,
+				Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
+				Span: errors.Span{
+					Start: end,
+					End:   end,
+				},
 			},
-		}
+		)
+	}
+
+	if stmt != nil {
+		return StatementOrExpr{Statement: stmt, Expression: nil}, nil
+	} else {
+		return StatementOrExpr{Statement: nil, Expression: &expr}, nil
 	}
 }
 
-func (self *parser) statements(insideCurlyBlock bool) ([]Statement, *errors.Error) {
-	statements := make([]Statement, 0)
+func (self *parser) statements(insideCurlyBlock bool) ([]StatementOrExpr, *errors.Error) {
+	statements := make([]StatementOrExpr, 0)
 
 	// If statements is invoked in an empty block or at the end of the file, quit immediately
 	if self.currToken.Kind == EOF || self.currToken.Kind == RCurly {
@@ -1922,28 +1978,19 @@ func (self *parser) statements(insideCurlyBlock bool) ([]Statement, *errors.Erro
 		if err != nil {
 			return nil, err
 		}
-		statements = append(statements, statement)
-
-		if self.currToken.Kind == Semicolon {
-			if err := self.advance(); err != nil {
-				return nil, err
-			}
-		} else {
-			end := self.prevToken.EndLocation
-			// Increments the end column so that a missing semicolon is marked where it was expected
-			end.Column++
-
-			// Try to skip this error
+		if statement.Expression != nil && self.prevToken.Kind != RCurly {
 			self.errors = append(self.errors,
 				errors.Error{
 					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
 					Span: errors.Span{
-						Start: end,
-						End:   end,
+						Start: self.prevToken.StartLocation,
+						End:   self.prevToken.EndLocation,
 					},
 				},
 			)
+		} else {
+			statements = append(statements, statement)
 		}
 	}
 
@@ -1963,18 +2010,46 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 		)
 	} else {
 		if err := self.advance(); err != nil {
-			return nil, err
+			return Block{}, err
 		}
 	}
 
-	// Invoke statements with the curly block flag
-	statements, err := self.statements(true)
-	if err != nil {
-		return nil, err
+	statements := make([]Statement, 0)
+	var expr *Expression
+
+	// Make additional statements
+	for {
+		if self.currToken.Kind == RCurly || self.currToken.Kind == EOF {
+			break
+		}
+
+		if expr != nil && self.prevToken.Kind != RCurly {
+			self.errors = append(self.errors,
+				errors.Error{
+					Kind:    errors.SyntaxError,
+					Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
+					Span: errors.Span{
+						Start: expr.Span.Start,
+						End:   expr.Span.End,
+					},
+				},
+			)
+		}
+
+		statement, err := self.statement()
+		if err != nil {
+			return Block{}, err
+		}
+
+		if statement.Expression != nil {
+			expr = statement.Expression
+		} else {
+			statements = append(statements, statement.Statement)
+		}
 	}
 
 	if self.currToken.Kind != RCurly {
-		return nil, &errors.Error{
+		return Block{}, &errors.Error{
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Invalid block: expected %v, found %v", RCurly, self.currToken.Kind),
 			Span: errors.Span{
@@ -1984,13 +2059,13 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 		}
 	}
 	if err := self.advance(); err != nil {
-		return nil, err
+		return Block{}, err
 	}
-	return statements, nil
+	return Block{Statements: statements, Expr: expr}, nil
 }
 
 // Returns the ast, any errors an an indication whether the error was critical
-func (self *parser) parse() ([]Statement, []errors.Error, bool) {
+func (self *parser) parse() ([]StatementOrExpr, []errors.Error, bool) {
 	if err := self.advance(); err != nil {
 		self.errors = append(self.errors, *err)
 		return nil, self.errors, true

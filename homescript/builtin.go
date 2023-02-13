@@ -807,17 +807,40 @@ func Fmt(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 		return nil, nil, errors.NewError(span, "First argument of function `fmt` must be of type string", errors.TypeError)
 	}
 	displays := make([]any, 0)
+
 	for idx, arg := range args {
 		if idx == 0 {
 			continue
 		}
-		res, err := arg.Display(executor, span)
-		if err != nil {
-			return nil, nil, err
+
+		var out any
+
+		switch arg.Type() {
+		case TypeNull:
+			out = "null"
+		case TypeNumber:
+			num := arg.(ValueNumber).Value
+			if float64(int(num)) == num {
+				out = int(num)
+			} else {
+				out = num
+			}
+		case TypeBoolean:
+			out = arg.(ValueBool).Value
+		case TypeString:
+			out = arg.(ValueString).Value
+		default:
+			display, err := arg.Display(executor, span)
+			if err != nil {
+				return nil, nil, err
+			}
+			out = display
 		}
-		displays = append(displays, res)
+
+		displays = append(displays, out)
 	}
 
 	out := fmt.Sprintf(args[0].(ValueString).Value, displays...)
+
 	return ValueString{Value: out, Range: span}, nil, nil
 }

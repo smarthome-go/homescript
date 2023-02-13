@@ -196,7 +196,7 @@ type ValueFunction struct {
 		Identifier string
 		Span       errors.Span
 	}
-	Body        []Statement
+	Body        Block
 	Range       errors.Span
 	IsProtected bool
 }

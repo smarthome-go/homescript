@@ -4,7 +4,41 @@ import (
 	"github.com/smarthome-go/homescript/v2/homescript/errors"
 )
 
-type Block []Statement
+type Block struct {
+	Statements []Statement
+	Expr       *Expression
+}
+
+func (self Block) IntoItemsList() []StatementOrExpr {
+	list := make([]StatementOrExpr, 0)
+
+	for _, statement := range self.Statements {
+		list = append(list, StatementOrExpr{Statement: statement})
+	}
+
+	if self.Expr != nil {
+		list = append(list, StatementOrExpr{Expression: self.Expr})
+	}
+
+	return list
+}
+
+type StatementOrExpr struct {
+	Statement  Statement
+	Expression *Expression
+}
+
+func (self StatementOrExpr) Span() errors.Span {
+	if self.Statement != nil {
+		return self.Statement.Span()
+	} else {
+		return self.Expression.Span
+	}
+}
+
+func (self StatementOrExpr) IsStatement() bool {
+	return self.Statement != nil
+}
 
 // ///// Statements ///////
 type StatementKind uint8
