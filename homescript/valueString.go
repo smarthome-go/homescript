@@ -80,6 +80,11 @@ func (self ValueString) Fields() map[string]*Value {
 				if err := checkArgs("parse_json", span, args); err != nil {
 					return nil, nil, err
 				}
+
+				if executor.IsAnalyzer() {
+					return nil, nil, nil
+				}
+
 				var raw interface{}
 				if err := json.Unmarshal([]byte(self.Value), &raw); err != nil {
 					return nil, nil, errors.NewError(span, err.Error(), errors.ValueError)
@@ -88,6 +93,7 @@ func (self ValueString) Fields() map[string]*Value {
 				if err != nil {
 					return nil, nil, err
 				}
+
 				return value, nil, nil
 			},
 		}),

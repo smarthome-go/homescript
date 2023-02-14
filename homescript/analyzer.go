@@ -1760,7 +1760,7 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 		elseType = (*resElse.Value).Type()
 	}
 
-	if ifType != TypeUnknown && elseType != TypeUnknown && ifType != elseType {
+	if ifType != TypeUnknown && elseType != TypeUnknown && ifType != TypeNull && elseType != TypeNull && ifType != elseType {
 		var elseSpan errors.Span
 
 		if len(elseStmts) > 0 {

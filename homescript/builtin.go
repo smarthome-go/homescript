@@ -759,7 +759,6 @@ func Storage(executor Executor, _ errors.Span) (Value, *errors.Error) {
 				if value != nil {
 					return ValueString{Value: *value, Range: span}, nil, nil
 				} else {
-
 					return ValueNull{Range: span}, nil, nil
 				}
 			}}),

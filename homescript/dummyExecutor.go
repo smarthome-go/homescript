@@ -21,6 +21,8 @@ func (self DummyExecutor) ResolveModule(id string) (string, bool, bool, error) {
 	return string(file), true, true, nil
 }
 
+func (self DummyExecutor) IsAnalyzer() bool { return false }
+
 func (self DummyExecutor) Sleep(sleepTime float64) {
 	time.Sleep(time.Duration(sleepTime * 1000 * float64(time.Millisecond)))
 }
@@ -114,6 +116,8 @@ func (self DummyExecutor) SetStorage(key string, value string) error {
 ///							///
 
 type AnalyzerDummyExecutor struct{}
+
+func (self AnalyzerDummyExecutor) IsAnalyzer() bool { return true }
 
 func (self AnalyzerDummyExecutor) ResolveModule(id string) (string, bool, bool, error) {
 	path := "test/programs/" + id + ".hms"

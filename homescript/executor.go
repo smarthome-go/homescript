@@ -73,6 +73,7 @@ type Executor interface {
 	Http(url string, method string, body string, headers map[string]string) (HttpResponse, error)
 	GetStorage(key string) (*string, error)
 	SetStorage(key string, value string) error
+	IsAnalyzer() bool
 
 	// Builtin variables
 	GetUser() string
