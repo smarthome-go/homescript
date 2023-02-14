@@ -1732,7 +1732,7 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 	if self.currToken.Kind == As {
 		//// TODO: implement alias imports correctly ////
 		return ImportStmt{}, &errors.Error{
-			Kind:    errors.Warning,
+			Kind:    errors.SyntaxError,
 			Message: "Using the `as` keyword is currently unstable",
 			Span: errors.Span{
 				Start: self.currToken.StartLocation,
@@ -1745,6 +1745,7 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 		if err := self.advance(); err != nil {
 			return ImportStmt{}, err
 		}
+
 		if self.currToken.Kind != Identifier {
 			return ImportStmt{}, &errors.Error{
 				Kind:    errors.SyntaxError,
