@@ -98,7 +98,8 @@ func NewInterpreter(
 			panic(fmt.Sprintf("cannot insert scope addition with key %s: this key is already taken by a builtin value", key))
 		}
 		// Insert the value into the scope
-		scopes[0][key] = valPtr(value)
+		var temp Value = value
+		scopes[0][key] = &temp
 	}
 	// Append the current script to the module stack
 	moduleStack = append(moduleStack, moduleName)

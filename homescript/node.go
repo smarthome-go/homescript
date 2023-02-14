@@ -7,6 +7,7 @@ import (
 type Block struct {
 	Statements []Statement
 	Expr       *Expression
+	Span       errors.Span
 }
 
 func (self Block) IntoItemsList() []StatementOrExpr {

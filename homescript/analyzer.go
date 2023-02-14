@@ -250,13 +250,17 @@ func NewAnalyzer(
 	)
 	// Add the optional scope entries
 	for key, value := range scopeAdditions {
+		if !value.Protected() {
+			panic(fmt.Sprintf("Cannot insert scope addition with key `%s`: value is not marked as protected", key))
+		}
 		// Check if the isertion would be legal
 		_, exists := scopes[0].this[key]
 		if exists {
-			panic(fmt.Sprintf("Cannot insert scope addition with key %s: this key is already taken by a builtin value", key))
+			panic(fmt.Sprintf("Cannot insert scope addition with key `%s`: this key is already taken by a builtin value", key))
 		}
 		// Insert the value into the scope
-		scopes[0].this[key] = &value
+		var temp Value = value
+		scopes[0].this[key] = &temp
 	}
 
 	return Analyzer{
@@ -1696,6 +1700,8 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 		return Result{}, err
 	}
 
+	ifStmts := node.Block.IntoItemsList()
+
 	// If branch
 	if err := self.pushScope(
 		self.getScope().identifier,
@@ -1706,7 +1712,7 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 	); err != nil {
 		return Result{}, err
 	}
-	_, err = self.visitStatements(node.Block.IntoItemsList())
+	resIf, err := self.visitStatements(ifStmts)
 	if err != nil {
 		return Result{}, err
 	}
@@ -1717,8 +1723,16 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 		return self.visitIfExpression(*node.ElseIfExpr)
 	}
 
+	var ifType ValueType
+	if resIf.Value != nil && *resIf.Value != nil {
+		ifType = (*resIf.Value).Type()
+	}
+
 	// Else branch
 	if node.ElseBlock == nil {
+		if ifType != TypeNull {
+			self.issue(node.Block.Span, fmt.Sprintf("Expected `else` block with `%v` result type", ifType), errors.TypeError)
+		}
 		return Result{}, nil
 	}
 
@@ -1732,12 +1746,47 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 		return Result{}, err
 	}
 
-	_, err = self.visitStatements((*node.ElseBlock).IntoItemsList())
+	resElse, err := self.visitStatements((*node.ElseBlock).IntoItemsList())
 	if err != nil {
 		return Result{}, err
 	}
 	self.popScope()
-	return Result{}, nil
+
+	elseStmts := node.ElseBlock.IntoItemsList()
+
+	var elseType ValueType
+
+	if resElse.Value != nil && *resElse.Value != nil {
+		elseType = (*resElse.Value).Type()
+	}
+
+	if ifType != TypeUnknown && elseType != TypeUnknown && ifType != elseType {
+		var elseSpan errors.Span
+
+		if len(elseStmts) > 0 {
+			elseSpan = elseStmts[len(elseStmts)-1].Span()
+		} else {
+			elseSpan = node.ElseBlock.Span
+		}
+
+		var ifSpan errors.Span
+
+		if len(ifStmts) > 0 {
+			ifSpan = ifStmts[len(ifStmts)-1].Span()
+		} else {
+			ifSpan = node.Block.Span
+		}
+
+		self.diagnosticError(errors.Error{
+			Span:    elseSpan,
+			Message: fmt.Sprintf("Mismatched types: expected `%v`, found `%v`", ifType, elseType),
+			Kind:    errors.TypeError,
+		})
+		self.info(ifSpan, "expected due to this")
+		return Result{}, nil
+	}
+
+	return Result{Value: resIf.Value}, nil
 }
 
 func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {

@@ -1995,7 +1995,7 @@ func (self *parser) statements(insideCurlyBlock bool) ([]StatementOrExpr, *error
 			self.errors = append(self.errors,
 				errors.Error{
 					Kind:    errors.SyntaxError,
-					Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
+					Message: fmt.Sprintf("A Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
 					Span: errors.Span{
 						Start: self.prevToken.StartLocation,
 						End:   self.prevToken.EndLocation,
@@ -2011,6 +2011,8 @@ func (self *parser) statements(insideCurlyBlock bool) ([]StatementOrExpr, *error
 }
 
 func (self *parser) curlyBlock() (Block, *errors.Error) {
+	startLoc := self.currToken.StartLocation
+
 	if self.currToken.Kind != LCurly {
 		self.errors = append(self.errors, errors.Error{
 			Kind:    errors.SyntaxError,
@@ -2057,6 +2059,10 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 		if statement.Expression != nil {
 			expr = statement.Expression
 		} else {
+			if expr != nil {
+				statements = append(statements, ExpressionStmt{Expression: *expr})
+				expr = nil
+			}
 			statements = append(statements, statement.Statement)
 		}
 	}
@@ -2074,7 +2080,10 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 	if err := self.advance(); err != nil {
 		return Block{}, err
 	}
-	return Block{Statements: statements, Expr: expr}, nil
+	return Block{Statements: statements, Expr: expr, Span: errors.Span{
+		Start: startLoc,
+		End:   self.prevToken.EndLocation,
+	}}, nil
 }
 
 // Returns the ast, any errors an an indication whether the error was critical

@@ -15,12 +15,12 @@ func main() {
 	}
 	sigTerm := make(chan int)
 
-	_, _, _ = homescript.Analyze(
+	diagnostics, _, _ := homescript.Analyze(
 		homescript.AnalyzerDummyExecutor{},
 		string(program),
 		map[string]homescript.Value{
-			"power_on": homescript.ValueBool{Value: true},
-			"PI":       homescript.ValueNumber{Value: 3.14159265},
+			"power_on": homescript.ValueBool{Value: true, IsProtected: true},
+			"PI":       homescript.ValueNumber{Value: 3.14159265, IsProtected: true},
 			"test": homescript.ValueBuiltinFunction{
 				Callback: func(_ homescript.Executor, _ errors.Span, _ ...homescript.Value) (homescript.Value, *int, *errors.Error) {
 					return homescript.ValueNull{}, nil, nil
@@ -31,14 +31,27 @@ func main() {
 		"main",
 	)
 
+	hasError := false
+	for _, err := range diagnostics {
+		fmt.Println(err.Display(string(program), os.Args[1]))
+		if err.Severity == homescript.Error {
+			hasError = true
+		}
+	}
+
+	if hasError {
+		fmt.Println("Analyzer detected errors")
+		return
+	}
+
 	_, code, _, hmsErrors := homescript.Run(
 		homescript.DummyExecutor{},
 		&sigTerm,
 		string(program),
 		make(map[string]homescript.Value),
 		map[string]homescript.Value{
-			"power_on": homescript.ValueBool{Value: true},
-			"PI":       homescript.ValueNumber{Value: 3.14159265},
+			"power_on": homescript.ValueBool{Value: true, IsProtected: true},
+			"PI":       homescript.ValueNumber{Value: 3.14159265, IsProtected: true},
 			"test": homescript.ValueBuiltinFunction{
 				Callback: func(_ homescript.Executor, _ errors.Span, _ ...homescript.Value) (homescript.Value, *int, *errors.Error) {
 					return homescript.ValueNull{}, nil, nil
@@ -50,10 +63,10 @@ func main() {
 		make([]string, 0),
 		"main",
 	)
-	defer fmt.Printf("Program terminated with exit-code %d\n", code)
 
 	for _, err := range hmsErrors {
-		fmt.Printf("%v\n", err)
 		fmt.Println(err.Display(string(program), os.Args[1]))
 	}
+
+	fmt.Printf("Program terminated with exit-code %d\n", code)
 }
