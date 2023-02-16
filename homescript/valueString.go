@@ -224,7 +224,7 @@ func (self ValueString) Rem(executor Executor, span errors.Span, other Value) (V
 func (self ValueString) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
 	return nil, errors.NewError(span, fmt.Sprintf("Unsupported operation on type %v", self.Type()), errors.TypeError)
 }
-func (self *ValueString) Next(val *Value) bool {
+func (self *ValueString) Next(val *Value, span errors.Span) bool {
 	if self.CurrentIterIndex == nil {
 		self.IterReset()
 	}
@@ -235,7 +235,7 @@ func (self *ValueString) Next(val *Value) bool {
 	shouldContinue := *self.CurrentIterIndex <= utf8.RuneCountInString(self.Value)
 
 	if shouldContinue {
-		*val = ValueString{Value: string([]rune(self.Value)[old])}
+		*val = ValueString{Value: string([]rune(self.Value)[old]), Range: span}
 		return true
 	} else {
 		self.IterReset()

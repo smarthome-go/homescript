@@ -402,7 +402,7 @@ func (self ValueList) IsEqual(executor Executor, span errors.Span, other Value) 
 	// If every item so far was equal, return here
 	return true, nil
 }
-func (self *ValueList) Next(val *Value) bool {
+func (self *ValueList) Next(val *Value, span errors.Span) bool {
 	if self.CurrentIterIndex == nil {
 		self.IterReset()
 	}

@@ -469,19 +469,10 @@ func (self *Interpreter) visitRelExression(node RelExpression) (Result, *int, *e
 		return Result{}, code, err
 	}
 
-	// Check that the comparison involves a valid left hand side
-	var baseVal Value
-	switch (*base.Value).Type() {
-	case TypeNumber:
-		baseVal = (*base.Value).(ValueNumber)
-	case TypeBuiltinVariable:
-		baseVal = (*base.Value).(ValueBuiltinVariable)
-	default:
-		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("cannot compare %v to %v", (*base.Value).Type(), (*otherValue.Value).Type()), errors.TypeError)
+	baseComp, err := compPrep(*base.Value, *otherValue.Value, node.Span)
+	if err != nil {
+		return Result{}, nil, err
 	}
-
-	// Perform typecast so that comparison operators can be used
-	baseComp := baseVal.(ValueRelational)
 
 	// Is later filled and evaluated once the correct check has been performed
 	var relConditionTrue bool
@@ -517,23 +508,10 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Result, *int, *e
 		return base, nil, nil
 	}
 
-	// Check that the base holds a valid type to perform the requested operations
-	var baseVal Value
-	switch (*base.Value).Type() {
-	case TypeNumber:
-		baseVal = (*base.Value).(ValueNumber)
-	case TypeBuiltinVariable:
-		baseVal = (*base.Value).(ValueBuiltinVariable)
-	case TypeString:
-		baseVal = (*base.Value).(ValueString)
-	case TypeBoolean:
-		baseVal = (*base.Value).(ValueBool)
-	default:
-		return Result{}, nil, errors.NewError(node.Span, fmt.Sprintf("cannot apply operation on type %v", (*base.Value).Type()), errors.TypeError)
+	baseAlg, err := algPrep(*base.Value, node.Span)
+	if err != nil {
+		return Result{}, nil, err
 	}
-
-	// Performs typecase so that the algebraic functions are available on the base type
-	baseAlg := baseVal.(ValueAlg)
 
 	for _, following := range node.Following {
 		// Is later filled and evaluated once the correct operator has been applied
@@ -1241,7 +1219,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	}
 
 	// Get correct iterator closure
-	var iterator func(*Value) bool
+	var iterator func(*Value, errors.Span) bool
 
 	switch (*iter.Value).Type() {
 	case TypeRange:
@@ -1290,7 +1268,7 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 	// Performs the iteration code
 	for {
 		// Loop control code
-		shouldContinue := iterator(&currIter)
+		shouldContinue := iterator(&currIter, node.HeadIdentifier.Span)
 		if !shouldContinue {
 			break
 		}

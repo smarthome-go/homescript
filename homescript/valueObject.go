@@ -159,7 +159,7 @@ func (self ValueObject) IsEqual(executor Executor, span errors.Span, other Value
 	return true, nil
 }
 
-func (self *ValueObject) Next(val *Value) bool {
+func (self *ValueObject) Next(val *Value, span errors.Span) bool {
 	if self.CurrentIterIndex == nil {
 		self.IterReset()
 	}
@@ -177,6 +177,7 @@ func (self *ValueObject) Next(val *Value) bool {
 			Key:         valPtr(makeStr(self.Span(), keys[old])),
 			Value:       self.ObjFields[keys[old]],
 			IsProtected: true,
+			Range:       span,
 		}
 		*val = ret
 		return true

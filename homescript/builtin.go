@@ -594,7 +594,7 @@ func Time(executor Executor, _ errors.Span) (Value, *errors.Error) {
 		ObjFields: map[string]*Value{
 			"now": valPtr(ValueBuiltinFunction{
 				Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-					return createDateObj(time.Now()), nil, nil
+					return CreateDateObj(time.Now()), nil, nil
 				},
 			}),
 			"since": valPtr(ValueBuiltinFunction{Callback: timeSince}),
@@ -616,7 +616,7 @@ func Time(executor Executor, _ errors.Span) (Value, *errors.Error) {
 
 				added := then.AddDate(0, 0, int(days))
 
-				return createDateObj(added), nil, nil
+				return CreateDateObj(added), nil, nil
 			}}),
 			"add_hours": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("time.add_hours", span, args, TypeObject, TypeNumber); err != nil {
@@ -635,7 +635,7 @@ func Time(executor Executor, _ errors.Span) (Value, *errors.Error) {
 
 				added := then.Local().Add(time.Hour * time.Duration(hours))
 
-				return createDateObj(added), nil, nil
+				return CreateDateObj(added), nil, nil
 			}}),
 			"add_minutes": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("time.add_minutes", span, args, TypeObject, TypeNumber); err != nil {
@@ -654,14 +654,14 @@ func Time(executor Executor, _ errors.Span) (Value, *errors.Error) {
 
 				added := then.Local().Add(time.Minute * time.Duration(minutes))
 
-				return createDateObj(added), nil, nil
+				return CreateDateObj(added), nil, nil
 			}}),
 			"sleep": valPtr(ValueBuiltinFunction{Callback: Sleep}),
 		},
 	}, nil
 }
 
-func createDateObj(tm time.Time) Value {
+func CreateDateObj(tm time.Time) Value {
 	_, week := tm.ISOWeek()
 	return ValueObject{
 		DataType: "time",

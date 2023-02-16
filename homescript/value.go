@@ -275,51 +275,177 @@ func (self ValueBuiltinVariable) Protected() bool {
 	return true
 }
 func (self ValueBuiltinVariable) Display(executor Executor, span errors.Span) (string, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return "", err
+	}
+	return val.Display(executor, span)
 }
 func (self ValueBuiltinVariable) Debug(executor Executor, span errors.Span) (string, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return "", err
+	}
+	return val.Debug(executor, span)
 }
 func (self ValueBuiltinVariable) IsTrue(executor Executor, span errors.Span) (bool, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return false, err
+	}
+	return val.IsTrue(executor, span)
 }
 func (self ValueBuiltinVariable) IsEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return false, err
+	}
+	return val.IsEqual(executor, span, other)
 }
 func (self ValueBuiltinVariable) IsLessThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return false, err
+	}
+
+	base, err := compPrep(val, other, span)
+	if err != nil {
+		return false, err
+	}
+
+	return base.IsLessThan(executor, span, other)
 }
 func (self ValueBuiltinVariable) IsLessThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return false, err
+	}
+
+	base, err := compPrep(val, other, span)
+	if err != nil {
+		return false, err
+	}
+
+	return base.IsLessThanOrEqual(executor, span, other)
 }
 func (self ValueBuiltinVariable) IsGreaterThan(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return false, err
+	}
+
+	base, err := compPrep(val, other, span)
+	if err != nil {
+		return false, err
+	}
+
+	return base.IsGreaterThan(executor, span, other)
 }
 func (self ValueBuiltinVariable) IsGreaterThanOrEqual(executor Executor, span errors.Span, other Value) (bool, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return false, err
+	}
+
+	base, err := compPrep(val, other, span)
+	if err != nil {
+		return false, err
+	}
+
+	return base.IsGreaterThanOrEqual(executor, span, other)
 }
 
 func (self ValueBuiltinVariable) Add(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, err
+	}
+
+	base, err := algPrep(val, span)
+	if err != nil {
+		return nil, err
+	}
+
+	return base.Add(executor, span, other)
 }
 
 func (self ValueBuiltinVariable) Sub(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, err
+	}
+
+	base, err := algPrep(val, span)
+	if err != nil {
+		return nil, err
+	}
+
+	return base.Sub(executor, span, other)
 }
 func (self ValueBuiltinVariable) Mul(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, err
+	}
+
+	base, err := algPrep(val, span)
+	if err != nil {
+		return nil, err
+	}
+
+	return base.Mul(executor, span, other)
 }
 func (self ValueBuiltinVariable) Div(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, err
+	}
+
+	base, err := algPrep(val, span)
+	if err != nil {
+		return nil, err
+	}
+
+	return base.Div(executor, span, other)
 }
 func (self ValueBuiltinVariable) IntDiv(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, err
+	}
+
+	base, err := algPrep(val, span)
+	if err != nil {
+		return nil, err
+	}
+
+	return base.IntDiv(executor, span, other)
 }
 func (self ValueBuiltinVariable) Rem(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, err
+	}
+
+	base, err := algPrep(val, span)
+	if err != nil {
+		return nil, err
+	}
+
+	return base.Rem(executor, span, other)
 }
 func (self ValueBuiltinVariable) Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, err
+	}
+
+	base, err := algPrep(val, span)
+	if err != nil {
+		return nil, err
+	}
+
+	return base.Pow(executor, span, other)
 }
 
 // Helper functions for values
@@ -431,4 +557,40 @@ func setValueSpan(value Value, span errors.Span) Value {
 	}
 	// For other types, it is not possible to insert the span, so just return it as is
 	return value
+}
+
+func compPrep(val Value, other Value, span errors.Span) (ValueRelational, *errors.Error) {
+	var baseVal Value
+	switch val.Type() {
+	case TypeNumber:
+		baseVal = val.(ValueNumber)
+	case TypeBuiltinVariable:
+		baseVal = val.(ValueBuiltinVariable)
+	default:
+		return nil, errors.NewError(span, fmt.Sprintf("Cannot compare %v to %v", val.Type(), other.Type()), errors.TypeError)
+	}
+
+	baseComp := baseVal.(ValueRelational)
+	return baseComp, nil
+}
+
+func algPrep(val Value, span errors.Span) (ValueAlg, *errors.Error) {
+	// Check that the base holds a valid type to perform the requested operations
+	var baseVal Value
+	switch val.Type() {
+	case TypeNumber:
+		baseVal = val.(ValueNumber)
+	case TypeBuiltinVariable:
+		baseVal = val.(ValueBuiltinVariable)
+	case TypeString:
+		baseVal = val.(ValueString)
+	case TypeBoolean:
+		baseVal = val.(ValueBool)
+	default:
+		return nil, errors.NewError(span, fmt.Sprintf("Cannot apply operation on type %v", val.Type()), errors.TypeError)
+	}
+
+	// Performs typecase so that the algebraic functions are available on the base type
+	baseAlg := baseVal.(ValueAlg)
+	return baseAlg, nil
 }
