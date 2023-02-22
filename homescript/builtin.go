@@ -77,6 +77,22 @@ func Throw(executor Executor, span errors.Span, args ...Value) (Value, *int, *er
 }
 
 // Asserts that a statement is true, otherwise an error is returned
+func AnalyzerAssert(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+	if len(args) != 1 {
+		return nil, nil, errors.NewError(
+			span,
+			fmt.Sprintf("function 'assert' takes 1 argument but %d were given", len(args)),
+			errors.RuntimeError,
+		)
+	}
+	_, err := args[0].IsTrue(executor, span)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ValueNull{}, nil, nil
+}
+
+// Asserts that a statement is true, otherwise an error is returned
 func Assert(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 	if len(args) != 1 {
 		return nil, nil, errors.NewError(

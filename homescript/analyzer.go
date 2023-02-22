@@ -220,7 +220,7 @@ func NewAnalyzer(
 			// Builtin functions implemented by Homescript
 			"exit":       valPtr(ValueBuiltinFunction{Callback: Exit}),
 			"throw":      valPtr(ValueBuiltinFunction{Callback: throwDummy}),
-			"assert":     valPtr(ValueBuiltinFunction{Callback: Assert}),
+			"assert":     valPtr(ValueBuiltinFunction{Callback: AnalyzerAssert}),
 			"debug":      valPtr(ValueBuiltinFunction{Callback: Debug}),
 			"print":      valPtr(ValueBuiltinFunction{Callback: Print}),
 			"println":    valPtr(ValueBuiltinFunction{Callback: Print}),

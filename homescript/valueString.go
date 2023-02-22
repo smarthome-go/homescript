@@ -178,8 +178,15 @@ func (self ValueString) Display(_ Executor, _ errors.Span) (string, *errors.Erro
 func (self ValueString) Debug(_ Executor, _ errors.Span) (string, *errors.Error) {
 	return fmt.Sprintf("%s (type = string; len = %d)", self.Value, utf8.RuneCountInString(self.Value)), nil
 }
-func (self ValueString) IsTrue(_ Executor, _ errors.Span) (bool, *errors.Error) {
-	return self.Value != "", nil
+func (self ValueString) IsTrue(_ Executor, span errors.Span) (bool, *errors.Error) {
+	switch self.Value {
+	case "true", "on":
+		return true, nil
+	case "false", "off":
+		return false, nil
+	default:
+		return false, errors.NewError(span, "Cannot cast illegal string to boolean value", errors.ValueError)
+	}
 }
 func (self ValueString) IsEqual(_ Executor, span errors.Span, other Value) (bool, *errors.Error) {
 	if other.Type() == TypeNull {
