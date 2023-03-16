@@ -273,8 +273,8 @@ func NewAnalyzer(
 
 // Can be used to create a diagnostic message at the point where the current function was called
 func (self *Analyzer) highlightCaller(kind errors.ErrorKind, errSpan errors.Span) {
-	// Only continue if invoked inside a function
-	if !self.getScope().inFunction {
+	// Only continue if invoked inside a proper function
+	if !self.getScope().inFunction || self.getScope().identifier == nil {
 		return
 	}
 	// Backtracking to the point where the scope is no longer inside a function
@@ -1593,6 +1593,7 @@ func (self *Analyzer) makeObject(node AtomObject) (Result, *errors.Error) {
 		if err != nil {
 			return Result{}, err
 		}
+
 		fields[field.Identifier] = value.Value
 	}
 	return Result{Value: valPtr(ValueObject{
@@ -1688,6 +1689,39 @@ func (self *Analyzer) visitFunctionDeclaration(node AtomFunction) (*Value, *erro
 		// Add the function to the current scope if there are no conflicts
 		// TODO: Improve span here
 		self.addVar(*node.Ident, function, node.Range)
+	} else {
+		// Analyze the function
+		args := make([]string, 0)
+		for _, param := range function.Args {
+			args = append(args, param.Identifier)
+		}
+		lambda := "<lambda>"
+		if err := self.pushScope(&lambda, function.Span(), args, false, true); err != nil {
+			return nil, err
+		}
+		// Add dummy values for the parameters
+		for _, param := range function.Args {
+			self.addVar(param.Identifier, nil, function.Span())
+		}
+		if _, err := self.visitStatements(function.Body.IntoItemsList()); err != nil {
+			return nil, err
+		}
+		// Check if there are unused arguments
+		for _, arg := range function.Args {
+			isUsed := false
+			for _, access := range self.getScope().variableAccesses {
+				if access == arg.Identifier {
+					isUsed = true
+					break
+				}
+			}
+			if !isUsed && !strings.HasPrefix(arg.Identifier, "_") {
+				self.warn(arg.Span, fmt.Sprintf("function argument '%s' is unused", arg.Identifier))
+			}
+		}
+		if err := self.popScope(); err != nil {
+			return nil, err
+		}
 	}
 
 	// Return the functions value so that assignments like `let a = fn foo() ...` are possible
@@ -2004,6 +2038,11 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 			if self.scopes[idx].identifier != nil && function.Identifier != nil && *self.scopes[idx].identifier == *function.Identifier {
 				return nil, nil
 			}
+		}
+
+		// Do not visit the body of lamda functions again
+		if function.Identifier == nil {
+			return nil, nil
 		}
 
 		// Visit the function's body
