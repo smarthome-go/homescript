@@ -18,6 +18,8 @@ const (
 	TypeObject
 	TypeList
 	TypeRange
+	TypeEnum
+	TypeEnumVariant
 	TypeFunction
 	TypeBuiltinFunction
 	TypeBuiltinVariable

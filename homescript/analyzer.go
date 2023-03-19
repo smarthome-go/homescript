@@ -55,6 +55,8 @@ const (
 	SymbolTypeFunction        symbolType = "function"
 	SymbolTypeBuiltinFunction symbolType = "builtin function"
 	SymbolTypeBuiltinVariable symbolType = "builtin variable"
+	SymbolTypeEnum            symbolType = "enum"
+	SymbolTypeEnumVariant     symbolType = "enum variant"
 )
 
 func (self ValueType) toSymbolType() symbolType {
@@ -81,6 +83,10 @@ func (self ValueType) toSymbolType() symbolType {
 		return SymbolTypeBuiltinFunction
 	case TypeBuiltinVariable:
 		return SymbolTypeBuiltinVariable
+	case TypeEnum:
+		return SymbolTypeEnum
+	case TypeEnumVariant:
+		return SymbolTypeEnumVariant
 	default:
 		// Unreachable
 		panic("BUG: A new type was introduced without updating this code")
@@ -1477,7 +1483,13 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 					Span:  node.Span(),
 					Type:  (*scopeValue).Type().toSymbolType(),
 				})
+
+				if (*scopeValue).Type() == TypeEnum {
+					self.issue(node.Span(), fmt.Sprintf("cannot use bare enum `%s` as value", key), errors.ReferenceError)
+					return Result{}, nil
+				}
 			}
+
 			return Result{Value: scopeValue}, nil
 		}
 		self.issue(node.Span(), fmt.Sprintf("variable or function with name '%s' not found", key), errors.ReferenceError)
@@ -1524,6 +1536,34 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 			return Result{}, err
 		}
 		result = valueTemp
+	case AtomKindEnum:
+		if err := self.visitEnum(node.(AtomEnum)); err != nil {
+			return Result{}, err
+		}
+		null := makeNull(node.Span())
+		return Result{Value: &null}, nil
+	case AtomKindEnumVariant:
+		// search for an enum with the referer name
+		referrer := node.(AtomEnumVariant).RefersToEnum
+		variable := self.getVar(referrer)
+		if variable == nil || (*variable) == nil {
+			return Result{}, errors.NewError(node.Span(), fmt.Sprintf("use of undefined enum `%s`", referrer), errors.ReferenceError)
+		}
+
+		variant := node.(AtomEnumVariant)
+
+		// check if the enum variant is valid
+		if !(*variable).(ValueEnum).HasVariant(variant.Name) {
+			return Result{}, errors.NewError(variant.Span(), fmt.Sprintf("use of undefined enum variant `%s`", referrer), errors.ReferenceError)
+		}
+
+		value := Value(ValueEnumVariant{
+			Name:  variant.Name,
+			Range: node.(AtomEnumVariant).Range,
+		})
+		return Result{Value: &value}, nil
+	default:
+		panic("BUG: A new atom was introduced without updating this code")
 	}
 	if result.Value != nil && *result.Value != nil {
 		self.symbols = append(self.symbols, symbol{
@@ -1602,6 +1642,29 @@ func (self *Analyzer) makeObject(node AtomObject) (Result, *errors.Error) {
 		Range:       node.Range,
 		IsProtected: false,
 	})}, nil
+}
+
+func (self *Analyzer) visitEnum(node AtomEnum) *errors.Error {
+	variants := make([]ValueEnumVariant, 0)
+
+	for _, variant := range node.Variants {
+		variants = append(variants, ValueEnumVariant{
+			Name:  variant.Value,
+			Range: variant.Span,
+		})
+	}
+
+	zero := 0
+
+	enumValue := Value(ValueEnum{
+		Variants:         variants,
+		CurrentIterIndex: &zero,
+		Range:            node.Span(),
+		IsProtected:      false,
+	})
+
+	self.addVar(node.Name, enumValue, node.Span())
+	return nil
 }
 
 func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {

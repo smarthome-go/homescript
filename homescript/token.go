@@ -74,6 +74,7 @@ const (
 	Break    // break
 	Continue // continue
 	Return   // return
+	Enum     // enum
 
 	StringType  // str
 	NumberType  // num
@@ -226,6 +227,8 @@ func (self TokenKind) String() string {
 		display = "from"
 	case In:
 		display = "in"
+	case Enum:
+		display = "enum"
 	default:
 		panic("A new token was introduced without updating this code")
 	}

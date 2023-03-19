@@ -645,6 +645,8 @@ func (self *lexer) makeName() Token {
 		tokenKind = Let
 	case "in":
 		tokenKind = In
+	case "enum":
+		tokenKind = Enum
 	default:
 		tokenKind = Identifier
 	}

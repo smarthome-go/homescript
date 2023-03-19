@@ -937,10 +937,13 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 					return Result{}, nil, err
 				}
 				return Result{Value: &value}, nil, nil
+			} else if (*scopeValue).Type() == TypeEnum {
+				return Result{}, nil, errors.NewError(node.Span(), fmt.Sprintf("cannot use bare enum `%s` as value", key), errors.ReferenceError)
 			}
+
 			return Result{Value: scopeValue}, nil, nil
 		}
-		fmt.Printf("%v\n", node.Span().Start.Line)
+
 		// If the value has not been found in any scope, return an error
 		return Result{}, nil, errors.NewError(
 			node.Span(),
@@ -999,8 +1002,35 @@ func (self *Interpreter) visitAtom(node Atom) (Result, *int, *errors.Error) {
 			return Result{}, code, err
 		}
 		return valueTemp, nil, nil
+	case AtomKindEnum:
+		if err := self.visitEnum(node.(AtomEnum)); err != nil {
+			return Result{}, nil, err
+		}
+		null := makeNull(node.Span())
+		return Result{Value: &null}, nil, nil
+	case AtomKindEnumVariant:
+		// search for an enum with the referer name
+		referrer := node.(AtomEnumVariant).RefersToEnum
+		variable := self.getVar(referrer)
+		if variable == nil || (*variable) == nil {
+			return Result{}, nil, errors.NewError(node.Span(), fmt.Sprintf("use of undefined enum `%s`", referrer), errors.ReferenceError)
+		}
+
+		variant := node.(AtomEnumVariant)
+
+		// check if the enum variant is valid
+		if !(*variable).(ValueEnum).HasVariant(variant.Name) {
+			return Result{}, nil, errors.NewError(variant.Span(), fmt.Sprintf("use of undefined enum variant `%s`", referrer), errors.ReferenceError)
+		}
+
+		value := Value(ValueEnumVariant{
+			Name:  variant.Name,
+			Range: node.(AtomEnumVariant).Range,
+		})
+		return Result{Value: &value}, nil, nil
+	default:
+		panic("BUG: A new atom was introduced without updating this code")
 	}
-	panic("BUG: A new atom was introduced without updating this code")
 }
 
 func (self *Interpreter) makeList(node AtomListLiteral) (Result, *int, *errors.Error) {
@@ -1065,6 +1095,29 @@ func (self *Interpreter) makeObject(node AtomObject) (Result, *int, *errors.Erro
 		Range:       node.Range,
 		IsProtected: false,
 	})}, nil, nil
+}
+
+func (self *Interpreter) visitEnum(node AtomEnum) *errors.Error {
+	variants := make([]ValueEnumVariant, 0)
+
+	for _, variant := range node.Variants {
+		variants = append(variants, ValueEnumVariant{
+			Name:  variant.Value,
+			Range: variant.Span,
+		})
+	}
+
+	zero := 0
+
+	enumValue := Value(ValueEnum{
+		Variants:         variants,
+		CurrentIterIndex: &zero,
+		Range:            node.Span(),
+		IsProtected:      false,
+	})
+
+	self.addVar(node.Name, &enumValue)
+	return nil
 }
 
 func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors.Error) {

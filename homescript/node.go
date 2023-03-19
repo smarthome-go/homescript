@@ -324,6 +324,8 @@ const (
 	AtomKindNull
 	AtomKindIdentifier
 	AtomKindRange
+	AtomKindEnum
+	AtomKindEnumVariant
 	AtomKindIfExpr
 	AtomKindForExpr
 	AtomKindWhileExpr
@@ -426,6 +428,31 @@ type AtomRange struct {
 
 func (self AtomRange) Kind() AtomKind    { return AtomKindRange }
 func (self AtomRange) Span() errors.Span { return self.Range }
+
+// Enum
+type AtomEnum struct {
+	Name     string
+	Variants []EnumVariant
+	Range    errors.Span
+}
+
+type EnumVariant struct {
+	Value string
+	Span  errors.Span
+}
+
+func (self AtomEnum) Kind() AtomKind    { return AtomKindEnum }
+func (self AtomEnum) Span() errors.Span { return self.Range }
+
+// Enum Variant
+type AtomEnumVariant struct {
+	RefersToEnum string
+	Name         string
+	Range        errors.Span
+}
+
+func (self AtomEnumVariant) Kind() AtomKind    { return AtomKindEnumVariant }
+func (self AtomEnumVariant) Span() errors.Span { return self.Range }
 
 // If expression
 

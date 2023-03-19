@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/smarthome-go/homescript/v2/homescript"
-	"github.com/smarthome-go/homescript/v2/homescript/errors"
 )
 
 func main() {
@@ -19,13 +18,7 @@ func main() {
 		homescript.AnalyzerDummyExecutor{},
 		string(program),
 		map[string]homescript.Value{
-			"power_on": homescript.ValueBool{Value: true, IsProtected: true},
-			"PI":       homescript.ValueNumber{Value: 3.14159265, IsProtected: true},
-			"test": homescript.ValueBuiltinFunction{
-				Callback: func(_ homescript.Executor, _ errors.Span, _ ...homescript.Value) (homescript.Value, *int, *errors.Error) {
-					return homescript.ValueNull{}, nil, nil
-				},
-			},
+			"PI": homescript.ValueNumber{Value: 3.14159265, IsProtected: true},
 		},
 		make([]string, 0),
 		"main",
@@ -50,13 +43,7 @@ func main() {
 		string(program),
 		make(map[string]homescript.Value),
 		map[string]homescript.Value{
-			"power_on": homescript.ValueBool{Value: true, IsProtected: true},
-			"PI":       homescript.ValueNumber{Value: 3.14159265, IsProtected: true},
-			"test": homescript.ValueBuiltinFunction{
-				Callback: func(_ homescript.Executor, _ errors.Span, _ ...homescript.Value) (homescript.Value, *int, *errors.Error) {
-					return homescript.ValueNull{}, nil, nil
-				},
-			},
+			"PI": homescript.ValueNumber{Value: 3.14159265, IsProtected: true},
 		},
 		false,
 		1000,

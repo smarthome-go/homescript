@@ -27,6 +27,7 @@ var firstExpr = []TokenKind{
 	Number,
 	NullType,
 	Identifier,
+	Enum,
 }
 
 type parser struct {
@@ -899,16 +900,7 @@ func (self *parser) atom() (Atom, *errors.Error) {
 	case LBracket:
 		return self.listLiteral()
 	case Identifier:
-		if err := self.advance(); err != nil {
-			return nil, err
-		}
-		return AtomIdentifier{
-			Identifier: self.prevToken.Value,
-			Range: errors.Span{
-				Start: startLocation,
-				End:   self.prevToken.EndLocation,
-			},
-		}, nil
+		return self.enumVariant()
 	case NullType:
 		if err := self.advance(); err != nil {
 			return nil, err
@@ -920,6 +912,8 @@ func (self *parser) atom() (Atom, *errors.Error) {
 				},
 			},
 			nil
+	case Enum:
+		return self.makeEnum()
 	case If:
 		return self.ifExpr()
 	case For:
@@ -981,6 +975,84 @@ func (self *parser) atom() (Atom, *errors.Error) {
 		fmt.Sprintf("unexpected token %v found here", self.currToken.Kind),
 		errors.SyntaxError,
 	)
+}
+
+func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
+	startLocation := self.currToken.StartLocation
+	if err := self.advance(); err != nil {
+		return AtomEnum{}, err
+	}
+
+	var enumName string
+
+	if self.currToken.Kind != Identifier {
+		return AtomEnum{}, errors.NewError(
+			errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+			fmt.Sprintf("expected `%v`, found `%v`", Identifier, self.currToken.Kind),
+			errors.SyntaxError,
+		)
+	}
+
+	enumName = self.currToken.Value
+
+	if err := self.advance(); err != nil {
+		return AtomEnum{}, err
+	}
+
+	if self.currToken.Kind != LCurly {
+		return AtomEnum{}, errors.NewError(
+			errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+			fmt.Sprintf("expected `%v`, found `%v`", LCurly, self.currToken.Kind),
+			errors.SyntaxError,
+		)
+	}
+
+	if err := self.advance(); err != nil {
+		return AtomEnum{}, err
+	}
+
+	variants := make([]EnumVariant, 0)
+	for {
+		if self.currToken.Kind != Identifier {
+			return AtomEnum{}, errors.NewError(
+				errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+				fmt.Sprintf("expected `%v`, found `%v`", Identifier, self.currToken.Kind),
+				errors.SyntaxError,
+			)
+		}
+
+		variants = append(variants, EnumVariant{
+			Value: self.currToken.Value,
+			Span:  errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+		})
+
+		commaSpan := errors.Span{Start: self.currToken.EndLocation, End: self.currToken.EndLocation}
+
+		if err := self.advance(); err != nil {
+			return AtomEnum{}, err
+		}
+
+		if err := self.advance(); err != nil {
+			return AtomEnum{}, err
+		}
+
+		if self.prevToken.Kind == RCurly {
+			break
+		}
+
+		if self.prevToken.Kind != Comma {
+			return AtomEnum{}, errors.NewError(commaSpan, fmt.Sprintf("Expected `%v`, found `%v`", Comma, self.prevToken.Kind), errors.SyntaxError)
+		}
+	}
+
+	return AtomEnum{
+		Name:     enumName,
+		Variants: variants,
+		Range: errors.Span{
+			Start: startLocation,
+			End:   self.prevToken.EndLocation,
+		},
+	}, nil
 }
 
 func (self *parser) makeObject() (AtomObject, *errors.Error) {
@@ -1193,6 +1265,64 @@ func (self *parser) listLiteral() (AtomListLiteral, *errors.Error) {
 			End:   self.prevToken.EndLocation,
 		},
 		Values: expressions,
+	}, nil
+}
+
+func (self *parser) enumVariant() (Atom, *errors.Error) {
+	startLocation := self.currToken.StartLocation
+
+	enumName := self.currToken.Value
+
+	if err := self.advance(); err != nil {
+		return AtomEnumVariant{}, err
+	}
+
+	if self.currToken.Kind == Colon {
+		if err := self.advance(); err != nil {
+			return AtomEnumVariant{}, err
+		}
+
+		if self.currToken.Kind != Colon {
+			return AtomEnumVariant{},
+				errors.NewError(
+					errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+					fmt.Sprintf("Expected `%v`, found `%v`", Colon, self.currToken.Kind),
+					errors.SyntaxError,
+				)
+		}
+
+		if err := self.advance(); err != nil {
+			return AtomEnumVariant{}, err
+		}
+
+		if self.currToken.Kind != Identifier {
+			return AtomEnumVariant{},
+				errors.NewError(
+					errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+					fmt.Sprintf("Expected `%v`, found `%v`", Identifier, self.currToken.Kind),
+					errors.SyntaxError,
+				)
+		}
+
+		variantName := self.currToken.Value
+
+		if err := self.advance(); err != nil {
+			return AtomEnumVariant{}, err
+		}
+
+		return AtomEnumVariant{
+			RefersToEnum: enumName,
+			Name:         variantName,
+			Range:        errors.Span{Start: startLocation, End: self.currToken.EndLocation},
+		}, nil
+	}
+
+	return AtomIdentifier{
+		Identifier: self.prevToken.Value,
+		Range: errors.Span{
+			Start: startLocation,
+			End:   self.prevToken.EndLocation,
+		},
 	}, nil
 }
 
