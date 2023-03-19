@@ -99,9 +99,9 @@ Atom            = number
                 | 'null'
                 | identifier
                 | '(' , Expression , ')'
-                | ExprWithoutBlock ;
+                | ExprWithBlock ;
 
-ExprWithoutBlock = LoopExpr | WhileExpr | ForExpr | IfExpr | FnExpr | TryExpr | ObjExpr ;
+ExprWithBlock = LoopExpr | WhileExpr | ForExpr | IfExpr | FnExpr | TryExpr | ObjExpr ;
 
 (*
   A <ListLiteral> creates a value of type `List` given an arbitraty amount of <Expression>
