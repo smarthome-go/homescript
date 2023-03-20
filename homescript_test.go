@@ -191,13 +191,14 @@ func TestHomescripts(t *testing.T) {
 				1000,
 				make([]string, 0),
 				moduleName,
+				test.File,
 			)
 			defer fmt.Printf("Program terminated with exit-code %d\n", code)
 
 			if len(hmsErrors) > 0 && len(test.ExpectedErrors) == 0 {
 				t.Errorf("Unexpected HMS error(s)")
 				for _, err := range hmsErrors {
-					fmt.Println(err.Display(string(program), test.File))
+					fmt.Println(err.Display(string(program)))
 				}
 				return
 			}
@@ -214,12 +215,12 @@ func TestHomescripts(t *testing.T) {
 				for idx, err := range test.ExpectedErrors {
 					if err.Kind != hmsErrors[idx].Kind {
 						t.Errorf("Expected %v, got %v", err.Kind, hmsErrors[idx].Kind)
-						fmt.Println(hmsErrors[idx].Display(string(program), test.File))
+						fmt.Println(hmsErrors[idx].Display(string(program)))
 						return
 					}
 					if !strings.Contains(hmsErrors[idx].Message, err.Message) {
 						t.Errorf("Expected to find error-message `%s` inside error", err.Message)
-						fmt.Println(hmsErrors[idx].Display(string(program), test.File))
+						fmt.Println(hmsErrors[idx].Display(string(program)))
 						return
 					}
 				}
@@ -257,9 +258,10 @@ func TestRunDev(t *testing.T) {
 		10,
 		make([]string, 0),
 		moduleName,
+		path,
 	)
 	for _, err := range hmsErrors {
-		fmt.Println(err.Display(string(program), moduleName))
+		fmt.Println(err.Display(string(program)))
 	}
 	if value != nil {
 		fmt.Printf(">>> %v\n", value.Type())
@@ -284,9 +286,10 @@ func TestSigTerm(t *testing.T) {
 			10,
 			make([]string, 0),
 			moduleName,
+			path,
 		)
 		for _, err := range hmsErrors {
-			fmt.Println(err.Display(string(program), moduleName))
+			fmt.Println(err.Display(string(program)))
 		}
 		if value != nil {
 			fmt.Printf(">>> %v\n", value.Type())

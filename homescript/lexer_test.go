@@ -11,12 +11,13 @@ import (
 )
 
 func TestLexer(t *testing.T) {
-	program, err := os.ReadFile("../test/lexer_test.hms")
+	path := "../test/lexer_test.hms"
+	program, err := os.ReadFile(path)
 	assert.NoError(t, err)
 
 	start := time.Now()
 
-	lexer := newLexer(string(program))
+	lexer := newLexer(string(program), path)
 
 	tokens := make([]string, 0)
 	for {

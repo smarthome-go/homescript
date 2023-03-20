@@ -13,8 +13,9 @@ type Error struct {
 
 // All ranges inclusive
 type Span struct {
-	Start Location `json:"start"`
-	End   Location `json:"end"`
+	Start    Location `json:"start"`
+	End      Location `json:"end"`
+	Filename string   `json:"filename"`
 }
 
 type Location struct {
@@ -88,7 +89,7 @@ func NewError(span Span, message string, kind ErrorKind) *Error {
 	}
 }
 
-func (self Error) Display(program string, filename string) string {
+func (self Error) Display(program string) string {
 	lines := strings.Split(program, "\n")
 
 	line1 := ""
@@ -110,7 +111,7 @@ func (self Error) Display(program string, filename string) string {
 	return fmt.Sprintf(
 		"\x1b[1;36m%v\x1b[39m at %s:%d:%d\x1b[0m\n%s\n%s\n%s%s\n\n\x1b[1;31m%s\x1b[0m\n",
 		self.Kind,
-		filename,
+		self.Span.Filename,
 		self.Span.Start.Line,
 		self.Span.Start.Column,
 		line1,

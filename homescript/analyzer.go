@@ -29,6 +29,8 @@ type Analyzer struct {
 	// Will allow assignment to invalid object members
 	// For exampls, `a.foo = 1;` will still be valid even though a has no member named `foo`
 	isAssignLHSCount uint
+
+	filename string
 }
 
 type symbol struct {
@@ -93,7 +95,7 @@ func (self ValueType) toSymbolType() symbolType {
 	}
 }
 
-func (self Diagnostic) Display(program string, filename string) string {
+func (self Diagnostic) Display(program string) string {
 	lines := strings.Split(program, "\n")
 
 	line1 := ""
@@ -148,7 +150,7 @@ func (self Diagnostic) Display(program string, filename string) string {
 		"\x1b[1;3%dm%v\x1b[39m at %s:%d:%d\x1b[0m\n%s\n%s\n%s%s\n\n\x1b[1;3%dm%s\x1b[0m\n",
 		color,
 		self.Kind,
-		filename,
+		self.Span.Filename,
 		self.Span.Start.Line,
 		self.Span.Start.Column,
 		line1,
@@ -218,6 +220,7 @@ func NewAnalyzer(
 	executor Executor,
 	scopeAdditions map[string]Value, // Allows the user to add more entries to the scope
 	moduleStack []string,
+	filename string,
 ) Analyzer {
 	scopes := make([]scope, 0)
 	// Adds the root scope
@@ -274,6 +277,7 @@ func NewAnalyzer(
 		executor:    executor,
 		scopes:      scopes,
 		moduleStack: moduleStack,
+		filename:    filename,
 	}
 }
 
@@ -489,7 +493,7 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 	}
 
 	// Check if the function can be imported
-	moduleCode, exists, proceed, err := self.executor.ResolveModule(node.FromModule)
+	moduleCode, filename, exists, proceed, err := self.executor.ResolveModule(node.FromModule)
 	if err != nil {
 		self.issue(
 			node.Range,
@@ -534,6 +538,7 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		make(map[string]Value),
 		self.moduleStack,
 		node.FromModule,
+		filename,
 	)
 	moduleErrors := 0
 	firstErrMessage := ""
@@ -1318,8 +1323,9 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 	}
 	if manualInfo {
 		self.info(errors.Span{
-			Start: node.Members[0].Span.Start,
-			End:   node.Members[len(node.Members)-1].Span.End,
+			Start:    node.Members[0].Span.Start,
+			End:      node.Members[len(node.Members)-1].Span.End,
+			Filename: self.filename,
 		}, "manual validation required")
 	}
 	return base, nil

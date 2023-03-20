@@ -35,14 +35,16 @@ type parser struct {
 	prevToken Token
 	currToken Token
 	errors    []errors.Error
+	filename  string
 }
 
-func newParser(program string) parser {
+func newParser(program string, filename string) parser {
 	return parser{
-		lexer:     newLexer(program),
+		lexer:     newLexer(program, filename),
 		prevToken: unknownToken(errors.Location{}),
 		currToken: unknownToken(errors.Location{}),
 		errors:    make([]errors.Error, 0),
+		filename:  filename,
 	}
 }
 
@@ -80,8 +82,9 @@ func (self *parser) expression() (Expression, *errors.Error) {
 		Base:      base,
 		Following: following,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -110,8 +113,9 @@ func (self *parser) andExpr() (AndExpression, *errors.Error) {
 		Base:      base,
 		Following: following,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -141,8 +145,9 @@ func (self *parser) eqExpr() (EqExpression, *errors.Error) {
 				Node:     other,
 			},
 			Span: errors.Span{
-				Start: startLocation,
-				End:   self.prevToken.EndLocation,
+				Start:    startLocation,
+				End:      self.prevToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	}
@@ -150,8 +155,9 @@ func (self *parser) eqExpr() (EqExpression, *errors.Error) {
 		Base:  base,
 		Other: nil,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -179,8 +185,9 @@ func (self *parser) relExpr() (RelExpression, *errors.Error) {
 			Base:  base,
 			Other: nil,
 			Span: errors.Span{
-				Start: startLocation,
-				End:   self.currToken.EndLocation,
+				Start:    startLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	}
@@ -203,8 +210,9 @@ func (self *parser) relExpr() (RelExpression, *errors.Error) {
 			Node:        other,
 		},
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -246,8 +254,9 @@ func (self *parser) addExpr() (AddExpression, *errors.Error) {
 			AddOperator: addOp,
 			Other:       other,
 			Span: errors.Span{
-				Start: otherStart,
-				End:   self.prevToken.EndLocation,
+				Start:    otherStart,
+				End:      self.prevToken.EndLocation,
+				Filename: self.filename,
 			},
 		})
 	}
@@ -256,8 +265,9 @@ func (self *parser) addExpr() (AddExpression, *errors.Error) {
 		Base:      base,
 		Following: following,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -305,8 +315,9 @@ func (self *parser) mulExpr() (MulExpression, *errors.Error) {
 			MulOperator: mulOp,
 			Other:       other,
 			Span: errors.Span{
-				Start: otherStart,
-				End:   self.prevToken.EndLocation,
+				Start:    otherStart,
+				End:      self.prevToken.EndLocation,
+				Filename: self.filename,
 			},
 		})
 	}
@@ -315,8 +326,9 @@ func (self *parser) mulExpr() (MulExpression, *errors.Error) {
 		Base:      base,
 		Following: following,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -333,8 +345,9 @@ func (self *parser) castExpr() (CastExpression, *errors.Error) {
 			Base:  base,
 			Other: nil,
 			Span: errors.Span{
-				Start: startLocation,
-				End:   self.currToken.EndLocation,
+				Start:    startLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	}
@@ -358,8 +371,9 @@ func (self *parser) castExpr() (CastExpression, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("typecast requires a valid type: expected type name, found %v", self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.prevToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.prevToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -370,8 +384,9 @@ func (self *parser) castExpr() (CastExpression, *errors.Error) {
 		Base:  base,
 		Other: &typeCast,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -408,8 +423,9 @@ func (self *parser) unaryExpr() (UnaryExpression, *errors.Error) {
 			},
 			ExpExpression: nil,
 			Span: errors.Span{
-				Start: startLocation,
-				End:   self.prevToken.EndLocation,
+				Start:    startLocation,
+				End:      self.prevToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	}
@@ -421,8 +437,9 @@ func (self *parser) unaryExpr() (UnaryExpression, *errors.Error) {
 		UnaryExpression: nil,
 		ExpExpression:   &expr,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}
 	return returnValue, nil
@@ -446,8 +463,9 @@ func (self *parser) expExpr() (ExpExpression, *errors.Error) {
 			Base:  base,
 			Other: &unary,
 			Span: errors.Span{
-				Start: startLocation,
-				End:   self.currToken.EndLocation,
+				Start:    startLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	}
@@ -455,8 +473,9 @@ func (self *parser) expExpr() (ExpExpression, *errors.Error) {
 		Base:  base,
 		Other: nil,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -491,8 +510,9 @@ func (self *parser) assignExpr() (AssignExpression, *errors.Error) {
 			Base:  base,
 			Other: nil,
 			Span: errors.Span{
-				Start: startLocation,
-				End:   self.currToken.EndLocation,
+				Start:    startLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	}
@@ -513,8 +533,9 @@ func (self *parser) assignExpr() (AssignExpression, *errors.Error) {
 			Expression: assignExpr,
 		},
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -540,8 +561,9 @@ func (self *parser) callExpr() (CallExpression, *errors.Error) {
 		Base:  base,
 		Parts: parts,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -561,8 +583,9 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 				MemberExpressionPart: nil,
 				Args:                 &argsItem,
 				Span: errors.Span{
-					Start: startLocation,
-					End:   self.prevToken.EndLocation,
+					Start:    startLocation,
+					End:      self.prevToken.EndLocation,
+					Filename: self.filename,
 				},
 			})
 		case Dot:
@@ -576,8 +599,9 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
 					Span: errors.Span{
-						Start: self.currToken.StartLocation,
-						End:   self.currToken.EndLocation,
+						Start:    self.currToken.StartLocation,
+						End:      self.currToken.EndLocation,
+						Filename: self.filename,
 					},
 				}
 			}
@@ -586,8 +610,9 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 				MemberExpressionPart: &identifier,
 				Args:                 nil,
 				Span: errors.Span{
-					Start: startLocation,
-					End:   self.currToken.EndLocation,
+					Start:    startLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				},
 			})
 			if err := self.advance(); err != nil {
@@ -609,8 +634,9 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 			if !isPossible {
 				return nil, errors.NewError(
 					errors.Span{
-						Start: self.currToken.StartLocation,
-						End:   self.currToken.EndLocation,
+						Start:    self.currToken.StartLocation,
+						End:      self.currToken.EndLocation,
+						Filename: self.filename,
 					},
 					fmt.Sprintf("expected expression, found %v", self.currToken.Kind),
 					errors.SyntaxError,
@@ -626,8 +652,9 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 						Kind:    errors.SyntaxError,
 						Message: fmt.Sprintf("unclosed indexing: expected %v, found %v", RBracket, self.currToken.Kind),
 						Span: errors.Span{
-							Start: self.currToken.StartLocation,
-							End:   self.currToken.EndLocation,
+							Start:    self.currToken.StartLocation,
+							End:      self.currToken.EndLocation,
+							Filename: self.filename,
 						},
 					},
 				)
@@ -641,8 +668,9 @@ func (self *parser) argsOrCallExprPart() ([]CallExprPart, *errors.Error) {
 				Args:                 nil,
 				Index:                &expression,
 				Span: errors.Span{
-					Start: exprStart,
-					End:   self.prevToken.EndLocation,
+					Start:    exprStart,
+					End:      self.prevToken.EndLocation,
+					Filename: self.filename,
 				},
 			})
 		default:
@@ -678,8 +706,9 @@ func (self *parser) args() ([]Expression, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Unclosed function call: Expected %v, found %v", RParen, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -711,8 +740,9 @@ func (self *parser) args() ([]Expression, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Unclosed function call: Expected %v, found %v", RParen, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -745,8 +775,9 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("expected identifier, found %v", self.currToken.Kind),
 					Span: errors.Span{
-						Start: self.currToken.StartLocation,
-						End:   self.currToken.EndLocation,
+						Start:    self.currToken.StartLocation,
+						End:      self.currToken.EndLocation,
+						Filename: self.filename,
 					},
 				}
 			}
@@ -759,8 +790,9 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 				Identifier: &ident,
 				Index:      nil,
 				Span: errors.Span{
-					Start: self.currToken.StartLocation,
-					End:   self.currToken.EndLocation,
+					Start:    self.currToken.StartLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				}})
 			if err := self.advance(); err != nil {
 				return MemberExpression{}, err
@@ -777,8 +809,9 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 			if !isPossible {
 				return MemberExpression{}, errors.NewError(
 					errors.Span{
-						Start: self.currToken.StartLocation,
-						End:   self.currToken.EndLocation,
+						Start:    self.currToken.StartLocation,
+						End:      self.currToken.EndLocation,
+						Filename: self.filename,
 					},
 					fmt.Sprintf("expected expression, found %v", self.currToken.Kind),
 					errors.SyntaxError,
@@ -794,8 +827,9 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 						Kind:    errors.SyntaxError,
 						Message: fmt.Sprintf("unclosed indexing: expected %v, found %v", RBracket, self.currToken.Kind),
 						Span: errors.Span{
-							Start: self.currToken.StartLocation,
-							End:   self.currToken.EndLocation,
+							Start:    self.currToken.StartLocation,
+							End:      self.currToken.EndLocation,
+							Filename: self.filename,
 						},
 					},
 				)
@@ -812,8 +846,9 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 				Identifier: nil,
 				Index:      &expression,
 				Span: errors.Span{
-					Start: exprStart,
-					End:   self.prevToken.EndLocation,
+					Start:    exprStart,
+					End:      self.prevToken.EndLocation,
+					Filename: self.filename,
 				},
 			})
 		} else {
@@ -824,8 +859,9 @@ func (self *parser) memberExpr() (MemberExpression, *errors.Error) {
 		Base:    base,
 		Members: members,
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -848,8 +884,9 @@ func (self *parser) atom() (Atom, *errors.Error) {
 		return AtomNumber{
 			Num: num,
 			Range: errors.Span{
-				Start: startLocation,
-				End:   self.prevToken.EndLocation,
+				Start:    startLocation,
+				End:      self.prevToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	case True, False:
@@ -860,8 +897,9 @@ func (self *parser) atom() (Atom, *errors.Error) {
 		return AtomBoolean{
 			Value: boolValue,
 			Range: errors.Span{
-				Start: startLocation,
-				End:   self.prevToken.EndLocation,
+				Start:    startLocation,
+				End:      self.prevToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	case LCurly:
@@ -884,8 +922,9 @@ func (self *parser) atom() (Atom, *errors.Error) {
 				Key:       pairKey,
 				ValueExpr: pairValueExpr,
 				Range: errors.Span{
-					Start: startLocation,
-					End:   self.currToken.EndLocation,
+					Start:    startLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				},
 			}, nil
 		}
@@ -893,8 +932,9 @@ func (self *parser) atom() (Atom, *errors.Error) {
 		return AtomString{
 			Content: self.prevToken.Value,
 			Range: errors.Span{
-				Start: startLocation,
-				End:   self.prevToken.EndLocation,
+				Start:    startLocation,
+				End:      self.prevToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	case LBracket:
@@ -907,8 +947,9 @@ func (self *parser) atom() (Atom, *errors.Error) {
 		}
 		return AtomNull{
 				Range: errors.Span{
-					Start: startLocation,
-					End:   self.prevToken.EndLocation,
+					Start:    startLocation,
+					End:      self.prevToken.EndLocation,
+					Filename: self.filename,
 				},
 			},
 			nil
@@ -942,8 +983,9 @@ func (self *parser) atom() (Atom, *errors.Error) {
 				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Unclosed nested expression: expected %v, found %v", RParen, self.currToken.Kind),
 				Span: errors.Span{
-					Start: self.currToken.StartLocation,
-					End:   self.currToken.EndLocation,
+					Start:    self.currToken.StartLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				},
 			}
 		}
@@ -953,15 +995,17 @@ func (self *parser) atom() (Atom, *errors.Error) {
 		return AtomExpression{
 			Expression: nestedExpr,
 			Range: errors.Span{
-				Start: startLocation,
-				End:   self.prevToken.EndLocation,
+				Start:    startLocation,
+				End:      self.prevToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	}
 	self.errors = append(self.errors, errors.Error{
 		Span: errors.Span{
-			Start: self.prevToken.EndLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    self.prevToken.EndLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 		Message: "expression expected here",
 		Kind:    errors.Warning,
@@ -969,8 +1013,9 @@ func (self *parser) atom() (Atom, *errors.Error) {
 	)
 	return nil, errors.NewError(
 		errors.Span{
-			Start: self.currToken.StartLocation,
-			End:   self.currToken.EndLocation,
+			Start:    self.currToken.StartLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 		fmt.Sprintf("unexpected token %v found here", self.currToken.Kind),
 		errors.SyntaxError,
@@ -987,7 +1032,11 @@ func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
 
 	if self.currToken.Kind != Identifier {
 		return AtomEnum{}, errors.NewError(
-			errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+			errors.Span{
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
+			},
 			fmt.Sprintf("expected `%v`, found `%v`", Identifier, self.currToken.Kind),
 			errors.SyntaxError,
 		)
@@ -1001,7 +1050,11 @@ func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
 
 	if self.currToken.Kind != LCurly {
 		return AtomEnum{}, errors.NewError(
-			errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+			errors.Span{
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
+			},
 			fmt.Sprintf("expected `%v`, found `%v`", LCurly, self.currToken.Kind),
 			errors.SyntaxError,
 		)
@@ -1015,7 +1068,11 @@ func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
 	for {
 		if self.currToken.Kind != Identifier {
 			return AtomEnum{}, errors.NewError(
-				errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+				errors.Span{
+					Start:    self.currToken.StartLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
+				},
 				fmt.Sprintf("expected `%v`, found `%v`", Identifier, self.currToken.Kind),
 				errors.SyntaxError,
 			)
@@ -1023,10 +1080,18 @@ func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
 
 		variants = append(variants, EnumVariant{
 			Value: self.currToken.Value,
-			Span:  errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+			Span: errors.Span{
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
+			},
 		})
 
-		commaSpan := errors.Span{Start: self.currToken.EndLocation, End: self.currToken.EndLocation}
+		commaSpan := errors.Span{
+			Start:    self.currToken.EndLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
+		}
 
 		if err := self.advance(); err != nil {
 			return AtomEnum{}, err
@@ -1049,8 +1114,9 @@ func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
 		Name:     enumName,
 		Variants: variants,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1066,8 +1132,9 @@ func (self *parser) makeObject() (AtomObject, *errors.Error) {
 			return AtomObject{}, err
 		}
 		return AtomObject{Range: errors.Span{
-			Start: self.prevToken.StartLocation,
-			End:   self.currToken.EndLocation,
+			Start:    self.prevToken.StartLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		}}, nil
 	}
 
@@ -1098,8 +1165,9 @@ func (self *parser) makeObject() (AtomObject, *errors.Error) {
 	if self.currToken.Kind != RCurly {
 		return AtomObject{}, errors.NewError(
 			errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 			fmt.Sprintf("unclosed object literal: expected %v, found %v", RCurly, self.currToken.Kind),
 			errors.SyntaxError,
@@ -1111,8 +1179,9 @@ func (self *parser) makeObject() (AtomObject, *errors.Error) {
 
 	return AtomObject{
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 		Fields: fields,
 	}, nil
@@ -1125,15 +1194,17 @@ func (self *parser) objectField() (AtomObjectField, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("expected identifier, found %v", self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
 
 	identifier, identSpan := self.currToken.Value, errors.Span{
-		Start: self.currToken.StartLocation,
-		End:   self.currToken.EndLocation,
+		Start:    self.currToken.StartLocation,
+		End:      self.currToken.EndLocation,
+		Filename: self.filename,
 	}
 
 	if err := self.advance(); err != nil {
@@ -1144,8 +1215,9 @@ func (self *parser) objectField() (AtomObjectField, *errors.Error) {
 	// Expect a `:` colon
 	if self.currToken.Kind != Colon {
 		return AtomObjectField{}, errors.NewError(errors.Span{
-			Start: self.currToken.StartLocation,
-			End:   self.currToken.EndLocation,
+			Start:    self.currToken.StartLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 			fmt.Sprintf("expected %v, found %v", Colon, self.currToken.Kind),
 			errors.SyntaxError,
@@ -1164,8 +1236,9 @@ func (self *parser) objectField() (AtomObjectField, *errors.Error) {
 	}
 	if !isValidExpr {
 		return AtomObjectField{}, errors.NewError(errors.Span{
-			Start: self.currToken.StartLocation,
-			End:   self.currToken.EndLocation,
+			Start:    self.currToken.StartLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 			fmt.Sprintf("expected expression, found %v", self.currToken.Kind),
 			errors.SyntaxError,
@@ -1177,8 +1250,9 @@ func (self *parser) objectField() (AtomObjectField, *errors.Error) {
 	}
 	return AtomObjectField{
 		Span: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 		Identifier: identifier,
 		IdentSpan:  identSpan,
@@ -1199,8 +1273,9 @@ func (self *parser) listLiteral() (AtomListLiteral, *errors.Error) {
 		return AtomListLiteral{
 			Values: make([]Expression, 0),
 			Range: errors.Span{
-				Start: startLocation,
-				End:   self.currToken.EndLocation,
+				Start:    startLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	}
@@ -1215,8 +1290,9 @@ func (self *parser) listLiteral() (AtomListLiteral, *errors.Error) {
 	}
 	if !isValidExpr {
 		return AtomListLiteral{}, errors.NewError(errors.Span{
-			Start: self.currToken.StartLocation,
-			End:   self.currToken.EndLocation,
+			Start:    self.currToken.StartLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 			fmt.Sprintf("expected expression, found %v", self.currToken.Kind),
 			errors.SyntaxError,
@@ -1249,8 +1325,9 @@ func (self *parser) listLiteral() (AtomListLiteral, *errors.Error) {
 	if self.currToken.Kind != RBracket {
 		return AtomListLiteral{}, errors.NewError(
 			errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 			fmt.Sprintf("unclosed list literal: expected %v, found %v", RBracket, self.currToken.Kind),
 			errors.SyntaxError,
@@ -1261,8 +1338,9 @@ func (self *parser) listLiteral() (AtomListLiteral, *errors.Error) {
 	}
 	return AtomListLiteral{
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 		Values: expressions,
 	}, nil
@@ -1285,7 +1363,11 @@ func (self *parser) enumVariant() (Atom, *errors.Error) {
 		if self.currToken.Kind != Colon {
 			return AtomEnumVariant{},
 				errors.NewError(
-					errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+					errors.Span{
+						Start:    self.currToken.StartLocation,
+						End:      self.currToken.EndLocation,
+						Filename: self.filename,
+					},
 					fmt.Sprintf("Expected `%v`, found `%v`", Colon, self.currToken.Kind),
 					errors.SyntaxError,
 				)
@@ -1298,7 +1380,11 @@ func (self *parser) enumVariant() (Atom, *errors.Error) {
 		if self.currToken.Kind != Identifier {
 			return AtomEnumVariant{},
 				errors.NewError(
-					errors.Span{Start: self.currToken.StartLocation, End: self.currToken.EndLocation},
+					errors.Span{
+						Start:    self.currToken.StartLocation,
+						End:      self.currToken.EndLocation,
+						Filename: self.filename,
+					},
 					fmt.Sprintf("Expected `%v`, found `%v`", Identifier, self.currToken.Kind),
 					errors.SyntaxError,
 				)
@@ -1313,15 +1399,20 @@ func (self *parser) enumVariant() (Atom, *errors.Error) {
 		return AtomEnumVariant{
 			RefersToEnum: enumName,
 			Name:         variantName,
-			Range:        errors.Span{Start: startLocation, End: self.currToken.EndLocation},
+			Range: errors.Span{
+				Start:    startLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
+			},
 		}, nil
 	}
 
 	return AtomIdentifier{
 		Identifier: self.prevToken.Value,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1360,8 +1451,9 @@ func (self *parser) ifExpr() (IfExpr, *errors.Error) {
 				ElseBlock:  nil,
 				ElseIfExpr: &elseIfExpr,
 				Range: errors.Span{
-					Start: startLocation,
-					End:   self.currToken.EndLocation,
+					Start:    startLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				},
 			}, nil
 		}
@@ -1377,8 +1469,9 @@ func (self *parser) ifExpr() (IfExpr, *errors.Error) {
 			ElseBlock:  &elseBlock,
 			ElseIfExpr: nil,
 			Range: errors.Span{
-				Start: startLocation,
-				End:   self.currToken.EndLocation,
+				Start:    startLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}, nil
 	}
@@ -1389,8 +1482,9 @@ func (self *parser) ifExpr() (IfExpr, *errors.Error) {
 		ElseBlock:  nil,
 		ElseIfExpr: nil,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1405,8 +1499,9 @@ func (self *parser) forExpr() (AtomFor, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1416,8 +1511,9 @@ func (self *parser) forExpr() (AtomFor, *errors.Error) {
 	}{
 		Identifier: self.currToken.Value,
 		Span: errors.Span{
-			Start: self.currToken.StartLocation,
-			End:   self.currToken.EndLocation,
+			Start:    self.currToken.StartLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}
 
@@ -1431,8 +1527,9 @@ func (self *parser) forExpr() (AtomFor, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected %v, found %v", In, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1455,8 +1552,9 @@ func (self *parser) forExpr() (AtomFor, *errors.Error) {
 		IterExpr:       expr,
 		IterationCode:  iterationBlock,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1468,8 +1566,9 @@ func (self *parser) rangeExpr(startTok Token) (AtomRange, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: "Expected integer, found float",
 			Span: errors.Span{
-				Start: startTok.StartLocation,
-				End:   startTok.EndLocation,
+				Start:    startTok.StartLocation,
+				End:      startTok.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1479,8 +1578,9 @@ func (self *parser) rangeExpr(startTok Token) (AtomRange, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected %v, found %v", Range, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1494,8 +1594,9 @@ func (self *parser) rangeExpr(startTok Token) (AtomRange, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected %v, found %v", Number, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1506,8 +1607,9 @@ func (self *parser) rangeExpr(startTok Token) (AtomRange, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: "Expected integer, found float",
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1520,8 +1622,9 @@ func (self *parser) rangeExpr(startTok Token) (AtomRange, *errors.Error) {
 		Start: int(start),
 		End:   int(end),
 		Range: errors.Span{
-			Start: startTok.StartLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startTok.StartLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1542,8 +1645,9 @@ func (self *parser) whileExpr() (AtomWhile, *errors.Error) {
 	}
 	if !isValidExpr {
 		return AtomWhile{}, errors.NewError(errors.Span{
-			Start: self.currToken.StartLocation,
-			End:   self.currToken.EndLocation,
+			Start:    self.currToken.StartLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 			fmt.Sprintf("Expected expression, found %v", self.currToken.Kind),
 			errors.SyntaxError,
@@ -1564,8 +1668,9 @@ func (self *parser) whileExpr() (AtomWhile, *errors.Error) {
 		HeadCondition: conditionExpr,
 		IterationCode: iterationBlock,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1582,8 +1687,9 @@ func (self *parser) loopExpr() (AtomLoop, *errors.Error) {
 	return AtomLoop{
 		IterationCode: iterationBlock,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1612,8 +1718,9 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected (, found %v", self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1635,8 +1742,9 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
 				Span: errors.Span{
-					Start: self.currToken.StartLocation,
-					End:   self.currToken.EndLocation,
+					Start:    self.currToken.StartLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				},
 			}
 		}
@@ -1644,8 +1752,9 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 			Identifier string
 			Span       errors.Span
 		}{Identifier: self.currToken.Value, Span: errors.Span{
-			Start: self.currToken.StartLocation,
-			End:   self.currToken.EndLocation,
+			Start:    self.currToken.StartLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		}})
 		if err := self.advance(); err != nil {
 			return AtomFunction{}, err
@@ -1665,8 +1774,9 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
 					Span: errors.Span{
-						Start: self.currToken.StartLocation,
-						End:   self.currToken.EndLocation,
+						Start:    self.currToken.StartLocation,
+						End:      self.currToken.EndLocation,
+						Filename: self.filename,
 					},
 				}
 			}
@@ -1676,8 +1786,9 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 			}{
 				Identifier: self.currToken.Value,
 				Span: errors.Span{
-					Start: self.currToken.StartLocation,
-					End:   self.currToken.EndLocation,
+					Start:    self.currToken.StartLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				},
 			})
 			if err := self.advance(); err != nil {
@@ -1694,8 +1805,9 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Expected %v, found %v", RParen, self.currToken.Kind),
 				Span: errors.Span{
-					Start: self.currToken.StartLocation,
-					End:   self.currToken.EndLocation,
+					Start:    self.currToken.StartLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				},
 			}
 		}
@@ -1715,8 +1827,9 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 		ArgIdentifiers: args,
 		Body:           functionBlock,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1735,8 +1848,9 @@ func (self *parser) tryExpr() (AtomTry, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected %v, found %v", Catch, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1747,8 +1861,9 @@ func (self *parser) tryExpr() (AtomTry, *errors.Error) {
 	if self.currToken.Kind != Identifier {
 		return AtomTry{}, errors.NewError(
 			errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 			fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
 			errors.SyntaxError,
@@ -1767,8 +1882,9 @@ func (self *parser) tryExpr() (AtomTry, *errors.Error) {
 		ErrorIdentifier: catchIdentifier,
 		CatchBlock:      catchBlock,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1785,8 +1901,9 @@ func (self *parser) letStmt() (LetStmt, *errors.Error) {
 			Kind: errors.SyntaxError,
 
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1801,8 +1918,9 @@ func (self *parser) letStmt() (LetStmt, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected assignment operator '=', found %v", self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1822,14 +1940,16 @@ func (self *parser) letStmt() (LetStmt, *errors.Error) {
 		}{
 			Identifier: assignIdentifier.Value,
 			Span: errors.Span{
-				Start: assignIdentifier.StartLocation,
-				End:   assignIdentifier.EndLocation,
+				Start:    assignIdentifier.StartLocation,
+				End:      assignIdentifier.EndLocation,
+				Filename: self.filename,
 			},
 		},
 		Right: assignExpression,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1848,8 +1968,9 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1865,8 +1986,9 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: "Using the `as` keyword is currently unstable",
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 
@@ -1881,8 +2003,9 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
 				Span: errors.Span{
-					Start: self.currToken.StartLocation,
-					End:   self.currToken.EndLocation,
+					Start:    self.currToken.StartLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				},
 			}
 		}
@@ -1898,8 +2021,9 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected 'from', found %v", self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1913,8 +2037,9 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -1927,8 +2052,9 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 		RewriteAs:  rewriteName,
 		FromModule: self.prevToken.Value,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.prevToken.EndLocation,
+			Start:    startLocation,
+			End:      self.prevToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -1958,8 +2084,9 @@ func (self *parser) breakStmt() (BreakStmt, *errors.Error) {
 	breakStmt := BreakStmt{
 		Expression: additionalExpr,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}
 	return breakStmt, nil
@@ -1968,8 +2095,9 @@ func (self *parser) breakStmt() (BreakStmt, *errors.Error) {
 func (self *parser) continueStmt() (ContinueStmt, *errors.Error) {
 	continueStmt := ContinueStmt{
 		Range: errors.Span{
-			Start: self.currToken.StartLocation,
-			End:   self.currToken.EndLocation,
+			Start:    self.currToken.StartLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}
 	if err := self.advance(); err != nil {
@@ -2002,8 +2130,9 @@ func (self *parser) returnStmt() (ReturnStmt, *errors.Error) {
 	return ReturnStmt{
 		Expression: additionalExpr,
 		Range: errors.Span{
-			Start: startLocation,
-			End:   self.currToken.EndLocation,
+			Start:    startLocation,
+			End:      self.currToken.EndLocation,
+			Filename: self.filename,
 		},
 	}, nil
 }
@@ -2057,8 +2186,9 @@ func (self *parser) statement() (StatementOrExpr, *errors.Error) {
 				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Invalid expression: expected one of %d tokens, found %v", len(firstExpr), self.currToken.Kind),
 				Span: errors.Span{
-					Start: self.currToken.StartLocation,
-					End:   self.currToken.EndLocation,
+					Start:    self.currToken.StartLocation,
+					End:      self.currToken.EndLocation,
+					Filename: self.filename,
 				}}
 		}
 
@@ -2090,8 +2220,9 @@ func (self *parser) statement() (StatementOrExpr, *errors.Error) {
 				Kind:    errors.SyntaxError,
 				Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
 				Span: errors.Span{
-					Start: end,
-					End:   end,
+					Start:    end,
+					End:      end,
+					Filename: self.filename,
 				},
 			},
 		)
@@ -2128,8 +2259,9 @@ func (self *parser) statements(insideCurlyBlock bool) ([]StatementOrExpr, *error
 					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("A Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
 					Span: errors.Span{
-						Start: self.prevToken.StartLocation,
-						End:   self.prevToken.EndLocation,
+						Start:    self.prevToken.StartLocation,
+						End:      self.prevToken.EndLocation,
+						Filename: self.filename,
 					},
 				},
 			)
@@ -2149,8 +2281,9 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Invalid block: expected %v, found %v", LCurly, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.prevToken.EndLocation,
-				End:   self.prevToken.EndLocation,
+				Start:    self.prevToken.EndLocation,
+				End:      self.prevToken.EndLocation,
+				Filename: self.filename,
 			},
 		},
 		)
@@ -2175,8 +2308,9 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 					Kind:    errors.SyntaxError,
 					Message: fmt.Sprintf("Missing ; after statement (Expected semicolon, found %s)", self.currToken.Kind),
 					Span: errors.Span{
-						Start: expr.Span.Start,
-						End:   expr.Span.End,
+						Start:    expr.Span.Start,
+						End:      expr.Span.End,
+						Filename: self.filename,
 					},
 				},
 			)
@@ -2203,8 +2337,9 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 			Kind:    errors.SyntaxError,
 			Message: fmt.Sprintf("Invalid block: expected %v, found %v", RCurly, self.currToken.Kind),
 			Span: errors.Span{
-				Start: self.currToken.StartLocation,
-				End:   self.currToken.EndLocation,
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
 			},
 		}
 	}
@@ -2212,8 +2347,9 @@ func (self *parser) curlyBlock() (Block, *errors.Error) {
 		return Block{}, err
 	}
 	return Block{Statements: statements, Expr: expr, Span: errors.Span{
-		Start: startLoc,
-		End:   self.prevToken.EndLocation,
+		Start:    startLoc,
+		End:      self.prevToken.EndLocation,
+		Filename: self.filename,
 	}}, nil
 }
 

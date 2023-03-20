@@ -17,6 +17,7 @@ func Run(
 	stackSize uint,
 	moduleStack []string,
 	moduleName string,
+	filename string,
 ) (
 	returnValue Value,
 	exitCode int,
@@ -24,7 +25,7 @@ func Run(
 	hmsErrors []hmsError.Error,
 ) {
 	// Parse the source code
-	parser := newParser(program)
+	parser := newParser(program, filename)
 	ast, errors, _ := parser.parse()
 	if len(errors) > 0 {
 		return nil, 1, nil, errors
@@ -45,6 +46,7 @@ func Run(
 		debug,
 		moduleStack,
 		moduleName,
+		filename,
 	)
 	// Finally, execute the AST
 	returnValue, exitCode, runtimeError := interpreter.run()
@@ -64,13 +66,14 @@ func Analyze(
 	scopeAdditions map[string]Value,
 	moduleStack []string,
 	moduleName string,
+	filename string,
 ) (
 	diagnostics []Diagnostic,
 	symbols []symbol,
 	rootScope map[string]*Value,
 ) {
 	// Parse the source code
-	parser := newParser(program)
+	parser := newParser(program, filename)
 	ast, errors, critical := parser.parse()
 	if len(errors) > 0 {
 		for _, err := range errors {
@@ -95,6 +98,7 @@ func Analyze(
 		executor,
 		scopeAdditions,
 		moduleStack,
+		filename,
 	)
 	// Finally, analyze the AST
 	semanticDiagnostics, rootScope := analyzer.analyze()

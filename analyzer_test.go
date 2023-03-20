@@ -96,9 +96,10 @@ func TestAnalyzer(t *testing.T) {
 				make(map[string]homescript.Value),
 				make([]string, 0),
 				moduleName,
+				test.File,
 			)
 			for _, diagnostic := range diagnostics {
-				fmt.Printf("\n%s\n", diagnostic.Display(string(program), test.File))
+				fmt.Printf("\n%s\n", diagnostic.Display(string(program)))
 			}
 			if len(diagnostics) == 0 {
 				fmt.Println("no diagnostics")

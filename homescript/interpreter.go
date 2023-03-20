@@ -17,7 +17,6 @@ type Interpreter struct {
 	// Scope stack: manages scopes (is searched in top -> down order)
 	// The last element is the top whilst the first element is the bottom of the stack
 	scopes []map[string]*Value
-
 	// Holds the modules visited so far (by import statements)
 	// in order to prevent a circular import
 	moduleStack []string
@@ -55,6 +54,7 @@ func NewInterpreter(
 	debug bool,
 	moduleStack []string,
 	moduleName string,
+	filename string,
 ) Interpreter {
 	scopes := make([]map[string]*Value, 0)
 	// Adds the root scope
@@ -278,7 +278,7 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 		}
 	}
 	// Resolve the function to be imported
-	function, err := self.ResolveModule(
+	function, rootScope, err := self.ResolveModule(
 		node.Span(),
 		node.FromModule,
 		node.Function,
@@ -300,8 +300,15 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 			errors.ImportError,
 		)
 	}
+
 	// Push the function into the current scope
 	self.addVar(actualImport, function)
+
+	// Migrate scope from import
+	for key, value := range rootScope {
+		self.addVar(fmt.Sprintf("%s::%s", node.FromModule, key), value)
+	}
+
 	return Result{Value: function}, nil, nil
 }
 
@@ -1510,6 +1517,7 @@ func (self *Interpreter) pushScope(span errors.Span) *errors.Error {
 	if len(self.scopes) >= int(self.stackLimit) {
 		return errors.NewError(span, fmt.Sprintf("Maximum stack size of %d was exceeded", self.stackLimit), errors.StackOverflow)
 	}
+
 	// Push a new stack frame onto the stack
 	self.scopes = append(self.scopes, make(map[string]*Value))
 	if self.debug {
@@ -1575,22 +1583,23 @@ func (self *Interpreter) getVar(key string) *Value {
 // The builtin just has the task of providing the target module code
 // This function then runs the target module code and returns the value of the target function (analyzes the root scope)
 // If the target module contains top level code, it is also executed
-func (self Interpreter) ResolveModule(span errors.Span, module string, function string) (*Value, *errors.Error) {
-	moduleCode, found, _, err := self.executor.ResolveModule(module)
+func (self Interpreter) ResolveModule(span errors.Span, module string, function string) (*Value, map[string]*Value, *errors.Error) {
+	moduleCode, filename, found, _, err := self.executor.ResolveModule(module)
 	if err != nil {
-		return nil, errors.NewError(
+		return nil, nil, errors.NewError(
 			span,
 			fmt.Sprintf("resolve module: %s", err.Error()),
 			errors.ImportError,
 		)
 	}
 	if !found {
-		return nil, errors.NewError(
+		return nil, nil, errors.NewError(
 			span,
 			fmt.Sprintf("resolve module: '%s' no such module", module),
 			errors.ImportError,
 		)
 	}
+
 	_, exitCode, rootScope, runErr := Run(
 		self.executor,
 		self.sigTerm,
@@ -1601,17 +1610,18 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, function 
 		10,
 		self.moduleStack,
 		function,
+		filename,
 	)
 	if len(runErr) > 0 {
 		if runErr != nil {
 			runErr[0].Message = "target returned error: " + runErr[0].Message
 			runErr[0].Kind = errors.ImportError
 			runErr[0].Span = span
-			return nil, &runErr[0]
+			return nil, nil, &runErr[0]
 		}
 	}
 	if exitCode != 0 {
-		return nil, errors.NewError(
+		return nil, nil, errors.NewError(
 			span,
 			fmt.Sprintf("resolve module: script '%s' terminated with exit-code %d", module, exitCode),
 			errors.ImportError,
@@ -1619,11 +1629,11 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, function 
 	}
 	functionValue, found := rootScope[function]
 	if !found {
-		return nil, errors.NewError(
+		return nil, nil, errors.NewError(
 			span,
 			fmt.Sprintf("no function named '%s' found in module '%s'", function, module),
 			errors.ImportError,
 		)
 	}
-	return functionValue, nil
+	return functionValue, rootScope, nil
 }

@@ -14,19 +14,28 @@ func main() {
 	}
 	sigTerm := make(chan int)
 
+	analyzerExecutor := homescript.AnalyzerDummyExecutor{}
+
 	diagnostics, _, _ := homescript.Analyze(
-		homescript.AnalyzerDummyExecutor{},
+		analyzerExecutor,
 		string(program),
 		map[string]homescript.Value{
 			"PI": homescript.ValueNumber{Value: 3.14159265, IsProtected: true},
 		},
 		make([]string, 0),
 		"main",
+		os.Args[1], // Filename
 	)
 
 	hasError := false
 	for _, err := range diagnostics {
-		fmt.Println(err.Display(string(program), os.Args[1]))
+		// Read the file of the error
+		code, fileErr := analyzerExecutor.ReadFile(err.Span.Filename)
+		if fileErr != nil {
+			panic(fileErr.Error())
+		}
+
+		fmt.Println(err.Display(string(code)))
 		if err.Severity == homescript.Error {
 			hasError = true
 		}
@@ -37,8 +46,10 @@ func main() {
 		return
 	}
 
+	interpreterExecutor := homescript.DummyExecutor{}
+
 	_, code, _, hmsErrors := homescript.Run(
-		homescript.DummyExecutor{},
+		interpreterExecutor,
 		&sigTerm,
 		string(program),
 		make(map[string]homescript.Value),
@@ -49,10 +60,17 @@ func main() {
 		1000,
 		make([]string, 0),
 		"main",
+		os.Args[1], // Filename
 	)
 
 	for _, err := range hmsErrors {
-		fmt.Println(err.Display(string(program), os.Args[1]))
+		// Read the file of the error
+		code, fileErr := analyzerExecutor.ReadFile(err.Span.Filename)
+		if fileErr != nil {
+			panic(fileErr.Error())
+		}
+
+		fmt.Println(err.Display(string(code)))
 	}
 
 	fmt.Printf("Program terminated with exit-code %d\n", code)

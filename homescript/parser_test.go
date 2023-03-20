@@ -12,12 +12,13 @@ import (
 )
 
 func TestParserLexer(t *testing.T) {
-	program, err := os.ReadFile("../test/parser_test.hms")
+	path := "../test/parser_test.hms"
+	program, err := os.ReadFile(path)
 	assert.NoError(t, err)
 
 	start := time.Now()
 
-	lexer := newLexer(string(program))
+	lexer := newLexer(string(program), path)
 
 	tokens := make([]string, 0)
 	for {
@@ -43,18 +44,19 @@ func TestParserLexer(t *testing.T) {
 }
 
 func TestParser(t *testing.T) {
-	program, err := os.ReadFile("../test/parser_test.hms")
+	path := "../test/parser_test.hms"
+	program, err := os.ReadFile(path)
 	assert.NoError(t, err)
 
 	start := time.Now()
-	parser := newParser(string(program))
+	parser := newParser(string(program), path)
 
 	ast, parseErrors, _ := parser.parse()
 
 	if len(parseErrors) > 0 {
 		t.Error("Parsing failed due to error(s)")
 		for _, err := range parseErrors {
-			fmt.Println(err.Display(string(program), "parser_test.hms"))
+			fmt.Println(err.Display(string(program)))
 		}
 		return
 	}

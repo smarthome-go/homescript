@@ -40,9 +40,10 @@ type lexer struct {
 	nextChar     *rune
 	program      []rune
 	location     errors.Location
+	filename     string
 }
 
-func newLexer(program_source string) lexer {
+func newLexer(program_source string, filename string) lexer {
 	program := []rune(program_source)
 	programLen := len(program)
 	var currentChar *rune
@@ -69,6 +70,7 @@ func newLexer(program_source string) lexer {
 			Line:   1,
 			Column: 1,
 		},
+		filename: filename,
 	}
 	return lexer
 }
@@ -117,8 +119,9 @@ func (self *lexer) makeString() (Token, *errors.Error) {
 	// Check for closing quote
 	if self.currentChar == nil {
 		return unknownToken(startLocation), errors.NewError(errors.Span{
-			Start: startLocation,
-			End:   self.location,
+			Start:    startLocation,
+			End:      self.location,
+			Filename: self.filename,
 		}, "String literal never closed", errors.SyntaxError)
 	}
 	token := Token{
@@ -136,8 +139,9 @@ func (self *lexer) makeEscapeSequence() (rune, *errors.Error) {
 	self.advance()
 	if self.currentChar == nil {
 		return ' ', errors.NewError(errors.Span{
-			Start: startLocation,
-			End:   self.location,
+			Start:    startLocation,
+			End:      self.location,
+			Filename: self.filename,
 		}, "Unfinished escape sequence", errors.SyntaxError)
 	}
 
@@ -176,8 +180,9 @@ func (self *lexer) makeEscapeSequence() (rune, *errors.Error) {
 			char, err = self.escapePart(string(*self.currentChar), startLocation, 8, 2)
 		} else {
 			err = errors.NewError(errors.Span{
-				Start: startLocation,
-				End:   self.location,
+				Start:    startLocation,
+				End:      self.location,
+				Filename: self.filename,
 			}, "Invalid escape sequence", errors.SyntaxError)
 		}
 	}
@@ -195,8 +200,9 @@ func (self *lexer) escapePart(esc string, startLocation errors.Location, radix i
 	for i := 0; i < int(digits); i++ {
 		if self.currentChar == nil || !digitFun(*self.currentChar) {
 			return ' ', errors.NewError(errors.Span{
-				Start: startLocation,
-				End:   self.location,
+				Start:    startLocation,
+				End:      self.location,
+				Filename: self.filename,
 			}, "Invalid escape sequence", errors.SyntaxError)
 		}
 		esc += string(*self.currentChar)
@@ -327,8 +333,9 @@ func (self *lexer) makeOr() (Token, *errors.Error) {
 	}
 	return unknownToken(self.location), &errors.Error{
 		Span: errors.Span{
-			Start: self.location,
-			End:   self.location,
+			Start:    self.location,
+			End:      self.location,
+			Filename: self.filename,
 		},
 		Kind:    errors.SyntaxError,
 		Message: fmt.Sprintf("Expected '|', found %s", foundChar),
@@ -356,8 +363,9 @@ func (self *lexer) makeAnd() (Token, *errors.Error) {
 	}
 	return unknownToken(self.location), &errors.Error{
 		Span: errors.Span{
-			Start: self.location,
-			End:   self.location,
+			Start:    self.location,
+			End:      self.location,
+			Filename: self.filename,
 		},
 		Kind:    errors.SyntaxError,
 		Message: fmt.Sprintf("Expected '&', found %s", foundChar),
@@ -727,8 +735,9 @@ func (self *lexer) nextToken() (Token, *errors.Error) {
 				return self.makeName(), nil
 			}
 			return unknownToken(self.location), errors.NewError(errors.Span{
-				Start: self.location,
-				End:   self.location,
+				Start:    self.location,
+				End:      self.location,
+				Filename: self.filename,
 			}, fmt.Sprintf("illegal characer: %c", *self.currentChar), errors.SyntaxError)
 		}
 	}
