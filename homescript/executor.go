@@ -75,7 +75,7 @@ type Executor interface {
 	ResolveModule(homescriptId string) (code string, filename string, found bool, shouldProceed bool, err error)
 	ReadFile(path string) (code string, err error)
 	Get(url string) (HttpResponse, error)
-	Http(url string, method string, body string, headers map[string]string) (HttpResponse, error)
+	Http(url string, method string, body string, headers map[string]string, cookies map[string]string) (HttpResponse, error)
 	GetStorage(key string) (*string, error)
 	SetStorage(key string, value string) error
 	IsAnalyzer() bool

@@ -84,7 +84,7 @@ func (self DummyExecutor) Get(url string) (HttpResponse, error) {
 	}, nil
 }
 
-func (self DummyExecutor) Http(url string, method string, body string, headers map[string]string) (HttpResponse, error) {
+func (self DummyExecutor) Http(url string, method string, body string, headers map[string]string, cookies map[string]string) (HttpResponse, error) {
 	return HttpResponse{
 		Status:     "Internal Server Error",
 		StatusCode: 500,
@@ -189,7 +189,7 @@ func (self AnalyzerDummyExecutor) Get(url string) (HttpResponse, error) {
 	return HttpResponse{}, nil
 }
 
-func (self AnalyzerDummyExecutor) Http(url string, method string, body string, headers map[string]string) (HttpResponse, error) {
+func (self AnalyzerDummyExecutor) Http(url string, method string, body string, headers map[string]string, cookies map[string]string) (HttpResponse, error) {
 	return HttpResponse{}, nil
 }
 

@@ -13,6 +13,7 @@ var numberNames = []string{
 	"second",
 	"third",
 	"fourth",
+	"fifth",
 }
 
 // Helper function which checks the validity of args provided to builtin functions
@@ -32,7 +33,7 @@ func checkArgs(name string, span errors.Span, args []Value, types ...ValueType) 
 		if args[i].Type() != typ {
 			return errors.NewError(
 				span,
-				fmt.Sprintf("%s argument of function '%s' has to be of type %v", numberNames[i], name, typ),
+				fmt.Sprintf("%s argument of function '%s' has to be of type `%v`, found `%v`", numberNames[i], name, typ, args[i].Type()),
 				errors.TypeError,
 			)
 		}
@@ -465,6 +466,15 @@ func Get(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 	if err != nil {
 		return ValueNumber{}, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
+
+	cookies := make([]*Value, 0)
+	for _, cookie := range res.Cookies {
+		cookies = append(cookies, valPtr(ValuePair{
+			Key:   valPtr(ValueString{Value: cookie.Name}),
+			Value: valPtr(ValueString{Value: cookie.Value}),
+		}))
+	}
+
 	return ValueObject{
 		ObjFields: map[string]*Value{
 			"status": valPtr(ValueString{
@@ -475,6 +485,9 @@ func Get(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 			}),
 			"body": valPtr(ValueString{
 				Value: res.Body,
+			}),
+			"cookies": valPtr(ValueList{
+				Values: &cookies,
 			}),
 		},
 	}, nil, nil
@@ -482,70 +495,99 @@ func Get(executor Executor, span errors.Span, args ...Value) (Value, *int, *erro
 
 // Makes a network request using an arbitrary URL, method , body (as plaintext), (and optionally headers)
 func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-	// Validate that at least three arguments are provided
-	if len(args) < 3 {
-		return nil, nil, errors.NewError(
-			span,
-			fmt.Sprintf("function 'http' takes three or more arguments but %d were given", len(args)),
-			errors.TypeError,
-		)
+	if err := checkArgs("http", span, args, TypeString, TypeString, TypeString, TypeList, TypeList); err != nil {
+		return nil, nil, err
 	}
-	// Validate that the first three arguments are of type string
-	for argIndex, arg := range args {
-		if arg.Type() != TypeString {
-			return nil, nil, errors.NewError(
-				span,
-				fmt.Sprintf("%s argument of function 'http' has to be of type String", numberNames[argIndex]),
-				errors.TypeError,
-			)
-		}
-		if argIndex == 2 {
-			break
-		}
-	}
-	// Create header values from remaining args
+
+	// Create header values from object arg
 	headers := make(map[string]string, 0)
-	for headerIndex, header := range args[3:] {
-		if header.Type() != TypePair {
-			return nil, nil, errors.NewError(
-				span,
-				fmt.Sprintf("argument %d of function 'http' has to be of type pair", headerIndex+4),
-				errors.TypeError,
-			)
-		}
-		key, err := (*header.(ValuePair).Key).Display(executor, span)
-		if err != nil {
-			return nil, nil, err
-		}
-		_, alreadyExists := headers[key]
-		if alreadyExists {
-			key, err := (*header.(ValuePair).Key).Display(executor, span)
+	for _, value := range *args[3].(ValueList).Values {
+		if (*value).Type() != TypePair {
+			dis, err := (*value).Display(executor, span)
 			if err != nil {
 				return nil, nil, err
 			}
-			return nil, nil, errors.NewError(
-				span,
-				fmt.Sprintf("header entry (value pair) %d of function 'http' has duplicate key entry '%s'", headerIndex+4, key),
-				errors.ValueError,
-			)
+			return nil, nil, errors.NewError((*value).Span(), fmt.Sprintf("Found non-pair entry in header list: `%s`", dis), errors.TypeError)
 		}
-		// Add the argument to the argument map
-		value, err := (*header.(ValuePair).Value).Display(executor, span)
+
+		val := (*value).(ValuePair)
+		keyDis, err := (*val.Key).Display(executor, span)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		headers[key] = value
+		_, alreadyExists := headers[keyDis]
+		if alreadyExists {
+			return nil, nil, errors.NewError(
+				span,
+				fmt.Sprintf("header entry of function 'http' has duplicate key entry `%s`", keyDis),
+				errors.ValueError,
+			)
+		}
+		// Add the argument to the argument map
+		value, err := (*val.Value).Display(executor, span)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		headers[keyDis] = value
 	}
+
+	// Create cookiesReq from object arg
+	cookiesReq := make(map[string]string, 0)
+	for _, value := range *args[4].(ValueList).Values {
+		if (*value).Type() != TypePair {
+			dis, err := (*value).Display(executor, span)
+			if err != nil {
+				return nil, nil, err
+			}
+			return nil, nil, errors.NewError((*value).Span(), fmt.Sprintf("Found non-pair entry in cookie list: `%s`", dis), errors.TypeError)
+		}
+
+		val := (*value).(ValuePair)
+		keyDis, err := (*val.Key).Display(executor, span)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		_, alreadyExists := cookiesReq[keyDis]
+		if alreadyExists {
+			return nil, nil, errors.NewError(
+				span,
+				fmt.Sprintf("cookie entry of function 'http' has duplicate key entry `%s`", keyDis),
+				errors.ValueError,
+			)
+		}
+		// Add the argument to the argument map
+		value, err := (*val.Value).Display(executor, span)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		cookiesReq[keyDis] = value
+	}
+
+	fmt.Println(headers)
+
 	res, err := executor.Http(
 		args[0].(ValueString).Value,
 		args[1].(ValueString).Value,
 		args[2].(ValueString).Value,
 		headers,
+		cookiesReq,
 	)
 	if err != nil {
 		return ValueNull{}, nil, errors.NewError(span, err.Error(), errors.RuntimeError)
 	}
+
+	cookies := make([]*Value, 0)
+	for _, cookie := range res.Cookies {
+		cookies = append(cookies, valPtr(ValuePair{
+			Key:   valPtr(ValueString{Value: cookie.Name}),
+			Value: valPtr(ValueString{Value: cookie.Value}),
+		}))
+	}
+
 	return ValueObject{
 		ObjFields: map[string]*Value{
 			"status": valPtr(ValueString{
@@ -557,6 +599,7 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 			"body": valPtr(ValueString{
 				Value: res.Body,
 			}),
+			"cookies": valPtr(ValueList{Values: &cookies}),
 		},
 	}, nil, nil
 }
