@@ -1087,6 +1087,10 @@ func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
 			},
 		})
 
+		if err := self.advance(); err != nil {
+			return AtomEnum{}, err
+		}
+
 		commaSpan := errors.Span{
 			Start:    self.currToken.EndLocation,
 			End:      self.currToken.EndLocation,
@@ -1097,17 +1101,25 @@ func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
 			return AtomEnum{}, err
 		}
 
-		if err := self.advance(); err != nil {
-			return AtomEnum{}, err
-		}
-
 		if self.prevToken.Kind == RCurly {
 			break
 		}
 
-		if self.prevToken.Kind != Comma {
-			return AtomEnum{}, errors.NewError(commaSpan, fmt.Sprintf("Expected `%v`, found `%v`", Comma, self.prevToken.Kind), errors.SyntaxError)
+		if self.currToken.Kind == RCurly {
+			if err := self.advance(); err != nil {
+				return AtomEnum{}, err
+			}
+			break
 		}
+
+		if self.prevToken.Kind != Comma {
+			return AtomEnum{}, errors.NewError(
+				commaSpan,
+				fmt.Sprintf("Expected `%v`, found `%v`", Comma, self.prevToken.Kind),
+				errors.SyntaxError,
+			)
+		}
+
 	}
 
 	return AtomEnum{

@@ -992,7 +992,7 @@ func (self *Analyzer) visitCastExpression(node CastExpression) (Result, *errors.
 
 	// Stop analysis here if the base value is nil
 	// Will still return the expected value type
-	if base.Value == nil {
+	if base.Value == nil || *base.Value == nil {
 		switch *node.Other {
 		case TypeNumber:
 			num := makeNum(node.Span, 0)
