@@ -49,6 +49,10 @@ func (self ValueType) String() string {
 		return "function"
 	case TypeBuiltinVariable:
 		return "builtinVariable"
+	case TypeEnum:
+		return "enum"
+	case TypeEnumVariant:
+		return "enumVariant"
 	default:
 		// Unreachable
 		panic("BUG: A new type was introduced without updating this code")
