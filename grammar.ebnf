@@ -99,9 +99,15 @@ Atom            = number
                 | 'null'
                 | identifier
                 | '(' , Expression , ')'
+                | EnumDefinition
+                | EnumVariant
                 | ExprWithBlock ;
 
 ExprWithBlock = LoopExpr | WhileExpr | ForExpr | IfExpr | FnExpr | TryExpr | ObjExpr ;
+
+EnumDefinition = 'enum' , '{' , identifier , { ',' , identifier } , [ ',' ] , '}' ;
+
+EnumVariant = identifier , '::' , identifier ;
 
 (*
   A <ListLiteral> creates a value of type `List` given an arbitraty amount of <Expression>
