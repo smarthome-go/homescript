@@ -1091,18 +1091,25 @@ func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
 			return AtomEnum{}, err
 		}
 
-		commaSpan := errors.Span{
-			Start:    self.currToken.EndLocation,
-			End:      self.currToken.EndLocation,
-			Filename: self.filename,
+		if self.currToken.Kind == RCurly {
+			if err := self.advance(); err != nil {
+				return AtomEnum{}, err
+			}
+			break
+		} else if self.currToken.Kind != Comma {
+			return AtomEnum{}, errors.NewError(
+				errors.Span{
+					Start:    self.prevToken.EndLocation,
+					End:      self.prevToken.EndLocation,
+					Filename: self.filename,
+				},
+				fmt.Sprintf("Expected `%v`, found `%v`", Comma, self.prevToken.Kind),
+				errors.SyntaxError,
+			)
 		}
 
 		if err := self.advance(); err != nil {
 			return AtomEnum{}, err
-		}
-
-		if self.prevToken.Kind == RCurly {
-			break
 		}
 
 		if self.currToken.Kind == RCurly {
@@ -1111,15 +1118,6 @@ func (self *parser) makeEnum() (AtomEnum, *errors.Error) {
 			}
 			break
 		}
-
-		if self.prevToken.Kind != Comma {
-			return AtomEnum{}, errors.NewError(
-				commaSpan,
-				fmt.Sprintf("Expected `%v`, found `%v`", Comma, self.prevToken.Kind),
-				errors.SyntaxError,
-			)
-		}
-
 	}
 
 	return AtomEnum{
@@ -1974,57 +1972,76 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 	}
 
 	// Make the import function name
-	functionName := self.currToken.Value
-	if self.currToken.Kind != Identifier {
-		return ImportStmt{}, &errors.Error{
-			Kind:    errors.SyntaxError,
-			Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-			Span: errors.Span{
-				Start:    self.currToken.StartLocation,
-				End:      self.currToken.EndLocation,
-				Filename: self.filename,
-			},
-		}
-	}
-	if err := self.advance(); err != nil {
-		return ImportStmt{}, err
-	}
+	functionNames := make([]string, 0)
 
-	// Make optional name rewrite
-	var rewriteName *string = nil
-	if self.currToken.Kind == As {
-		//// TODO: implement alias imports correctly ////
-		return ImportStmt{}, &errors.Error{
-			Kind:    errors.SyntaxError,
-			Message: "Using the `as` keyword is currently unstable",
-			Span: errors.Span{
-				Start:    self.currToken.StartLocation,
-				End:      self.currToken.EndLocation,
-				Filename: self.filename,
-			},
-		}
-
-		//// TODO: remove this /////
-
+	if self.currToken.Kind == LCurly {
 		if err := self.advance(); err != nil {
 			return ImportStmt{}, err
 		}
 
-		if self.currToken.Kind != Identifier {
-			return ImportStmt{}, &errors.Error{
-				Kind:    errors.SyntaxError,
-				Message: fmt.Sprintf("Expected identifier, found %v", self.currToken.Kind),
-				Span: errors.Span{
-					Start:    self.currToken.StartLocation,
-					End:      self.currToken.EndLocation,
-					Filename: self.filename,
-				},
+		for {
+			if self.currToken.Kind != Identifier {
+				return ImportStmt{}, &errors.Error{
+					Kind:    errors.SyntaxError,
+					Message: fmt.Sprintf("Expected `%v`, found %v", Identifier, self.currToken.Kind),
+					Span: errors.Span{
+						Start:    self.currToken.StartLocation,
+						End:      self.currToken.EndLocation,
+						Filename: self.filename,
+					},
+				}
+			}
+
+			functionNames = append(functionNames, self.currToken.Value)
+
+			if err := self.advance(); err != nil {
+				return ImportStmt{}, err
+			}
+
+			if self.currToken.Kind == RCurly {
+				if err := self.advance(); err != nil {
+					return ImportStmt{}, err
+				}
+				break
+			} else if self.currToken.Kind != Comma {
+				return ImportStmt{}, errors.NewError(
+					errors.Span{
+						Start:    self.prevToken.EndLocation,
+						End:      self.prevToken.EndLocation,
+						Filename: self.filename,
+					},
+					fmt.Sprintf("Expected `%v`, found `%v`", Comma, self.prevToken.Kind),
+					errors.SyntaxError,
+				)
+			}
+
+			if err := self.advance(); err != nil {
+				return ImportStmt{}, err
+			}
+
+			if self.currToken.Kind == RCurly {
+				if err := self.advance(); err != nil {
+					return ImportStmt{}, err
+				}
+				break
 			}
 		}
-		rewriteNameTmp := self.currToken.Value
-		rewriteName = &rewriteNameTmp
+
+	} else if self.currToken.Kind == Identifier {
+		functionNames = append(functionNames, self.currToken.Value)
+
 		if err := self.advance(); err != nil {
 			return ImportStmt{}, err
+		}
+	} else {
+		return ImportStmt{}, &errors.Error{
+			Kind:    errors.SyntaxError,
+			Message: fmt.Sprintf("Expected `%v` or `%v`, found %v", Identifier, LCurly, self.currToken.Kind),
+			Span: errors.Span{
+				Start:    self.currToken.StartLocation,
+				End:      self.currToken.EndLocation,
+				Filename: self.filename,
+			},
 		}
 	}
 
@@ -2060,8 +2077,7 @@ func (self *parser) importStmt() (ImportStmt, *errors.Error) {
 	}
 
 	return ImportStmt{
-		Function:   functionName,
-		RewriteAs:  rewriteName,
+		Functions:  functionNames,
 		FromModule: self.prevToken.Value,
 		Range: errors.Span{
 			Start:    startLocation,

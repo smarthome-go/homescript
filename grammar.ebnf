@@ -39,7 +39,9 @@ LetStmt   = 'let' , identifier , '=' , Expression , ';' ;
   in the current scope, `as` can be used to import the target function under a different specified
   name.
 *)
-ImportStmt = 'import' , identifier , [ 'as' , identifier ] , 'from' , identifier , ';' ;
+ImportStmt = 'import' , ( identifier
+                        | '{' , identifier , { ',' , identifier } , [ ',' ] , '}' ) , 'from' , identifier
+           , ';' ;
 
 (*
   A <BreakStmt> is used to stop a loop entirely. It can optionally be followed by an expression that

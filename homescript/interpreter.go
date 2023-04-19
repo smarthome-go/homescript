@@ -278,38 +278,37 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 		}
 	}
 	// Resolve the function to be imported
-	function, rootScope, err := self.ResolveModule(
+	functions, rootScope, err := self.ResolveModule(
 		node.Span(),
 		node.FromModule,
-		node.Function,
+		node.Functions,
 	)
 	if err != nil {
 		return Result{}, nil, err
 	}
-	actualImport := node.Function
-	if node.RewriteAs != nil {
-		actualImport = *node.RewriteAs
+
+	for _, function := range functions {
+		// Check if the function conflicts with existing values
+		value := self.getVar(*(*function).(ValueFunction).Identifier)
+		if value != nil {
+			return Result{}, nil, errors.NewError(
+				node.Span(),
+				fmt.Sprintf("the name `%s` is already present in the current scope", *(*function).(ValueFunction).Identifier),
+				errors.ImportError,
+			)
+		}
+
+		// Push the function into the current scope
+		self.addVar(*(*function).(ValueFunction).Identifier, function)
+
+		// Migrate scope from import
+		for key, value := range rootScope {
+			self.addVar(fmt.Sprintf("%s::%s", node.FromModule, key), value)
+		}
 	}
 
-	// Check if the function conflicts with existing values
-	value := self.getVar(actualImport)
-	if value != nil {
-		return Result{}, nil, errors.NewError(
-			node.Span(),
-			fmt.Sprintf("the name '%s' is already present in the current scope", actualImport),
-			errors.ImportError,
-		)
-	}
-
-	// Push the function into the current scope
-	self.addVar(actualImport, function)
-
-	// Migrate scope from import
-	for key, value := range rootScope {
-		self.addVar(fmt.Sprintf("%s::%s", node.FromModule, key), value)
-	}
-
-	return Result{Value: function}, nil, nil
+	null := makeNull(node.Span())
+	return Result{Value: &null}, nil, nil
 }
 
 func (self *Interpreter) visitBreakStatement(node BreakStmt) (Result, *int, *errors.Error) {
@@ -1579,11 +1578,11 @@ func (self *Interpreter) getVar(key string) *Value {
 	return nil
 }
 
-// Resolves a function imported by an 'import' statement
+// Resolves functions imported by an 'import' statement
 // The builtin just has the task of providing the target module code
-// This function then runs the target module code and returns the value of the target function (analyzes the root scope)
+// This function then runs the target module code and returns the values of the target functionsj (analyzes the root scope)
 // If the target module contains top level code, it is also executed
-func (self Interpreter) ResolveModule(span errors.Span, module string, function string) (*Value, map[string]*Value, *errors.Error) {
+func (self Interpreter) ResolveModule(span errors.Span, module string, functions []string) ([]*Value, map[string]*Value, *errors.Error) {
 	moduleCode, filename, found, _, err := self.executor.ResolveModule(module)
 	if err != nil {
 		return nil, nil, errors.NewError(
@@ -1609,7 +1608,7 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, function 
 		false,
 		10,
 		self.moduleStack,
-		function,
+		"import",
 		filename,
 	)
 	if len(runErr) > 0 {
@@ -1627,13 +1626,20 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, function 
 			errors.ImportError,
 		)
 	}
-	functionValue, found := rootScope[function]
-	if !found {
-		return nil, nil, errors.NewError(
-			span,
-			fmt.Sprintf("no function named '%s' found in module '%s'", function, module),
-			errors.ImportError,
-		)
+
+	resultFunctions := make([]*Value, 0)
+	for _, function := range functions {
+
+		functionValue, found := rootScope[function]
+		if !found {
+			return nil, nil, errors.NewError(
+				span,
+				fmt.Sprintf("no function named '%s' found in module '%s'", function, module),
+				errors.ImportError,
+			)
+		}
+		resultFunctions = append(resultFunctions, functionValue)
 	}
-	return functionValue, rootScope, nil
+
+	return resultFunctions, rootScope, nil
 }

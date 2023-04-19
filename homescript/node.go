@@ -92,9 +92,8 @@ func (self LetStmt) Kind() StatementKind { return LetStmtKind }
 func (self LetStmt) Span() errors.Span   { return self.Range }
 
 type ImportStmt struct {
-	Function   string  // import `foo`
-	RewriteAs  *string // as `bar`
-	FromModule string  // from `baz`
+	Functions  []string // import `foo`
+	FromModule string   // from `baz`
 	Range      errors.Span
 }
 

@@ -487,13 +487,8 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		}
 	}
 
-	actualImport := node.Function
-	if node.RewriteAs != nil {
-		actualImport = *node.RewriteAs
-	}
-
 	// Check if the function can be imported
-	moduleCode, filename, exists, proceed, err := self.executor.ResolveModule(node.FromModule)
+	moduleCode, filename, exists, shouldProceed, err := self.executor.ResolveModule(node.FromModule)
 	if err != nil {
 		self.issue(
 			node.Range,
@@ -511,64 +506,74 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		return Result{}, nil
 	}
 
-	// Check if the function conflicts with existing values
-	value := self.getVar(actualImport)
-	function := makeFn(&actualImport, node.Range)
+	if !shouldProceed {
+		for _, imported := range node.Functions {
+			function := makeFn(&imported, node.Range)
 
-	// Only report this non-critical error
-	if value != nil {
-		self.issue(node.Range,
-			fmt.Sprintf("the name '%s' is already present in the current scope", actualImport),
-			errors.ImportError,
-		)
+			// Push a dummy function into the current scope
+			self.addVar(imported, function, node.Range)
+			// Add the funtion to the list of imported functions to avoid analysis
+			self.getScope().importedFunctions = append(self.getScope().importedFunctions, imported)
+		}
 		return Result{}, nil
-	} else {
-		// Push a dummy function into the current scope
-		self.addVar(actualImport, function, node.Range)
-		// Add the funtion to the list of imported functions to avoid analysis
-		self.getScope().importedFunctions = append(self.getScope().importedFunctions, actualImport)
 	}
 
-	if !proceed {
-		return Result{Value: &function}, nil
-	}
-	diagnostics, _, rootScope := Analyze(
-		self.executor,
-		moduleCode,
-		make(map[string]Value),
-		self.moduleStack,
-		node.FromModule,
-		filename,
-	)
-	moduleErrors := 0
-	firstErrMessage := ""
-	for _, diagnostic := range diagnostics {
-		if diagnostic.Severity == Error {
-			moduleErrors++
-			if firstErrMessage == "" {
-				firstErrMessage = diagnostic.Message
+	for _, imported := range node.Functions {
+		value := self.getVar(imported)
+		function := makeFn(&imported, node.Range)
+
+		// Only report this non-critical error
+		if value != nil {
+			self.issue(node.Range,
+				fmt.Sprintf("the name '%s' is already present in the current scope", imported),
+				errors.ImportError,
+			)
+			return Result{}, nil
+		} else {
+			// Push a dummy function into the current scope
+			self.addVar(imported, function, node.Range)
+			// Add the funtion to the list of imported functions to avoid analysis
+			self.getScope().importedFunctions = append(self.getScope().importedFunctions, imported)
+		}
+
+		diagnostics, _, rootScope := Analyze(
+			self.executor,
+			moduleCode,
+			make(map[string]Value),
+			self.moduleStack,
+			node.FromModule,
+			filename,
+		)
+		moduleErrors := 0
+		firstErrMessage := ""
+		for _, diagnostic := range diagnostics {
+			if diagnostic.Severity == Error {
+				moduleErrors++
+				if firstErrMessage == "" {
+					firstErrMessage = diagnostic.Message
+				}
 			}
 		}
-	}
-	if moduleErrors > 0 {
-		self.issue(
-			node.Range,
-			fmt.Sprintf("target module contains %d error(s): %s", moduleErrors, firstErrMessage),
-			errors.ImportError,
-		)
-		return Result{}, nil
-	}
-	functionValue, found := rootScope[node.Function]
-	if !found {
-		self.issue(
-			node.Range,
-			fmt.Sprintf("no function named '%s' found in module '%s'", node.Function, node.FromModule),
-			errors.ImportError,
-		)
-		return Result{}, nil
+		if moduleErrors > 0 {
+			self.issue(
+				node.Range,
+				fmt.Sprintf("target module contains %d error(s): %s", moduleErrors, firstErrMessage),
+				errors.ImportError,
+			)
+			return Result{}, nil
+		}
+		_, found := rootScope[imported]
+		if !found {
+			self.issue(
+				node.Range,
+				fmt.Sprintf("no function named `%s` found in module `%s`", imported, node.FromModule),
+				errors.ImportError,
+			)
+			return Result{}, nil
+		}
 	}
 
-	return Result{Value: functionValue}, nil
+	return Result{}, nil
 }
 
 func (self *Analyzer) visitBreakStatement(node BreakStmt) (Result, *errors.Error) {
