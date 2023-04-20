@@ -1645,11 +1645,11 @@ func (self *Analyzer) makeObject(node AtomObject) (Result, *errors.Error) {
 				errors.TypeError,
 			)
 		}
-		fields, err := ValueObject{ObjFields: map[string]*Value{}}.Fields(self.executor, node.Span())
+		defaultFields, err := ValueObject{ObjFields: map[string]*Value{}}.Fields(self.executor, node.Span())
 		if err != nil {
 			panic("This operation cannot fail since this is not a builtin variable")
 		}
-		_, isBuiltin := fields[field.Identifier]
+		_, isBuiltin := defaultFields[field.Identifier]
 		if isBuiltin {
 			self.issue(
 				field.IdentSpan,

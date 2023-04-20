@@ -1076,11 +1076,11 @@ func (self *Interpreter) makeObject(node AtomObject) (Result, *int, *errors.Erro
 				errors.TypeError,
 			)
 		}
-		fields, err := ValueObject{ObjFields: map[string]*Value{}}.Fields(self.executor, node.Span())
+		defaultFields, err := ValueObject{ObjFields: map[string]*Value{}}.Fields(self.executor, node.Span())
 		if err != nil {
 			panic("This operation cannot fail since `ValueObject` is not a builtin variable")
 		}
-		_, isBuiltin := fields[field.Identifier]
+		_, isBuiltin := defaultFields[field.Identifier]
 		if isBuiltin {
 			return Result{}, nil, errors.NewError(
 				field.IdentSpan,
