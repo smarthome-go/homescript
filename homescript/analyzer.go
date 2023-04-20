@@ -401,6 +401,7 @@ func (self *Analyzer) visitStatements(items []StatementOrExpr) (Result, *errors.
 					self.issue(item.Span(), "Can only use the return statement iside function bodies", errors.SyntaxError)
 				} else {
 					unreachable = true
+					lastResult = res
 				}
 			}
 		} else {
@@ -408,7 +409,9 @@ func (self *Analyzer) visitStatements(items []StatementOrExpr) (Result, *errors.
 			if err != nil {
 				return Result{}, err
 			}
-			lastResult = result
+			if !unreachable {
+				lastResult = result
+			}
 		}
 	}
 	if lastResult.BreakValue != nil {
