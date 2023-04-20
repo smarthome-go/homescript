@@ -277,8 +277,8 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 			)
 		}
 	}
-	// Resolve the function to be imported
-	functions, rootScope, err := self.ResolveModule(
+	// Resolve the functions to be imported
+	imported, _, err := self.ResolveModule(
 		node.Span(),
 		node.FromModule,
 		node.Functions,
@@ -287,24 +287,19 @@ func (self *Interpreter) visitImportStatement(node ImportStmt) (Result, *int, *e
 		return Result{}, nil, err
 	}
 
-	for _, function := range functions {
-		// Check if the function conflicts with existing values
-		value := self.getVar(*(*function).(ValueFunction).Identifier)
+	for name, importedValue := range imported {
+		// Check if the current item conflicts with existing values
+		value := self.getVar(name)
 		if value != nil {
 			return Result{}, nil, errors.NewError(
 				node.Span(),
-				fmt.Sprintf("the name `%s` is already present in the current scope", *(*function).(ValueFunction).Identifier),
+				fmt.Sprintf("the name `%s` is already present in the current scope", name),
 				errors.ImportError,
 			)
 		}
 
 		// Push the function into the current scope
-		self.addVar(*(*function).(ValueFunction).Identifier, function)
-
-		// Migrate scope from import
-		for key, value := range rootScope {
-			self.addVar(fmt.Sprintf("%s::%s", node.FromModule, key), value)
-		}
+		self.addVar(name, importedValue)
 	}
 
 	null := makeNull(node.Span())
@@ -1081,7 +1076,11 @@ func (self *Interpreter) makeObject(node AtomObject) (Result, *int, *errors.Erro
 				errors.TypeError,
 			)
 		}
-		_, isBuiltin := ValueObject{ObjFields: map[string]*Value{}}.Fields()[field.Identifier]
+		fields, err := ValueObject{ObjFields: map[string]*Value{}}.Fields(self.executor, node.Span())
+		if err != nil {
+			panic("This operation cannot fail since `ValueObject` is not a builtin variable")
+		}
+		_, isBuiltin := fields[field.Identifier]
 		if isBuiltin {
 			return Result{}, nil, errors.NewError(
 				field.IdentSpan,
@@ -1582,7 +1581,7 @@ func (self *Interpreter) getVar(key string) *Value {
 // The builtin just has the task of providing the target module code
 // This function then runs the target module code and returns the values of the target functionsj (analyzes the root scope)
 // If the target module contains top level code, it is also executed
-func (self Interpreter) ResolveModule(span errors.Span, module string, functions []string) ([]*Value, map[string]*Value, *errors.Error) {
+func (self Interpreter) ResolveModule(span errors.Span, module string, functions []string) (toBeImported map[string]*Value, rootScope map[string]*Value, _e *errors.Error) {
 	moduleCode, filename, found, _, err := self.executor.ResolveModule(module)
 	if err != nil {
 		return nil, nil, errors.NewError(
@@ -1627,7 +1626,7 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, functions
 		)
 	}
 
-	resultFunctions := make([]*Value, 0)
+	resultFunctions := make(map[string]*Value)
 	for _, function := range functions {
 
 		functionValue, found := rootScope[function]
@@ -1638,7 +1637,7 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, functions
 				errors.ImportError,
 			)
 		}
-		resultFunctions = append(resultFunctions, functionValue)
+		resultFunctions[function] = functionValue
 	}
 
 	return resultFunctions, rootScope, nil

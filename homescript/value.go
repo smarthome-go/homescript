@@ -64,7 +64,7 @@ type Value interface {
 	Type() ValueType
 	Protected() bool
 	Span() errors.Span
-	Fields() map[string]*Value
+	Fields(executor Executor, span errors.Span) (map[string]*Value, *errors.Error)
 	Index(executor Executor, index Value, span errors.Span) (*Value, bool, *errors.Error)
 	// Is also used for `as str` and printing
 	Display(executor Executor, span errors.Span) (string, *errors.Error)
@@ -98,11 +98,11 @@ type ValueNull struct {
 
 func (self ValueNull) Type() ValueType   { return TypeNull }
 func (self ValueNull) Span() errors.Span { return self.Range }
-func (self ValueNull) Fields() map[string]*Value {
+func (self ValueNull) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	return map[string]*Value{
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
-	}
+	}, nil
 }
 func (self ValueNull) Index(_ Executor, _ Value, span errors.Span) (*Value, bool, *errors.Error) {
 	return nil, false, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
@@ -132,11 +132,11 @@ func (self ValueBool) Type() ValueType   { return TypeBoolean }
 func (self ValueBool) Span() errors.Span { return self.Range }
 
 // Fields also return a pointer so that member assignments are possible
-func (self ValueBool) Fields() map[string]*Value {
+func (self ValueBool) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	return map[string]*Value{
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalHelper(self),
-	}
+	}, nil
 }
 
 // Index returns a pointer so that index assignments are possible
@@ -207,9 +207,11 @@ type ValueFunction struct {
 	IsProtected bool
 }
 
-func (self ValueFunction) Type() ValueType           { return TypeFunction }
-func (self ValueFunction) Span() errors.Span         { return self.Range }
-func (self ValueFunction) Fields() map[string]*Value { return make(map[string]*Value) }
+func (self ValueFunction) Type() ValueType   { return TypeFunction }
+func (self ValueFunction) Span() errors.Span { return self.Range }
+func (self ValueFunction) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
+	return make(map[string]*Value), nil
+}
 func (self ValueFunction) Index(_ Executor, _ Value, span errors.Span) (*Value, bool, *errors.Error) {
 	return nil, false, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
 }
@@ -239,9 +241,11 @@ type ValueBuiltinFunction struct {
 	Callback func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error)
 }
 
-func (self ValueBuiltinFunction) Type() ValueType           { return TypeBuiltinFunction }
-func (self ValueBuiltinFunction) Span() errors.Span         { return errors.Span{} }
-func (self ValueBuiltinFunction) Fields() map[string]*Value { return make(map[string]*Value) }
+func (self ValueBuiltinFunction) Type() ValueType   { return TypeBuiltinFunction }
+func (self ValueBuiltinFunction) Span() errors.Span { return errors.Span{} }
+func (self ValueBuiltinFunction) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
+	return make(map[string]*Value), nil
+}
 func (self ValueBuiltinFunction) Index(_ Executor, _ Value, span errors.Span) (*Value, bool, *errors.Error) {
 	return nil, false, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)
 }
@@ -271,11 +275,22 @@ type ValueBuiltinVariable struct {
 	Callback func(executor Executor, span errors.Span) (Value, *errors.Error)
 }
 
-func (self ValueBuiltinVariable) Type() ValueType           { return TypeBuiltinVariable }
-func (self ValueBuiltinVariable) Span() errors.Span         { return errors.Span{} }
-func (self ValueBuiltinVariable) Fields() map[string]*Value { return make(map[string]*Value) }
-func (self ValueBuiltinVariable) Index(_ Executor, _ Value, span errors.Span) (*Value, bool, *errors.Error) {
-	panic("A bare builtin variable should not exist")
+func (self ValueBuiltinVariable) Type() ValueType   { return TypeBuiltinVariable }
+func (self ValueBuiltinVariable) Span() errors.Span { return errors.Span{} }
+func (self ValueBuiltinVariable) Fields(executor Executor, span errors.Span) (map[string]*Value, *errors.Error) {
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, err
+	}
+	return val.Fields(executor, span)
+}
+
+func (self ValueBuiltinVariable) Index(executor Executor, idx Value, span errors.Span) (*Value, bool, *errors.Error) {
+	val, err := self.Callback(executor, span)
+	if err != nil {
+		return nil, false, err
+	}
+	return val.Index(executor, idx, span)
 }
 func (self ValueBuiltinVariable) Protected() bool {
 	return true
@@ -456,11 +471,16 @@ func (self ValueBuiltinVariable) Pow(executor Executor, span errors.Span, other 
 
 // Helper functions for values
 func getField(executor Executor, span errors.Span, self Value, fieldKey string, isAssignmentLHS bool) (*Value, *errors.Error) {
-	value, exists := self.Fields()[fieldKey]
+	fieldMap, err := self.Fields(executor, span)
+	if err != nil {
+		return nil, err
+	}
+
+	value, exists := fieldMap[fieldKey]
 	if !exists {
 		if isAssignmentLHS && self.Type() == TypeObject && self.(ValueObject).IsDynamic && !self.(ValueObject).IsProtected {
 			ptr := valPtr(ValueNull{})
-			self.Fields()[fieldKey] = ptr
+			fieldMap[fieldKey] = ptr
 			return ptr, nil
 		}
 		return nil, errors.NewError(span, fmt.Sprintf("%v has no member named %s", self.Type(), fieldKey), errors.TypeError)

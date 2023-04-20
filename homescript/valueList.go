@@ -19,7 +19,7 @@ type ValueList struct {
 func (self ValueList) Type() ValueType   { return TypeList }
 func (self ValueList) Span() errors.Span { return self.Range }
 func (self ValueList) Protected() bool   { return self.IsProtected }
-func (self ValueList) Fields() map[string]*Value {
+func (self ValueList) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	return map[string]*Value{
 		// Returns the length of the list as a number value
 		"len": valPtr(ValueBuiltinFunction{
@@ -270,7 +270,7 @@ func (self ValueList) Fields() map[string]*Value {
 		}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
-	}
+	}, nil
 }
 func (self ValueList) Index(executor Executor, indexValue Value, span errors.Span) (*Value, bool, *errors.Error) {
 	// Check the type

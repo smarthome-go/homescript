@@ -1247,7 +1247,11 @@ func (self *Analyzer) visitCallExpression(node CallExpression) (Result, *errors.
 				self.info(part.Span, "manual validation required")
 				return Result{}, nil
 			}
-			result := self.getField(*base.Value, part.Span, *part.MemberExpressionPart, self.isAssignLHSCount != 0)
+			result, err := self.getField(*base.Value, part.Span, *part.MemberExpressionPart, self.isAssignLHSCount != 0)
+			if err != nil {
+				self.issue(err.Span, err.Message, err.Kind)
+				return Result{}, nil
+			}
 			if result == nil {
 				return Result{}, nil
 			}
@@ -1297,7 +1301,11 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 				manualInfo = true
 				continue
 			}
-			value := self.getField(*base.Value, member.Span, *member.Identifier, self.isAssignLHSCount != 0)
+			value, err := self.getField(*base.Value, member.Span, *member.Identifier, self.isAssignLHSCount != 0)
+			if err != nil {
+				self.issue(err.Span, err.Message, err.Kind)
+				return Result{}, nil
+			}
 			if value == nil {
 				return Result{}, nil
 			}
@@ -1336,13 +1344,18 @@ func (self *Analyzer) visitMemberExpression(node MemberExpression) (Result, *err
 	return base, nil
 }
 
-func (self *Analyzer) getField(value Value, span errors.Span, key string, isAssignLHS bool) *Value {
-	val, exists := value.Fields()[key]
+func (self *Analyzer) getField(value Value, span errors.Span, key string, isAssignLHS bool) (*Value, *errors.Error) {
+	fields, err := value.Fields(self.executor, span)
+	if err != nil {
+		return nil, err
+	}
+
+	val, exists := fields[key]
 	if !exists {
 		if isAssignLHS {
 			ptr := valPtr(ValueNull{})
-			value.Fields()[key] = ptr
-			return ptr
+			fields[key] = ptr
+			return ptr, nil
 		}
 		if value.Type() == TypeObject && value.(ValueObject).IsDynamic {
 			self.symbols = append(self.symbols, symbol{
@@ -1351,17 +1364,17 @@ func (self *Analyzer) getField(value Value, span errors.Span, key string, isAssi
 				Type:  SymbolDynamicMember,
 			})
 			self.info(span, "dynamic object: manual member validation required")
-			return nil
+			return nil, nil
 		}
 		self.issue(span, fmt.Sprintf("%v has no member named %s", value.Type(), key), errors.TypeError)
-		return nil
+		return nil, nil
 	}
 	self.symbols = append(self.symbols, symbol{
 		Span:  span,
 		Value: *val,
 		Type:  (*val).Type().toSymbolType(),
 	})
-	return val
+	return val, nil
 }
 
 func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
@@ -1632,7 +1645,11 @@ func (self *Analyzer) makeObject(node AtomObject) (Result, *errors.Error) {
 				errors.TypeError,
 			)
 		}
-		_, isBuiltin := ValueObject{ObjFields: map[string]*Value{}}.Fields()[field.Identifier]
+		fields, err := ValueObject{ObjFields: map[string]*Value{}}.Fields(self.executor, node.Span())
+		if err != nil {
+			panic("This operation cannot fail since this is not a builtin variable")
+		}
+		_, isBuiltin := fields[field.Identifier]
 		if isBuiltin {
 			self.issue(
 				field.IdentSpan,
@@ -1838,9 +1855,10 @@ func (self *Analyzer) visitIfExpression(node IfExpr) (Result, *errors.Error) {
 
 	// Else branch
 	if node.ElseBlock == nil {
-		if ifType != TypeNull {
+		if ifType != TypeNull && ifType != TypeUnknown {
 			self.issue(node.Block.Span, fmt.Sprintf("Expected `else` block with `%v` result type", ifType), errors.TypeError)
 		}
+
 		return Result{}, nil
 	}
 

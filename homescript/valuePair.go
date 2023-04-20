@@ -16,13 +16,13 @@ type ValuePair struct {
 
 func (self ValuePair) Type() ValueType   { return TypePair }
 func (self ValuePair) Span() errors.Span { return self.Range }
-func (self ValuePair) Fields() map[string]*Value {
+func (self ValuePair) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	return map[string]*Value{
 		"k":              self.Key,
 		"v":              self.Value,
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
-	}
+	}, nil
 }
 func (self ValuePair) Index(_ Executor, _ Value, span errors.Span) (*Value, bool, *errors.Error) {
 	return nil, false, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)

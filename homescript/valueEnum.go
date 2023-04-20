@@ -16,7 +16,7 @@ type ValueEnum struct {
 
 func (self ValueEnum) Type() ValueType   { return TypeEnum }
 func (self ValueEnum) Span() errors.Span { return self.Range }
-func (self ValueEnum) Fields() map[string]*Value {
+func (self ValueEnum) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	panic("`Fields` is not called on a bare enum")
 }
 
@@ -54,7 +54,7 @@ type ValueEnumVariant struct {
 
 func (self ValueEnumVariant) Type() ValueType   { return TypeEnumVariant }
 func (self ValueEnumVariant) Span() errors.Span { return self.Range }
-func (self ValueEnumVariant) Fields() map[string]*Value {
+func (self ValueEnumVariant) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	panic("`Fields` is not called on an enum variant")
 }
 

@@ -18,7 +18,7 @@ type ValueRange struct {
 func (self ValueRange) Type() ValueType   { return TypeRange }
 func (self ValueRange) Span() errors.Span { return self.Range }
 func (self ValueRange) Protected() bool   { return self.IsProtected }
-func (self ValueRange) Fields() map[string]*Value {
+func (self ValueRange) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	return map[string]*Value{
 		// Returns the difference of the start and end value
 		"diff": valPtr(ValueBuiltinFunction{
@@ -28,7 +28,7 @@ func (self ValueRange) Fields() map[string]*Value {
 		}),
 		"start": self.Start,
 		"end":   self.End,
-	}
+	}, nil
 }
 func (self ValueRange) Index(_ Executor, _ Value, span errors.Span) (*Value, bool, *errors.Error) {
 	return nil, false, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)

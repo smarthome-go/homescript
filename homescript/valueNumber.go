@@ -18,7 +18,7 @@ type ValueNumber struct {
 func (self ValueNumber) Type() ValueType   { return TypeNumber }
 func (self ValueNumber) Span() errors.Span { return self.Range }
 func (self ValueNumber) Protected() bool   { return self.IsProtected }
-func (self ValueNumber) Fields() map[string]*Value {
+func (self ValueNumber) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	return map[string]*Value{
 		// Specifies whether this number can be represented as an integer without loss of information
 		// For example, 42.00 can be represented as 42 whilst 3.14159264 cannot be easily represented as an integer
@@ -103,7 +103,7 @@ func (self ValueNumber) Fields() map[string]*Value {
 		}}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
-	}
+	}, nil
 }
 func (self ValueNumber) Index(_ Executor, _ Value, span errors.Span) (*Value, bool, *errors.Error) {
 	return nil, false, errors.NewError(span, fmt.Sprintf("cannot index a value of type %v", self.Type()), errors.TypeError)

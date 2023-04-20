@@ -7,7 +7,7 @@ import (
 	"github.com/smarthome-go/homescript/v2/homescript/errors"
 )
 
-func marshalValue(self Value, span errors.Span, isInner bool) (interface{}, bool, *errors.Error) {
+func marshalValue(self Value, span errors.Span, isInner bool, executor Executor) (interface{}, bool, *errors.Error) {
 	switch self := self.(type) {
 	case ValueString:
 		return self.Value, false, nil
@@ -20,11 +20,17 @@ func marshalValue(self Value, span errors.Span, isInner bool) (interface{}, bool
 		return self.Value, false, nil
 	case ValueObject:
 		output := make(map[string]interface{}, 0)
-		for key, value := range self.Fields() {
+
+		fields, err := self.Fields(executor, span)
+		if err != nil {
+			return nil, false, err
+		}
+
+		for key, value := range fields {
 			if value == nil {
 				return nil, false, nil
 			}
-			marshaled, skipNull, err := marshalValue(*value, span, true)
+			marshaled, skipNull, err := marshalValue(*value, span, true, executor)
 			if err != nil {
 				return nil, false, err
 			}
@@ -37,7 +43,7 @@ func marshalValue(self Value, span errors.Span, isInner bool) (interface{}, bool
 	case ValueList:
 		output := make([]interface{}, 0)
 		for _, value := range *self.Values {
-			marshaled, _, err := marshalValue(*value, span, true)
+			marshaled, _, err := marshalValue(*value, span, true, executor)
 			if err != nil {
 				return nil, false, err
 			}
@@ -49,7 +55,7 @@ func marshalValue(self Value, span errors.Span, isInner bool) (interface{}, bool
 		return nil, true, nil
 	case ValuePair:
 		output := make(map[string]interface{})
-		marshaledValue, _, err := marshalValue(*self.Value, span, true)
+		marshaledValue, _, err := marshalValue(*self.Value, span, true, executor)
 		if err != nil {
 			return nil, false, err
 		}
@@ -136,7 +142,7 @@ func unmarshalValue(span errors.Span, self interface{}) (Value, *errors.Error) {
 
 func marshalHelper(self Value) *Value {
 	return valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-		marshaled, _, err := marshalValue(self, span, false)
+		marshaled, _, err := marshalValue(self, span, false, executor)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -154,7 +160,7 @@ func marshalHelper(self Value) *Value {
 
 func marshalIndentHelper(self Value) *Value {
 	return valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
-		marshaled, _, err := marshalValue(self, span, false)
+		marshaled, _, err := marshalValue(self, span, false, executor)
 		if err != nil {
 			return nil, nil, err
 		}

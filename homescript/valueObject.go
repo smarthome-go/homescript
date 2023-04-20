@@ -26,7 +26,7 @@ type ValueObject struct {
 
 func (self ValueObject) Type() ValueType   { return TypeObject }
 func (self ValueObject) Span() errors.Span { return self.Range }
-func (self ValueObject) Fields() map[string]*Value {
+func (self ValueObject) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	self.ObjFields["to_json"] = marshalHelper(self)
 	self.ObjFields["to_json_indent"] = marshalIndentHelper(self)
 	self.ObjFields["contains"] = valPtr(ValueBuiltinFunction{
@@ -65,7 +65,7 @@ func (self ValueObject) Fields() map[string]*Value {
 			return ValueList{ValueType: &typ, Values: &keys}, nil, nil
 		},
 	})
-	return self.ObjFields
+	return self.ObjFields, nil
 }
 func (self ValueObject) Index(_ Executor, indexValue Value, span errors.Span) (*Value, bool, *errors.Error) {
 	// Check that the indexValue is of type string

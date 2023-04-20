@@ -21,7 +21,7 @@ type ValueString struct {
 func (self ValueString) Type() ValueType   { return TypeString }
 func (self ValueString) Span() errors.Span { return self.Range }
 func (self ValueString) Protected() bool   { return self.IsProtected }
-func (self ValueString) Fields() map[string]*Value {
+func (self ValueString) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
 	return map[string]*Value{
 		// Calculates the utf-8 (rune) length of the string
 		"len": valPtr(ValueBuiltinFunction{
@@ -135,7 +135,7 @@ func (self ValueString) Fields() map[string]*Value {
 		}}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
-	}
+	}, nil
 }
 
 func (self ValueString) Index(_ Executor, indexValue Value, span errors.Span) (*Value, bool, *errors.Error) {
