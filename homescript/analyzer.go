@@ -1922,30 +1922,9 @@ func (self *Analyzer) visitForExpression(node AtomFor) (Result, *errors.Error) {
 		return Result{}, err
 	}
 
-	// Get correct iterator closure
-	var iterator func(*Value, errors.Span) bool
-
-	switch (*iter.Value).Type() {
-	case TypeRange:
-		rng := (*iter.Value).(ValueRange)
-		iterator = rng.Next
-	case TypeList:
-		list := (*iter.Value).(ValueList)
-		iterator = list.Next
-	case TypeObject:
-		obj := (*iter.Value).(ValueObject)
-		iterator = obj.Next
-	case TypeString:
-		str := (*iter.Value).(ValueString)
-		iterator = str.Next
-	default:
-		iterator = nil
-
-		self.diagnosticError(errors.Error{
-			Span:    node.IterExpr.Span,
-			Message: fmt.Sprintf("a value of type %s cannot be used as an iterator", (*iter.Value).Type().String()),
-			Kind:    errors.TypeError,
-		})
+	iterator, err := intoIter(*iter.Value, self.executor, node.IterExpr.Span)
+	if err != nil {
+		return Result{}, err
 	}
 
 	// Performs one iteration

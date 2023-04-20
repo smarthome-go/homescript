@@ -90,6 +90,41 @@ type ValueAlg interface {
 	Pow(executor Executor, span errors.Span, other Value) (Value, *errors.Error)
 }
 
+func intoIter(value Value, executor Executor, span errors.Span) (func(*Value, errors.Span) bool, *errors.Error) {
+	// Get correct iterator closure
+	var iterator func(*Value, errors.Span) bool
+
+	switch value.Type() {
+	case TypeRange:
+		rng := value.(ValueRange)
+		iterator = rng.Next
+	case TypeList:
+		list := value.(ValueList)
+		iterator = list.Next
+	case TypeObject:
+		list := value.(ValueObject)
+		iterator = list.Next
+	case TypeString:
+		str := value.(ValueString)
+		iterator = str.Next
+	case TypeBuiltinVariable:
+		fn := value.(ValueBuiltinVariable)
+		val, err := fn.Callback(executor, span)
+		if err != nil {
+			return nil, err
+		}
+		return intoIter(val, executor, span)
+	default:
+		return nil, errors.NewError(
+			span,
+			fmt.Sprintf("a value of type %s cannot be used as an iterator", value.Type().String()),
+			errors.TypeError,
+		)
+	}
+
+	return iterator, nil
+}
+
 // Null value
 type ValueNull struct {
 	Range       errors.Span
