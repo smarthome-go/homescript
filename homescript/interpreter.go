@@ -1329,6 +1329,10 @@ func (self *Interpreter) visitForExpression(node AtomFor) (Result, *int, *errors
 			}, nil, nil
 		}
 
+		if value.ReturnValue != nil {
+			return value, nil, nil
+		}
+
 		// Assign to the last value
 		*lastValue = *value.Value
 	}
@@ -1372,9 +1376,13 @@ func (self *Interpreter) visitWhileExpression(node AtomWhile) (Result, *int, *er
 		self.popScope()
 		self.inLoopCount--
 
-		// Check if there is a break statement
+		// Check if there is a break or return statement
 		if result.BreakValue != nil {
 			return Result{Value: result.BreakValue}, nil, nil
+		}
+
+		if result.ReturnValue != nil {
+			return result, nil, nil
 		}
 
 		// Otherwise, update the lastResult
@@ -1399,9 +1407,12 @@ func (self *Interpreter) visitLoopExpression(node AtomLoop) (Result, *int, *erro
 		self.popScope()
 		self.inLoopCount--
 
-		// Check if there is a break statement
+		// Check if there is a break or return statement
 		if result.BreakValue != nil {
 			return Result{Value: result.BreakValue}, nil, nil
+		}
+		if result.ReturnValue != nil {
+			return result, nil, nil
 		}
 	}
 }
