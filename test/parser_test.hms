@@ -1,6 +1,10 @@
 # Imports
 import foo from bar;
-import foo as bar from baz;
+import { foo, bar, } from baz;
+import {
+    foo,
+    bar
+} from baz;
 
 # Assignments and data types
 let a = 3.14159265;

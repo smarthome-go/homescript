@@ -133,14 +133,9 @@ var tests = []test{
 		File:              "./test/programs/import.hms",
 		Skip:              false,
 		Debug:             false,
-		ExpectedCode:      0,
+		ExpectedCode:      55,
 		ExpectedValueType: homescript.TypeNull,
-		ExpectedErrors: []testError{
-			{
-				Kind:    errors.Warning,
-				Message: "Using the `as` keyword is currently unstable",
-			},
-		},
+		ExpectedErrors:    nil,
 	},
 	{
 		Name:              "Iterators",

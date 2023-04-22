@@ -1,1 +1,26 @@
-import fib as b from fib_lib;
+fn () {
+    import fib from fib_lib;
+}();
+
+fn () {
+    import { fib, foo }  from fib_lib;
+}();
+
+fn () {
+    import { fib, foo, }  from fib_lib;
+}();
+
+fn () {
+    import {
+        fib,
+        foo
+    } from fib_lib;
+}
+
+import {
+    fib,
+    foo,
+} from fib_lib;
+
+let res = fib(10);
+exit(res);

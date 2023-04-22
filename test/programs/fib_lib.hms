@@ -5,3 +5,5 @@ fn fib(n) {
         fib(n - 1) + fib (n - 2)
     }
 };
+
+fn foo() {}
