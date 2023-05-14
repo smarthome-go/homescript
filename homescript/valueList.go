@@ -66,13 +66,13 @@ func (self ValueList) Fields(_ Executor, _ errors.Span) (map[string]*Value, *err
 				return ValueNull{}, nil, nil
 			},
 		}),
-		// Joins the list together into a string using the specified seperator
+		// Joins the list together into a string using the specified separator
 		"join": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("join", span, args, TypeString); err != nil {
 					return nil, nil, err
 				}
-				seperator := args[0].(ValueString).Value
+				separator := args[0].(ValueString).Value
 				var output string
 
 				for idx, value := range *self.Values {
@@ -83,7 +83,7 @@ func (self ValueList) Fields(_ Executor, _ errors.Span) (map[string]*Value, *err
 					if idx == 0 {
 						output = display
 					} else {
-						output += (seperator + display)
+						output += (separator + display)
 					}
 				}
 				return ValueString{Value: output}, nil, nil

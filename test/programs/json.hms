@@ -14,7 +14,7 @@ let json_string = '{
 let parsed_object = json_string.parse_json();
 debug(parsed_object);
 
-# If an object contains a key which cannot be a Homescript identifier, use the index syntax to acces it
+# If an object contains a key which cannot be a Homescript identifier, use the index syntax to access it
 parsed_object["nested object"] = {
     other_key: "value",
 };

@@ -125,7 +125,7 @@ func (self ReturnStmt) Span() errors.Span   { return self.Range }
 
 type ExpressionStmt struct {
 	Expression Expression
-	// Range ommitted because the expression is forwarded here
+	// Range omitted because the expression is forwarded here
 }
 
 func (self ExpressionStmt) Kind() StatementKind { return ExpressionStmtKind }

@@ -47,7 +47,7 @@ func (self ValueNumber) Fields(_ Executor, _ errors.Span) (map[string]*Value, *e
 				}, nil, nil
 			},
 		}),
-		// Rounds the float to the neares integer
+		// Rounds the float to the nearest integer
 		"round": valPtr(ValueBuiltinFunction{
 			Callback: func(_ Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("round", span, args); err != nil {

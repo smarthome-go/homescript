@@ -968,7 +968,7 @@ func (self *parser) atom() (Atom, *errors.Error) {
 	case Try:
 		return self.tryExpr()
 	case LParen:
-		// Skip paranthesis
+		// Skip parenthesis
 		if err := self.advance(); err != nil {
 			return nil, err
 		}
@@ -977,7 +977,7 @@ func (self *parser) atom() (Atom, *errors.Error) {
 		if err != nil {
 			return nil, err
 		}
-		// Check and  skip closing paranthesis
+		// Check and  skip closing parenthesis
 		if self.currToken.Kind != RParen {
 			return nil, &errors.Error{
 				Kind:    errors.SyntaxError,
@@ -1822,7 +1822,7 @@ func (self *parser) fnExpr() (AtomFunction, *errors.Error) {
 			}
 		}
 	}
-	// Skip closing paranthesis
+	// Skip closing parenthesis
 	if err := self.advance(); err != nil {
 		return AtomFunction{}, err
 	}

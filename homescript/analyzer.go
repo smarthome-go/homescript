@@ -191,7 +191,7 @@ type scope struct {
 	// Also serves to inform about unused functions
 	functionCalls []string
 	// Saves which variable names have been accessed
-	// Used for issueing warnings about unused varirables
+	// Used for issuing warnings about unused varirables
 	variableAccesses []string
 	// Saves which functions were imported
 	// Because import is currently not implemented, the function should not be analyzed
@@ -515,7 +515,7 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 
 			// Push a dummy function into the current scope
 			self.addVar(imported, function, node.Range)
-			// Add the funtion to the list of imported functions to avoid analysis
+			// Add the function to the list of imported functions to avoid analysis
 			self.getScope().importedFunctions = append(self.getScope().importedFunctions, imported)
 		}
 		return Result{}, nil
@@ -535,7 +535,7 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		} else {
 			// Push a dummy function into the current scope
 			self.addVar(imported, function, node.Range)
-			// Add the funtion to the list of imported functions to avoid analysis
+			// Add the function to the list of imported functions to avoid analysis
 			self.getScope().importedFunctions = append(self.getScope().importedFunctions, imported)
 		}
 
@@ -605,7 +605,7 @@ func (self *Analyzer) visitContinueStatement(node ContinueStmt) (Result, *errors
 func (self *Analyzer) visitReturnStatement(node ReturnStmt) (Result, *errors.Error) {
 	// The return value defaults to null
 	returnValue := makeNull(node.Span())
-	// If the return statment should return a value, make and override it here
+	// If the return statement should return a value, make and override it here
 	if node.Expression != nil {
 		value, err := self.visitExpression(*node.Expression)
 		if err != nil {
@@ -708,7 +708,7 @@ func (self *Analyzer) visitAndExpression(node AndExpression) (Result, *errors.Er
 }
 
 func (self *Analyzer) visitEqExpression(node EqExpression) (Result, *errors.Error) {
-	base, err := self.visitRelExression(node.Base)
+	base, err := self.visitRelExpression(node.Base)
 	if err != nil {
 		return Result{}, err
 	}
@@ -718,7 +718,7 @@ func (self *Analyzer) visitEqExpression(node EqExpression) (Result, *errors.Erro
 		return base, nil
 	}
 
-	otherValue, err := self.visitRelExression(node.Other.Node)
+	otherValue, err := self.visitRelExpression(node.Other.Node)
 	if err != nil {
 		return Result{}, err
 	}
@@ -737,8 +737,8 @@ func (self *Analyzer) visitEqExpression(node EqExpression) (Result, *errors.Erro
 	return Result{}, nil
 }
 
-func (self *Analyzer) visitRelExression(node RelExpression) (Result, *errors.Error) {
-	base, err := self.visitAddExression(node.Base)
+func (self *Analyzer) visitRelExpression(node RelExpression) (Result, *errors.Error) {
+	base, err := self.visitAddExpression(node.Base)
 	if err != nil {
 		return Result{}, err
 	}
@@ -747,7 +747,7 @@ func (self *Analyzer) visitRelExression(node RelExpression) (Result, *errors.Err
 		return base, nil
 	}
 
-	otherValue, err := self.visitAddExression(node.Other.Node)
+	otherValue, err := self.visitAddExpression(node.Other.Node)
 	if err != nil {
 		return Result{}, err
 	}
@@ -799,8 +799,8 @@ func (self *Analyzer) visitRelExression(node RelExpression) (Result, *errors.Err
 	return makeBoolResult(node.Span, false), nil
 }
 
-func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Error) {
-	base, err := self.visitMulExression(node.Base)
+func (self *Analyzer) visitAddExpression(node AddExpression) (Result, *errors.Error) {
+	base, err := self.visitMulExpression(node.Base)
 	if err != nil {
 		return Result{}, err
 	}
@@ -815,7 +815,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 		hadError := false
 		// Still lint the other parts
 		for _, following := range node.Following {
-			followingValue, err := self.visitMulExression(following.Other)
+			followingValue, err := self.visitMulExpression(following.Other)
 			if err != nil {
 				return Result{}, err
 			}
@@ -847,7 +847,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 
 		// Still lint the other parts
 		for _, following := range node.Following {
-			followingValue, err := self.visitMulExression(following.Other)
+			followingValue, err := self.visitMulExpression(following.Other)
 			if err != nil {
 				return Result{}, err
 			}
@@ -868,7 +868,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 		var algError *errors.Error
 		var res Value
 
-		followingValue, err := self.visitMulExression(following.Other)
+		followingValue, err := self.visitMulExpression(following.Other)
 		if err != nil {
 			return Result{}, err
 		}
@@ -905,7 +905,7 @@ func (self *Analyzer) visitAddExression(node AddExpression) (Result, *errors.Err
 	return Result{Value: &returnValue}, nil
 }
 
-func (self *Analyzer) visitMulExression(node MulExpression) (Result, *errors.Error) {
+func (self *Analyzer) visitMulExpression(node MulExpression) (Result, *errors.Error) {
 	base, err := self.visitCastExpression(node.Base)
 	if err != nil {
 		return Result{}, err
@@ -1056,7 +1056,7 @@ func (self *Analyzer) visitCastExpression(node CastExpression) (Result, *errors.
 	}
 }
 func (self *Analyzer) visitUnaryExpression(node UnaryExpression) (Result, *errors.Error) {
-	// If there is only a exp exression, return its value (recursion base case)
+	// If there is only a exp expression, return its value (recursion base case)
 	if node.ExpExpression != nil {
 		return self.visitEpxExpression(*node.ExpExpression)
 	}
@@ -1714,7 +1714,7 @@ func (self *Analyzer) visitTryExpression(node AtomTry) (Result, *errors.Error) {
 	if err != nil {
 		return Result{}, err
 	}
-	// Remove the scope (cannot simly defer removing it (due to catch block))
+	// Remove the scope (cannot simply defer removing it (due to catch block))
 	self.popScope()
 
 	// Add a new scope for the catch block
@@ -2313,7 +2313,7 @@ func (self *Analyzer) popScope() *errors.Error {
 	return nil
 }
 
-// Adds a varable to the top of the stack
+// Adds a variable to the top of the stack
 func (self *Analyzer) addVar(key string, value Value, span errors.Span) {
 	// Add the entry to the top hashmap
 	self.scopes[len(self.scopes)-1].this[key] = &value

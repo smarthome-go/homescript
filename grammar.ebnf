@@ -80,7 +80,7 @@ ExpExpr         = AssignExpr , [ '**' , UnaryExpr ] ;
   new value is also the result of this expression.
 *)
 AssignExpr      = CallExpr , [ ASSIGN_OPERATOR , Expression ] ;
-ASSING_OPERATOR = '=' | '*=' | '/=' | '%=' | '+=' | '-=' | '**=' ;
+ASSIGN_OPERATOR = '=' | '*=' | '/=' | '%=' | '+=' | '-=' | '**=' ;
 (*
   A <CallExpr> tries to call the given value as a function with supplied arguments. The result is
   the return value of the called function.
@@ -112,8 +112,8 @@ EnumDefinition = 'enum' , '{' , identifier , { ',' , identifier } , [ ',' ] , '}
 EnumVariant = identifier , '::' , identifier ;
 
 (*
-  A <ListLiteral> creates a value of type `List` given an arbitraty amount of <Expression>
-  Additionaly, the runtime should check that every element in the list is of the same type Lists can
+  A <ListLiteral> creates a value of type `List` given an arbitrary amount of <Expression>
+  Additionally, the runtime should check that every element in the list is of the same type Lists can
   be indexed using the value[index] syntax, where index must be an integer and value a list. The
   length of the list can be accessed using the `.len()` method
 *)
@@ -122,7 +122,7 @@ ListLiteral = '[' , [ Expression , { ',' , Expression } , [ ',' ] ] , ']' ;
 (*
   A <PairExpr> creates a value of type `Pair` given a <string> as the key and an arbitrary
   <Expression> for the value. `Pair`s are used in the builtin `exec` and `http` functions.
-  Additionaly, the key and value of a pair can be accessed through the `k` and `v` fields
+  Additionally, the key and value of a pair can be accessed through the `k` and `v` fields
   respectively. An example might look like this:
 
   ```

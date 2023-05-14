@@ -34,7 +34,7 @@ func (self ValueString) Fields(_ Executor, _ errors.Span) (map[string]*Value, *e
 				}, nil, nil
 			},
 		}),
-		// Replaces the first occurence of the first argument in `self.Value` with the content of the second argument
+		// Replaces the first occurrence of the first argument in `self.Value` with the content of the second argument
 		"replace": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("replace", span, args, TypeString, TypeString); err != nil {
@@ -45,7 +45,7 @@ func (self ValueString) Fields(_ Executor, _ errors.Span) (map[string]*Value, *e
 				}, nil, nil
 			},
 		}),
-		// Replaces all occurences of the first argument in `self.Value` with the content of the second argument
+		// Replaces all occurrences of the first argument in `self.Value` with the content of the second argument
 		"replace_all": valPtr(ValueBuiltinFunction{
 			Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
 				if err := checkArgs("replace_all", span, args, TypeString, TypeString); err != nil {

@@ -41,7 +41,7 @@ println(                      # The result is an object
 );
 
 # String concatenation using different types is allowed
-# Every variable wich can be printlned can be used in concatenation
+# Every variable which can be printlned can be used in concatenation
 println(
     "Pi is roughly " + "a value of " + 3.14159265 + " right?"
 );

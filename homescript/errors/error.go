@@ -77,7 +77,7 @@ func (self ErrorKind) String() string {
 	case Info:
 		return "Info"
 	default:
-		panic("BUG: a new error kind was introduced without udating this code")
+		panic("BUG: a new error kind was introduced without updating this code")
 	}
 }
 

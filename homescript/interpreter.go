@@ -331,7 +331,7 @@ func (self *Interpreter) visitContinueStatement(node ContinueStmt) (Result, *int
 func (self *Interpreter) visitReturnStatement(node ReturnStmt) (Result, *int, *errors.Error) {
 	// The return value defaults to null
 	returnValue := makeNull(node.Range)
-	// If the return statment should return a value, make and override it here
+	// If the return statement should return a value, make and override it here
 	if node.Expression != nil {
 		value, code, err := self.visitExpression(*node.Expression)
 		if code != nil || err != nil {
@@ -429,7 +429,7 @@ func (self *Interpreter) visitAndExpression(node AndExpression) (Result, *int, *
 }
 
 func (self *Interpreter) visitEqExpression(node EqExpression) (Result, *int, *errors.Error) {
-	base, code, err := self.visitRelExression(node.Base)
+	base, code, err := self.visitRelExpression(node.Base)
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
@@ -437,7 +437,7 @@ func (self *Interpreter) visitEqExpression(node EqExpression) (Result, *int, *er
 	if node.Other == nil {
 		return base, nil, nil
 	}
-	otherValue, code, err := self.visitRelExression(node.Other.Node)
+	otherValue, code, err := self.visitRelExpression(node.Other.Node)
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
@@ -456,8 +456,8 @@ func (self *Interpreter) visitEqExpression(node EqExpression) (Result, *int, *er
 	return Result{Value: &returnValue}, nil, nil
 }
 
-func (self *Interpreter) visitRelExression(node RelExpression) (Result, *int, *errors.Error) {
-	base, code, err := self.visitAddExression(node.Base)
+func (self *Interpreter) visitRelExpression(node RelExpression) (Result, *int, *errors.Error) {
+	base, code, err := self.visitAddExpression(node.Base)
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
@@ -465,7 +465,7 @@ func (self *Interpreter) visitRelExression(node RelExpression) (Result, *int, *e
 	if node.Other == nil {
 		return base, nil, nil
 	}
-	otherValue, code, err := self.visitAddExression(node.Other.Node)
+	otherValue, code, err := self.visitAddExpression(node.Other.Node)
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
@@ -499,8 +499,8 @@ func (self *Interpreter) visitRelExression(node RelExpression) (Result, *int, *e
 	return Result{Value: &returnValue}, nil, nil
 }
 
-func (self *Interpreter) visitAddExression(node AddExpression) (Result, *int, *errors.Error) {
-	base, code, err := self.visitMulExression(node.Base)
+func (self *Interpreter) visitAddExpression(node AddExpression) (Result, *int, *errors.Error) {
+	base, code, err := self.visitMulExpression(node.Base)
 	if code != nil || err != nil {
 		return Result{}, code, err
 	}
@@ -519,7 +519,7 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Result, *int, *e
 		var algResult Value
 		var algError *errors.Error
 
-		followingValue, code, err := self.visitMulExression(following.Other)
+		followingValue, code, err := self.visitMulExpression(following.Other)
 		if code != nil || err != nil {
 			return Result{}, code, err
 		}
@@ -542,7 +542,7 @@ func (self *Interpreter) visitAddExression(node AddExpression) (Result, *int, *e
 	return Result{Value: &returnValue}, nil, nil
 }
 
-func (self *Interpreter) visitMulExression(node MulExpression) (Result, *int, *errors.Error) {
+func (self *Interpreter) visitMulExpression(node MulExpression) (Result, *int, *errors.Error) {
 	base, code, err := self.visitCastExpression(node.Base)
 	if code != nil || err != nil {
 		return Result{}, code, err
@@ -653,7 +653,7 @@ func (self *Interpreter) visitCastExpression(node CastExpression) (Result, *int,
 	}
 }
 func (self *Interpreter) visitUnaryExpression(node UnaryExpression) (Result, *int, *errors.Error) {
-	// If there is only a exp exression, return its value (recursion base case)
+	// If there is only a exp expression, return its value (recursion base case)
 	if node.ExpExpression != nil {
 		return self.visitEpxExpression(*node.ExpExpression)
 	}
@@ -1132,7 +1132,7 @@ func (self *Interpreter) visitTryExpression(node AtomTry) (Result, *int, *errors
 	}
 	tryBlockResult, code, err := self.visitStatements(node.TryBlock.IntoItemsList())
 
-	// Remove the scope (cannot simly defer removing it (due to catch block))
+	// Remove the scope (cannot simply defer removing it (due to catch block))
 	self.popScope()
 
 	if code != nil {

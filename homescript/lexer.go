@@ -738,7 +738,7 @@ func (self *lexer) nextToken() (Token, *errors.Error) {
 				Start:    self.location,
 				End:      self.location,
 				Filename: self.filename,
-			}, fmt.Sprintf("illegal characer: %c", *self.currentChar), errors.SyntaxError)
+			}, fmt.Sprintf("illegal character: %c", *self.currentChar), errors.SyntaxError)
 		}
 	}
 	return Token{
