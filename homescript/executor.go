@@ -72,7 +72,14 @@ type Executor interface {
 	Remind(title string, description string, urgency ReminderUrgency, dueDate time.Time) (uint, error)
 	Log(title string, description string, level LogLevel) error
 	Exec(homescriptId string, args map[string]string) (ExecResponse, error)
-	ResolveModule(homescriptId string) (code string, filename string, found bool, shouldProceed bool, err error)
+	ResolveModule(homescriptId string) (
+		code string,
+		filename string,
+		found bool,
+		shouldProceed bool,
+		scopeAdditions map[string]Value,
+		err error,
+	)
 	ReadFile(path string) (code string, err error)
 	Get(url string) (HttpResponse, error)
 	Http(url string, method string, body string, headers map[string]string, cookies map[string]string) (HttpResponse, error)

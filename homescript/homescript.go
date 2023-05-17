@@ -30,6 +30,7 @@ func Run(
 	if len(errors) > 0 {
 		return nil, 1, nil, errors
 	}
+
 	argsTemp := make(map[string]*Value)
 	for key, val := range args {
 		temp := val

@@ -9,16 +9,16 @@ import (
 
 type DummyExecutor struct{}
 
-func (self DummyExecutor) ResolveModule(id string) (string, string, bool, bool, error) {
+func (self DummyExecutor) ResolveModule(id string) (string, string, bool, bool, map[string]Value, error) {
 	path := "test/programs/" + id + ".hms"
 	file, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", "", false, false, nil
+			return "", "", false, false, nil, nil
 		}
-		return "", "", false, false, fmt.Errorf("read file: %s", err.Error())
+		return "", "", false, false, nil, fmt.Errorf("read file: %s", err.Error())
 	}
-	return string(file), path, true, true, nil
+	return string(file), path, true, true, make(map[string]Value), nil
 }
 
 func (self DummyExecutor) ReadFile(path string) (string, error) {
@@ -127,16 +127,16 @@ type AnalyzerDummyExecutor struct{}
 
 func (self AnalyzerDummyExecutor) IsAnalyzer() bool { return true }
 
-func (self AnalyzerDummyExecutor) ResolveModule(id string) (string, string, bool, bool, error) {
+func (self AnalyzerDummyExecutor) ResolveModule(id string) (string, string, bool, bool, map[string]Value, error) {
 	path := "test/programs/" + id + ".hms"
 	file, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", "", false, false, nil
+			return "", "", false, false, nil, nil
 		}
-		return "", "", false, false, fmt.Errorf("read file: %s", err.Error())
+		return "", "", false, false, nil, fmt.Errorf("read file: %s", err.Error())
 	}
-	return string(file), path, true, true, nil
+	return string(file), path, true, true, make(map[string]Value), nil
 }
 
 func (self AnalyzerDummyExecutor) ReadFile(path string) (string, error) {

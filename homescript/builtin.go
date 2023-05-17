@@ -567,8 +567,6 @@ func Http(executor Executor, span errors.Span, args ...Value) (Value, *int, *err
 		cookiesReq[keyDis] = value
 	}
 
-	fmt.Println(headers)
-
 	res, err := executor.Http(
 		args[0].(ValueString).Value,
 		args[1].(ValueString).Value,
@@ -813,6 +811,11 @@ func Storage(executor Executor, _ errors.Span) (Value, *errors.Error) {
 
 				if err != nil {
 					return nil, nil, errors.NewError(span, fmt.Sprintf("could not get entry from storage: %s", err.Error()), errors.RuntimeError)
+				}
+
+				// Required for avoiding strange false errors
+				if executor.IsAnalyzer() {
+					return nil, nil, nil
 				}
 
 				if value != nil {

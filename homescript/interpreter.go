@@ -1574,7 +1574,7 @@ func (self *Interpreter) getVar(key string) *Value {
 // This function then runs the target module code and returns the values of the target functionsj (analyzes the root scope)
 // If the target module contains top level code, it is also executed
 func (self Interpreter) ResolveModule(span errors.Span, module string, functions []string) (toBeImported map[string]*Value, rootScope map[string]*Value, _e *errors.Error) {
-	moduleCode, filename, found, _, err := self.executor.ResolveModule(module)
+	moduleCode, filename, found, _, scopeAdditions, err := self.executor.ResolveModule(module)
 	if err != nil {
 		return nil, nil, errors.NewError(
 			span,
@@ -1594,7 +1594,7 @@ func (self Interpreter) ResolveModule(span errors.Span, module string, functions
 		self.executor,
 		self.sigTerm,
 		moduleCode,
-		make(map[string]Value),
+		scopeAdditions,
 		make(map[string]Value),
 		false,
 		10,

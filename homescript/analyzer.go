@@ -491,7 +491,7 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 	}
 
 	// Check if the function can be imported
-	moduleCode, filename, exists, shouldProceed, err := self.executor.ResolveModule(node.FromModule)
+	moduleCode, filename, exists, shouldProceed, scopeAdditions, err := self.executor.ResolveModule(node.FromModule)
 	if err != nil {
 		self.issue(
 			node.Range,
@@ -542,7 +542,7 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		diagnostics, _, rootScope := Analyze(
 			self.executor,
 			moduleCode,
-			make(map[string]Value),
+			scopeAdditions,
 			self.moduleStack,
 			node.FromModule,
 			filename,
@@ -2138,6 +2138,12 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 				self.warn(arg.Span, fmt.Sprintf("function argument '%s' is unused", arg.Identifier))
 			}
 		}
+
+		// Required for preventing false errors
+		if importedFunction {
+			return nil, nil
+		}
+
 		if returnValue.ReturnValue != nil && *returnValue.ReturnValue != nil {
 			return *returnValue.ReturnValue, nil
 		}
