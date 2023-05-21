@@ -1581,7 +1581,7 @@ func (self *Analyzer) visitAtom(node Atom) (Result, *errors.Error) {
 
 		// check if the enum variant is valid
 		if !(*variable).(ValueEnum).HasVariant(variant.Name) {
-			return Result{}, errors.NewError(variant.Span(), fmt.Sprintf("use of undefined enum variant `%s`", referrer), errors.ReferenceError)
+			return Result{}, errors.NewError(variant.Span(), fmt.Sprintf("use of undefined enum variant `%s`", variant.Name), errors.ReferenceError)
 		}
 
 		value := Value(ValueEnumVariant{
