@@ -509,12 +509,12 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		return Result{}, nil
 	}
 
+	// TODO: use real type
+
 	if !shouldProceed {
 		for _, imported := range node.Functions {
-			function := makeFn(&imported, node.Range)
-
 			// Push a dummy function into the current scope
-			self.addVar(imported, function, node.Range)
+			self.addVar(imported, nil, node.Range)
 			// Add the function to the list of imported functions to avoid analysis
 			self.getScope().importedFunctions = append(self.getScope().importedFunctions, imported)
 		}
@@ -523,7 +523,6 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 
 	for _, imported := range node.Functions {
 		value := self.getVar(imported)
-		function := makeFn(&imported, node.Range)
 
 		// Only report this non-critical error
 		if value != nil {
@@ -532,11 +531,6 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 				errors.ImportError,
 			)
 			return Result{}, nil
-		} else {
-			// Push a dummy function into the current scope
-			self.addVar(imported, function, node.Range)
-			// Add the function to the list of imported functions to avoid analysis
-			self.getScope().importedFunctions = append(self.getScope().importedFunctions, imported)
 		}
 
 		diagnostics, _, rootScope := Analyze(
@@ -565,7 +559,7 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 			)
 			return Result{}, nil
 		}
-		_, found := rootScope[imported]
+		value, found := rootScope[imported]
 		if !found {
 			self.issue(
 				node.Range,
@@ -574,6 +568,11 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 			)
 			return Result{}, nil
 		}
+
+		// Push the value into the current scope
+		self.addVar(imported, *value, node.Range)
+		// Add the function to the list of imported functions to avoid analysis
+		self.getScope().importedFunctions = append(self.getScope().importedFunctions, imported)
 	}
 
 	return Result{}, nil
