@@ -54,8 +54,22 @@ type ValueEnumVariant struct {
 
 func (self ValueEnumVariant) Type() ValueType   { return TypeEnumVariant }
 func (self ValueEnumVariant) Span() errors.Span { return self.Range }
-func (self ValueEnumVariant) Fields(_ Executor, _ errors.Span) (map[string]*Value, *errors.Error) {
-	panic("`Fields` is not called on an enum variant")
+func (self ValueEnumVariant) Fields(executor Executor, span errors.Span) (map[string]*Value, *errors.Error) {
+	return map[string]*Value{
+		"to_string": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if err := checkArgs("to_string", span, args); err != nil {
+				return nil, nil, err
+			}
+
+			display, err := self.Display(executor, span)
+			if err != nil {
+				return nil, nil, err
+			}
+			return ValueString{Value: display}, nil, nil
+		}}),
+		"to_json":        marshalHelper(self),
+		"to_json_indent": marshalIndentHelper(self),
+	}, nil
 }
 
 func (self ValueEnumVariant) Index(_ Executor, indexValue Value, span errors.Span) (*Value, bool, *errors.Error) {
