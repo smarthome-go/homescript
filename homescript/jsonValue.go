@@ -148,6 +148,10 @@ func unmarshalValue(span errors.Span, self interface{}) (Value, *errors.Error) {
 
 func marshalHelper(self Value) *Value {
 	return valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+		if err := checkArgs("to_json", span, args); err != nil {
+			return nil, nil, err
+		}
+
 		marshaled, _, err := marshalValue(self, span, false, executor)
 		if err != nil {
 			return nil, nil, err
@@ -166,6 +170,10 @@ func marshalHelper(self Value) *Value {
 
 func marshalIndentHelper(self Value) *Value {
 	return valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+		if err := checkArgs("to_json_indent", span, args); err != nil {
+			return nil, nil, err
+		}
+
 		marshaled, _, err := marshalValue(self, span, false, executor)
 		if err != nil {
 			return nil, nil, err
