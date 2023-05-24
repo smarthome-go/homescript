@@ -68,6 +68,12 @@ func marshalValue(self Value, span errors.Span, isInner bool, executor Executor)
 		}
 		output[(*self.Key).(ValueString).Value] = marshaledValue
 		return output, false, nil
+	case ValueEnumVariant:
+		display, err := self.Display(executor, span)
+		if err != nil {
+			return nil, false, err
+		}
+		return display, false, nil
 	case ValueNull, nil:
 		return nil, false, nil
 	default:
