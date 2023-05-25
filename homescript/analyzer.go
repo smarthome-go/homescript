@@ -509,8 +509,6 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 		return Result{}, nil
 	}
 
-	// TODO: use real type
-
 	if !shouldProceed {
 		for _, imported := range node.Functions {
 			// Push a dummy function into the current scope
@@ -569,8 +567,34 @@ func (self *Analyzer) visitImportStatement(node ImportStmt) (Result, *errors.Err
 			return Result{}, nil
 		}
 
+		// Use placeholder value
+		var val Value
+		switch (*value).Type() {
+		case TypeNull:
+			val = ValueNull{Range: node.Range}
+		case TypeNumber:
+			val = ValueNumber{Range: node.Range}
+		case TypeBoolean:
+			val = ValueBool{Range: node.Range}
+		case TypeString:
+			val = ValueString{Range: node.Range}
+		case TypePair:
+			val = ValuePair{Range: node.Range}
+		case TypeList:
+			values := make([]*Value, 0)
+			val = ValueList{Values: &values, Range: node.Range}
+		case TypeObject:
+			val = ValueObject{ObjFields: make(map[string]*Value, 0), IsDynamic: true, Range: node.Range}
+		case TypeRange:
+			val = ValueRange{Range: node.Range}
+		case TypeFunction:
+			val = ValueFunction{Range: node.Range, Args: (*value).(ValueFunction).Args, IsProtected: true}
+		default:
+			val = nil
+		}
+
 		// Push the value into the current scope
-		self.addVar(imported, *value, node.Range)
+		self.addVar(imported, val, node.Range)
 		// Add the function to the list of imported functions to avoid analysis
 		self.getScope().importedFunctions = append(self.getScope().importedFunctions, imported)
 	}
@@ -2177,11 +2201,6 @@ func (self *Analyzer) callValue(span errors.Span, value Value, args []Expression
 			return nil, nil
 		}
 		return res, nil
-	case TypeObject:
-		if value.(ValueObject).IsDynamic {
-			self.info(span, "dynamic object: manual call validation required")
-			return nil, nil
-		}
 	}
 	self.issue(span, fmt.Sprintf("value of type %v is not callable", value.Type()), errors.TypeError)
 	return nil, nil
