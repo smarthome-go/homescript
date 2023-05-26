@@ -680,7 +680,7 @@ func (self *Analyzer) visitExpression(node Expression) (Result, *errors.Error) {
 		}
 
 		// Only continue analysis if the current value is not nil
-		if followingValue.Value != nil {
+		if followingValue.Value != nil && *followingValue.Value != nil {
 			_, err = (*followingValue.Value).IsTrue(self.executor, following.Span)
 			if err != nil {
 				self.diagnosticError(*err)
