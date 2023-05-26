@@ -117,6 +117,9 @@ func (self ValueString) Fields(_ Executor, _ errors.Span) (map[string]*Value, *e
 			return ValueBool{Value: contains}, nil, nil
 		}}),
 		"parse_num": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if err := checkArgs("parse_num", span, args); err != nil {
+				return nil, nil, err
+			}
 			res, err := strconv.ParseFloat(self.Value, 64)
 			if err != nil {
 				return nil, nil, errors.NewError(span, err.Error(), errors.ValueError)
@@ -124,6 +127,9 @@ func (self ValueString) Fields(_ Executor, _ errors.Span) (map[string]*Value, *e
 			return ValueNumber{Value: res, Range: span, IsProtected: true}, nil, nil
 		}}),
 		"parse_bool": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if err := checkArgs("parse_bool", span, args); err != nil {
+				return nil, nil, err
+			}
 			var res bool
 			switch self.Value {
 			case "true":
@@ -132,6 +138,20 @@ func (self ValueString) Fields(_ Executor, _ errors.Span) (map[string]*Value, *e
 				return nil, nil, errors.NewError(span, fmt.Sprintf("not a boolean value: %s", self.Value), errors.ValueError)
 			}
 			return ValueBool{Value: res, IsProtected: true}, nil, nil
+		}}),
+		"to_lower": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if err := checkArgs("to_lower", span, args); err != nil {
+				return nil, nil, err
+			}
+			lower := strings.ToLower(self.Value)
+			return ValueString{Value: lower, IsProtected: true}, nil, nil
+		}}),
+		"to_upper": valPtr(ValueBuiltinFunction{Callback: func(executor Executor, span errors.Span, args ...Value) (Value, *int, *errors.Error) {
+			if err := checkArgs("to_upper", span, args); err != nil {
+				return nil, nil, err
+			}
+			upper := strings.ToUpper(self.Value)
+			return ValueString{Value: upper, IsProtected: true}, nil, nil
 		}}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
