@@ -57,6 +57,11 @@ func (self ValueObject) Fields(_ Executor, _ errors.Span) (map[string]*Value, *e
 			typ := TypeString
 			keys := make([]*Value, 0)
 			for key, value := range self.ObjFields {
+				// Ignore null values
+				if value == nil || *value == nil {
+					continue
+				}
+
 				// Do not include builtin functions in this list
 				if (*value).Type() != TypeBuiltinFunction {
 					keys = append(keys, valPtr(ValueString{Value: key}))
