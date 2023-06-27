@@ -1,0 +1,10 @@
+import import_me from import_export;
+
+fn import_me_old(foo: str, bar: num) {
+    println(foo, bar);
+}
+
+
+fn main() {
+    import_me(1, 2);
+}

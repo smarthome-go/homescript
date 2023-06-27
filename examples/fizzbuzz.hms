@@ -1,0 +1,17 @@
+fn fizz_buzz(max: int) {
+    for n in (max + 1).to_range() {
+        if n % 15 == 0 {
+            println("FizzBuzz");
+        } else if n % 3 == 0 {
+            println("Fizz");
+        } else if n % 5 == 0 {
+            println("Buzz");
+        } else {
+            println(n);
+        }
+    }
+}
+
+fn main() {
+    fizz_buzz(15);
+}

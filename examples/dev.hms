@@ -1,0 +1,31 @@
+import time from sys;
+
+fn main() {
+
+    // This file is used for implementing new language features
+    let object = new {
+        key: 42,
+    };
+
+    object.key = 69;
+    debug(object);
+
+    let letters = "a,b,c,d,e,f".split(",");
+    println(letters);
+    println(letters.contains("a"));
+
+    println("hello world!".contains("z"));
+    println("hello world!".contains("hello "));
+
+    println("Stringlength:", "foo-bar".len());
+
+    let some_object = new {
+        one: 1,
+        two: 2,
+        three: 3,
+    };
+
+    println(some_object.keys());
+
+    time.sleep(1);
+}

@@ -1,0 +1,21 @@
+fn box(dimensions: int) -> str {
+    let output = "";
+    for y in dimensions.to_range() {
+        for x in (dimensions*2).to_range() {
+            if x == 0 || y == 0 || x == dimensions*2-1 || y == dimensions-1 {
+                output += "#";
+            } else {
+                output += " ";
+            }
+        }
+        output += "\n";
+    }
+
+    output
+}
+
+fn main() {
+    for size in 2..8 {
+        println(box(size));
+    }
+}

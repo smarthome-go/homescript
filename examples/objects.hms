@@ -1,0 +1,13 @@
+let a = new {
+    foo: "bar",
+    bar: "baz"
+};
+
+fn main() {
+    println(a.keys());
+    assert(a.keys().contains("foo"));
+    assert(!a.keys().contains("invalid"));
+    assert(a.keys() == ["foo", "bar"]);
+    assert(!a.contains('foo2'));
+    assert(a.contains('foo'));
+}

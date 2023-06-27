@@ -1,0 +1,13 @@
+fn fib(n: int) -> int {
+    if n < 2 {
+        n
+    } else {
+        fib(n - 1) + fib (n - 2)
+    }
+}
+
+fn main() {
+    for n in 2..40 {
+        println(n.to_string(), "->", fib(n))
+    }
+}

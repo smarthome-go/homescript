@@ -1,0 +1,33 @@
+import time from sys;
+
+fn num2bin(input: int, bytes: int) -> [int] {
+    let out_bin: [int] = [];
+
+    let comp = 1;
+    while comp < bytes {
+        let curr = ((input & comp) == comp) as int;
+        out_bin.push_front(curr);
+
+        if comp == 1 {
+            comp = 2;
+        } else {
+            comp *= 2;
+        }
+    }
+
+    out_bin
+}
+
+fn binary_clock2() {
+     let hours = time.now().hour;
+     if hours > 12 {
+         hours -= 12;
+     };
+     println("--- binary clock v3 ---");
+     println(num2bin(hours, 64));
+     println(num2bin(time.now().minute, 64));
+}
+
+fn main() {
+    binary_clock2();
+}

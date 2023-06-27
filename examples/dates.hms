@@ -1,0 +1,9 @@
+import time from sys;
+
+fn main() {
+    let now = time.now();
+    let tomorrow = time.add_days(now, 1);
+
+    println(now);
+    println(tomorrow);
+}

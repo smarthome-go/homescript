@@ -1,0 +1,30 @@
+fn primes(count: int) {
+    let n = 3;
+    println(2);
+
+    let found = 0;
+
+    // Endlessly loop over numbers
+    while found < count {
+        let n2  = 3;
+        let is_prime = true;
+        while n2 != n {
+            // Test if division result is an integer
+            if (n as float / n2 as float).is_int() {
+                is_prime = false;
+                break;
+            }
+            n2 += 2;
+        }
+        if is_prime {
+            println(n);
+            found += 1;
+        }
+        n += 2;
+    }
+}
+
+fn main() {
+    // Calculate 15 prime numbers
+    primes(10000);
+}
