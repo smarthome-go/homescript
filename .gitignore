@@ -12,8 +12,3 @@
 *.out
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
-
-# Test files for reviewing AST and token lists
-test/*.ast
-test/*.tokens

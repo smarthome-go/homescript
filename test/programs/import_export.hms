@@ -1,7 +1,0 @@
-fn import_me_old(foo, bar) {
-    println(foo, bar);
-};
-
-import import_me from import_export;
-
-import_me(1, 2);
