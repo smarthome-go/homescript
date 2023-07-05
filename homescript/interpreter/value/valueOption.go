@@ -77,6 +77,13 @@ func (self ValueOption) Fields() (map[string]*Value, *Interrupt) {
 			}
 			return self.Inner, nil
 		}),
+		"to_string": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *Interrupt) {
+			disp, i := self.Display()
+			if i != nil {
+				return nil, i
+			}
+			return NewValueString(disp), nil
+		}),
 	}, nil
 }
 

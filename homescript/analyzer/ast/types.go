@@ -514,6 +514,12 @@ func (self AnyObjectType) Fields(span errors.Span) map[string]Type {
 			NewListType(NewStringType(span), span),
 			span,
 		),
+		"to_string": NewFunctionType(
+			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
+			span,
+			NewStringType(span),
+			span,
+		),
 		"to_json": NewFunctionType(
 			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
 			span,
@@ -654,6 +660,12 @@ func (self OptionType) Fields(span errors.Span) map[string]Type {
 			}),
 			span,
 			self.Inner.SetSpan(span),
+			span,
+		),
+		"to_string": NewFunctionType(
+			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
+			span,
+			NewStringType(span),
 			span,
 		),
 	}

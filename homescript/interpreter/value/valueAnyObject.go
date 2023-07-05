@@ -72,6 +72,13 @@ func (self ValueAnyObject) Fields() (map[string]*Value, *Interrupt) {
 
 			return NewValueList(keys), nil
 		}),
+		"to_string": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *Interrupt) {
+			disp, i := self.Display()
+			if i != nil {
+				return nil, i
+			}
+			return NewValueString(disp), nil
+		}),
 		"to_json":        marshalHelper(self),
 		"to_json_indent": marshalIndentHelper(self),
 	}, nil
