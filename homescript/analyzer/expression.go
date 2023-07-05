@@ -442,7 +442,7 @@ func (self *Analyzer) infixExpression(node pAst.InfixExpression) ast.AnalyzedInf
 		lhsTypeKind = ast.UnknownTypeKind
 	}
 
-	switch lhsTypeKind {
+	switch lhs.Type().Kind() {
 	case ast.IntTypeKind:
 		switch node.Operator {
 		case pAst.PlusInfixOperator, pAst.MinusInfixOperator,
