@@ -1,0 +1,90 @@
+import assert_eq from testing;
+
+fn from_int() {
+    let tests = [
+        new {
+            n: 1,
+            expect: "1",
+        },
+        new {
+            n: 42,
+            expect: "42",
+        },
+        new {
+            n: -2,
+            expect: "-2",
+        },
+        new {
+            n: -69,
+            expect: "-69",
+        },
+    ];
+
+    for test in tests {
+        assert_eq(test.n.to_string(), test.expect);
+    }
+}
+
+fn from_float() {
+    let tests = [
+        new {
+            n: 2.9,
+            expect: "2.9",
+        },
+        new {
+            n: -1.2,
+            expect: "-1.2",
+        },
+        new {
+            n: 3.14159265,
+            expect: "3.14159265",
+        },
+        new {
+            n: -3.14159265,
+            expect: "-3.14159265",
+        },
+    ];
+
+    for test in tests {
+        assert_eq(test.n.to_string(), test.expect);
+    }
+}
+
+fn from_bool() {
+    assert_eq(true.to_string(), "true");
+    assert_eq(false.to_string(), "false");
+}
+
+fn from_list() {
+    assert_eq([1, 2, 3, 4].to_string(), "[1, 2, 3, 4]");
+    assert_eq(["H", "e", "l", "l", "o"].to_string(), "[H, e, l, l, o]");
+}
+
+fn from_range() {
+    type FromRangeTest = {
+        r: range,
+        expect: str,
+    };
+
+    let tests: [FromRangeTest] = [];
+
+    for s in 0..100 {
+        for e in 1..101 {
+            tests.push(new { r: s..e, expect: s.to_string() + ".." + e.to_string() });
+        }
+    }
+
+    for s in -100..1 {
+        for e in -99..2 {
+            tests.push(new { r: s..e, expect: s.to_string() + ".." + e.to_string() });
+        }
+    }
+}
+
+fn main() {
+    from_int();
+    from_float();
+    from_bool();
+    from_list();
+    from_range();
+}

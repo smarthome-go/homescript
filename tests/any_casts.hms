@@ -1,0 +1,19 @@
+import {
+    assert_eq,
+    any_func,
+    any_list,
+} from testing;
+
+fn main() {
+    let a: int = any_func();
+    assert_eq(a, 42);
+
+    let b = any_func() as int;
+    assert_eq(b, 42);
+
+    let c: [str] = any_list;
+    assert_eq(c, ["Test"]);
+
+    let d = any_list as [str];
+    assert_eq(d, ["Test"]);
+}

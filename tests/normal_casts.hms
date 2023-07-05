@@ -1,0 +1,31 @@
+import assert_eq from testing;
+
+fn from_num() {
+    type FromNumTest = {
+        n: int,
+        expect: bool,
+    };
+
+    let from_num_tests: [FromNumTest] = [];
+
+    for n in 0..100 {
+        from_num_tests.push(new {
+            n: n,
+            expect: n != 0,
+        });
+    }
+
+    for test in from_num_tests {
+        assert_eq(test.n as bool, test.expect);
+    }
+}
+
+fn from_bool() {
+    assert_eq(true as int, 1);
+    assert_eq(false as int, 0);
+}
+
+fn main() {
+    from_num();
+    from_bool();
+}

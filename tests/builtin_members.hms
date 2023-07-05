@@ -1,0 +1,142 @@
+import assert_eq from testing;
+
+fn float() {
+    let  x = 42.0;
+    let y = 42.69;
+    let z = 3.14159265;
+
+    assert_eq(x.is_int(), true);
+    assert_eq(y.is_int(), false);
+
+    assert_eq(y.trunc(), 42);
+    assert_eq(x.trunc(), 42);
+
+    assert_eq(y.round(), 43);
+    assert_eq(z.round(), 3);
+
+    assert_eq(x.to_string(), "42");
+    assert_eq(y.to_string(), "42.69");
+}
+
+fn int() {
+    let x = 42;
+    assert_eq(x.to_string(), "42");
+    assert_eq(x.to_range(), 0..42);
+}
+
+fn str() {
+    let x = "Hello World!";
+    let y = "y";
+
+    assert_eq(x.len(), 12);
+    assert_eq(y.len(), 1);
+
+    assert_eq(x.replace("o", "x"), "Hellx Wxrld!");
+    assert_eq(y.replace("x", "z"), "y");
+
+    assert_eq(y.repeat(8), "yyyyyyyy");
+    assert_eq(x.repeat(2), "Hello World!Hello World!");
+
+    assert_eq("{}".parse_json() as {}, new {});
+    assert_eq('{"foo": "bar"}'.parse_json() as {foo: str}, new {foo: "bar"});
+
+    assert_eq(x.split(" "), ["Hello", "World!"]);
+    assert_eq(y.split(" "), ["y"]);
+
+    assert_eq(x.contains("o"), true);
+    assert_eq(x.contains("H"), true);
+    assert_eq(y.contains("x"), false);
+
+    assert_eq("42".parse_int(), 42);
+    assert_eq("3.1415".parse_float(), 3.1415);
+
+    try {
+        // This will fail
+        "x".parse_int();
+        throw("Unreachable code was executed");
+    } catch e {
+        assert_eq(e, "strconv.ParseInt: parsing \"x\": invalid syntax");
+    }
+
+    assert_eq("true".parse_bool(), true);
+    assert_eq("false".parse_bool(), false);
+    try {
+        // This will fail
+        "x".parse_bool();
+        throw("Unreachable code was executed");
+    } catch e {
+        assert_eq(e, "strconv.ParseBool: parsing \"x\": invalid syntax");
+    }
+
+    assert_eq(x.to_lower(), "hello world!");
+    assert_eq(x.to_upper(), "HELLO WORLD!");
+}
+
+// TODO: work on this
+fn list() {
+    let x: [int] = [];
+    x.push(3);
+
+    assert_eq(x, [3]);
+
+    let y = [9, 8, 7, 6, 5, 4, 3, 2, 1];
+    y.sort();
+    assert_eq(y, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+}
+
+fn object() {
+    type User = {
+        username: str,
+        first_name: str,
+        last_name: str,
+        age: int,
+    };
+
+    let object: User = new {
+        username: "johndoe42",
+        first_name: "John",
+        last_name: "Doe",
+        age: 42,
+    };
+
+    assert_eq(object,  new {
+        username: "johndoe42",
+        first_name: "John",
+        last_name: "Doe",
+        age: 42,
+    });
+    assert_eq(
+        object.keys(),
+        {
+            let x = ["username", "first_name", "last_name", "age"];
+            x.sort();
+            x
+        },
+    );
+}
+
+fn range() {
+    let x = 42..69;
+    let y = 12..6;
+
+    assert_eq(x.start, 42);
+    assert_eq(x.end, 69);
+
+    x.start += 1;
+    x.end -= 1;
+
+    assert_eq(x.start, 43);
+    assert_eq(x.end, 68);
+
+    assert_eq(x.diff(), 25);
+    assert_eq(y.diff(), 6);
+}
+
+fn main() {
+    int();
+    float();
+    str();
+    list();
+    object();
+    range();
+}
