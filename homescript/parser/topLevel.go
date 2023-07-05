@@ -20,7 +20,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 	toImport := make([]ast.ImportStatementCandidate, 0)
 
 	switch self.CurrentToken.Kind {
-	case Identifier:
+	case Type, Identifier:
 		startLoc := self.CurrentToken.Span.Start
 		isTypeImport := false
 
