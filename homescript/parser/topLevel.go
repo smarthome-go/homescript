@@ -20,7 +20,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 	toImport := make([]ast.ImportStatementCandidate, 0)
 
 	switch self.CurrentToken.Kind {
-	case Type, Identifier:
+	case Type, Identifier, Underscore:
 		startLoc := self.CurrentToken.Span.Start
 		isTypeImport := false
 
@@ -58,7 +58,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 			}
 		}
 
-		if err := self.expect(Identifier); err != nil {
+		if err := self.expectMultiple(Identifier, Underscore); err != nil {
 			return ast.ImportStatement{}, err
 		}
 
@@ -88,7 +88,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 				}
 			}
 
-			if err := self.expect(Identifier); err != nil {
+			if err := self.expectMultiple(Identifier, Underscore); err != nil {
 				return ast.ImportStatement{}, err
 			}
 
@@ -110,7 +110,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 		return ast.ImportStatement{}, err
 	}
 
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expectMultiple(Identifier, Underscore); err != nil {
 		return ast.ImportStatement{}, err
 	}
 	fromModule := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
@@ -138,7 +138,7 @@ func (self *Parser) functionDefinition(isPub bool) (ast.FunctionDefinition, *err
 		return ast.FunctionDefinition{}, err
 	}
 
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expectMultiple(Identifier, Underscore); err != nil {
 		return ast.FunctionDefinition{}, err
 	}
 	ident := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)

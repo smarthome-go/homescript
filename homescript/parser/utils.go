@@ -45,7 +45,7 @@ func (self *Parser) expectRecoverable(expected TokenKind) *errors.Error {
 	return nil
 }
 
-func (self *Parser) expectMultiple(expected []TokenKind) *errors.Error {
+func (self *Parser) expectMultiple(expected ...TokenKind) *errors.Error {
 	for _, test := range expected {
 		if self.CurrentToken.Kind == test {
 			if err := self.next(); err != nil {

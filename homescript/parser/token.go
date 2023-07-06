@@ -20,12 +20,14 @@ const (
 	EOF
 
 	QuestionMark // ?
+	Underscore   // _
 	Semicolon    // ;
 	Comma        // ,
 	Colon        // :
 	Dot          // .
 	DoubleDot    // ..
 	Arrow        // ->
+	FatArrow     // =>
 
 	LParen   // (
 	RParen   // )
@@ -80,6 +82,7 @@ const (
 	Fn       // fn
 	If       // if
 	Else     // else
+	Match    // match
 	For      // for
 	While    // while
 	Loop     // loop
@@ -131,6 +134,8 @@ func (self TokenKind) String() string {
 		display = ".."
 	case Arrow:
 		display = "->"
+	case FatArrow:
+		display = "=>"
 	case LParen:
 		display = "("
 	case RParen:
@@ -195,6 +200,8 @@ func (self TokenKind) String() string {
 		display = "if"
 	case Else:
 		display = "else"
+	case Match:
+		display = "match"
 	case For:
 		display = "for"
 	case While:
@@ -261,6 +268,8 @@ func (self TokenKind) String() string {
 		display = "^="
 	case QuestionMark:
 		display = "?"
+	case Underscore:
+		display = "_"
 	default:
 		panic("A new token was introduced without updating this code")
 	}

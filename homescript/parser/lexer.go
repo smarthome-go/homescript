@@ -402,21 +402,39 @@ func (self *Lexer) makeDots() Token {
 func (self *Lexer) makeEquals() Token {
 	startLocation := self.location
 
-	if self.nextChar != nil && *self.nextChar == '=' {
-		self.advance()
+	if self.nextChar != nil {
+		switch *self.nextChar {
+		case '>':
+			self.advance()
 
-		token := newToken(
-			Equal,
-			"==",
-			errors.Span{
-				Start:    startLocation,
-				End:      self.location,
-				Filename: self.filename,
-			},
-		)
+			token := newToken(
+				FatArrow,
+				"=>",
+				errors.Span{
+					Start:    startLocation,
+					End:      self.location,
+					Filename: self.filename,
+				},
+			)
 
-		self.advance()
-		return token
+			self.advance()
+			return token
+		case '=':
+			self.advance()
+
+			token := newToken(
+				Equal,
+				"==",
+				errors.Span{
+					Start:    startLocation,
+					End:      self.location,
+					Filename: self.filename,
+				},
+			)
+
+			self.advance()
+			return token
+		}
 	}
 
 	self.advance()
@@ -821,6 +839,8 @@ func (self *Lexer) makeName() Token {
 		tokenKind = If
 	case "else":
 		tokenKind = Else
+	case "match":
+		tokenKind = Match
 	case "for":
 		tokenKind = For
 	case "while":
@@ -851,6 +871,8 @@ func (self *Lexer) makeName() Token {
 		tokenKind = Catch
 	case "new":
 		tokenKind = New
+	case "_":
+		tokenKind = Underscore
 	default:
 		tokenKind = Identifier
 	}

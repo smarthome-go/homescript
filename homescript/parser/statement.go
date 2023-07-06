@@ -80,7 +80,7 @@ func (self *Parser) typeDefinition(isPub bool) (ast.TypeDefinition, *errors.Erro
 		return ast.TypeDefinition{}, err
 	}
 
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expectMultiple(Identifier, Underscore); err != nil {
 		return ast.TypeDefinition{}, err
 	}
 	newTypeIdent := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
@@ -128,7 +128,7 @@ func (self *Parser) letStatement(isPub bool) (ast.LetStatement, *errors.Error) {
 		return ast.LetStatement{}, err
 	}
 
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expectMultiple(Identifier, Underscore); err != nil {
 		return ast.LetStatement{}, err
 	}
 	ident := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
@@ -161,7 +161,7 @@ func (self *Parser) letStatement(isPub bool) (ast.LetStatement, *errors.Error) {
 		}
 	}
 
-	expr, err := self.expression(0)
+	expr, _, err := self.expression(0)
 	if err != nil {
 		return ast.LetStatement{}, err
 	}
@@ -195,7 +195,7 @@ func (self *Parser) returnStatement() (ast.ReturnStatement, *errors.Error) {
 	if self.CurrentToken.Kind != Semicolon &&
 		self.CurrentToken.Kind != EOF &&
 		self.CurrentToken.Kind != RCurly { // this may lead to a hard error being a soft error
-		returnExpr, err := self.expression(0)
+		returnExpr, _, err := self.expression(0)
 		if err != nil {
 			return ast.ReturnStatement{}, err
 		}
@@ -289,7 +289,7 @@ func (self *Parser) whileStatement() (ast.WhileStatement, *errors.Error) {
 		return ast.WhileStatement{}, err
 	}
 
-	condition, err := self.expression(0)
+	condition, _, err := self.expression(0)
 	if err != nil {
 		return ast.WhileStatement{}, err
 	}
@@ -318,7 +318,7 @@ func (self *Parser) forStatement() (ast.ForStatement, *errors.Error) {
 		return ast.ForStatement{}, err
 	}
 
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expectMultiple(Identifier, Underscore); err != nil {
 		return ast.ForStatement{}, err
 	}
 	ident := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
@@ -327,7 +327,7 @@ func (self *Parser) forStatement() (ast.ForStatement, *errors.Error) {
 		return ast.ForStatement{}, err
 	}
 
-	iterExpression, err := self.expression(0)
+	iterExpression, _, err := self.expression(0)
 	if err != nil {
 		return ast.ForStatement{}, err
 	}
@@ -352,37 +352,49 @@ func (self *Parser) forStatement() (ast.ForStatement, *errors.Error) {
 func (self *Parser) expressionStatement() (ast.EitherStatementOrExpression, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
-	var expression ast.Expression
-	withBlock := false
+	// var expression ast.Expression
+	// withBlock := false
 
-	switch self.CurrentToken.Kind {
-	case If:
-		ifExpr, err := self.ifExpression()
-		if err != nil {
-			return ast.EitherStatementOrExpression{}, err
-		}
-		expression = ifExpr
-		withBlock = true
-	case Try:
-		tryExpr, err := self.tryExpression()
-		if err != nil {
-			return ast.EitherStatementOrExpression{}, err
-		}
-		expression = tryExpr
-		withBlock = true
-	case LCurly:
-		block, err := self.block()
-		if err != nil {
-			return ast.EitherStatementOrExpression{}, err
-		}
-		expression = ast.BlockExpression{Block: block}
-		withBlock = true
-	default:
-		expr, err := self.expression(0)
-		if err != nil {
-			return ast.EitherStatementOrExpression{}, err
-		}
-		expression = expr
+	// switch self.CurrentToken.Kind {
+	// case If:
+	// 	ifExpr, err := self.ifExpression()
+	// 	if err != nil {
+	// 		return ast.EitherStatementOrExpression{}, err
+	// 	}
+	// 	expression = ifExpr
+	// 	withBlock = true
+	// case Match:
+	// 	matchExpr, err := self.matchExpression()
+	// 	if err != nil {
+	// 		return ast.EitherStatementOrExpression{}, err
+	// 	}
+	// 	expression = matchExpr
+	// 	withBlock = true
+	// case Try:
+	// 	tryExpr, err := self.tryExpression()
+	// 	if err != nil {
+	// 		return ast.EitherStatementOrExpression{}, err
+	// 	}
+	// 	expression = tryExpr
+	// 	withBlock = true
+	// case LCurly:
+	// 	block, err := self.block()
+	// 	if err != nil {
+	// 		return ast.EitherStatementOrExpression{}, err
+	// 	}
+	// 	expression = ast.BlockExpression{Block: block}
+	// 	withBlock = true
+	// default:
+	// 	expr, _, err := self.expression(0)
+	// 	if err != nil {
+	// 		return ast.EitherStatementOrExpression{}, err
+	// 	}
+	// 	expression = expr
+	// }
+
+	expression, withBlock, err := self.expression(0)
+	if err != nil {
+		return ast.EitherStatementOrExpression{}, err
 	}
 
 	if self.CurrentToken.Kind == RCurly {

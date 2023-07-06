@@ -13,7 +13,7 @@ import (
 
 func (self *Parser) hmsType() (ast.HmsType, *errors.Error) {
 	switch self.CurrentToken.Kind {
-	case Null, Identifier:
+	case Null, Identifier, Underscore:
 		return self.nameReferenceType()
 	case LBracket:
 		return self.listType()
@@ -156,7 +156,7 @@ func (self *Parser) objectType() (ast.ObjectType, *errors.Error) {
 func (self *Parser) objectTypeFieldComponent() (ast.ObjectTypeField, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
-	if err := self.expectMultiple([]TokenKind{Identifier, String}); err != nil {
+	if err := self.expectMultiple(Identifier, Underscore, String); err != nil {
 		return ast.ObjectTypeField{}, err
 	}
 
@@ -281,7 +281,7 @@ func (self *Parser) functionTypeParameterList() ([]ast.FunctionTypeParam, *error
 }
 
 func (self *Parser) functionTypeParameter() (ast.FunctionTypeParam, *errors.Error) {
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expectMultiple(Identifier, Underscore); err != nil {
 		return ast.FunctionTypeParam{}, err
 	}
 	ident := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)

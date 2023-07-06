@@ -84,6 +84,9 @@ func (self *Analyzer) expression(node pAst.Expression) ast.AnalyzedExpression {
 	case pAst.IfExpressionKind:
 		src := node.(pAst.IfExpression)
 		res = self.ifExpression(src)
+	case pAst.MatchExpressionKind:
+		src := node.(pAst.MatchExpression)
+		res = self.matchExpression(src)
 	case pAst.TryExpressionKind:
 		src := node.(pAst.TryExpression)
 		res = self.tryExpression(src)
@@ -1081,6 +1084,103 @@ func (self *Analyzer) ifExpression(node pAst.IfExpression) ast.AnalyzedIfExpress
 		ElseBlock:  elseBlock,
 		ResultType: resultType,
 		Range:      node.Range,
+	}
+}
+
+//
+// Match expression
+//
+
+func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMatchExpression {
+	controlExpr := self.expression(node.ControlExpression)
+
+	resultType := ast.NewUnknownType()
+	hadTypeErr := false
+	arms := make([]ast.AnalyzedMatchArm, 0)
+
+	var defaultArmSpan *errors.Span
+
+	var defaultArm *ast.AnalyzedExpression
+	warnedUnreachable := false
+
+	for _, arm := range node.Arms {
+		if !arm.Literal.IsLiteral() {
+			defaultArmSpan = &arm.Range
+			action := self.expression(arm.Action)
+			defaultArm = &action
+			continue
+		}
+
+		if defaultArmSpan != nil && !warnedUnreachable {
+			self.warn(
+				"This match-arm is unreachable",
+				nil,
+				arm.Range,
+			)
+
+			self.hint(
+				"Any branches following this arm are unreachable",
+				nil,
+				*defaultArmSpan,
+			)
+
+			warnedUnreachable = true
+		}
+
+		condition := self.expression(arm.Literal.Literal)
+
+		if err := self.TypeCheck(condition.Type(), controlExpr.Type(), true); err != nil {
+			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+			if err.ExpectedDiagnostic != nil {
+				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+			}
+		}
+
+		action := self.expression(arm.Action)
+
+		fmt.Printf("action: %s\n", action.Type())
+
+		if !hadTypeErr && (resultType.Kind() == ast.UnknownTypeKind || resultType.Kind() == ast.NeverTypeKind) {
+			resultType = action.Type()
+		} else if err := self.TypeCheck(action.Type(), resultType, true); err != nil {
+			hadTypeErr = true
+			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+			if err.ExpectedDiagnostic != nil {
+				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+			}
+		}
+
+		arms = append(arms, ast.AnalyzedMatchArm{
+			Literal: condition,
+			Action:  action,
+		})
+	}
+
+	// create an error if the result type is != unknown and there is no default branch
+	lastSpan := node.Span()
+	if len(node.Arms) > 0 {
+		lastSpan = node.Arms[len(arms)-1].Range
+	}
+	if err := self.TypeCheck(ast.NewNullType(lastSpan), resultType, true); defaultArm == nil && err != nil {
+		self.error(
+			"Missing default branch",
+			[]string{
+				fmt.Sprintf("A value of type '%s' is expected, therefore cannot result in 'null'", resultType),
+				"A default branch can be created like this: `_ => { ... },`",
+			},
+			lastSpan,
+		)
+		if err.ExpectedDiagnostic != nil {
+			self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+		}
+	}
+
+	return ast.AnalyzedMatchExpression{
+		ControlExpression: controlExpr,
+		Arms:              arms,
+		DefaultArmAction:  defaultArm,
+		Range:             node.Range,
+		ResultType:        resultType.SetSpan(node.Range),
 	}
 }
 

@@ -86,6 +86,9 @@ func (self *Interpreter) expression(node ast.AnalyzedExpression) (*value.Value, 
 	case ast.IfExpressionKind:
 		node := node.(ast.AnalyzedIfExpression)
 		return self.ifExpression(node)
+	case ast.MatchExpressionKind:
+		node := node.(ast.AnalyzedMatchExpression)
+		return self.matchExpression(node)
 	case ast.TryExpressionKind:
 		node := node.(ast.AnalyzedTryExpression)
 		return self.tryExpression(node)
@@ -753,17 +756,6 @@ func (self *Interpreter) castExpression(node ast.AnalyzedCastExpression) (*value
 	panic(fmt.Sprintf("Unsupported runtime cast from %v to %s", (*base).Kind(), node.AsType.Kind()))
 }
 
-// This method is required for validating that a cast can be done at runtime.
-// If a `any as type` cast is encountered at compile time, the compiler cannot ensure that `any` will be `type` at runtime.
-// In order to validate this, this method is called for cast-expressions and let-statements which contain an optional type.
-// func (self Interpreter) valueIsCompatibleToType(val value.Value, typ ast.Type, span errors.Span) *value.Interrupt {
-// 	switch val.Kind() {
-// 	default:
-// 		panic(fmt.Sprintf("A new value kind (%v) was added without updating this code", val.Kind()))
-// 	}
-// 	return nil
-// }
-
 //
 // If expression
 //
@@ -794,6 +786,40 @@ func (self *Interpreter) ifExpression(node ast.AnalyzedIfExpression) (*value.Val
 	}
 
 	return resultValue, nil
+}
+
+//
+// Match expression
+//
+
+func (self *Interpreter) matchExpression(node ast.AnalyzedMatchExpression) (*value.Value, *value.Interrupt) {
+	control, i := self.expression(node.ControlExpression)
+	if i != nil {
+		return nil, i
+	}
+
+	for _, arm := range node.Arms {
+		literal, i := self.expression(arm.Literal)
+		if i != nil {
+			return nil, i
+		}
+
+		// check if the literal is equal to the value of the control expr
+		isEqual, i := (*literal).IsEqual(*control)
+		if i != nil {
+			return nil, i
+		}
+
+		if isEqual {
+			return self.expression(arm.Action)
+		}
+	}
+
+	if node.DefaultArmAction != nil {
+		return self.expression(*node.DefaultArmAction)
+	}
+
+	return value.NewValueNull(), nil
 }
 
 //

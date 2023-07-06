@@ -49,6 +49,7 @@ const (
 	// with block
 	BlockExpressionKind
 	IfExpressionKind
+	MatchExpressionKind
 	TryExpressionKind
 )
 
@@ -561,6 +562,39 @@ func (self AnalyzedIfExpression) String() string {
 }
 func (self AnalyzedIfExpression) Type() Type     { return self.ResultType }
 func (self AnalyzedIfExpression) Constant() bool { return false }
+
+//
+// Match expression
+//
+
+type AnalyzedMatchExpression struct {
+	ControlExpression AnalyzedExpression
+	Arms              []AnalyzedMatchArm
+	DefaultArmAction  *AnalyzedExpression
+	Range             errors.Span
+	ResultType        Type
+}
+
+func (self AnalyzedMatchExpression) Kind() ExpressionKind { return MatchExpressionKind }
+func (self AnalyzedMatchExpression) Span() errors.Span    { return self.Range }
+func (self AnalyzedMatchExpression) String() string {
+	arms := make([]string, 0)
+	for _, arm := range self.Arms {
+		arms = append(arms, strings.ReplaceAll(arm.String(), "\n", "\n    "))
+	}
+	return fmt.Sprintf("match %s {\n    %s\n}", self.ControlExpression, strings.Join(arms, ",\n    "))
+}
+func (self AnalyzedMatchExpression) Type() Type     { return self.ResultType }
+func (self AnalyzedMatchExpression) Constant() bool { return false }
+
+type AnalyzedMatchArm struct {
+	Literal AnalyzedExpression
+	Action  AnalyzedExpression
+}
+
+func (self AnalyzedMatchArm) String() string {
+	return fmt.Sprintf("%s => %s", self.Literal, self.Action)
+}
 
 //
 // Try expression

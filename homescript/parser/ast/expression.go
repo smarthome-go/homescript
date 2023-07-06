@@ -41,6 +41,7 @@ const (
 	// with block
 	BlockExpressionKind
 	IfExpressionKind
+	MatchExpressionKind
 	TryExpressionKind
 )
 
@@ -391,6 +392,56 @@ func (self IfExpression) String() string {
 	}
 
 	return fmt.Sprintf("if %s %s%s", self.Condition, self.ThenBlock, elseString)
+}
+
+//
+// Match expression
+//
+
+type MatchExpression struct {
+	ControlExpression Expression
+	Arms              []MatchArm
+	Range             errors.Span
+}
+
+func (self MatchExpression) Kind() ExpressionKind { return MatchExpressionKind }
+func (self MatchExpression) Span() errors.Span    { return self.Range }
+func (self MatchExpression) String() string {
+	arms := make([]string, 0)
+	for _, arm := range self.Arms {
+		arms = append(arms, strings.ReplaceAll(arm.String(), "\n", "\n    "))
+	}
+	return fmt.Sprintf("match %s {\n    %s\n}", self.ControlExpression, strings.Join(arms, ",\n    "))
+}
+
+type MatchArm struct {
+	Literal DefaultOrLiteral
+	Action  Expression
+	Range   errors.Span
+}
+
+func (self MatchArm) String() string {
+	return fmt.Sprintf("%s => %s", self.Literal, self.Action)
+}
+
+type DefaultOrLiteral struct {
+	Literal Expression
+}
+
+func (self DefaultOrLiteral) String() string {
+	if self.IsLiteral() {
+		return self.Literal.String()
+	}
+	return "_"
+}
+
+func (self DefaultOrLiteral) IsLiteral() bool {
+	return self.Literal != nil
+}
+
+func NewDefaultOrLiteralDefault() DefaultOrLiteral { return DefaultOrLiteral{Literal: nil} }
+func NewDefaultOrLiteralLiteral(literal Expression) DefaultOrLiteral {
+	return DefaultOrLiteral{Literal: literal}
 }
 
 //
