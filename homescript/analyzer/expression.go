@@ -1138,8 +1138,6 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 
 		action := self.expression(arm.Action)
 
-		fmt.Printf("action: %s\n", action.Type())
-
 		if !hadTypeErr && (resultType.Kind() == ast.UnknownTypeKind || resultType.Kind() == ast.NeverTypeKind) {
 			resultType = action.Type()
 		} else if err := self.TypeCheck(action.Type(), resultType, true); err != nil {
