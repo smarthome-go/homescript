@@ -66,24 +66,22 @@ ImportItem = 'import' , ( [ 'type' ] , identifier
   Expressions
 *)
 Expression          = ExpressionWithBlock | ExpressionWithoutBlock ;
-ExpressionWithBlock = Block | IfExpression | TryExpression ;
+ExpressionWithBlock = Block | IfExpression | MatchExpression | TryExpression ;
 
 (* If expression *)
 IfExpression = 'if' , Expression , Block , [ 'else' , Expression , Block ] ;
 
+(* Match expression *)
+MatchExpression = 'match' , Expression , '{' , [ matchArm , { ',' , matchArm } , [ ',' ] ] , '}' ;
+matchArm        = matchLiteral , '=>' , ( ExpressionWithoutBlock , ','
+                                        | ExpressionWithBlock ) ;
+matchLiteral    = LiteralExpression | ( PREFIX_OPERATOR LiteralExpression ) | '_' ;
+
 (* Try expression *)
 TryExpression = 'try' , Block , 'catch' , ident , block ;
 
-ExpressionWithoutBlock = number
-                       | boolean
-                       | string
-                       | ident
-                       | 'null'
-                       | 'none'
-                       | RangeLiteral
-                       | ListLiteral
-                       | ObjectLiteral
-                       | FunctionLiteral
+ExpressionWithoutBlock = ident
+                       | LiteralExpression
                        | '(' , Expression , ')'
                        | PrefixExpression
                        | InfixExpression
@@ -92,6 +90,9 @@ ExpressionWithoutBlock = number
                        | IndexExpression
                        | MemberExpression
                        | CastExpression ;
+
+LiteralExpression = number | boolean | string | 'null' | 'none' | RangeLiteral | ListLiteral | ObjectLiteral
+                  | FunctionLiteral ;
 
 (* Range literal expression *)
 RangeLiteral = Expression , '..' , Expression ;
