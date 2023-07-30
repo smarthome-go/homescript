@@ -7,7 +7,8 @@ Item    = ImportItem
 (*
   Function
 *)
-FunctionDefinition = 'fn' , ident , '(' , [ parameterList ] , ')' , [ '->' , Type ] , Block ;
+FunctionDefinition = 'fn' , ident , '(' , [ parameterList ] , ')'
+                   , [ '->' , Type ] , Block ;
 ParameterList      = parameter , { ',' , parameter } , [ ',' ] ;
 Parameter          = ident , ':' , Type ;
 
@@ -21,7 +22,8 @@ Type           = ident | listType | objectType | optionType ;
 listType       = '[' , Type , ']' ;
 
 objectType          = '{' , [ objectTypeFieldList ] , '}' ;
-objectTypeFieldList = objectTypeField , { ',' , objectTypeField } , [ ',' ] ;
+objectTypeFieldList = objectTypeField , { ',' , objectTypeField }
+                    , [ ',' ] ;
 objectTypeField     = ( ident | string ) , ':' , Type ;
 
 optionType = '?' , Type ;
@@ -29,11 +31,13 @@ optionType = '?' , Type ;
 (*
   Statements
 *)
-Statement = TypeDefinition | LetStatement | ReturnStatement | BreakStatement | ContinueStatement | LoopStatement
-          | WhileStatement | ForStatement | ExpressionStatement ;
+Statement = TypeDefinition | LetStatement | ReturnStatement | BreakStatement
+          | ContinueStatement | LoopStatement | WhileStatement
+          | ForStatement | ExpressionStatement ;
 
 (* Let statement *)
-LetStatement = 'let' , ident , [ ':' , Type ] , '=' , Expression , ';' ;
+LetStatement = 'let' , ident , [ ':' , Type ] , '=' , Expression
+             , ';' ;
 
 (* Return statement *)
 ReturnStatement = 'return' , [ Expression ] , ';' ;
@@ -59,23 +63,32 @@ ExpressionStatement = ExpressionWithoutBlock , ';'
 
 (* Import item *)
 ImportItem = 'import' , ( [ 'type' ] , identifier
-                        | '{' , [ 'type' ] , identifier , { ',' , [ 'type' ] , identifier } , [ ',' ]
-                        , '}' ) , 'from' , identifier , ';' ;
+                        | '{' , [ 'type' ] , identifier , { ','
+                                                          , [ 'type' ]
+                                                          , identifier }
+                        , [ ',' ] , '}' ) , 'from' , identifier
+           , ';' ;
 
 (*
   Expressions
 *)
 Expression          = ExpressionWithBlock | ExpressionWithoutBlock ;
-ExpressionWithBlock = Block | IfExpression | MatchExpression | TryExpression ;
+ExpressionWithBlock = Block | IfExpression | MatchExpression
+                    | TryExpression ;
 
 (* If expression *)
-IfExpression = 'if' , Expression , Block , [ 'else' , Expression , Block ] ;
+IfExpression = 'if' , Expression , Block , [ 'else' , Expression
+                                           , Block ] ;
 
 (* Match expression *)
-MatchExpression = 'match' , Expression , '{' , [ matchArm , { ',' , matchArm } , [ ',' ] ] , '}' ;
-matchArm        = matchLiteral , '=>' , ( ExpressionWithoutBlock , ','
+MatchExpression = 'match' , Expression , '{' , [ matchArm , { ','
+                                                            , matchArm }
+                                               , [ ',' ] ] , '}' ;
+matchArm        = matchLiteral , '=>' , ( ExpressionWithoutBlock
+                                        , ','
                                         | ExpressionWithBlock ) ;
-matchLiteral    = LiteralExpression | ( PREFIX_OPERATOR LiteralExpression ) | '_' ;
+matchLiteral    = LiteralExpression | ( PREFIX_OPERATOR , LiteralExpression )
+                | '_' ;
 
 (* Try expression *)
 TryExpression = 'try' , Block , 'catch' , ident , block ;
@@ -91,21 +104,27 @@ ExpressionWithoutBlock = ident
                        | MemberExpression
                        | CastExpression ;
 
-LiteralExpression = number | boolean | string | 'null' | 'none' | RangeLiteral | ListLiteral | ObjectLiteral
+LiteralExpression = number | boolean | string | 'null' | 'none'
+                  | RangeLiteral | ListLiteral | ObjectLiteral
                   | FunctionLiteral ;
 
 (* Range literal expression *)
 RangeLiteral = Expression , '..' , Expression ;
 
 (* List literal expression *)
-ListLiteral = '[' , [ Expression , { ',' , Expression } , [ ',' ] ] , ']' ;
+ListLiteral = '[' , [ Expression , { ',' , Expression } , [ ',' ] ]
+            , ']' ;
 
 (* Object literal expression *)
-ObjectLiteral      = 'new' , '{' , [ objectLiteralField , { ',' , objectLiteralField } , [ ',' ] ] , '}' ;
+ObjectLiteral      = 'new' , '{' , [ objectLiteralField , { ','
+                                                          , objectLiteralField }
+                                   , [ ',' ] ] , '}' ;
 objectLiteralField = ( ident | string ) , ':' , Expression ;
 
 (* Function literal expression *)
-FunctionLiteral = 'fn' , '(' , [ parameterList ] , ')' , [ '->' , Type ] , Block ;
+FunctionLiteral = 'fn' , '(' , [ parameterList ] , ')' , [ '->'
+                                                         , Type ]
+                , Block ;
 
 (* Prefix expression *)
 PrefixExpression = PREFIX_OPERATOR , Expression ;
@@ -132,8 +151,10 @@ CastExpression = Expression , 'as' , Type ;
 (*
   Tokens
 *)
-ident      = LETTER , { LETTER | DIGIT } - ? any keyword ? ;
-number     = DIGIT , { DIGIT | '_' } , [ '.' , DIGIT , { DIGIT | '_' } ] ;
+ident      = LETTER , { LETTER | DIGIT }- ? any keyword ? ;
+number     = DIGIT , { DIGIT | '_' } , [ 'f'
+                                       | '.' , DIGIT , { DIGIT
+                                                       | '_' } ] ;
 bool       = 'true' | 'false' ;
 string     = '"' , { CHAR - ( '"' | '\' ) | escape_seq } , '"'
            | "'" , { CHAR - ( "'" | '\' ) | escape_seq } , "'" ;
@@ -146,21 +167,27 @@ escape_seq = '\' , ( ESCAPE_CHAR
 comment = '//' , { CHAR } , ? LF ?
         | '/*' , { CHAR } , '*/' ;
 
-LETTER      = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O'
-            | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | 'a' | 'b' | 'c' | 'd'
-            | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's'
+LETTER      = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I'
+            | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R'
+            | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | 'a'
+            | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j'
+            | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's'
             | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' | '_' ;
 OCTAL       = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' ;
-DIGIT       = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
-HEX         = DIGIT | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' ;
+DIGIT       = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8'
+            | '9' ;
+HEX         = DIGIT | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'a'
+            | 'b' | 'c' | 'd' | 'e' | 'f' ;
 CHAR        = ? any UTF-8 character ? ;
 ESCAPE_CHAR = '\' | 'b' | 'n' | 'r' | 't' ;
 
 PREFIX_OPERATOR     = '!' | '-' | '?' ;
-INFIX_OPERATOR      = ARITHMETIC_OPERATOR | RELATIONAL_OPERATOR | BITWISE_OPERATOR | LOGICAL_OPERATOR ;
+INFIX_OPERATOR      = ARITHMETIC_OPERATOR | RELATIONAL_OPERATOR
+                    | BITWISE_OPERATOR | LOGICAL_OPERATOR ;
 ARITHMETIC_OPERATOR = '+' | '-' | '*' | '/' | '%' | '**' ;
 RELATIONAL_OPERATOR = '==' | '!=' | '<' | '>' | '<=' | '>=' ;
 BITWISE_OPERATOR    = '<<' | '>>' | '|' | '&' | '^' ;
 LOGICAL_OPERATOR    = '&&' | '||' ;
-ASSIGN_OPERATOR     = '=' | '+=' | '-=' | '*=' | '/=' | '\=' | '%=' | '**=' | '<<=' | '>>=' | '|=' | '&='
+ASSIGN_OPERATOR     = '=' | '+=' | '-=' | '*=' | '/=' | '\='
+                    | '%=' | '**=' | '<<=' | '>>=' | '|=' | '&='
                     | '^=' ;

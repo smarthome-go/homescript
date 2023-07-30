@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/util"
@@ -326,6 +327,10 @@ func (self *Lexer) makeNumber() Token {
 
 	self.advance()
 
+	for self.currentChar != nil && *self.currentChar == '_' {
+		self.advance()
+	}
+
 	lastEnd := startLocation
 	for self.currentChar != nil && util.IsDigit(*self.currentChar) {
 		value += string(*self.currentChar)
@@ -343,11 +348,14 @@ func (self *Lexer) makeNumber() Token {
 			lastEnd = self.location
 			self.advance()
 		}
+	} else if self.currentChar != nil && *self.currentChar == 'f' {
+		self.advance()
+		kind = Float // this number is now a float
 	}
 
 	return newToken(
 		kind,
-		value,
+		strings.ReplaceAll(value, "_", ""),
 		errors.Span{
 			Start:    startLocation,
 			End:      lastEnd,

@@ -15,7 +15,7 @@ type ValueFloat struct {
 func (_ ValueFloat) Kind() ValueKind { return FloatValueKind }
 
 func (self ValueFloat) Display() (string, *Interrupt) {
-	return fmt.Sprint(self.Inner), nil // use float fallback
+	return fmt.Sprint(self.Inner), nil
 }
 
 func (self ValueFloat) IsEqual(other Value) (bool, *Interrupt) {
