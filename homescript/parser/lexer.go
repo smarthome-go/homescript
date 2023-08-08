@@ -831,9 +831,9 @@ func (self *Lexer) makeName() Token {
 
 	var tokenKind TokenKind
 	switch value {
-	case "true":
+	case "true", "on":
 		tokenKind = True
-	case "false":
+	case "false", "off":
 		tokenKind = False
 	case "null":
 		tokenKind = Null

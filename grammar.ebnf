@@ -155,7 +155,7 @@ ident      = LETTER , { LETTER | DIGIT }- ? any keyword ? ;
 number     = DIGIT , { DIGIT | '_' } , [ 'f'
                                        | '.' , DIGIT , { DIGIT
                                                        | '_' } ] ;
-bool       = 'true' | 'false' ;
+bool       = 'true' | 'false' | 'on' | 'off' ;
 string     = '"' , { CHAR - ( '"' | '\' ) | escape_seq } , '"'
            | "'" , { CHAR - ( "'" | '\' ) | escape_seq } , "'" ;
 escape_seq = '\' , ( ESCAPE_CHAR
