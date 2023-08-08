@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
@@ -684,8 +685,13 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 					verb = "was"
 				}
 
+				paramList := make([]string, 0)
+				for _, param := range baseParams.Params {
+					paramList = append(paramList, param.Name.Ident())
+				}
+
 				self.error(
-					fmt.Sprintf("Function requires %d argument%s, however %d %s supplied", len(baseParams.Params), pluralS, len(node.Arguments), verb),
+					fmt.Sprintf("Function requires %d argument%s (%s), however %d %s supplied", len(baseParams.Params), pluralS, strings.Join(paramList, ", "), len(node.Arguments), verb),
 					nil,
 					node.Range,
 				)
@@ -1010,7 +1016,7 @@ func (self *Analyzer) castExpression(node pAst.CastExpression) ast.AnalyzedCastE
 
 	return ast.AnalyzedCastExpression{
 		Base:   base,
-		AsType: asType,
+		AsType: asType.SetSpan(node.Range),
 		Range:  node.Range,
 	}
 }
