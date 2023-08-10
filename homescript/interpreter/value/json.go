@@ -18,6 +18,23 @@ func marshalValue(self Value, span errors.Span, isInner bool, executor Executor)
 		return self.Inner, false, nil
 	case ValueBool:
 		return self.Inner, false, nil
+	case ValueAnyObject:
+		output := make(map[string]interface{}, 0)
+
+		for key, value := range self.FieldsInternal {
+			if value == nil {
+				return nil, false, nil
+			}
+			marshaled, skipNull, err := marshalValue(*value, span, true, executor)
+			if err != nil {
+				return nil, false, err
+			}
+			// skip builtin functions
+			if marshaled != nil && !skipNull {
+				output[key] = marshaled
+			}
+		}
+		return output, false, nil
 	case ValueObject:
 		output := make(map[string]interface{}, 0)
 
