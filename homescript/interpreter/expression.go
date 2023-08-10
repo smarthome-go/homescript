@@ -551,7 +551,24 @@ func (self *Interpreter) memberExpression(node ast.AnalyzedMemberExpression) (*v
 }
 
 func (self *Interpreter) deepCast(val value.Value, typ ast.Type, span errors.Span) (*value.Value, *value.Interrupt) {
+	// TODO: is this OK?
 	if typ.Kind() == ast.OptionTypeKind {
+		if val.Kind() == value.OptionValueKind {
+			valOption := val.(value.ValueOption)
+			typOption := typ.(ast.OptionType)
+			if !valOption.IsSome() {
+				return value.NewNoneOption(), nil
+			}
+
+			valInner := *valOption.Inner
+			typInner := typOption.Inner
+
+			innerCast, i := self.deepCast(valInner, typInner, span)
+			if i != nil {
+				return nil, i
+			}
+			return value.NewValueOption(innerCast), nil
+		}
 		return value.NewValueOption(&val), nil
 	}
 
@@ -699,15 +716,24 @@ func (self *Interpreter) deepCast(val value.Value, typ ast.Type, span errors.Spa
 			)
 		}
 
-		panic("TODO: handle these casts")
+		opt := val.(value.ValueOption)
+		optType := typ.(ast.OptionType)
 
-		return nil, nil
+		// allow conversions like `none as ?str`
+		if !opt.IsSome() {
+			return &val, nil
+		}
+
+		// otherwise, the inner type must also match
+		return self.deepCast(*opt.Inner, optType, span)
 	case value.ClosureValueKind, value.FunctionValueKind, value.BuiltinFunctionValueKind:
 		panic("Unreachable, the analyzer prevents this")
 	case value.NullValueKind:
 		switch typ.Kind() {
 		case ast.NullTypeKind:
 			return &val, nil
+		case ast.OptionTypeKind:
+			return value.NewNoneOption(), nil
 		}
 	case value.StringValueKind:
 		switch typ.Kind() {
