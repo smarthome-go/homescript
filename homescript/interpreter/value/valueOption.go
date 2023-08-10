@@ -26,7 +26,7 @@ func (self ValueOption) Display() (string, *Interrupt) {
 		}
 		return fmt.Sprintf("Some(%s)", disp), nil
 	case false:
-		return "null", nil
+		return "none", nil
 	}
 	panic("A boolean is binary")
 }
