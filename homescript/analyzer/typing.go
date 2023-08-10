@@ -359,6 +359,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 		expectedFn := expected.(ast.FunctionType)
 		// check return type
 		if err := self.TypeCheck(gotFn.ReturnType, expectedFn.ReturnType, allowFunctionTypes); err != nil {
+			// TODO: include better error message
 			return err
 		}
 		if expectedFn.Params.Kind() != gotFn.Params.Kind() {

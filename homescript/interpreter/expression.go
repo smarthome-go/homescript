@@ -631,7 +631,7 @@ func (self *Interpreter) deepCast(val value.Value, typ ast.Type, span errors.Spa
 						if i != nil {
 							return nil, i
 						}
-						fmt.Printf("PREV %s (%v) | CURR: %s (%v)\n", (*field).Kind(), field, (*newField).Kind(), newField)
+						fmt.Printf("=== DBG: PREV %s (%v) | CURR: %s (%v)\n", (*field).Kind(), field, (*newField).Kind(), newField)
 						outputFields[key] = newField
 						found = true
 						break

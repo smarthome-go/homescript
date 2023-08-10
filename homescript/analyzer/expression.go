@@ -1001,7 +1001,7 @@ func (self *Analyzer) castExpression(node pAst.CastExpression) ast.AnalyzedCastE
 	if err := self.TypeCheck(base.Type(), asType, false); err != nil {
 		// check if the cast is legal
 		self.error(
-			fmt.Sprintf("Impossible cast: cannot cast value of type '%s' to '%s'", base.Type().Kind(), asType.Kind()),
+			fmt.Sprintf("Impossible cast: cannot cast value of type '%s' to '%s'", base.Type(), asType),
 			[]string{err.GotDiagnostic.Message},
 			node.Span(),
 		)
