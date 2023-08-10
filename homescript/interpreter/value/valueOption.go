@@ -67,6 +67,13 @@ func (self ValueOption) Fields() (map[string]*Value, *Interrupt) {
 			}
 			return self.Inner, nil
 		}),
+		"unwrap_or": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *Interrupt) {
+			if !self.IsSome() {
+				// return the fallback value, always evaluated!
+				return &args[0], nil
+			}
+			return self.Inner, nil
+		}),
 		"expect": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *Interrupt) {
 			if !self.IsSome() {
 				return nil, NewRuntimeErr(

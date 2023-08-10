@@ -654,6 +654,14 @@ func (self OptionType) Fields(span errors.Span) map[string]Type {
 			self.Inner.SetSpan(span),
 			span,
 		),
+		"unwrap_or": NewFunctionType(
+			NewNormalFunctionTypeParamKind([]FunctionTypeParam{
+				NewFunctionTypeParam(ast.NewSpannedIdent("fallback", span), self.Inner),
+			}),
+			span,
+			self.Inner.SetSpan(span),
+			span,
+		),
 		"expect": NewFunctionType(
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{
 				NewFunctionTypeParam(ast.NewSpannedIdent("message", span), NewStringType(span)),
