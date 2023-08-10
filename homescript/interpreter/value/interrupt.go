@@ -82,12 +82,15 @@ type Interrupt interface {
 // Exit interrupt
 //
 
-type ExitInterrupt struct{ Code int64 }
+type ExitInterrupt struct {
+	Code int64
+	Span errors.Span
+}
 
 func (self ExitInterrupt) Kind() InterruptKind { return ExitInterruptKind }
 func (self ExitInterrupt) Message() string     { return "<exit-interrupt>" }
-func NewExitInterrupt(code int64) *Interrupt {
-	i := Interrupt(ExitInterrupt{Code: code})
+func NewExitInterrupt(code int64, span errors.Span) *Interrupt {
+	i := Interrupt(ExitInterrupt{Code: code, Span: span})
 	return &i
 }
 

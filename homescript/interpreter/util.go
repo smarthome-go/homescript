@@ -101,7 +101,8 @@ func (self *Interpreter) callFunc(span errors.Span, val value.Value, args []ast.
 		val, i := self.block(closure.Block, false)
 		if i != nil {
 			if (*i).Kind() != value.ReturnInterruptKind {
-				panic("Unsupported interrupt kind at the end of function")
+				// this is an error or a terminating interrupt
+				return nil, i
 			}
 			ret := (*i).(value.ReturnInterrupt).ReturnValue
 			return &ret, nil
