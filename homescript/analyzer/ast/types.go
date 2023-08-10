@@ -722,7 +722,7 @@ func (self FunctionType) String() string {
 }
 func (self FunctionType) Span() errors.Span { return self.Range }
 func (self FunctionType) SetSpan(span errors.Span) Type {
-	return NewFunctionType(self.Params, self.ParamsSpan, self.ReturnType, span)
+	return NewFunctionType(self.Params, span, self.ReturnType.SetSpan(span), span)
 }
 func (self FunctionType) Fields(_ errors.Span) map[string]Type { return make(map[string]Type) }
 func NewFunctionType(
