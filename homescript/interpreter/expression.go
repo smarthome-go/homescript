@@ -867,6 +867,13 @@ func (self *Interpreter) tryExpression(node ast.AnalyzedTryExpression) (*value.V
 	self.pushScope()
 	defer self.popScope()
 
-	self.addVar(node.CatchIdent.Ident(), *value.NewValueString(throwError.MessageInternal))
+	errObj := *value.NewValueObject(map[string]*value.Value{
+		"message":  value.NewValueString(throwError.Message()),
+		"line":     value.NewValueInt(int64(throwError.Span.Start.Line)),
+		"column":   value.NewValueInt(int64(throwError.Span.Start.Column)),
+		"filename": value.NewValueString(throwError.Span.Filename),
+	})
+
+	self.addVar(node.CatchIdent.Ident(), errObj)
 	return self.block(node.CatchBlock, false)
 }
