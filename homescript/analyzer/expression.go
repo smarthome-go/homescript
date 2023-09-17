@@ -1163,7 +1163,7 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 	// create an error if the result type is != unknown and there is no default branch
 	lastSpan := node.Span()
 	if len(node.Arms) > 0 {
-		lastSpan = node.Arms[len(arms)-1].Range
+		lastSpan = node.Arms[len(node.Arms)-1].Range
 	}
 	if err := self.TypeCheck(ast.NewNullType(lastSpan), resultType, true); defaultArm == nil && err != nil {
 		self.error(
