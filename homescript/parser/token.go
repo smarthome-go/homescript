@@ -91,6 +91,7 @@ const (
 	Return   // return
 	Type     // type
 	New      // new
+	Event    // event
 
 	True  // true
 	False // false
@@ -248,6 +249,8 @@ func (self TokenKind) String() string {
 		display = "catch"
 	case New:
 		display = "new"
+	case Event:
+		display = "event"
 	case BitOr:
 		display = "|"
 	case BitXor:

@@ -113,13 +113,34 @@ func (self LetStatement) String() string {
 // Function definition
 //
 
+type FunctionModifier uint8
+
+const (
+	FN_MODIFIER_NONE FunctionModifier = iota
+	FN_MODIFIER_PUB
+	FN_MODIFIER_EVENT
+)
+
+func (self FunctionModifier) String() string {
+	switch self {
+	case FN_MODIFIER_NONE:
+		return ""
+	case FN_MODIFIER_PUB:
+		return "pub"
+	case FN_MODIFIER_EVENT:
+		return "event"
+	default:
+		panic(fmt.Sprintf("Not implemented: %d", self))
+	}
+}
+
 type FunctionDefinition struct {
 	Ident      SpannedIdent
 	Parameters []FnParam
 	ParamSpan  errors.Span
 	ReturnType HmsType
 	Body       Block
-	IsPub      bool
+	Modifier   FunctionModifier
 	Range      errors.Span
 }
 
@@ -131,12 +152,20 @@ func (self FunctionDefinition) String() string {
 		params = append(params, param.String())
 	}
 
-	pub := ""
-	if self.IsPub {
-		pub = "pub "
+	modifier := ""
+
+	switch self.Modifier {
+	case FN_MODIFIER_PUB:
+		modifier = "pub "
+	case FN_MODIFIER_EVENT:
+		modifier = "event"
+	case FN_MODIFIER_NONE:
+		break
+	default:
+		panic(fmt.Sprintf("Modifier %d is not implemented.", self.Modifier))
 	}
 
-	return fmt.Sprintf("%sfn %s(%s) -> %s %s", pub, self.Ident, strings.Join(params, ", "), self.ReturnType, self.Body)
+	return fmt.Sprintf("%sfn %s(%s) -> %s %s", modifier, self.Ident, strings.Join(params, ", "), self.ReturnType, self.Body)
 }
 
 type FnParam struct {

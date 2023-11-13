@@ -78,6 +78,11 @@ func (self *Interpreter) execModule(moduleName string, restorePrev bool) *value.
 		self.functionDefinition(fn)
 	}
 
+	// visit all event definitions
+	for _, event := range sourceModule.Events {
+		self.eventFunctionDefinition(event)
+	}
+
 	// restore previous current module
 	if restorePrev {
 		self.switchModule(prevCurrName)

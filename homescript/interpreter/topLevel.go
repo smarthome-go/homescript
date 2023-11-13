@@ -26,7 +26,7 @@ func (self *Interpreter) importItem(node ast.AnalyzedImport) *value.Interrupt {
 
 	// since the module was not found, source the imports from the builtin modules
 	for _, toImport := range node.ToImport {
-		val, found := self.executor.GetBuiltinImport(node.FromModule.Ident(), toImport.Ident.Ident())
+		val, found := self.Executor.GetBuiltinImport(node.FromModule.Ident(), toImport.Ident.Ident())
 		if !found {
 			return value.NewRuntimeErr(
 				fmt.Sprintf("Unknown import '%s' in module '%s'", toImport, node.FromModule),
@@ -43,6 +43,13 @@ func (self *Interpreter) importItem(node ast.AnalyzedImport) *value.Interrupt {
 
 func (self *Interpreter) functionDefinition(node ast.AnalyzedFunctionDefinition) {
 	self.addVar(node.Ident.Ident(), *value.NewValueFunction(
+		self.currentModuleName,
+		node.Body,
+	))
+}
+
+func (self *Interpreter) eventFunctionDefinition(node ast.AnalyzedFunctionDefinition) {
+	self.addVar(fmt.Sprintf("@event_%s", node.Ident.Ident()), *value.NewValueFunction(
 		self.currentModuleName,
 		node.Body,
 	))

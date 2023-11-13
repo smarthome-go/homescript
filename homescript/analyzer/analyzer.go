@@ -211,7 +211,7 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 			fn.ParamSpan,
 			self.ConvertType(fn.ReturnType, false), // errors are only reported in the `self.functionDefinition` method
 			fn.ReturnType.Span(),                   // is the return span really required?
-			fn.IsPub,
+			fn.Modifier,
 		))
 	}
 
@@ -220,9 +220,16 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		output.Globals = append(output.Globals, self.letStatement(item, true))
 	}
 
-	// analyze all functions
+	// analyze all functions / events
 	for _, item := range module.Functions {
-		output.Functions = append(output.Functions, self.functionDefinition(item))
+		fnOut := self.functionDefinition(item)
+
+		switch item.Modifier {
+		case pAst.FN_MODIFIER_EVENT:
+			output.Events = append(output.Events, fnOut)
+		default:
+			output.Functions = append(output.Functions, fnOut)
+		}
 	}
 
 	// check if the `main` function exists
@@ -242,8 +249,9 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 	}
 
 	// check that all functions are used and ignore them if they are `pub`
+	// NOTE: this only works if `NONE` is the only default modifier
 	for _, fn := range self.currentModule.Functions {
-		if fn.Used || fn.IsPub || fn.FnType.Kind() != normalFunctionKind {
+		if fn.Used || fn.Modifier != pAst.FN_MODIFIER_NONE || fn.FnType.Kind() != normalFunctionKind {
 			continue
 		}
 		fnType := fn.FnType.(normalFunction)
@@ -403,7 +411,7 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 				})
 
 				// cannot import this function
-				if !fn.IsPub {
+				if fn.Modifier != pAst.FN_MODIFIER_PUB {
 					self.error(
 						fmt.Sprintf("Cannot import private function: '%s' is not declared as 'pub'", item.Ident),
 						nil,
@@ -529,8 +537,13 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 
 	self.currentModule.pushScope()
 
-	if node.Ident.Ident() == "main" {
-		// for the `main` function, only check thate there are NO params
+	if node.Ident.Ident() == "main" || node.Modifier == pAst.FN_MODIFIER_EVENT {
+		modifier := ""
+		if node.Modifier != pAst.FN_MODIFIER_NONE {
+			modifier = node.Modifier.String() + " "
+		}
+
+		// for this function, only check thate there are NO params
 		if len(node.Parameters) > 0 {
 			verb := "are"
 			if len(node.Parameters) == 1 {
@@ -538,7 +551,7 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 			}
 
 			self.error(
-				fmt.Sprintf("The '%s' function must have 0 parameters, however %d %s defined", node.Ident.Ident(), len(node.Parameters), verb),
+				fmt.Sprintf("The '%s%s' function must have 0 parameters, however %d %s defined", modifier, node.Ident.Ident(), len(node.Parameters), verb),
 				nil,
 				node.ParamSpan,
 			)
@@ -547,8 +560,8 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 		// the return type of the `main` function is always `null`
 		if fnReturnType.Kind() != ast.UnknownTypeKind && fnReturnType.Kind() != ast.NullTypeKind {
 			self.error(
-				fmt.Sprintf("The return type of the 'main' function must be '%s', but is declared as '%s'", ast.NewNullType(errors.Span{}).Kind(), fnReturnType.Kind()),
-				[]string{"Remove the return type: `fn main() { ... }`"},
+				fmt.Sprintf("The return type of the '%s%s' function must be '%s', but is declared as '%s'", modifier, node.Ident.Ident(), ast.NewNullType(errors.Span{}).Kind(), fnReturnType.Kind()),
+				[]string{fmt.Sprintf("Remove the return type: `fn %s%s() { ... }`", modifier, node.Ident.Ident())},
 				fnReturnType.Span(),
 			)
 			fnReturnType = ast.NewUnknownType()
@@ -582,7 +595,7 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 		Parameters: newParams,
 		ReturnType: fnReturnType,
 		Body:       analyzedBlock,
-		IsPub:      node.IsPub,
+		Modifier:   node.Modifier,
 		Range:      node.Range,
 	}
 }

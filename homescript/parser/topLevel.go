@@ -130,7 +130,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 /// Function Definition
 ///
 
-func (self *Parser) functionDefinition(isPub bool) (ast.FunctionDefinition, *errors.Error) {
+func (self *Parser) functionDefinition(fnModifier ast.FunctionModifier) (ast.FunctionDefinition, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
 	// skip `fn`
@@ -178,7 +178,7 @@ func (self *Parser) functionDefinition(isPub bool) (ast.FunctionDefinition, *err
 		ParamSpan:  paramStartLoc.Until(paramEndLoc, self.Filename),
 		ReturnType: returnType,
 		Body:       body,
-		IsPub:      isPub,
+		Modifier:   fnModifier,
 		Range:      startLoc.Until(self.PreviousToken.Span.End, self.Filename),
 	}, nil
 }

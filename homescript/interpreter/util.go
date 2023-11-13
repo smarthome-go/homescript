@@ -126,7 +126,7 @@ func (self *Interpreter) callFunc(span errors.Span, val value.Value, args []ast.
 		}
 		// the cancel context of the interpreter is temporarely handed over
 		// so that expensive / long-running builtin functions (like sleep) can terminate themselves
-		return fn.Callback(self.executor, self.cancelCtx, span, newArgs...)
+		return fn.Callback(self.Executor, self.cancelCtx, span, newArgs...)
 	default:
 		panic(fmt.Sprintf("A new callable value (%v) was introduced without updating this code", val.Kind()))
 	}

@@ -17,6 +17,7 @@ type AnalyzedProgram struct {
 	Types     []AnalyzedTypeDefinition
 	Globals   []AnalyzedLetStatement
 	Functions []AnalyzedFunctionDefinition
+	Events    []AnalyzedFunctionDefinition
 }
 
 func (self AnalyzedProgram) String() string {
@@ -50,6 +51,16 @@ func (self AnalyzedProgram) String() string {
 	}
 
 	return fmt.Sprintf("%s%s%s%s", imports, types, globals, strings.Join(functions, "\n\n"))
+}
+
+func (self AnalyzedProgram) SupportsEvent(ident string) bool {
+	for _, event := range self.Events {
+		if event.Ident.Ident() == ident {
+			return true
+		}
+	}
+
+	return false
 }
 
 //
@@ -88,7 +99,7 @@ type AnalyzedFunctionDefinition struct {
 	Parameters []AnalyzedFnParam
 	ReturnType Type
 	Body       AnalyzedBlock
-	IsPub      bool
+	Modifier   ast.FunctionModifier
 	Range      errors.Span
 }
 
@@ -99,12 +110,19 @@ func (self AnalyzedFunctionDefinition) String() string {
 		params = append(params, param.String())
 	}
 
-	pub := ""
-	if self.IsPub {
-		pub = "pub "
+	modifier := ""
+	switch self.Modifier {
+	case ast.FN_MODIFIER_PUB:
+		modifier = "pub "
+	case ast.FN_MODIFIER_EVENT:
+		modifier = "event "
+	case ast.FN_MODIFIER_NONE:
+		break
+	default:
+		panic(fmt.Sprintf("This modifier is not implemented: %d.", self.Modifier))
 	}
 
-	return fmt.Sprintf("%sfn %s(%s) -> %s %s", pub, self.Ident, strings.Join(params, ", "), self.ReturnType, self.Body)
+	return fmt.Sprintf("%sfn %s(%s) -> %s %s", modifier, self.Ident, strings.Join(params, ", "), self.ReturnType, self.Body)
 }
 func (self AnalyzedFunctionDefinition) Type() Type { return NewNullType(self.Range) }
 

@@ -29,7 +29,7 @@ type function struct {
 	ReturnType     ast.Type
 	ReturnTypeSpan errors.Span
 	Used           bool
-	IsPub          bool
+	Modifier       pAst.FunctionModifier
 }
 
 func (self function) Type(span errors.Span) ast.Type {
@@ -55,7 +55,7 @@ func newFunction(
 	paramsSpan errors.Span,
 	returnType ast.Type,
 	returnSpan errors.Span,
-	isPub bool,
+	modifier pAst.FunctionModifier,
 ) function {
 	return function{
 		FnType:         typ,
@@ -63,7 +63,7 @@ func newFunction(
 		ReturnType:     returnType,
 		ReturnTypeSpan: returnSpan,
 		Used:           false,
-		IsPub:          isPub,
+		Modifier:       modifier,
 	}
 }
 

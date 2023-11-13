@@ -63,9 +63,11 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 				return ast.Program{}, err
 			}
 			tree.Imports = append(tree.Imports, importStmt)
-		case Pub, Type, Let, Fn:
+		case Event, Pub, Type, Let, Fn:
 			isPub := self.CurrentToken.Kind == Pub
-			if isPub {
+			isEvent := self.CurrentToken.Kind == Event
+
+			if isPub || isEvent {
 				if err := self.next(); err != nil {
 					return ast.Program{}, err
 				}
@@ -85,7 +87,15 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 				}
 				tree.Globals = append(tree.Globals, letStmt)
 			case Fn:
-				fnDefinition, err := self.functionDefinition(isPub)
+				fnModifier := ast.FN_MODIFIER_NONE
+
+				if isPub {
+					fnModifier = ast.FN_MODIFIER_PUB
+				} else if isEvent {
+					fnModifier = ast.FN_MODIFIER_EVENT
+				}
+
+				fnDefinition, err := self.functionDefinition(fnModifier)
 				if err != nil {
 					return ast.Program{}, err
 				}
@@ -94,7 +104,7 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 				return ast.Program{}, self.expectedOneOfErr([]TokenKind{Let, Fn})
 			}
 		default:
-			return ast.Program{}, self.expectedOneOfErr([]TokenKind{Import, Type, Pub, Let, Fn})
+			return ast.Program{}, self.expectedOneOfErr([]TokenKind{Import, Type, Pub, Event, Let, Fn})
 		}
 	}
 

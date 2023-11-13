@@ -347,7 +347,7 @@ func (self *Analyzer) functionLiteral(node pAst.FunctionLiteralExpression) ast.A
 		node.ParamSpan,
 		fnReturntype,
 		node.Span(),
-		false,
+		pAst.FN_MODIFIER_NONE,
 	)
 	self.currentModule.CurrentFunction = &moduleFn
 
