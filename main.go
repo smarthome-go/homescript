@@ -393,6 +393,8 @@ func main() {
 		}
 	}
 
+	return
+
 	fmt.Println("=== BEGIN INTERPRET ===")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

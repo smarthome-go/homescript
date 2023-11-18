@@ -24,6 +24,7 @@ const (
 	Opcode_SetGlobImm
 	Opcode_Cast
 	Opcode_Neg
+	Opcode_Some // ?foo -> converts foo to a Option<foo>
 	Opcode_Not
 	Opcode_Add
 	Opcode_Sub
@@ -125,6 +126,8 @@ func (self Opcode) String() string {
 		return "Member"
 	case Opcode_Import:
 		return "Import"
+	case Opcode_Label:
+		return "Label"
 	default:
 		panic("Invalid instruction")
 	}
@@ -182,10 +185,11 @@ type CastInstruction struct {
 // Value Instruction
 
 type ValueInstruction struct {
-	Value Value
+	opCode Opcode
+	Value  Value
 }
 
-func (self ValueInstruction) Opcode() Opcode { return self.Opcode() }
+func (self ValueInstruction) Opcode() Opcode { return self.opCode }
 func (self ValueInstruction) String() string { return fmt.Sprintf("%v(%v)", self.Opcode(), self.Value) }
 
 func newValueInstruction(opCode Opcode, value Value) ValueInstruction {
