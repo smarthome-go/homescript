@@ -11,6 +11,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	syntaxErrors "github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
@@ -378,6 +379,18 @@ func main() {
 	for name, module := range analyzed {
 		fmt.Printf("=== MODULE: %s ===\n", name)
 		fmt.Println(module)
+	}
+
+	fmt.Println("=== COMPILED ===")
+
+	compiler := compiler.NewCompiler()
+	compiled := compiler.Compile(analyzed[filename])
+	for name, function := range compiled {
+		fmt.Printf("Func: %s\n", name)
+
+		for idx, inst := range function {
+			fmt.Printf("%d | %s\n", idx, inst)
+		}
 	}
 
 	fmt.Println("=== BEGIN INTERPRET ===")
