@@ -85,3 +85,39 @@ func (self OptionValue) String() string {
 		return (*self.inner).String()
 	}
 }
+
+type ListValue struct {
+	inner []Value
+}
+
+func (self ListValue) TypeKind() ast.TypeKind {
+	return ast.ListTypeKind
+}
+
+func (self ListValue) String() string {
+	return "TODO: LIST"
+}
+
+type ObjectValue struct {
+	fields map[string]Value
+}
+
+func (self ObjectValue) TypeKind() ast.TypeKind {
+	return ast.ObjectTypeKind
+}
+
+func (self ObjectValue) String() string {
+	return "TODO: OBJECT"
+}
+
+type AnyObjectValue struct {
+	fields map[string]Value
+}
+
+func (self AnyObjectValue) TypeKind() ast.TypeKind {
+	return ast.AnyObjectTypeKind
+}
+
+func (self AnyObjectValue) String() string {
+	return "TODO: ANY OBJ"
+}

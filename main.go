@@ -16,6 +16,7 @@ import (
 	syntaxErrors "github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime"
 )
 
 type Executor struct {
@@ -396,6 +397,9 @@ func main() {
 
 		i++
 	}
+
+	vm := runtime.NewVM(compiled)
+	vm.Run("main0")
 
 	return
 

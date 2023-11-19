@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 )
 
 type Opcode uint8
@@ -23,6 +24,7 @@ const (
 	Opcode_GetGlobImm
 	Opcode_SetVatImm
 	Opcode_SetGlobImm
+	Opcode_Assign // assigns pointers on the stack???
 	Opcode_Cast
 	Opcode_Neg
 	Opcode_Some // ?foo -> converts foo to a Option<foo>
@@ -34,7 +36,7 @@ const (
 	Opcode_Div
 	Opcode_Rem
 	Opcode_Eq
-	Opcode_Ne
+	Opcode_Eq_PopOnce // Only pops the stack once, the other value is left untouched
 	Opcode_Lt
 	Opcode_Gt
 	Opcode_Le
@@ -49,6 +51,7 @@ const (
 	Opcode_Member
 	Opcode_Import
 	Opcode_Label
+	Opcode_Into_Range
 )
 
 func (self Opcode) String() string {
@@ -81,6 +84,8 @@ func (self Opcode) String() string {
 		return "SetVatImm"
 	case Opcode_SetGlobImm:
 		return "SetGlobImm"
+	case Opcode_Assign:
+		return "Assign"
 	case Opcode_Cast:
 		return "Cast"
 	case Opcode_Neg:
@@ -101,8 +106,8 @@ func (self Opcode) String() string {
 		return "Rem"
 	case Opcode_Eq:
 		return "Eq"
-	case Opcode_Ne:
-		return "Ne"
+	case Opcode_Eq_PopOnce:
+		return "Eq_PopOnce"
 	case Opcode_Lt:
 		return "Lt"
 	case Opcode_Gt:
@@ -131,8 +136,10 @@ func (self Opcode) String() string {
 		return "Import"
 	case Opcode_Label:
 		return "Label"
+	case Opcode_Into_Range:
+		return "Into_Range"
 	default:
-		panic("Invalid instruction")
+		panic(fmt.Sprintf("Invalid instruction: %d", self))
 	}
 }
 
@@ -158,18 +165,18 @@ func newPrimitiveInstruction(opCode Opcode) Instruction {
 
 type OneIntInstruction struct {
 	opCode Opcode
-	value  int64
+	Value  int64
 }
 
 func (self OneIntInstruction) Opcode() Opcode { return self.opCode }
 func (self OneIntInstruction) String() string {
-	return fmt.Sprintf("%s(%d)", self.opCode, self.value)
+	return fmt.Sprintf("%s(%d)", self.opCode, self.Value)
 }
 
 func newOneIntInstruction(opCode Opcode, value int64) OneIntInstruction {
 	return OneIntInstruction{
 		opCode: opCode,
-		value:  value,
+		Value:  value,
 	}
 }
 
@@ -177,25 +184,38 @@ func newOneIntInstruction(opCode Opcode, value int64) OneIntInstruction {
 
 type OneStringInstruction struct {
 	opCode Opcode
-	value  string
+	Value  string
 }
 
 func (self OneStringInstruction) Opcode() Opcode { return self.opCode }
 func (self OneStringInstruction) String() string {
-	return fmt.Sprintf("%s(%s)", self.opCode, self.value)
+	return fmt.Sprintf("%s(%s)", self.opCode, self.Value)
 }
 
 func newOneStringInstruction(opCode Opcode, value string) OneStringInstruction {
 	return OneStringInstruction{
 		opCode: opCode,
-		value:  value,
+		Value:  value,
 	}
 }
 
 // TwoString Instruction
 
 type TwoStringInstruction struct {
-	Operand string
+	opCode Opcode
+	Values [2]string
+}
+
+func (self TwoStringInstruction) Opcode() Opcode { return self.opCode }
+func (self TwoStringInstruction) String() string {
+	return fmt.Sprintf("%s(%s, %s)", self.opCode, self.Values[0], self.Values[0])
+}
+
+func newTwoStringInstruction(opCode Opcode, value0 string, value1 string) TwoStringInstruction {
+	return TwoStringInstruction{
+		opCode: opCode,
+		Values: [2]string{value0, value1},
+	}
 }
 
 // Cast Instruction
@@ -219,13 +239,19 @@ func newCastInstruction(type_ ast.Type) CastInstruction {
 
 type ValueInstruction struct {
 	opCode Opcode
-	Value  Value
+	Value  value.Value
 }
 
 func (self ValueInstruction) Opcode() Opcode { return self.opCode }
-func (self ValueInstruction) String() string { return fmt.Sprintf("%v(%s)", self.Opcode(), self.Value) }
+func (self ValueInstruction) String() string {
+	str, i := self.Value.Display()
+	if i != nil {
+		panic(*i)
+	}
+	return fmt.Sprintf("%v(%s)", self.Opcode(), str)
+}
 
-func newValueInstruction(opCode Opcode, value Value) ValueInstruction {
+func newValueInstruction(opCode Opcode, value value.Value) ValueInstruction {
 	return ValueInstruction{
 		opCode: opCode,
 		Value:  value,

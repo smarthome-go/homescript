@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
@@ -13,10 +14,16 @@ type Loop struct {
 	labelContinue string
 }
 
+type Function struct {
+	MangledName  string
+	Instructions []Instruction
+}
+
 type Compiler struct {
-	functions     map[string][]Instruction
+	functions     map[string]*Function
 	currFn        string
 	loops         []Loop
+	fnNameMangle  map[string]uint64
 	varNameMangle map[string]uint64
 	varScopes     []map[string]string
 	currScope     *map[string]string
@@ -24,13 +31,18 @@ type Compiler struct {
 
 func NewCompiler() Compiler {
 	return Compiler{
-		functions:     make(map[string][]Instruction),
+		functions:     make(map[string]*Function),
 		loops:         make([]Loop, 0),
+		fnNameMangle:  make(map[string]uint64),
 		varNameMangle: make(map[string]uint64),
 		varScopes:     make([]map[string]string, 0),
 		currScope:     nil,
 	}
 }
+
+const (
+	LIST_PUSH = "__internal_list_push"
+)
 
 func (self Compiler) currLoop() Loop { return self.loops[len(self.loops)-1] }
 func (self *Compiler) pushLoop(l Loop) {
@@ -54,6 +66,23 @@ func (self *Compiler) popScope() {
 	self.currScope = &self.varScopes[len(self.varScopes)-1]
 }
 
+func (self *Compiler) mangleFn(input string) string {
+	cnt, exists := self.varNameMangle[input]
+	if !exists {
+		self.varNameMangle[input]++
+		cnt = 0
+	}
+
+	mangled := fmt.Sprintf("%s%d", input, cnt)
+
+	fn := Function{
+		MangledName:  mangled,
+		Instructions: make([]Instruction, 0),
+	}
+	self.functions[input] = &fn
+	return mangled
+}
+
 func (self *Compiler) mangle(input string) string {
 	cnt, exists := self.varNameMangle[input]
 	if !exists {
@@ -67,6 +96,16 @@ func (self *Compiler) mangle(input string) string {
 	return mangled
 }
 
+func (self Compiler) getMangledFn(input string) (string, bool) {
+	for key, fn := range self.functions {
+		if key == input {
+			return fn.MangledName, true
+		}
+	}
+
+	return "", false
+}
+
 func (self Compiler) getMangled(input string) (string, bool) {
 	for _, scope := range self.varScopes {
 		name, found := scope[input]
@@ -78,19 +117,68 @@ func (self Compiler) getMangled(input string) (string, bool) {
 	return "", false
 }
 
+func (self Compiler) relocateLabels() {
+	for name, fn := range self.functions {
+		labels := make(map[string]int64)
+
+		fnOut := make([]Instruction, 0)
+
+		index := 0
+		for _, inst := range fn.Instructions {
+			if inst.Opcode() == Opcode_Label {
+				i := inst.(OneStringInstruction).Value
+				labels[i] = int64(index)
+			} else {
+				fnOut = append(fnOut, inst)
+				index++
+			}
+		}
+
+		for idx, inst := range fnOut {
+			switch inst.Opcode() {
+			case Opcode_Jump, Opcode_JumpIfFalse:
+				i := inst.(OneStringInstruction)
+				fnOut[idx] = newOneIntInstruction(inst.Opcode(), labels[i.Value])
+				fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
+			case Opcode_Label:
+				panic("This should not happen")
+			}
+		}
+
+		self.functions[name].Instructions = fnOut
+	}
+}
+
 func (self *Compiler) Compile(program ast.AnalyzedProgram) map[string][]Instruction {
 	self.compileProgram(program)
-	return self.functions
+
+	self.relocateLabels()
+
+	functions := make(map[string][]Instruction)
+	for _, fn := range self.functions {
+		functions[fn.MangledName] = fn.Instructions
+	}
+
+	return functions
 }
 
 func (self *Compiler) insert(instruction Instruction) {
-	self.functions[self.currFn] = append(self.functions[self.currFn], instruction)
+	// fmt.Printf("fn: `%s` %v\n", self.currFn, self.functions[self.currFn])
+	self.functions[self.currFn].Instructions = append(self.functions[self.currFn].Instructions, instruction)
 }
 
 func (self *Compiler) compileProgram(program ast.AnalyzedProgram) {
 	// TODO: handle imports to also compile imported modules
+
 	for _, item := range program.Imports {
-		fmt.Println(item)
+		for _, importItem := range item.ToImport {
+			self.insert(newTwoStringInstruction(Opcode_Import, item.FromModule.Ident(), importItem.Ident.Ident()))
+		}
+	}
+
+	// compile all function declarations
+	for _, fn := range program.Functions {
+		self.mangleFn(fn.Ident.Ident())
 	}
 
 	// compile all functions
@@ -187,6 +275,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 			labelContinue: head_label,
 		})
 		self.compileBlock(node.Body, true)
+		self.insert(newOneStringInstruction(Opcode_Jump, head_label))
 		self.insert(newOneStringInstruction(Opcode_Label, head_label))
 		self.popLoop()
 	case ast.WhileStatementKind:
@@ -206,6 +295,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, after_label))
 
 		self.compileBlock(node.Body, true)
+		self.insert(newOneStringInstruction(Opcode_Jump, head_label))
 
 		self.insert(newOneStringInstruction(Opcode_Label, after_label))
 		self.popLoop()
@@ -237,6 +327,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, after_label))
 
 		self.compileBlock(node.Body, false)
+		self.insert(newOneStringInstruction(Opcode_Jump, head_label))
 
 		self.insert(newOneStringInstruction(Opcode_Label, update_label))
 		// TODO: update
@@ -245,8 +336,10 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 	case ast.ExpressionStatementKind:
 		node := node.(ast.AnalyzedExpressionStatement)
 		self.compileExpr(node.Expression)
-		// Drop every value that the expression might generate
-		self.insert(newPrimitiveInstruction(Opcode_Drop))
+		if node.Expression.Type().Kind() != ast.NullTypeKind {
+			// Drop every value that the expression might generate
+			self.insert(newPrimitiveInstruction(Opcode_Drop))
+		}
 	default:
 		panic("Unreachable")
 	}
@@ -255,11 +348,9 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 func (self *Compiler) compilePrefixOp(op ast.PrefixOperator) {
 	switch op {
 	case ast.MinusPrefixOperator:
-		// This performs a `* (-1)` operation
-		self.insert(newValueInstruction(Opcode_Push, IntValue{Value: -1}))
-		self.insert(newPrimitiveInstruction(Opcode_Mul))
-	case ast.NegatePrefixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_Neg))
+	case ast.NegatePrefixOperator:
+		self.insert(newPrimitiveInstruction(Opcode_Not))
 	case ast.IntoSomePrefixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_Some))
 	}
@@ -278,7 +369,13 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 		if found {
 			self.insert(newOneStringInstruction(Opcode_Call_Imm, mangled))
 		} else {
-			self.insert(newOneStringInstruction(Opcode_HostCall, base.Ident.Ident()))
+			name, found := self.getMangledFn(base.Ident.Ident())
+			if found {
+				self.insert(newOneStringInstruction(Opcode_Call_Imm, name))
+			} else {
+				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))))
+				self.insert(newOneStringInstruction(Opcode_HostCall, base.Ident.Ident()))
+			}
 		}
 	} else {
 		// TODO: wtf: compile the base
@@ -319,21 +416,39 @@ func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 	case pAst.BitXorInfixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_BitXor))
 	case pAst.LogicalOrInfixOperator:
-		// TODO: implement branching stuff
-		fallthrough
-	case pAst.LogicalAndInfixOperator:
-		// TODO: implement branching stuff
+		returnTrue := self.mangle("return_true")
+		afterLabel := self.mangle("after_infix")
 
-		// TODO: implement this
 		self.compileExpr(node.Lhs)
-		self.compileExpr(node.Rhs)
+		self.insert(newPrimitiveInstruction(Opcode_Not))
+		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, returnTrue))
 
-		panic("TODO")
+		self.compileExpr(node.Rhs)
+		self.insert(newOneStringInstruction(Opcode_Jump, afterLabel))
+
+		self.insert(newOneStringInstruction(Opcode_Label, returnTrue))
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueBool(true)))
+
+		self.insert(newOneStringInstruction(Opcode_Label, afterLabel))
+	case pAst.LogicalAndInfixOperator:
+		returnFalse := self.mangle("return_false")
+		afterLabel := self.mangle("after_infix")
+
+		self.compileExpr(node.Lhs)
+		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, returnFalse))
+
+		self.compileExpr(node.Rhs)
+		self.insert(newOneStringInstruction(Opcode_Jump, afterLabel))
+
+		self.insert(newOneStringInstruction(Opcode_Label, returnFalse))
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueBool(false)))
+
+		self.insert(newOneStringInstruction(Opcode_Label, afterLabel))
 	case pAst.EqualInfixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_Eq))
 	case pAst.NotEqualInfixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_Eq))
-		self.insert(newPrimitiveInstruction(Opcode_Neg))
+		self.insert(newPrimitiveInstruction(Opcode_Not))
 	case pAst.LessThanInfixOperator: // TODO: make this more RISC-y
 		self.insert(newPrimitiveInstruction(Opcode_Lt))
 	case pAst.LessThanEqualInfixOperator:
@@ -350,38 +465,67 @@ func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	switch node.Kind() {
 	case ast.UnknownExpressionKind:
-		panic("WTF")
+		panic("Unreachable, this should not happen")
 	case ast.IntLiteralExpressionKind:
 		node := node.(ast.AnalyzedIntLiteralExpression)
-		self.insert(newValueInstruction(Opcode_Push, IntValue{Value: node.Value}))
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(node.Value)))
 	case ast.FloatLiteralExpressionKind:
 		node := node.(ast.AnalyzedFloatLiteralExpression)
-		self.insert(newValueInstruction(Opcode_Push, FloatValue{Value: node.Value}))
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueFloat(node.Value)))
 	case ast.BoolLiteralExpressionKind:
 		node := node.(ast.AnalyzedBoolLiteralExpression)
-		self.insert(newValueInstruction(Opcode_Push, BoolValue{Value: node.Value}))
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueBool(node.Value)))
 	case ast.StringLiteralExpressionKind:
 		node := node.(ast.AnalyzedStringLiteralExpression)
-		self.insert(newValueInstruction(Opcode_Push, StringValue{Value: node.Value}))
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(node.Value)))
 	case ast.IdentExpressionKind:
 		// TODO: must find out if global.
-
 		node := node.(ast.AnalyzedIdentExpression)
-		self.insert(newOneStringInstruction(Opcode_GetVarImm, node.Ident.Ident()))
+		name, found := self.getMangled(node.Ident.Ident())
+		if found {
+			self.insert(newOneStringInstruction(Opcode_GetVarImm, name))
+		} else {
+			name, found := self.getMangledFn(node.Ident.Ident())
+			if found {
+				self.insert(newOneStringInstruction(Opcode_GetVarImm, name))
+			} else {
+				self.insert(newOneStringInstruction(Opcode_GetVarImm, node.Ident.Ident()))
+			}
+		}
 	case ast.NullLiteralExpressionKind:
-		self.insert(newValueInstruction(Opcode_Push, NullValue{}))
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueNull()))
 	case ast.NoneLiteralExpressionKind:
-		self.insert(newValueInstruction(Opcode_Push, OptionValue{inner: nil}))
+		self.insert(newValueInstruction(Opcode_Push, *value.NewNoneOption()))
 	case ast.RangeLiteralExpressionKind:
-		panic("TODO: value")
+		// TODO: eliminate ranges at compile time
+		node := node.(ast.AnalyzedRangeLiteralExpression)
+		self.compileExpr(node.Start)
+		self.compileExpr(node.End)
+		self.insert(newPrimitiveInstruction(Opcode_Into_Range))
 	case ast.ListLiteralExpressionKind:
-		panic("TODO: value")
+		node := node.(ast.AnalyzedListLiteralExpression)
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueList(make([]*value.Value, 0))))
+
+		for _, element := range node.Values {
+			self.compileExpr(element)
+			self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(1)))
+			self.insert(newOneStringInstruction(Opcode_HostCall, LIST_PUSH))
+		}
 	case ast.AnyObjectLiteralExpressionKind:
-		panic("TODO: value")
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueAnyObject(make(map[string]*value.Value))))
 	case ast.ObjectLiteralExpressionKind:
-		panic("TODO: value")
+		node := node.(ast.AnalyzedObjectLiteralExpression)
+
+		object := *value.NewValueAnyObject(make(map[string]*value.Value))
+		self.insert(newValueInstruction(Opcode_Push, object))
+
+		for _, field := range node.Fields {
+			self.insert(newOneStringInstruction(Opcode_Member, field.Key.Ident()))
+			self.compileExpr(field.Expression)
+			self.insert(newPrimitiveInstruction(Opcode_Assign))
+		}
 	case ast.FunctionLiteralExpressionKind:
-		panic("TODO: value")
+		panic("TODO: function value")
 	case ast.GroupedExpressionKind:
 		node := node.(ast.AnalyzedGroupedExpression)
 		self.compileExpr(node.Inner)
@@ -393,6 +537,19 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		node := node.(ast.AnalyzedInfixExpression)
 		self.compileInfixExpr(node)
 	case ast.AssignExpressionKind:
+		node := node.(ast.AnalyzedAssignExpression)
+
+		// TODO: assignment operators
+
+		// TODO: handle other types of LHS
+		if node.Lhs.Kind() == ast.IdentExpressionKind {
+			lhs := node.Lhs.(ast.AnalyzedIdentExpression)
+			self.compileExpr(node.Rhs)
+			self.insert(newOneStringInstruction(Opcode_SetVatImm, lhs.Ident.Ident()))
+		} else {
+			panic("Not supported")
+		}
+
 	case ast.CallExpressionKind:
 		node := node.(ast.AnalyzedCallExpression)
 		self.compileCallExpr(node)
@@ -414,12 +571,53 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	case ast.IfExpressionKind:
 		self.compileIfExpr(node.(ast.AnalyzedIfExpression))
 	case ast.MatchExpressionKind:
-		// TODO: match
+		node := node.(ast.AnalyzedMatchExpression)
+
+		// push the control value onto the stack
+		self.compileExpr(node.ControlExpression)
+
+		branches := make(map[int]string)
+		after_branch := self.mangle("match_after")
+
+		for i, option := range node.Arms {
+			name := self.mangle(fmt.Sprintf("case_%d", i))
+			branches[i] = name
+
+			// Insert value to compare with
+			self.compileExpr(option.Literal)
+
+			// Compare control and branch value
+			self.insert(newPrimitiveInstruction(Opcode_Eq_PopOnce))
+
+			// if true, jump to the label of this branch
+			self.insert(newPrimitiveInstruction(Opcode_Not))
+			self.insert(newOneStringInstruction(Opcode_JumpIfFalse, name))
+		}
+
+		default_branch := self.mangle("match_default")
+		if node.DefaultArmAction != nil {
+			self.insert(newOneStringInstruction(Opcode_Jump, default_branch))
+		} else {
+			self.insert(newOneStringInstruction(Opcode_Jump, after_branch))
+		}
+
+		// Each individual branch
+		for i, option := range node.Arms {
+			self.insert(newOneStringInstruction(Opcode_Label, branches[i]))
+			self.compileExpr(option.Action)
+			self.insert(newOneStringInstruction(Opcode_Jump, after_branch))
+		}
+
+		if node.DefaultArmAction != nil {
+			self.insert(newOneStringInstruction(Opcode_Label, default_branch))
+			self.compileExpr(*node.DefaultArmAction)
+			self.insert(newOneStringInstruction(Opcode_Jump, after_branch))
+		}
 	case ast.TryExpressionKind:
 		node := node.(ast.AnalyzedTryExpression)
 		// TODO: name mangling
-		exceptionLabel := "exception_label"
-		afterTryLabel := "after_try_label"
+		exceptionLabel := self.mangle("exception_label")
+		afterTryLabel := self.mangle("after_try_label")
 		self.insert(newOneStringInstruction(Opcode_SetTryLabel, exceptionLabel))
 		self.compileBlock(node.TryBlock, true)
 		self.insert(newOneStringInstruction(Opcode_Jump, afterTryLabel))
