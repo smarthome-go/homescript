@@ -13,7 +13,8 @@ const (
 	Opcode_Push
 	Opcode_Drop
 	Opcode_Spawn
-	Opcode_Call
+	Opcode_Call_Val
+	Opcode_Call_Imm
 	Opcode_Return
 	Opcode_HostCall
 	Opcode_Jump
@@ -60,8 +61,10 @@ func (self Opcode) String() string {
 		return "Drop"
 	case Opcode_Spawn:
 		return "Spawn"
-	case Opcode_Call:
-		return "Call"
+	case Opcode_Call_Imm:
+		return "Call_Imm"
+	case Opcode_Call_Val:
+		return "Call_Val"
 	case Opcode_Return:
 		return "Return"
 	case Opcode_HostCall:
@@ -151,6 +154,25 @@ func newPrimitiveInstruction(opCode Opcode) Instruction {
 	return PrimitiveInstruction{opCode: opCode}
 }
 
+// OneInt Instruction
+
+type OneIntInstruction struct {
+	opCode Opcode
+	value  int64
+}
+
+func (self OneIntInstruction) Opcode() Opcode { return self.opCode }
+func (self OneIntInstruction) String() string {
+	return fmt.Sprintf("%s(%d)", self.opCode, self.value)
+}
+
+func newOneIntInstruction(opCode Opcode, value int64) OneIntInstruction {
+	return OneIntInstruction{
+		opCode: opCode,
+		value:  value,
+	}
+}
+
 // OneString Instruction
 
 type OneStringInstruction struct {
@@ -179,7 +201,18 @@ type TwoStringInstruction struct {
 // Cast Instruction
 
 type CastInstruction struct {
-	Type ast.Type
+	opCode Opcode
+	Type   ast.Type
+}
+
+func (self CastInstruction) Opcode() Opcode { return self.opCode }
+func (self CastInstruction) String() string { return fmt.Sprintf("%v(%v)", self.Opcode(), self.Type) }
+
+func newCastInstruction(type_ ast.Type) CastInstruction {
+	return CastInstruction{
+		opCode: Opcode_Cast,
+		Type:   type_,
+	}
 }
 
 // Value Instruction
@@ -190,10 +223,11 @@ type ValueInstruction struct {
 }
 
 func (self ValueInstruction) Opcode() Opcode { return self.opCode }
-func (self ValueInstruction) String() string { return fmt.Sprintf("%v(%v)", self.Opcode(), self.Value) }
+func (self ValueInstruction) String() string { return fmt.Sprintf("%v(%s)", self.Opcode(), self.Value) }
 
 func newValueInstruction(opCode Opcode, value Value) ValueInstruction {
 	return ValueInstruction{
-		Value: value,
+		opCode: opCode,
+		Value:  value,
 	}
 }

@@ -385,12 +385,16 @@ func main() {
 
 	compiler := compiler.NewCompiler()
 	compiled := compiler.Compile(analyzed[filename])
+
+	i := 0
 	for name, function := range compiled {
-		fmt.Printf("Func: %s\n", name)
+		fmt.Printf("%03d ===> func: %s\n", i, name)
 
 		for idx, inst := range function {
-			fmt.Printf("%d | %s\n", idx, inst)
+			fmt.Printf("%03d | %s\n", idx, inst)
 		}
+
+		i++
 	}
 
 	return
