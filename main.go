@@ -240,6 +240,14 @@ func timeObjType(span syntaxErrors.Span) ast.Type {
 
 func scopeAdditions() map[string]analyzer.Variable {
 	return map[string]analyzer.Variable{
+		"print": analyzer.NewBuiltinVar(
+			ast.NewFunctionType(
+				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{}, ast.NewUnknownType()),
+				syntaxErrors.Span{},
+				ast.NewNullType(syntaxErrors.Span{}),
+				syntaxErrors.Span{},
+			),
+		),
 		"println": analyzer.NewBuiltinVar(
 			ast.NewFunctionType(
 				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{}, ast.NewUnknownType()),
@@ -269,6 +277,29 @@ func scopeAdditions() map[string]analyzer.Variable {
 
 func iScopeAdditions() map[string]value.Value {
 	return map[string]value.Value{
+		"print": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
+
+			outStr := strings.Join(output, " ")
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, value.NewRuntimeErr(
+					err.Error(),
+					value.HostErrorKind,
+					span,
+				)
+			}
+
+			return value.NewValueNull(), nil
+		},
+		),
 		"println": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
 			output := make([]string, 0)
 			for _, arg := range args {
@@ -388,7 +419,7 @@ func main() {
 	compiled := compiler.Compile(analyzed[filename])
 
 	i := 0
-	for name, function := range compiled {
+	for name, function := range compiled.Functions {
 		fmt.Printf("%03d ===> func: %s\n", i, name)
 
 		for idx, inst := range function {
@@ -398,13 +429,16 @@ func main() {
 		i++
 	}
 
-	vm := runtime.NewVM(compiled)
-	vm.Run("main0")
+	start := time.Now()
+	vm := runtime.NewVM(compiled, Executor{})
+	vm.Run("main0", os.Args[2] == "1")
+	fmt.Printf("VM elapsed: %v\n", time.Since(start))
 
-	return
+	// return
 
 	fmt.Println("=== BEGIN INTERPRET ===")
 
+	start = time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	blocking := make(chan struct{})
@@ -436,6 +470,8 @@ func main() {
 				fmt.Printf("%s: %s\n", (*i).Kind(), (*i).Message())
 			}
 		}
+
+		fmt.Printf("Tree elapsed: %v\n", time.Since(start))
 	}()
 
 	<-blocking

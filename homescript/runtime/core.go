@@ -24,9 +24,10 @@ type Core struct {
 	hostCall        func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt)
 	parent          *VM
 	isAssignmentLhs bool
+	Executor        value.Executor
 }
 
-func NewCore(program *map[string][]compiler.Instruction, hostCall func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt), vm *VM) Core {
+func NewCore(program *map[string][]compiler.Instruction, hostCall func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt), executor value.Executor, vm *VM) Core {
 	return Core{
 		CallStack:       make([]CallFrame, 0),
 		Memory:          make(map[string]*value.Value),
@@ -36,6 +37,7 @@ func NewCore(program *map[string][]compiler.Instruction, hostCall func(*VM, stri
 		parent:          vm,
 		Labels:          make(map[string]uint),
 		isAssignmentLhs: false,
+		Executor:        executor,
 	}
 }
 
@@ -69,7 +71,7 @@ func (self *Core) callFrame() *CallFrame {
 	return &self.CallStack[len(self.CallStack)-1]
 }
 
-func (self *Core) Run(function string) {
+func (self *Core) Run(function string, verbose bool) {
 	self.pushCallStack(function)
 
 	for len(self.CallStack) > 0 {
@@ -83,7 +85,28 @@ func (self *Core) Run(function string) {
 
 		i := fn[callFrame.InstructionPointer]
 
-		fmt.Printf("I: %v | IP: %d | FP: %s | CLSTCK: %v | STCK: %v | MEM: %v\n", i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, self.Stack, self.Memory)
+		if verbose {
+			stack := make([]string, 0)
+			for _, elem := range self.Stack {
+				disp, i := (*elem).Display()
+				if i != nil {
+					panic(*i)
+				}
+				stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
+			}
+
+			mem := make([]string, 0)
+			for key, elem := range self.Memory {
+				disp, i := (*elem).Display()
+				if i != nil {
+					panic(*i)
+				}
+				mem = append(mem, fmt.Sprintf("%s=%s", key, strings.ReplaceAll(disp, "\n", " ")))
+			}
+
+			fmt.Printf("I: %v | IP: %d | FP: %s | CLSTCK: %v | STCK: %s | MEM: [%s]\n", i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, stack, strings.Join(mem, ", "))
+			time.Sleep(10 * time.Millisecond)
+		}
 
 		self.runInstruction(i)
 	}
@@ -99,10 +122,36 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		self.push(&v)
 	case compiler.Opcode_Drop:
 		self.pop()
+	case compiler.Opcode_Duplicate:
+		// TODO: does this break? when copying the pointer?
+		self.push(self.getStackTop())
 	case compiler.Opcode_Spawn:
 		panic("TODO")
 	case compiler.Opcode_Call_Val:
-		panic("TODO")
+		n := *self.pop()
+		numArgs := n.(value.ValueInt).Inner
+
+		v := *self.pop()
+		switch v.Kind() {
+		case value.FunctionValueKind:
+			panic("Not supported")
+		case value.BuiltinFunctionValueKind:
+			fn := v.(value.ValueBuiltinFunction)
+
+			// TODO: handle cancel context better
+			ctx, _ := context.WithCancel(context.Background())
+
+			args := make([]value.Value, 0)
+			for i := 0; i < int(numArgs); i++ {
+				args = append(args, *self.pop())
+			}
+
+			res, i := fn.Callback(self.Executor, &ctx, self.parent.SourceMap(*self.callFrame()), args...)
+			if i != nil {
+				return i
+			}
+			self.push(res)
+		}
 	case compiler.Opcode_Call_Imm:
 		i := instruction.(compiler.OneStringInstruction)
 		self.callFrame().InstructionPointer++
@@ -390,7 +439,11 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			return interrupt
 		}
 
-		self.push(value.NewValuePointer(fields[i.Value]))
+		field, found := fields[i.Value]
+		if !found {
+			panic(fmt.Sprintf("Field `%s` not found on `%v`", i.Value, v))
+		}
+		self.push(field)
 	case compiler.Opcode_Import:
 		panic("TODO")
 	case compiler.Opcode_Label:
