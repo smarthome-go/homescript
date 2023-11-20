@@ -386,13 +386,8 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 	}
 }
 
-func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
-	if node.Operator != pAst.LogicalAndInfixOperator && node.Operator != pAst.LogicalOrInfixOperator {
-		self.compileExpr(node.Lhs)
-		self.compileExpr(node.Rhs)
-	}
-
-	switch node.Operator {
+func (self *Compiler) arithmeticHelper(op pAst.InfixOperator) {
+	switch op {
 	case pAst.PlusInfixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_Add))
 	case pAst.MinusInfixOperator:
@@ -415,6 +410,26 @@ func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 		self.insert(newPrimitiveInstruction(Opcode_BitAnd))
 	case pAst.BitXorInfixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_BitXor))
+	case pAst.EqualInfixOperator:
+		self.insert(newPrimitiveInstruction(Opcode_Eq))
+	case pAst.NotEqualInfixOperator:
+		self.insert(newPrimitiveInstruction(Opcode_Eq))
+		self.insert(newPrimitiveInstruction(Opcode_Not))
+	case pAst.LessThanInfixOperator: // TODO: make this more RISC-y
+		self.insert(newPrimitiveInstruction(Opcode_Lt))
+	case pAst.LessThanEqualInfixOperator:
+		self.insert(newPrimitiveInstruction(Opcode_Le))
+	case pAst.GreaterThanInfixOperator:
+		self.insert(newPrimitiveInstruction(Opcode_Gt))
+	case pAst.GreaterThanEqualInfixOperator:
+		self.insert(newPrimitiveInstruction(Opcode_Ge))
+	default:
+		panic("Unreachable")
+	}
+}
+
+func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
+	switch node.Operator {
 	case pAst.LogicalOrInfixOperator:
 		returnTrue := self.mangle("return_true")
 		afterLabel := self.mangle("after_infix")
@@ -444,21 +459,10 @@ func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 		self.insert(newValueInstruction(Opcode_Push, *value.NewValueBool(false)))
 
 		self.insert(newOneStringInstruction(Opcode_Label, afterLabel))
-	case pAst.EqualInfixOperator:
-		self.insert(newPrimitiveInstruction(Opcode_Eq))
-	case pAst.NotEqualInfixOperator:
-		self.insert(newPrimitiveInstruction(Opcode_Eq))
-		self.insert(newPrimitiveInstruction(Opcode_Not))
-	case pAst.LessThanInfixOperator: // TODO: make this more RISC-y
-		self.insert(newPrimitiveInstruction(Opcode_Lt))
-	case pAst.LessThanEqualInfixOperator:
-		self.insert(newPrimitiveInstruction(Opcode_Le))
-	case pAst.GreaterThanInfixOperator:
-		self.insert(newPrimitiveInstruction(Opcode_Gt))
-	case pAst.GreaterThanEqualInfixOperator:
-		self.insert(newPrimitiveInstruction(Opcode_Ge))
 	default:
-		panic("Unreachable")
+		self.compileExpr(node.Lhs)
+		self.compileExpr(node.Rhs)
+		self.arithmeticHelper(node.Operator)
 	}
 }
 
@@ -520,8 +524,8 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		self.insert(newValueInstruction(Opcode_Push, object))
 
 		for _, field := range node.Fields {
-			self.insert(newOneStringInstruction(Opcode_Member, field.Key.Ident()))
 			self.compileExpr(field.Expression)
+			self.insert(newOneStringInstruction(Opcode_Member, field.Key.Ident()))
 			self.insert(newPrimitiveInstruction(Opcode_Assign))
 		}
 	case ast.FunctionLiteralExpressionKind:
@@ -544,8 +548,21 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		// TODO: handle other types of LHS
 		if node.Lhs.Kind() == ast.IdentExpressionKind {
 			lhs := node.Lhs.(ast.AnalyzedIdentExpression)
-			self.compileExpr(node.Rhs)
-			self.insert(newOneStringInstruction(Opcode_SetVatImm, lhs.Ident.Ident()))
+			name, found := self.getMangled(lhs.Ident.Ident())
+			if !found {
+				name = lhs.Ident.Ident()
+			}
+
+			if node.Operator != pAst.StdAssignOperatorKind {
+				// TODO: does this work?
+				self.insert(newOneStringInstruction(Opcode_GetVarImm, name))
+				self.compileExpr(node.Rhs)
+				self.arithmeticHelper(node.Operator.IntoInfixOperator())
+			} else {
+				self.compileExpr(node.Rhs)
+			}
+
+			self.insert(newOneStringInstruction(Opcode_SetVatImm, name))
 		} else {
 			panic("Not supported")
 		}

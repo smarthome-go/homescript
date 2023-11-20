@@ -13,37 +13,40 @@ type CallFrame struct {
 }
 
 type Core struct {
-	CallStack []CallFrame
-	Memory    map[string]value.Value
-	Stack     []value.Value
-	Program   *map[string][]compiler.Instruction
-	Labels    map[string]uint // each index is relative to the function, but doesn't matter
-	hostCall  func(*VM, string, []value.Value) (*value.Value, *value.Interrupt)
-	parent    *VM
+	CallStack       []CallFrame
+	Memory          map[string]*value.Value
+	Stack           []*value.Value
+	Program         *map[string][]compiler.Instruction
+	Labels          map[string]uint // each index is relative to the function, but doesn't matter
+	hostCall        func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt)
+	parent          *VM
+	isAssignmentLhs bool
 }
 
-func NewCore(program *map[string][]compiler.Instruction, hostCall func(*VM, string, []value.Value) (*value.Value, *value.Interrupt), vm *VM) Core {
+func NewCore(program *map[string][]compiler.Instruction, hostCall func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt), vm *VM) Core {
 	return Core{
-		CallStack: make([]CallFrame, 0),
-		Memory:    make(map[string]value.Value),
-		Program:   program,
-		hostCall:  hostCall,
-		parent:    vm,
-		Labels:    make(map[string]uint),
+		CallStack:       make([]CallFrame, 0),
+		Memory:          make(map[string]*value.Value),
+		Stack:           make([]*value.Value, 0),
+		Program:         program,
+		hostCall:        hostCall,
+		parent:          vm,
+		Labels:          make(map[string]uint),
+		isAssignmentLhs: false,
 	}
 }
 
-func (self *Core) push(v value.Value) {
+func (self *Core) push(v *value.Value) {
 	self.Stack = append(self.Stack, v)
 }
 
-func (self *Core) pop() value.Value {
+func (self *Core) pop() *value.Value {
 	v := self.Stack[len(self.Stack)-1]
 	self.Stack = self.Stack[:len(self.Stack)-1]
 	return v
 }
 
-func (self *Core) getStackTop() value.Value {
+func (self *Core) getStackTop() *value.Value {
 	v := self.Stack[len(self.Stack)-1]
 	return v
 }
@@ -77,7 +80,7 @@ func (self *Core) Run(function string) {
 
 		i := fn[callFrame.InstructionPointer]
 
-		fmt.Printf("I: %v | IP: %d | FP: %s | CLSTCK: %v | STCK: %v\n", i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, self.Stack)
+		fmt.Printf("I: %v | IP: %d | FP: %s | CLSTCK: %v | STCK: %v | MEM: %v\n", i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, self.Stack, self.Memory)
 
 		self.runInstruction(i)
 	}
@@ -89,7 +92,8 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		break
 	case compiler.Opcode_Push:
 		i := instruction.(compiler.ValueInstruction)
-		self.push(i.Value)
+		v := i.Value
+		self.push(&v)
 	case compiler.Opcode_Drop:
 		self.pop()
 	case compiler.Opcode_Spawn:
@@ -107,8 +111,8 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		i := instruction.(compiler.OneStringInstruction)
 
 		raw := self.pop()
-		argc := int(raw.(value.ValueInt).Inner)
-		args := make([]value.Value, 0)
+		argc := int((*raw).(value.ValueInt).Inner)
+		args := make([]*value.Value, 0)
 		for i := 0; i < argc; i++ {
 			args = append(args, self.pop())
 		}
@@ -121,7 +125,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		v := self.pop()
 
 		// TODO: this check can be done more efficiently!!!
-		isEqual, interrupt := v.IsEqual(*value.NewValueBool(false))
+		isEqual, interrupt := (*v).IsEqual(*value.NewValueBool(false))
 		if interrupt != nil {
 			return interrupt
 		}
@@ -144,212 +148,216 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 	case compiler.Opcode_SetGlobImm:
 		panic("TODO")
 	case compiler.Opcode_Assign: // assigns pointers on the stack???
-		panic("Pointer vars are required for this!!!")
+		dest := self.pop()
+		src := self.pop()
+
+		// perform assignment here
+		*dest = *src
 	case compiler.Opcode_Cast:
 		panic("TODO")
 	case compiler.Opcode_Neg:
-		v := self.pop()
+		v := *self.pop()
 
 		switch v.Kind() {
 		case value.IntValueKind:
 			intV := v.(value.ValueInt)
-			self.push(*value.NewValueInt(-intV.Inner))
+			self.push(value.NewValueInt(-intV.Inner))
 		case value.FloatValueKind:
 			floatV := v.(value.ValueFloat)
-			self.push(*value.NewValueFloat(-floatV.Inner))
+			self.push(value.NewValueFloat(-floatV.Inner))
 		default:
 			panic("Unsupported value kind: " + v.Kind().String())
 		}
 	case compiler.Opcode_Some: // ?foo -> converts foo to a Option<foo>
 		panic("TODO")
 	case compiler.Opcode_Not:
-		v := self.pop()
+		v := *self.pop()
 		boolV := v.(value.ValueBool)
-		self.push(*value.NewValueBool(!boolV.Inner))
+		self.push(value.NewValueBool(!boolV.Inner))
 	case compiler.Opcode_Add:
-		l := self.pop()
-		r := self.pop()
+		l := *self.pop()
+		r := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueInt(lInt.Inner + rInt.Inner))
+			self.push(value.NewValueInt(lInt.Inner + rInt.Inner))
 		case value.FloatValueKind:
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
-			self.push(*value.NewValueFloat(lFloat.Inner + rFloat.Inner))
+			self.push(value.NewValueFloat(lFloat.Inner + rFloat.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Sub:
-		l := self.pop()
-		r := self.pop()
+		l := *self.pop()
+		r := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueInt(lInt.Inner - rInt.Inner))
+			self.push(value.NewValueInt(lInt.Inner - rInt.Inner))
 		case value.FloatValueKind:
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
-			self.push(*value.NewValueFloat(lFloat.Inner - rFloat.Inner))
+			self.push(value.NewValueFloat(lFloat.Inner - rFloat.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Mul:
-		l := self.pop()
-		r := self.pop()
+		l := *self.pop()
+		r := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueInt(lInt.Inner * rInt.Inner))
+			self.push(value.NewValueInt(lInt.Inner * rInt.Inner))
 		case value.FloatValueKind:
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
-			self.push(*value.NewValueFloat(lFloat.Inner * rFloat.Inner))
+			self.push(value.NewValueFloat(lFloat.Inner * rFloat.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Pow:
 		panic("TODO")
 	case compiler.Opcode_Div:
-		r := self.pop()
-		l := self.pop()
+		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueInt(lInt.Inner / rInt.Inner))
+			self.push(value.NewValueInt(lInt.Inner / rInt.Inner))
 		case value.FloatValueKind:
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
-			self.push(*value.NewValueFloat(lFloat.Inner / rFloat.Inner))
+			self.push(value.NewValueFloat(lFloat.Inner / rFloat.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Rem:
-		r := self.pop()
-		l := self.pop()
+		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueInt(lInt.Inner % rInt.Inner))
+			self.push(value.NewValueInt(lInt.Inner % rInt.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Eq:
-		l := self.pop()
-		r := self.pop()
+		l := *self.pop()
+		r := *self.pop()
 
 		eq, i := l.IsEqual(r)
 		if i != nil {
 			return i
 		}
 
-		self.push(*value.NewValueBool(eq))
+		self.push(value.NewValueBool(eq))
 	// Only pops the stack once, the other value is left untouched
 	case compiler.Opcode_Eq_PopOnce:
-		l := self.pop()
-		r := self.getStackTop()
+		l := *self.pop()
+		r := *self.getStackTop()
 
 		eq, i := l.IsEqual(r)
 		if i != nil {
 			return i
 		}
 
-		self.push(*value.NewValueBool(eq))
+		self.push(value.NewValueBool(eq))
 	case compiler.Opcode_Lt:
-		r := self.pop()
-		l := self.pop()
+		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueBool(lInt.Inner < rInt.Inner))
+			self.push(value.NewValueBool(lInt.Inner < rInt.Inner))
 		case value.FloatValueKind:
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
-			self.push(*value.NewValueBool(lFloat.Inner < rFloat.Inner))
+			self.push(value.NewValueBool(lFloat.Inner < rFloat.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Gt:
-		r := self.pop()
-		l := self.pop()
+		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueBool(lInt.Inner > rInt.Inner))
+			self.push(value.NewValueBool(lInt.Inner > rInt.Inner))
 		case value.FloatValueKind:
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
-			self.push(*value.NewValueBool(lFloat.Inner > rFloat.Inner))
+			self.push(value.NewValueBool(lFloat.Inner > rFloat.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Le:
-		r := self.pop()
-		l := self.pop()
+		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueBool(lInt.Inner <= rInt.Inner))
+			self.push(value.NewValueBool(lInt.Inner <= rInt.Inner))
 		case value.FloatValueKind:
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
-			self.push(*value.NewValueBool(lFloat.Inner <= rFloat.Inner))
+			self.push(value.NewValueBool(lFloat.Inner <= rFloat.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Ge:
-		r := self.pop()
-		l := self.pop()
+		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueBool(lInt.Inner >= rInt.Inner))
+			self.push(value.NewValueBool(lInt.Inner >= rInt.Inner))
 		case value.FloatValueKind:
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
-			self.push(*value.NewValueBool(lFloat.Inner >= rFloat.Inner))
+			self.push(value.NewValueBool(lFloat.Inner >= rFloat.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Shl:
-		r := self.pop()
-		l := self.pop()
+		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueInt(lInt.Inner << rInt.Inner))
+			self.push(value.NewValueInt(lInt.Inner << rInt.Inner))
 		default:
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Shr:
-		r := self.pop()
-		l := self.pop()
+		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
-			self.push(*value.NewValueInt(lInt.Inner >> rInt.Inner))
+			self.push(value.NewValueInt(lInt.Inner >> rInt.Inner))
 		default:
 			panic("Unsupported")
 		}
@@ -364,7 +372,15 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 	case compiler.Opcode_SetTryLabel:
 		panic("TODO")
 	case compiler.Opcode_Member:
-		panic("TODO")
+		i := instruction.(compiler.OneStringInstruction)
+
+		v := *self.pop()
+		fields, interrupt := v.Fields()
+		if interrupt != nil {
+			return interrupt
+		}
+
+		self.push(value.NewValuePointer(fields[i.Value]))
 	case compiler.Opcode_Import:
 		panic("TODO")
 	case compiler.Opcode_Label:

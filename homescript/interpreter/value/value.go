@@ -16,6 +16,7 @@ const (
 	FunctionValueKind
 	ClosureValueKind
 	BuiltinFunctionValueKind
+	PointerValueKind
 )
 
 func (self ValueKind) String() string {
@@ -46,6 +47,8 @@ func (self ValueKind) String() string {
 		return "closure"
 	case BuiltinFunctionValueKind:
 		return "builtin-function"
+	case PointerValueKind:
+		return "pointer"
 	default:
 		panic("A new ValueKind was introduced without updating this code")
 	}
