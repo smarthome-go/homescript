@@ -26,5 +26,5 @@ fn primes(count: int) {
 
 fn main() {
     // Calculate 15 prime numbers
-    primes(10000);
+    primes(15);
 }
