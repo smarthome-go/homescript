@@ -1,7 +1,10 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
@@ -148,13 +151,20 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 	case compiler.Opcode_SetGlobImm:
 		panic("TODO")
 	case compiler.Opcode_Assign: // assigns pointers on the stack???
-		dest := self.pop()
 		src := self.pop()
+		dest := self.pop()
 
 		// perform assignment here
 		*dest = *src
 	case compiler.Opcode_Cast:
-		panic("TODO")
+		i := instruction.(compiler.CastInstruction)
+		v := self.pop()
+
+		casted, interrupt := value.DeepCast(*v, i.Type, self.parent.SourceMap(*self.callFrame()))
+		if interrupt != nil {
+			return interrupt
+		}
+		self.push(casted)
 	case compiler.Opcode_Neg:
 		v := *self.pop()
 

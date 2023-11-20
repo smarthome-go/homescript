@@ -2,10 +2,17 @@ package compiler
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 )
+
+type Program struct {
+	Functions map[string][]Instruction
+	SourceMap map[string][]errors.Span
+}
 
 type Opcode uint8
 
@@ -52,6 +59,7 @@ const (
 	Opcode_Import
 	Opcode_Label
 	Opcode_Into_Range
+	Opcode_Duplicate
 )
 
 func (self Opcode) String() string {
@@ -138,6 +146,8 @@ func (self Opcode) String() string {
 		return "Label"
 	case Opcode_Into_Range:
 		return "Into_Range"
+	case Opcode_Duplicate:
+		return "Duplicate"
 	default:
 		panic(fmt.Sprintf("Invalid instruction: %d", self))
 	}
@@ -248,6 +258,7 @@ func (self ValueInstruction) String() string {
 	if i != nil {
 		panic(*i)
 	}
+	str = strings.ReplaceAll(strings.ReplaceAll(str, "\n    ", ""), "\n", "")
 	return fmt.Sprintf("%v(%s)", self.Opcode(), str)
 }
 
