@@ -71,7 +71,7 @@ func (self *Interpreter) letStatement(node ast.AnalyzedLetStatement) *value.Inte
 
 	// TODO: improve performance here (not so much deref)
 
-	newValue, i := self.deepCast(*rhsVal, node.OptType, node.Range)
+	newValue, i := value.DeepCast(*rhsVal, node.OptType, node.Range)
 	if i != nil {
 		return i
 	}

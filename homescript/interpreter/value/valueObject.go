@@ -22,6 +22,7 @@ func (self ValueObject) Display() (string, *Interrupt) {
 		if err != nil {
 			return "", err
 		}
+		disp = strings.ReplaceAll(disp, "\n", "\n    ")
 		fields = append(fields, fmt.Sprintf("%s: %s", key, disp))
 	}
 
