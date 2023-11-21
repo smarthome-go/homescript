@@ -198,15 +198,15 @@ func (self *Module) popScope() scope {
 	return last
 }
 
-func (self Module) getVar(ident string) (val *Variable, found bool) {
+func (self Module) getVar(ident string) (val *Variable, scope uint, found bool) {
 	// iterate through the scopes backwards
 	for idx := len(self.Scopes) - 1; idx >= 0; idx-- {
 		val, found := self.Scopes[idx].Values[ident]
 		if found {
-			return val, true
+			return val, uint(idx), true
 		}
 	}
-	return nil, false
+	return nil, 0, false
 }
 
 func (self *Module) addVar(ident string, val Variable, forceAdd bool) (previous *Variable) {

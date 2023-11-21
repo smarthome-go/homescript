@@ -140,6 +140,7 @@ func (self AnalyzedStringLiteralExpression) Constant() bool    { return true }
 type AnalyzedIdentExpression struct {
 	Ident      ast.SpannedIdent
 	ResultType Type
+	IsGlobal   bool
 }
 
 func (self AnalyzedIdentExpression) Kind() ExpressionKind { return IdentExpressionKind }

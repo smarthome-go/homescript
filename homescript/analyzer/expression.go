@@ -125,7 +125,7 @@ func (self *Analyzer) expression(node pAst.Expression) ast.AnalyzedExpression {
 //
 
 func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIdentExpression {
-	variable, found := self.currentModule.getVar(node.Ident.Ident())
+	variable, scope, found := self.currentModule.getVar(node.Ident.Ident())
 
 	// show an error and use `unknown` if the variable does not exist
 	if !found {
@@ -143,6 +143,7 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 			return ast.AnalyzedIdentExpression{
 				Ident:      node.Ident,
 				ResultType: ast.NewUnknownType(),
+				IsGlobal:   false,
 			}
 
 		}
@@ -175,6 +176,7 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 				fn.ReturnType,
 				fn.FnType.(normalFunction).Ident.Span(),
 			),
+			IsGlobal: false,
 		}
 	}
 
@@ -184,6 +186,7 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 	return ast.AnalyzedIdentExpression{
 		Ident:      node.Ident,
 		ResultType: variable.Type.SetSpan(node.Span()),
+		IsGlobal:   scope == 0,
 	}
 }
 

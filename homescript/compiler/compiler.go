@@ -33,13 +33,17 @@ type Compiler struct {
 }
 
 func NewCompiler() Compiler {
+	scopes := make([]map[string]string, 1)
+	scopes[0] = make(map[string]string)
+	currScope := &scopes[0]
+
 	return Compiler{
 		functions:     make(map[string]*Function),
 		loops:         make([]Loop, 0),
 		fnNameMangle:  make(map[string]uint64),
 		varNameMangle: make(map[string]uint64),
-		varScopes:     make([]map[string]string, 0),
-		currScope:     nil,
+		varScopes:     scopes,
+		currScope:     currScope,
 	}
 }
 
@@ -133,6 +137,7 @@ func (self Compiler) relocateLabels() {
 			if inst.Opcode() == Opcode_Label {
 				i := inst.(OneStringInstruction).Value
 				labels[i] = int64(index)
+				fmt.Printf("I: %v | IP: %d\n", inst, index)
 			} else {
 				fnOut = append(fnOut, inst)
 				sourceMapOut = append(sourceMapOut, fn.SourceMap[idx])
@@ -190,6 +195,20 @@ func (self *Compiler) compileProgram(program ast.AnalyzedProgram) {
 		}
 	}
 
+	// compile all globals
+	initFn := ast.AnalyzedFunctionDefinition{
+		Ident:      pAst.SpannedIdent{},
+		Parameters: make([]ast.AnalyzedFnParam, 0),
+		ReturnType: ast.NewNullType(),
+		Body:       ast.AnalyzedBlock{},
+		Modifier:   0,
+		Range:      errors.Span{},
+	}
+
+	for _, glob := range program.Globals {
+		initFn
+	}
+
 	// compile all function declarations
 	for _, fn := range program.Functions {
 		self.mangleFn(fn.Ident.Ident())
@@ -198,11 +217,6 @@ func (self *Compiler) compileProgram(program ast.AnalyzedProgram) {
 	// compile all functions
 	for _, fn := range program.Functions {
 		self.compileFn(fn)
-	}
-
-	// compile all global functions
-	for _, global := range program.Globals {
-		fmt.Println(global)
 	}
 }
 
@@ -257,20 +271,29 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 	self.compileBlock(node.Body, false)
 }
 
+func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal bool) {
+	// TODO: handle deep casts
+
+	// push value onto the stack
+	self.compileExpr(node.Expression)
+
+	// TODO: handle global
+	opcode := Opcode_SetVatImm
+	if isGlobal {
+		opcode = Opcode_SetGlobImm
+	}
+
+	// bind value to identifier
+	name := self.mangle(node.Ident.Ident())
+	self.insert(newOneStringInstruction(opcode, name), node.Range) // TODO: mangle
+}
+
 func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 	switch node.Kind() {
 	case ast.TypeDefinitionStatementKind:
 		panic("This should not be reachable!")
 	case ast.LetStatementKind:
-		// TODO: handle deep casts
-		node := node.(ast.AnalyzedLetStatement)
-
-		// push value onto the stack
-		self.compileExpr(node.Expression)
-
-		// bind value to identifier
-		name := self.mangle(node.Ident.Ident())
-		self.insert(newOneStringInstruction(Opcode_SetVatImm, name), node.Range) // TODO: mangle
+		self.compileLetStmt(node.(ast.AnalyzedLetStatement), false)
 	case ast.ReturnStatementKind:
 		self.insert(newPrimitiveInstruction(Opcode_Return), node.Span())
 	case ast.BreakStatementKind:
@@ -291,7 +314,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		})
 		self.compileBlock(node.Body, true)
 		self.insert(newOneStringInstruction(Opcode_Jump, head_label), node.Span())
-		self.insert(newOneStringInstruction(Opcode_Label, head_label), node.Span())
+		self.insert(newOneStringInstruction(Opcode_Label, after_label), node.Span())
 		self.popLoop()
 	case ast.WhileStatementKind:
 		node := node.(ast.AnalyzedWhileStatement)
@@ -506,14 +529,21 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		// TODO: must find out if global.
 		node := node.(ast.AnalyzedIdentExpression)
 		name, found := self.getMangled(node.Ident.Ident())
+
+		opCode := Opcode_GetVarImm
+		// TODO: i hope this does not break
+		if node.IsGlobal {
+			opCode = Opcode_GetGlobImm
+		}
+
 		if found {
-			self.insert(newOneStringInstruction(Opcode_GetVarImm, name), node.Span())
+			self.insert(newOneStringInstruction(opCode, name), node.Span())
 		} else {
 			name, found := self.getMangledFn(node.Ident.Ident())
 			if found {
-				self.insert(newOneStringInstruction(Opcode_GetVarImm, name), node.Span())
+				self.insert(newOneStringInstruction(opCode, name), node.Span())
 			} else {
-				self.insert(newOneStringInstruction(Opcode_GetVarImm, node.Ident.Ident()), node.Span())
+				self.insert(newOneStringInstruction(opCode, node.Ident.Ident()), node.Span())
 			}
 		}
 	case ast.NullLiteralExpressionKind:

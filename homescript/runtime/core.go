@@ -25,9 +25,10 @@ type Core struct {
 	parent          *VM
 	isAssignmentLhs bool
 	Executor        value.Executor
+	Corenum         uint
 }
 
-func NewCore(program *map[string][]compiler.Instruction, hostCall func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt), executor value.Executor, vm *VM) Core {
+func NewCore(program *map[string][]compiler.Instruction, hostCall func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt), executor value.Executor, vm *VM, coreNum uint) Core {
 	return Core{
 		CallStack:       make([]CallFrame, 0),
 		Memory:          make(map[string]*value.Value),
@@ -38,6 +39,7 @@ func NewCore(program *map[string][]compiler.Instruction, hostCall func(*VM, stri
 		Labels:          make(map[string]uint),
 		isAssignmentLhs: false,
 		Executor:        executor,
+		Corenum:         coreNum,
 	}
 }
 
@@ -104,7 +106,7 @@ func (self *Core) Run(function string, verbose bool) {
 				mem = append(mem, fmt.Sprintf("%s=%s", key, strings.ReplaceAll(disp, "\n", " ")))
 			}
 
-			fmt.Printf("I: %v | IP: %d | FP: %s | CLSTCK: %v | STCK: %s | MEM: [%s]\n", i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, stack, strings.Join(mem, ", "))
+			fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s | CLSTCK: %v | STCK: %s | MEM: [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, stack, strings.Join(mem, ", "))
 			time.Sleep(10 * time.Millisecond)
 		}
 

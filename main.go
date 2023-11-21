@@ -431,7 +431,10 @@ func main() {
 
 	start := time.Now()
 	vm := runtime.NewVM(compiled, Executor{})
-	vm.Run("main0", os.Args[2] == "1")
+	go vm.Run("@init", os.Args[2] == "1")
+	// go vm.Run("_listen0", os.Args[2] == "1")
+	// go vm.Run("_set0", os.Args[2] == "1")
+	time.Sleep(1000 * time.Second)
 	fmt.Printf("VM elapsed: %v\n", time.Since(start))
 
 	// return
