@@ -195,39 +195,6 @@ func (self *Compiler) compileProgram(program ast.AnalyzedProgram) {
 		}
 	}
 
-	// compile all globals
-	// initFn := ast.AnalyzedFunctionDefinition{
-	// 	Ident:      pAst.NewSpannedIdent("@init", errors.Span{}),
-	// 	Parameters: make([]ast.AnalyzedFnParam, 0),
-	// 	ReturnType: ast.NewNullType(errors.Span{}),
-	// 	Body: ast.AnalyzedBlock{
-	// 		Statements: make([]ast.AnalyzedStatement, 0),
-	// 		Expression: nil,
-	// 		Range:      errors.Span{},
-	// 		ResultType: ast.NewNullType(errors.Span{}),
-	// 	},
-	// 	Modifier: 0,
-	// 	Range:    errors.Span{},
-	// }
-	//
-	// for _, glob := range program.Globals {
-	// 	initFn.Body.Statements = append(initFn.Body.Statements, glob)
-	// }
-
-	// initFn.Body.Statements = append(initFn.Body.Statements, ast.AnalyzedExpressionStatement{
-	// 	Expression: ast.AnalyzedCallExpression{
-	// 		Base: ast.AnalyzedIdentExpression{
-	// 			Ident:      pAst.NewSpannedIdent("main", errors.Span{}),
-	// 			ResultType: ast.NewNullType(errors.Span{}),
-	// 			IsGlobal:   false,
-	// 		},
-	// 		Arguments:  make([]ast.AnalyzedCallArgument, 0),
-	// 		ResultType: ast.NewNullType(errors.Span{}),
-	// 	},
-	// },
-	// )
-	// program.Functions = append([]ast.AnalyzedFunctionDefinition{initFn}, program.Functions...)
-
 	self.mangleFn("@init")
 	self.currFn = "@init"
 	for _, glob := range program.Globals {
@@ -243,6 +210,13 @@ func (self *Compiler) compileProgram(program ast.AnalyzedProgram) {
 
 	// compile all functions
 	for _, fn := range program.Functions {
+		self.compileFn(fn)
+	}
+
+	// compile all events
+	for _, fn := range program.Events {
+		fn.Ident = pAst.NewSpannedIdent(fmt.Sprintf("@event_%s", fn.Ident.Ident()), fn.Ident.Span())
+		self.mangleFn(fn.Ident.Ident())
 		self.compileFn(fn)
 	}
 }

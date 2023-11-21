@@ -431,6 +431,7 @@ func main() {
 
 	start := time.Now()
 	vm := runtime.NewVM(compiled, Executor{}, os.Args[2] == "1")
+
 	vm.Spawn("@init0", os.Args[2] == "1")
 	if i := vm.Wait(); i != nil {
 		panic(*i)

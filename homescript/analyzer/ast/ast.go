@@ -50,7 +50,17 @@ func (self AnalyzedProgram) String() string {
 		functions = append(functions, fn.String())
 	}
 
-	return fmt.Sprintf("%s%s%s%s", imports, types, globals, strings.Join(functions, "\n\n"))
+	events := make([]string, 0)
+	for _, fn := range self.Events {
+		events = append(events, fn.String())
+	}
+
+	eventsStr := ""
+	if len(events) > 0 {
+		eventsStr = "\n\n" + strings.Join(events, "\n\n")
+	}
+
+	return fmt.Sprintf("%s%s%s%s%s", imports, types, globals, strings.Join(functions, "\n\n"), eventsStr)
 }
 
 func (self AnalyzedProgram) SupportsEvent(ident string) bool {
