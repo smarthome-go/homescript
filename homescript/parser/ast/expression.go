@@ -298,6 +298,7 @@ type CallExpression struct {
 	Base      Expression
 	Arguments []Expression
 	Range     errors.Span
+	IsSpawn   bool
 }
 
 func (self CallExpression) Kind() ExpressionKind { return CallExpressionKind }
@@ -308,7 +309,12 @@ func (self CallExpression) String() string {
 		args = append(args, arg.String())
 	}
 
-	return fmt.Sprintf("%s(%s)", self.Base, strings.Join(args, ", "))
+	spawnPrefix := ""
+	if self.IsSpawn {
+		spawnPrefix = "spawn "
+	}
+
+	return fmt.Sprintf("%s%s(%s)", spawnPrefix, self.Base, strings.Join(args, ", "))
 }
 
 //

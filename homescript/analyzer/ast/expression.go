@@ -438,6 +438,7 @@ type AnalyzedCallExpression struct {
 	Arguments  []AnalyzedCallArgument
 	ResultType Type
 	Range      errors.Span
+	IsSpawn    bool
 }
 
 func (self AnalyzedCallExpression) Kind() ExpressionKind { return CallExpressionKind }
@@ -449,7 +450,12 @@ func (self AnalyzedCallExpression) String() string {
 		args = append(args, arg.String())
 	}
 
-	return fmt.Sprintf("%s(%s)", self.Base, strings.Join(args, ", "))
+	spawnPrefix := ""
+	if self.IsSpawn {
+		spawnPrefix = "spawn "
+	}
+
+	return fmt.Sprintf("%s%s(%s)", spawnPrefix, self.Base, strings.Join(args, ", "))
 }
 func (self AnalyzedCallExpression) Type() Type     { return self.ResultType }
 func (self AnalyzedCallExpression) Constant() bool { return false }

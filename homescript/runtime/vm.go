@@ -94,13 +94,18 @@ func (self *VM) spawnCore() *Core {
 	self.Lock.Lock()
 	defer self.Lock.Unlock()
 
-	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt)
-	self.Cores = append(self.Cores, core)
+	ch := make(chan *value.Interrupt)
+	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt, self.Verbose, ch)
+
+	self.Cores.Lock.Lock()
+	defer self.Cores.Lock.Unlock()
+
+	self.Cores.Cores = append(self.Cores.Cores, core)
 	self.coreCnt++
 	return &core
 }
 
-func (self *VM) Run(function string, verbose bool) {
+func (self *VM) Spawn(function string, verbose bool) {
 	core := self.spawnCore()
 	catchPanic := func() {
 		if err := recover(); err != nil {
@@ -112,5 +117,19 @@ func (self *VM) Run(function string, verbose bool) {
 		defer catchPanic()
 	}
 
-	(*core).Run(function, verbose)
+	go (*core).Run(function)
+}
+
+func (self *VM) Wait() *value.Interrupt {
+	for {
+		self.Cores.Lock.RLock()
+		for _, core := range self.Cores.Cores {
+			select {
+			case i := <-core.Handle:
+				return i
+			default:
+			}
+		}
+		self.Cores.Lock.RUnlock()
+	}
 }

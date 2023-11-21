@@ -405,12 +405,25 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 
 		mangled, found := self.getMangled(base.Ident.Ident())
 		if found {
+			if node.IsSpawn {
+				panic("This is an impossible state.")
+			}
+
 			self.insert(newOneStringInstruction(Opcode_Call_Imm, mangled), node.Span())
 		} else {
 			name, found := self.getMangledFn(base.Ident.Ident())
 			if found {
-				self.insert(newOneStringInstruction(Opcode_Call_Imm, name), node.Span())
+				opcode := Opcode_Call_Imm
+				if node.IsSpawn {
+					opcode = Opcode_Spawn
+				}
+
+				self.insert(newOneStringInstruction(opcode, name), node.Span())
 			} else {
+				if node.IsSpawn {
+					panic("This is an impossible state.")
+				}
+
 				// insert number of args
 				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
 				// perform actual call
@@ -418,6 +431,10 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 			}
 		}
 	} else {
+		if node.IsSpawn {
+			panic("This is an impossible state.")
+		}
+
 		// TODO: wtf: compile the base
 		self.compileExpr(node.Base)
 

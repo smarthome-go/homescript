@@ -767,11 +767,23 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 		)
 	}
 
+	if node.IsSpawn {
+		returnType = ast.NewObjectType([]ast.ObjectTypeField{
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("join", node.Span()), ast.NewFunctionType(
+				ast.NewNormalFunctionTypeParamKind(make([]ast.FunctionTypeParam, 0)),
+				node.Span(),
+				returnType.SetSpan(node.Range),
+				node.Span(),
+			), node.Span()),
+		}, node.Span())
+	}
+
 	return ast.AnalyzedCallExpression{
 		Base:       base,
 		Arguments:  arguments,
 		ResultType: returnType.SetSpan(node.Range),
 		Range:      node.Range,
+		IsSpawn:    node.IsSpawn,
 	}
 }
 

@@ -26,9 +26,19 @@ type Core struct {
 	isAssignmentLhs bool
 	Executor        value.Executor
 	Corenum         uint
+	Verbose         bool
+	Handle          chan *value.Interrupt
 }
 
-func NewCore(program *map[string][]compiler.Instruction, hostCall func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt), executor value.Executor, vm *VM, coreNum uint) Core {
+func NewCore(
+	program *map[string][]compiler.Instruction,
+	hostCall func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt),
+	executor value.Executor,
+	vm *VM,
+	coreNum uint,
+	verbose bool,
+	handle chan *value.Interrupt,
+) Core {
 	return Core{
 		CallStack:       make([]CallFrame, 0),
 		Memory:          make(map[string]*value.Value),
@@ -128,7 +138,9 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		// TODO: does this break? when copying the pointer?
 		self.push(self.getStackTop())
 	case compiler.Opcode_Spawn:
-		panic("TODO")
+		i := instruction.(compiler.OneStringInstruction)
+		self.parent.Spawn(i.Value, self.Verbose)
+		self.push(value.NewValueNull())
 	case compiler.Opcode_Call_Val:
 		n := *self.pop()
 		numArgs := n.(value.ValueInt).Inner
@@ -193,14 +205,24 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		i := instruction.(compiler.OneStringInstruction)
 		self.push(self.Memory[i.Value])
 	case compiler.Opcode_GetGlobImm:
-		panic("TODO")
+		i := instruction.(compiler.OneStringInstruction)
+		self.parent.Globals.Mutex.RLock()
+		defer self.parent.Globals.Mutex.RUnlock()
+
+		v := self.parent.Globals.Data[i.Value]
+		self.push(&v)
 	case compiler.Opcode_SetVatImm:
 		i := instruction.(compiler.OneStringInstruction)
 		v := self.pop()
 
 		self.Memory[i.Value] = v
 	case compiler.Opcode_SetGlobImm:
-		panic("TODO")
+		i := instruction.(compiler.OneStringInstruction)
+		self.parent.Globals.Mutex.Lock()
+		defer self.parent.Globals.Mutex.Unlock()
+
+		v := self.pop()
+		self.parent.Globals.Data[i.Value] = *v
 	case compiler.Opcode_Assign: // assigns pointers on the stack???
 		src := self.pop()
 		dest := self.pop()

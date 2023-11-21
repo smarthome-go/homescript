@@ -64,6 +64,12 @@ func (self *Parser) expression(prec uint8) (expr ast.Expression, isWithBlock boo
 		}
 		lhs = tryExpr
 		isWithBlock = true
+	case Spawn:
+		spawnExpr, err := self.spawnExpr()
+		if err != nil {
+			return nil, false, err
+		}
+		lhs = spawnExpr
 	default:
 		expr, err := self.literal(false)
 		if err != nil {
@@ -924,6 +930,33 @@ func (self *Parser) tryExpression() (ast.TryExpression, *errors.Error) {
 		CatchBlock: catchBlock,
 		Range:      startLoc.Until(self.PreviousToken.Span.End, self.Filename),
 	}, nil
+}
+
+//
+// Spawn expression
+//
+
+func (self *Parser) spawnExpr() (ast.CallExpression, *errors.Error) {
+	startLoc := self.CurrentToken.Span.Start
+	if err := self.next(); err != nil {
+		return ast.CallExpression{}, err
+	}
+
+	ident := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
+	if err := self.expect(Identifier); err != nil {
+		return ast.CallExpression{}, err
+	}
+
+	call, err := self.callExpression(startLoc, ast.IdentExpression{
+		Ident: ident,
+	})
+
+	if err != nil {
+		return ast.CallExpression{}, err
+	}
+
+	call.IsSpawn = true
+	return call, nil
 }
 
 //

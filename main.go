@@ -430,14 +430,22 @@ func main() {
 	}
 
 	start := time.Now()
-	vm := runtime.NewVM(compiled, Executor{})
-	go vm.Run("@init", os.Args[2] == "1")
-	// go vm.Run("_listen0", os.Args[2] == "1")
-	// go vm.Run("_set0", os.Args[2] == "1")
-	time.Sleep(1000 * time.Second)
+	vm := runtime.NewVM(compiled, Executor{}, os.Args[2] == "1")
+	vm.Spawn("@init0", os.Args[2] == "1")
+	if i := vm.Wait(); i != nil {
+		panic(*i)
+	}
+
+	// time.Sleep(2 * time.Second)
+	//
+	// go vm.Run("pr0", os.Args[2] == "1")
+	// go vm.Run("incr0", os.Args[2] == "1")
+	//
+	// time.Sleep(100 * time.Second)
+
 	fmt.Printf("VM elapsed: %v\n", time.Since(start))
 
-	// return
+	return
 
 	fmt.Println("=== BEGIN INTERPRET ===")
 

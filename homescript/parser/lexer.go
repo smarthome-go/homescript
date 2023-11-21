@@ -879,6 +879,8 @@ func (self *Lexer) makeName() Token {
 		tokenKind = Catch
 	case "new":
 		tokenKind = New
+	case "spawn":
+		tokenKind = Spawn
 	case "event":
 		tokenKind = Event
 	case "_":
