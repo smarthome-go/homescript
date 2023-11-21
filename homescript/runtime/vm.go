@@ -25,23 +25,37 @@ func newGlobals() Globals {
 
 }
 
+type Cores struct {
+	Cores []Core
+	Lock  sync.RWMutex
+}
+
+func newCores() Cores {
+	return Cores{
+		Cores: make([]Core, 0),
+		Lock:  sync.RWMutex{},
+	}
+}
+
 type VM struct {
 	Program  compiler.Program
 	Globals  Globals
-	Cores    []Core
+	Cores    Cores
 	Executor value.Executor
 	Lock     sync.RWMutex
 	coreCnt  uint
+	Verbose  bool
 }
 
-func NewVM(program compiler.Program, executor value.Executor) VM {
+func NewVM(program compiler.Program, executor value.Executor, verbose bool) VM {
 	return VM{
 		Program:  program,
 		Globals:  newGlobals(),
-		Cores:    make([]Core, 0),
+		Cores:    newCores(),
 		Executor: executor,
 		Lock:     sync.RWMutex{},
 		coreCnt:  0,
+		Verbose:  verbose,
 	}
 }
 

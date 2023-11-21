@@ -196,18 +196,45 @@ func (self *Compiler) compileProgram(program ast.AnalyzedProgram) {
 	}
 
 	// compile all globals
-	initFn := ast.AnalyzedFunctionDefinition{
-		Ident:      pAst.SpannedIdent{},
-		Parameters: make([]ast.AnalyzedFnParam, 0),
-		ReturnType: ast.NewNullType(),
-		Body:       ast.AnalyzedBlock{},
-		Modifier:   0,
-		Range:      errors.Span{},
-	}
+	// initFn := ast.AnalyzedFunctionDefinition{
+	// 	Ident:      pAst.NewSpannedIdent("@init", errors.Span{}),
+	// 	Parameters: make([]ast.AnalyzedFnParam, 0),
+	// 	ReturnType: ast.NewNullType(errors.Span{}),
+	// 	Body: ast.AnalyzedBlock{
+	// 		Statements: make([]ast.AnalyzedStatement, 0),
+	// 		Expression: nil,
+	// 		Range:      errors.Span{},
+	// 		ResultType: ast.NewNullType(errors.Span{}),
+	// 	},
+	// 	Modifier: 0,
+	// 	Range:    errors.Span{},
+	// }
+	//
+	// for _, glob := range program.Globals {
+	// 	initFn.Body.Statements = append(initFn.Body.Statements, glob)
+	// }
 
+	// initFn.Body.Statements = append(initFn.Body.Statements, ast.AnalyzedExpressionStatement{
+	// 	Expression: ast.AnalyzedCallExpression{
+	// 		Base: ast.AnalyzedIdentExpression{
+	// 			Ident:      pAst.NewSpannedIdent("main", errors.Span{}),
+	// 			ResultType: ast.NewNullType(errors.Span{}),
+	// 			IsGlobal:   false,
+	// 		},
+	// 		Arguments:  make([]ast.AnalyzedCallArgument, 0),
+	// 		ResultType: ast.NewNullType(errors.Span{}),
+	// 	},
+	// },
+	// )
+	// program.Functions = append([]ast.AnalyzedFunctionDefinition{initFn}, program.Functions...)
+
+	self.mangleFn("@init")
+	self.currFn = "@init"
 	for _, glob := range program.Globals {
-		initFn
+		self.compileLetStmt(glob, true)
 	}
+	// TODO: do the mangling correctly
+	self.insert(newOneStringInstruction(Opcode_Call_Imm, "main0"), errors.Span{})
 
 	// compile all function declarations
 	for _, fn := range program.Functions {
@@ -626,15 +653,23 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 				name = lhs.Ident.Ident()
 			}
 
+			opCodeGet := Opcode_GetVarImm
+			opCodeSet := Opcode_SetVatImm
+
+			if lhs.IsGlobal {
+				opCodeGet = Opcode_GetGlobImm
+				opCodeSet = Opcode_SetGlobImm
+			}
+
 			if node.Operator != pAst.StdAssignOperatorKind {
-				self.insert(newOneStringInstruction(Opcode_GetVarImm, name), node.Range)
+				self.insert(newOneStringInstruction(opCodeGet, name), node.Range)
 				self.compileExpr(node.Rhs)
 				self.arithmeticHelper(node.Operator.IntoInfixOperator(), node.Range)
 			} else {
 				self.compileExpr(node.Rhs)
 			}
 
-			self.insert(newOneStringInstruction(Opcode_SetVatImm, name), node.Range)
+			self.insert(newOneStringInstruction(opCodeSet, name), node.Range)
 		} else {
 			self.compileExpr(node.Lhs)
 
@@ -648,7 +683,6 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 
 			self.insert(newPrimitiveInstruction(Opcode_Assign), node.Range)
 		}
-
 	case ast.CallExpressionKind:
 		node := node.(ast.AnalyzedCallExpression)
 		self.compileCallExpr(node)

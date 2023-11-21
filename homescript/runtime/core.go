@@ -50,6 +50,8 @@ func NewCore(
 		isAssignmentLhs: false,
 		Executor:        executor,
 		Corenum:         coreNum,
+		Verbose:         verbose,
+		Handle:          handle,
 	}
 }
 
@@ -83,7 +85,7 @@ func (self *Core) callFrame() *CallFrame {
 	return &self.CallStack[len(self.CallStack)-1]
 }
 
-func (self *Core) Run(function string, verbose bool) {
+func (self *Core) Run(function string) {
 	self.pushCallStack(function)
 
 	for len(self.CallStack) > 0 {
@@ -97,14 +99,18 @@ func (self *Core) Run(function string, verbose bool) {
 
 		i := fn[callFrame.InstructionPointer]
 
-		if verbose {
+		if self.Verbose {
 			stack := make([]string, 0)
 			for _, elem := range self.Stack {
-				disp, i := (*elem).Display()
-				if i != nil {
-					panic(*i)
+				if *elem == nil {
+					stack = append(stack, "<nil>")
+				} else {
+					disp, i := (*elem).Display()
+					if i != nil {
+						panic(*i)
+					}
+					stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
 				}
-				stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
 			}
 
 			mem := make([]string, 0)
