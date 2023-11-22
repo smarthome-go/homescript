@@ -128,6 +128,8 @@ func (self *Core) Run(function string) {
 
 		self.runInstruction(i)
 	}
+
+	self.Handle <- nil
 }
 
 func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interrupt {
