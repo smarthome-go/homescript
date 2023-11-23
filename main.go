@@ -446,8 +446,6 @@ func main() {
 
 	fmt.Printf("VM elapsed: %v\n", time.Since(start))
 
-	return
-
 	fmt.Println("=== BEGIN INTERPRET ===")
 
 	start = time.Now()

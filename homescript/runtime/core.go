@@ -16,8 +16,10 @@ type CallFrame struct {
 }
 
 type Core struct {
-	CallStack       []CallFrame
-	Memory          map[string]*value.Value
+	CallStack []CallFrame
+	// FIXME: this is really bad, fix it
+	// Replace with continuous memory, implement a stack pointer
+	MemoryScopes    []map[string]*value.Value
 	Stack           []*value.Value
 	Program         *map[string][]compiler.Instruction
 	Labels          map[string]uint // each index is relative to the function, but doesn't matter
@@ -28,6 +30,10 @@ type Core struct {
 	Corenum         uint
 	Verbose         bool
 	Handle          chan *value.Interrupt
+}
+
+func (self *Core) Memory() *map[string]*value.Value {
+	return &self.MemoryScopes[len(self.MemoryScopes)-1]
 }
 
 func NewCore(
@@ -41,7 +47,7 @@ func NewCore(
 ) Core {
 	return Core{
 		CallStack:       make([]CallFrame, 0),
-		Memory:          make(map[string]*value.Value),
+		MemoryScopes:    make([]map[string]*value.Value, 0),
 		Stack:           make([]*value.Value, 0),
 		Program:         program,
 		hostCall:        hostCall,
@@ -71,6 +77,9 @@ func (self *Core) getStackTop() *value.Value {
 }
 
 func (self *Core) pushCallStack(function string) {
+	// TODO: remove this, this sucks
+	self.MemoryScopes = append(self.MemoryScopes, make(map[string]*value.Value))
+
 	self.CallStack = append(self.CallStack, CallFrame{
 		Function:           function,
 		InstructionPointer: 0,
@@ -78,6 +87,8 @@ func (self *Core) pushCallStack(function string) {
 }
 
 func (self *Core) popCallStack() {
+	self.MemoryScopes = self.MemoryScopes[:len(self.MemoryScopes)-1]
+
 	self.CallStack = self.CallStack[:len(self.CallStack)-1]
 }
 
@@ -92,7 +103,7 @@ func (self *Core) Run(function string) {
 		callFrame := self.callFrame()
 		fn := (*self.Program)[callFrame.Function]
 		if callFrame.InstructionPointer >= uint(len(fn)) {
-			fmt.Printf("Terminating from fn `%s` with ip=%d\n", callFrame.Function, callFrame.InstructionPointer)
+			// fmt.Printf("Terminating from fn `%s` with ip=%d\n", callFrame.Function, callFrame.InstructionPointer)
 			self.popCallStack()
 			continue
 		}
@@ -114,7 +125,7 @@ func (self *Core) Run(function string) {
 			}
 
 			mem := make([]string, 0)
-			for key, elem := range self.Memory {
+			for key, elem := range *self.Memory() {
 				disp, i := (*elem).Display()
 				if i != nil {
 					panic(*i)
@@ -211,7 +222,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		}
 	case compiler.Opcode_GetVarImm:
 		i := instruction.(compiler.OneStringInstruction)
-		self.push(self.Memory[i.Value])
+		self.push((*self.Memory())[i.Value])
 	case compiler.Opcode_GetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
 		self.parent.Globals.Mutex.RLock()
@@ -223,7 +234,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		i := instruction.(compiler.OneStringInstruction)
 		v := self.pop()
 
-		self.Memory[i.Value] = v
+		(*self.Memory())[i.Value] = v
 	case compiler.Opcode_SetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
 		self.parent.Globals.Mutex.Lock()
@@ -282,8 +293,8 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			panic("Unsupported")
 		}
 	case compiler.Opcode_Sub:
-		l := *self.pop()
 		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
