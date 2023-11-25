@@ -16,6 +16,7 @@ const (
 	NeverTypeKind
 	AnyTypeKind
 	NullTypeKind
+	// UnitTypeKind
 	IntTypeKind
 	FloatTypeKind
 	BoolTypeKind
@@ -39,6 +40,8 @@ func (self TypeKind) String() string {
 		return "any"
 	case NullTypeKind:
 		return "null"
+	// case UnitTypeKind:
+	// 	return "()"
 	case IntTypeKind:
 		return "int"
 	case FloatTypeKind:
@@ -114,6 +117,21 @@ func (self AnyType) Span() errors.Span                    { return self.Range }
 func (self AnyType) SetSpan(span errors.Span) Type        { return Type(NewAnyType(span)) }
 func (self AnyType) Fields(_ errors.Span) map[string]Type { return make(map[string]Type) }
 func NewAnyType(span errors.Span) Type                    { return Type(AnyType{Range: span}) }
+
+//
+// Unit type
+//
+
+// type UnitType struct {
+// 	Range errors.Span
+// }
+//
+// func (self UnitType) Kind() TypeKind                       { return UnitTypeKind }
+// func (self UnitType) String() string                       { return "()" }
+// func (self UnitType) Span() errors.Span                    { return self.Range }
+// func (self UnitType) SetSpan(span errors.Span) Type        { return NewUnitType(span) }
+// func (self UnitType) Fields(_ errors.Span) map[string]Type { return make(map[string]Type) }
+// func NewUnitType(span errors.Span) Type                    { return Type(UnitType{Range: span}) }
 
 //
 // Null type

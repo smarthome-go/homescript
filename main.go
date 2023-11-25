@@ -416,7 +416,7 @@ func main() {
 	fmt.Println("=== COMPILED ===")
 
 	compiler := compiler.NewCompiler()
-	compiled := compiler.Compile(analyzed[filename])
+	compiled := compiler.Compile(analyzed)
 
 	i := 0
 	for name, function := range compiled.Functions {
@@ -429,8 +429,10 @@ func main() {
 		i++
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	start := time.Now()
-	vm := runtime.NewVM(compiled, Executor{}, os.Args[2] == "1")
+	vm := runtime.NewVM(compiled, Executor{}, os.Args[2] == "1", &ctx, iScopeAdditions())
 
 	vm.Spawn("@init0", os.Args[2] == "1")
 	if i := vm.Wait(); i != nil {
@@ -449,7 +451,7 @@ func main() {
 	fmt.Println("=== BEGIN INTERPRET ===")
 
 	start = time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
 
 	blocking := make(chan struct{})
 	go func() {

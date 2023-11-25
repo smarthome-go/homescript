@@ -78,9 +78,10 @@ func (self AnalyzedProgram) SupportsEvent(ident string) bool {
 //
 
 type AnalyzedImport struct {
-	ToImport   []AnalyzedImportValue
-	FromModule ast.SpannedIdent
-	Range      errors.Span
+	ToImport    []AnalyzedImportValue
+	FromModule  ast.SpannedIdent
+	Range       errors.Span
+	TargetIsHMS bool
 }
 
 func (self AnalyzedImport) Span() errors.Span { return self.Range }

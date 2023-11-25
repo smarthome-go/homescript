@@ -3,8 +3,6 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
@@ -19,7 +17,7 @@ type Core struct {
 	CallStack []CallFrame
 	// FIXME: this is really bad, fix it
 	// Replace with continuous memory, implement a stack pointer
-	MemoryScopes    []map[string]*value.Value
+	Memory          []*value.Value
 	Stack           []*value.Value
 	Program         *map[string][]compiler.Instruction
 	Labels          map[string]uint // each index is relative to the function, but doesn't matter
@@ -30,10 +28,12 @@ type Core struct {
 	Corenum         uint
 	Verbose         bool
 	Handle          chan *value.Interrupt
-}
 
-func (self *Core) Memory() *map[string]*value.Value {
-	return &self.MemoryScopes[len(self.MemoryScopes)-1]
+	ExceptionCatchLabels []uint
+
+	// TODO: write documentation
+	MemoryPointer int64
+	CancelCtx     *context.Context
 }
 
 func NewCore(
@@ -44,10 +44,11 @@ func NewCore(
 	coreNum uint,
 	verbose bool,
 	handle chan *value.Interrupt,
+	ctx *context.Context,
 ) Core {
 	return Core{
 		CallStack:       make([]CallFrame, 0),
-		MemoryScopes:    make([]map[string]*value.Value, 0),
+		Memory:          make([]*value.Value, 1024), // TODO: configure memory
 		Stack:           make([]*value.Value, 0),
 		Program:         program,
 		hostCall:        hostCall,
@@ -58,6 +59,7 @@ func NewCore(
 		Corenum:         coreNum,
 		Verbose:         verbose,
 		Handle:          handle,
+		CancelCtx:       ctx,
 	}
 }
 
@@ -77,9 +79,6 @@ func (self *Core) getStackTop() *value.Value {
 }
 
 func (self *Core) pushCallStack(function string) {
-	// TODO: remove this, this sucks
-	self.MemoryScopes = append(self.MemoryScopes, make(map[string]*value.Value))
-
 	self.CallStack = append(self.CallStack, CallFrame{
 		Function:           function,
 		InstructionPointer: 0,
@@ -87,8 +86,6 @@ func (self *Core) pushCallStack(function string) {
 }
 
 func (self *Core) popCallStack() {
-	self.MemoryScopes = self.MemoryScopes[:len(self.MemoryScopes)-1]
-
 	self.CallStack = self.CallStack[:len(self.CallStack)-1]
 }
 
@@ -96,48 +93,110 @@ func (self *Core) callFrame() *CallFrame {
 	return &self.CallStack[len(self.CallStack)-1]
 }
 
+func (self *Core) absolute(rel int64) int {
+	return int(rel + self.MemoryPointer)
+}
+
+func (self *Core) checkCancelation() *value.Interrupt {
+	select {
+	case <-(*self.CancelCtx).Done():
+		span := self.parent.SourceMap(*self.callFrame())
+		return value.NewTerminationInterrupt(context.Cause((*self.CancelCtx)).Error(), span)
+	default:
+		// do nothing, this should not block the entire interpreter
+		return nil
+	}
+}
+
 func (self *Core) Run(function string) {
+	catchPanic := func() {
+		if err := recover(); err != nil {
+			fmt.Printf("Panic occured in core %d at (%s:%d): `%s`\n", self.Corenum, self.callFrame().Function, self.callFrame().InstructionPointer, err)
+		}
+	}
+
+	if CATCH_PANIC {
+		defer catchPanic()
+	}
+
 	self.pushCallStack(function)
 
+outer:
 	for len(self.CallStack) > 0 {
-		callFrame := self.callFrame()
-		fn := (*self.Program)[callFrame.Function]
-		if callFrame.InstructionPointer >= uint(len(fn)) {
-			// fmt.Printf("Terminating from fn `%s` with ip=%d\n", callFrame.Function, callFrame.InstructionPointer)
-			self.popCallStack()
-			continue
+		if i := self.checkCancelation(); i != nil {
+			self.Handle <- i
+			return
 		}
 
-		i := fn[callFrame.InstructionPointer]
+		for c := 0; c < 50; c++ {
+			callFrame := *self.callFrame()
+			fn := (*self.Program)[callFrame.Function]
 
-		if self.Verbose {
-			stack := make([]string, 0)
-			for _, elem := range self.Stack {
-				if *elem == nil {
-					stack = append(stack, "<nil>")
-				} else {
-					disp, i := (*elem).Display()
-					if i != nil {
-						panic(*i)
+			if callFrame.InstructionPointer >= uint(len(fn)) { // TODO: len can be shortened
+				// fmt.Printf("Terminating from fn `%s` with ip=%d\n", callFrame.Function, callFrame.InstructionPointer)
+				self.popCallStack()
+				continue outer
+			}
+
+			i := fn[callFrame.InstructionPointer]
+
+			// if self.Verbose {
+			// 	stack := make([]string, 0)
+			// 	for _, elem := range self.Stack {
+			// 		if elem == nil || *elem == nil {
+			// 			stack = append(stack, "<nil>")
+			// 		} else {
+			// 			disp, i := (*elem).Display()
+			// 			if i != nil {
+			// 				panic(*i)
+			// 			}
+			// 			stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
+			// 		}
+			// 	}
+			//
+			// 	mem := make([]string, 0)
+			// 	for key, elem := range self.Memory {
+			// 		if elem == nil {
+			// 			continue
+			// 		}
+			//
+			// 		disp, i := (*elem).Display()
+			// 		if i != nil {
+			// 			panic(*i)
+			// 		}
+			// 		mem = append(mem, fmt.Sprintf("%d=%s", key, strings.ReplaceAll(disp, "\n", " ")))
+			// 	}
+			//
+			// 	fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s | CLSTCK: %v | STCKSS=%d | STCK: %s | MEM: [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, len(self.Stack), stack, strings.Join(mem, ", "))
+			// 	time.Sleep(10 * time.Millisecond)
+			// }
+
+			if i := self.runInstruction(i); i != nil {
+				switch (*i).Kind() {
+				case value.ThrowInterruptKind:
+					throwError := (*i).(value.ThrowInterrupt)
+
+					if len(self.ExceptionCatchLabels) == 0 {
+						self.Handle <- value.NewRuntimeErr(throwError.Message(), value.UncaughtThrowKind, throwError.Span)
+						return
 					}
-					stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
+
+					catchIndex := self.ExceptionCatchLabels[len(self.ExceptionCatchLabels)-1]
+					self.callFrame().InstructionPointer = catchIndex
+
+					self.push(
+						value.NewValueObject(map[string]*value.Value{
+							"message":  value.NewValueString(throwError.Message()),
+							"line":     value.NewValueInt(int64(throwError.Span.Start.Line)),
+							"column":   value.NewValueInt(int64(throwError.Span.Start.Column)),
+							"filename": value.NewValueString(throwError.Span.Filename),
+						}))
+				default:
+					self.Handle <- i
+					return
 				}
 			}
-
-			mem := make([]string, 0)
-			for key, elem := range *self.Memory() {
-				disp, i := (*elem).Display()
-				if i != nil {
-					panic(*i)
-				}
-				mem = append(mem, fmt.Sprintf("%s=%s", key, strings.ReplaceAll(disp, "\n", " ")))
-			}
-
-			fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s | CLSTCK: %v | STCK: %s | MEM: [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, stack, strings.Join(mem, ", "))
-			time.Sleep(10 * time.Millisecond)
 		}
-
-		self.runInstruction(i)
 	}
 
 	self.Handle <- nil
@@ -147,6 +206,9 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 	switch instruction.Opcode() {
 	case compiler.Opcode_Nop:
 		break
+	case compiler.Opcode_AddMempointer:
+		i := instruction.(compiler.OneIntInstruction)
+		self.MemoryPointer += i.Value
 	case compiler.Opcode_Push:
 		i := instruction.(compiler.ValueInstruction)
 		v := i.Value
@@ -171,19 +233,25 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		case value.BuiltinFunctionValueKind:
 			fn := v.(value.ValueBuiltinFunction)
 
-			// TODO: handle cancel context better
-			ctx, _ := context.WithCancel(context.Background())
-
 			args := make([]value.Value, 0)
 			for i := 0; i < int(numArgs); i++ {
-				args = append(args, *self.pop())
+				v := *self.pop()
+				args = append(args, v)
 			}
 
-			res, i := fn.Callback(self.Executor, &ctx, self.parent.SourceMap(*self.callFrame()), args...)
+			res, i := fn.Callback(
+				self.Executor,
+				self.CancelCtx,
+				self.parent.SourceMap(*self.callFrame()),
+				args...,
+			)
 			if i != nil {
 				return i
 			}
-			self.push(res)
+
+			if (*res).Kind() != value.NullValueKind {
+				self.push(res)
+			}
 		}
 	case compiler.Opcode_Call_Imm:
 		i := instruction.(compiler.OneStringInstruction)
@@ -201,28 +269,27 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		for i := 0; i < argc; i++ {
 			args = append(args, self.pop())
 		}
-		self.hostCall(self.parent, i.Value, args)
+		v, interrupt := self.hostCall(self.parent, i.Value, args)
+		if interrupt != nil {
+			return interrupt
+		}
+
+		self.push(v)
 	case compiler.Opcode_Jump:
 		i := instruction.(compiler.OneIntInstruction)
 		self.callFrame().InstructionPointer = uint(i.Value)
 		return nil // do not increment the new instruction
 	case compiler.Opcode_JumpIfFalse:
-		v := self.pop()
+		v := *self.pop()
 
-		// TODO: this check can be done more efficiently!!!
-		isEqual, interrupt := (*v).IsEqual(*value.NewValueBool(false))
-		if interrupt != nil {
-			return interrupt
-		}
-
-		if isEqual {
+		if !v.(value.ValueBool).Inner {
 			i := instruction.(compiler.OneIntInstruction)
 			self.callFrame().InstructionPointer = uint(i.Value)
 			return nil // do not increment the new instruction
 		}
 	case compiler.Opcode_GetVarImm:
-		i := instruction.(compiler.OneStringInstruction)
-		self.push((*self.Memory())[i.Value])
+		i := instruction.(compiler.OneIntInstruction)
+		self.push(self.Memory[self.absolute(i.Value)])
 	case compiler.Opcode_GetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
 		self.parent.Globals.Mutex.RLock()
@@ -230,11 +297,11 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 
 		v := self.parent.Globals.Data[i.Value]
 		self.push(&v)
-	case compiler.Opcode_SetVatImm:
-		i := instruction.(compiler.OneStringInstruction)
+	case compiler.Opcode_SetVarImm:
+		i := instruction.(compiler.OneIntInstruction)
 		v := self.pop()
 
-		(*self.Memory())[i.Value] = v
+		self.Memory[self.absolute(i.Value)] = v
 	case compiler.Opcode_SetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
 		self.parent.Globals.Mutex.Lock()
@@ -271,7 +338,8 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			panic("Unsupported value kind: " + v.Kind().String())
 		}
 	case compiler.Opcode_Some: // ?foo -> converts foo to a Option<foo>
-		panic("TODO")
+		v := *self.pop()
+		self.push(value.NewValueOption(&v))
 	case compiler.Opcode_Not:
 		v := *self.pop()
 		boolV := v.(value.ValueBool)
@@ -471,8 +539,25 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		panic("TODO")
 	case compiler.Opcode_Index:
 		panic("TODO")
+	case compiler.Opcode_Throw:
+		v := *self.pop()
+
+		display, i := v.Display()
+		if i != nil {
+			return i
+		}
+
+		self.callFrame().InstructionPointer++
+
+		return value.NewThrowInterrupt(
+			self.parent.SourceMap(*self.callFrame()),
+			display,
+		)
 	case compiler.Opcode_SetTryLabel:
-		panic("TODO")
+		i := instruction.(compiler.OneIntInstruction)
+		self.ExceptionCatchLabels = append(self.ExceptionCatchLabels, uint(i.Value))
+	case compiler.Opcode_PopTryLabel:
+		self.ExceptionCatchLabels = self.ExceptionCatchLabels[:len(self.ExceptionCatchLabels)-1]
 	case compiler.Opcode_Member:
 		i := instruction.(compiler.OneStringInstruction)
 
@@ -488,11 +573,24 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		}
 		self.push(field)
 	case compiler.Opcode_Import:
-		panic("TODO")
+		i := instruction.(compiler.TwoStringInstruction)
+		v := self.importItem(i.Values[0], i.Values[1])
+		self.push(&v)
 	case compiler.Opcode_Label:
-		panic("This should not happen")
+		panic("This shalll not happen")
 	case compiler.Opcode_Into_Range:
-		panic("TODO")
+		end := *self.pop()
+		start := *self.pop()
+		self.push(value.NewValueRange(start, end))
+	case compiler.Opcode_IntoIter:
+		v := *self.pop()
+		self.push(value.NewValueIter(v))
+	case compiler.Opcode_IteratorAdvance:
+		// Get the iterator from the stack.
+		iterator := (*self.getStackTop()).(value.ValueIterator).Func
+		val, shallContinue := iterator()
+		self.push(&val)
+		self.push(value.NewValueBool(shallContinue))
 	}
 
 	self.callFrame().InstructionPointer++

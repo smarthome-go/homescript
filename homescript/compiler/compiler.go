@@ -19,17 +19,20 @@ type Function struct {
 	MangledName  string
 	Instructions []Instruction
 	// TODO: disable these in an elegant manner
-	SourceMap []errors.Span
+	SourceMap    []errors.Span
+	CntVariables uint
 }
 
 type Compiler struct {
-	functions     map[string]*Function
-	currFn        string
-	loops         []Loop
-	fnNameMangle  map[string]uint64
-	varNameMangle map[string]uint64
-	varScopes     []map[string]string
-	currScope     *map[string]string
+	functions       map[string]*Function
+	currFn          string
+	loops           []Loop
+	fnNameMangle    map[string]uint64
+	varNameMangle   map[string]uint64
+	labelNameMangle map[string]uint64
+	varScopes       []map[string]string
+	currScope       *map[string]string
+	currModule      string
 }
 
 func NewCompiler() Compiler {
@@ -38,12 +41,14 @@ func NewCompiler() Compiler {
 	currScope := &scopes[0]
 
 	return Compiler{
-		functions:     make(map[string]*Function),
-		loops:         make([]Loop, 0),
-		fnNameMangle:  make(map[string]uint64),
-		varNameMangle: make(map[string]uint64),
-		varScopes:     scopes,
-		currScope:     currScope,
+		functions:       make(map[string]*Function),
+		loops:           make([]Loop, 0),
+		fnNameMangle:    make(map[string]uint64),
+		varNameMangle:   make(map[string]uint64),
+		labelNameMangle: make(map[string]uint64),
+		varScopes:       scopes,
+		currScope:       currScope,
+		currModule:      "",
 	}
 }
 
@@ -80,27 +85,43 @@ func (self *Compiler) mangleFn(input string) string {
 		cnt = 0
 	}
 
-	mangled := fmt.Sprintf("%s%d", input, cnt)
+	mangled := fmt.Sprintf("@%s_%s%d", self.currModule, input, cnt)
 
 	fn := Function{
 		MangledName:  mangled,
 		Instructions: make([]Instruction, 0),
 		SourceMap:    make([]errors.Span, 0),
+		CntVariables: 0,
 	}
 	self.functions[input] = &fn
 	return mangled
 }
 
-func (self *Compiler) mangle(input string) string {
+func (self *Compiler) mangleVar(input string) string {
 	cnt, exists := self.varNameMangle[input]
 	if !exists {
 		self.varNameMangle[input]++
 		cnt = 0
+	} else {
+		self.varNameMangle[input]++
 	}
 
-	mangled := fmt.Sprintf("%s%d", input, cnt)
+	mangled := fmt.Sprintf("@%s_%s%d", self.currModule, input, cnt)
 	(*self.currScope)[input] = mangled
 
+	return mangled
+}
+
+func (self *Compiler) mangleLabel(input string) string {
+	cnt, exists := self.labelNameMangle[input]
+	if !exists {
+		self.labelNameMangle[input]++
+		cnt = 0
+	} else {
+		self.labelNameMangle[input]++
+	}
+
+	mangled := fmt.Sprintf("%s_%s%d", self.currModule, input, cnt)
 	return mangled
 }
 
@@ -125,7 +146,7 @@ func (self Compiler) getMangled(input string) (string, bool) {
 	return "", false
 }
 
-func (self Compiler) relocateLabels() {
+func (self *Compiler) relocateLabels() {
 	for name, fn := range self.functions {
 		labels := make(map[string]int64)
 
@@ -149,7 +170,23 @@ func (self Compiler) relocateLabels() {
 			switch inst.Opcode() {
 			case Opcode_Jump, Opcode_JumpIfFalse:
 				i := inst.(OneStringInstruction)
-				fnOut[idx] = newOneIntInstruction(inst.Opcode(), labels[i.Value])
+
+				ip, found := labels[i.Value]
+				if !found {
+					panic("Every label needs to appear in the code")
+				}
+
+				fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
+				fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
+			case Opcode_SetTryLabel:
+				i := inst.(OneStringInstruction)
+
+				ip, found := labels[i.Value]
+				if !found {
+					panic("Every label needs to appear in the code")
+				}
+
+				fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
 				fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
 			case Opcode_Label:
 				panic("This should not happen")
@@ -161,10 +198,42 @@ func (self Compiler) relocateLabels() {
 	}
 }
 
-func (self *Compiler) Compile(program ast.AnalyzedProgram) Program {
+func (self *Compiler) renameVariables() {
+	slot := make(map[string]int64, 0)
+
+	for name, fn := range self.functions {
+		cnt := 0
+		for idx, inst := range fn.Instructions {
+			// TODO: this can be done better
+			switch inst.Opcode() {
+			case Opcode_GetVarImm:
+				i := inst.(OneStringInstruction)
+				if _, found := slot[i.Value]; !found {
+					slot[i.Value] = int64(cnt)
+					cnt++
+				}
+				self.functions[name].Instructions[idx] = newOneIntInstruction(Opcode_GetVarImm, slot[i.Value])
+			case Opcode_SetVarImm:
+				i := inst.(OneStringInstruction)
+				if _, found := slot[i.Value]; !found {
+					slot[i.Value] = int64(cnt)
+					cnt++
+				}
+				self.functions[name].Instructions[idx] = newOneIntInstruction(Opcode_SetVarImm, slot[i.Value])
+			default:
+				continue
+			}
+
+			fmt.Printf(":: == Patched Symbol %v -> %v\n", inst, self.functions[name].Instructions[idx])
+		}
+	}
+}
+
+func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram) Program {
 	self.compileProgram(program)
 
 	self.relocateLabels()
+	self.renameVariables()
 
 	functions := make(map[string][]Instruction)
 	sourceMap := make(map[string][]errors.Span)
@@ -180,44 +249,55 @@ func (self *Compiler) Compile(program ast.AnalyzedProgram) Program {
 	}
 }
 
-func (self *Compiler) insert(instruction Instruction, span errors.Span) {
+func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
 	// fmt.Printf("fn: `%s` %v\n", self.currFn, self.functions[self.currFn])
 	self.functions[self.currFn].Instructions = append(self.functions[self.currFn].Instructions, instruction)
 	self.functions[self.currFn].SourceMap = append(self.functions[self.currFn].SourceMap, span)
+	return len(self.functions[self.currFn].Instructions) - 1
 }
 
-func (self *Compiler) compileProgram(program ast.AnalyzedProgram) {
+func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) {
 	// TODO: handle imports to also compile imported modules
 
-	for _, item := range program.Imports {
-		for _, importItem := range item.ToImport {
-			self.insert(newTwoStringInstruction(Opcode_Import, item.FromModule.Ident(), importItem.Ident.Ident()), item.Range)
+	for moduleName, module := range program {
+		self.currModule = moduleName
+
+		self.mangleFn("@init")
+		self.currFn = "@init"
+
+		for _, glob := range module.Globals {
+			self.compileLetStmt(glob, true)
 		}
-	}
 
-	self.mangleFn("@init")
-	self.currFn = "@init"
-	for _, glob := range program.Globals {
-		self.compileLetStmt(glob, true)
-	}
-	// TODO: do the mangling correctly
-	self.insert(newOneStringInstruction(Opcode_Call_Imm, "main0"), errors.Span{})
+		for _, item := range module.Imports {
+			if item.TargetIsHMS {
+				continue
+			}
 
-	// compile all function declarations
-	for _, fn := range program.Functions {
-		self.mangleFn(fn.Ident.Ident())
-	}
+			for _, importItem := range item.ToImport {
+				self.insert(newTwoStringInstruction(Opcode_Import, item.FromModule.Ident(), importItem.Ident.Ident()), item.Range)
+			}
+		}
 
-	// compile all functions
-	for _, fn := range program.Functions {
-		self.compileFn(fn)
-	}
+		// TODO: do the mangling correctly
+		self.insert(newOneStringInstruction(Opcode_Call_Imm, fmt.Sprintf("@%s_main0", self.currModule)), errors.Span{})
 
-	// compile all events
-	for _, fn := range program.Events {
-		fn.Ident = pAst.NewSpannedIdent(fmt.Sprintf("@event_%s", fn.Ident.Ident()), fn.Ident.Span())
-		self.mangleFn(fn.Ident.Ident())
-		self.compileFn(fn)
+		// compile all function declarations
+		for _, fn := range module.Functions {
+			self.mangleFn(fn.Ident.Ident())
+		}
+
+		// compile all functions
+		for _, fn := range module.Functions {
+			self.compileFn(fn)
+		}
+
+		// compile all events
+		for _, fn := range module.Events {
+			fn.Ident = pAst.NewSpannedIdent(fmt.Sprintf("@event_%s", fn.Ident.Ident()), fn.Ident.Span())
+			self.mangleFn(fn.Ident.Ident())
+			self.compileFn(fn)
+		}
 	}
 }
 
@@ -239,8 +319,8 @@ func (self *Compiler) compileBlock(node ast.AnalyzedBlock, pushScope bool) {
 func (self *Compiler) compileIfExpr(node ast.AnalyzedIfExpression) {
 	self.compileExpr(node.Condition)
 
-	after_label := self.mangle("if_after")
-	else_label := self.mangle("else")
+	after_label := self.mangleLabel("if_after")
+	else_label := self.mangleLabel("else")
 
 	if node.ElseBlock != nil {
 		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, else_label), node.Range)
@@ -264,12 +344,21 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 	self.pushScope()
 	defer self.popScope()
 
+	// value is replaced later
+	mpIdx := self.insert(newOneIntInstruction(Opcode_AddMempointer, 0), errors.Span{})
+
 	for i := len(node.Parameters) - 1; i >= 0; i-- {
-		name := self.mangle(node.Parameters[i].Ident.Ident())
-		self.insert(newOneStringInstruction(Opcode_SetVatImm, name), node.Range)
+		name := self.mangleVar(node.Parameters[i].Ident.Ident())
+		fmt.Printf("%s->%s\n", node.Parameters[i].Ident.Ident(), name)
+		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
+		self.functions[self.currFn].CntVariables++
 	}
 
 	self.compileBlock(node.Body, false)
+
+	varCnt := int64(self.functions[self.currFn].CntVariables)
+	self.functions[self.currFn].Instructions[mpIdx] = newOneIntInstruction(Opcode_AddMempointer, varCnt)
+	self.insert(newOneIntInstruction(Opcode_AddMempointer, -varCnt), node.Range)
 }
 
 func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal bool) {
@@ -279,14 +368,15 @@ func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal boo
 	self.compileExpr(node.Expression)
 
 	// TODO: handle global
-	opcode := Opcode_SetVatImm
+	opcode := Opcode_SetVarImm
 	if isGlobal {
 		opcode = Opcode_SetGlobImm
 	}
 
 	// bind value to identifier
-	name := self.mangle(node.Ident.Ident())
+	name := self.mangleVar(node.Ident.Ident())
 	self.insert(newOneStringInstruction(opcode, name), node.Range) // TODO: mangle
+	self.functions[self.currFn].CntVariables++                     // FIXME: have reference
 }
 
 func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
@@ -304,8 +394,8 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 	case ast.LoopStatementKind:
 		node := node.(ast.AnalyzedLoopStatement)
 
-		head_label := self.mangle("loop_head")
-		after_label := self.mangle("loop_end")
+		head_label := self.mangleLabel("loop_head")
+		after_label := self.mangleLabel("loop_end")
 		self.insert(newOneStringInstruction(Opcode_Label, head_label), node.Span())
 
 		self.pushLoop(Loop{
@@ -313,19 +403,21 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 			labelBreak:    after_label,
 			labelContinue: head_label,
 		})
+		self.popLoop()
+
 		self.compileBlock(node.Body, true)
 		self.insert(newOneStringInstruction(Opcode_Jump, head_label), node.Span())
 		self.insert(newOneStringInstruction(Opcode_Label, after_label), node.Span())
-		self.popLoop()
 	case ast.WhileStatementKind:
 		node := node.(ast.AnalyzedWhileStatement)
-		head_label := self.mangle("loop_head")
-		after_label := self.mangle("loop_end")
+		head_label := self.mangleLabel("loop_head")
+		after_label := self.mangleLabel("loop_end")
 		self.pushLoop(Loop{
 			labelStart:    head_label,
 			labelBreak:    after_label,
 			labelContinue: head_label,
 		})
+		defer self.popLoop()
 
 		self.insert(newOneStringInstruction(Opcode_Label, head_label), node.Range)
 
@@ -337,41 +429,55 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		self.insert(newOneStringInstruction(Opcode_Jump, head_label), node.Range)
 
 		self.insert(newOneStringInstruction(Opcode_Label, after_label), node.Range)
-		self.popLoop()
 	case ast.ForStatementKind:
+		// FIXME: account for variable count
+
 		node := node.(ast.AnalyzedForStatement)
 
-		head_label := self.mangle("loop_head")
-		update_label := self.mangle("loop_update")
-		after_label := self.mangle("loop_end")
+		head_label := self.mangleLabel("loop_head")
+		update_label := self.mangleLabel("loop_update")
+		after_label := self.mangleLabel("loop_end")
 
 		self.pushLoop(Loop{
 			labelStart:    head_label,
 			labelBreak:    after_label,
 			labelContinue: update_label,
 		})
+		defer self.popLoop()
+
+		// create initial state of iterator
+		self.pushScope()
+		defer self.popScope()
 
 		// push iter expr onto the stack
 		self.compileExpr(node.IterExpression)
 
-		// bind its initial value to the iter variable
-		self.pushScope()
-		defer self.popScope()
+		// convert into iterator
+		self.insert(newPrimitiveInstruction(Opcode_IntoIter), node.Range)
+		self.insert(newPrimitiveInstruction(Opcode_IteratorAdvance), node.Range)
 
-		name := self.mangle(node.Identifier.Ident())
-		self.insert(newOneStringInstruction(Opcode_SetVatImm, name), node.Range)
-
-		// check the condition
+		// loop body
+		name := self.mangleVar(node.Identifier.Ident()) // TODO: does this break?
 		self.insert(newOneStringInstruction(Opcode_Label, head_label), node.Range)
+
+		// On top of the stack, there will now be a bool describing whether or not to contiue.
+		// Check if there are still values left: if not, break.
 		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, after_label), node.Range)
 
+		// Bind induction variable to name
+		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
+
 		self.compileBlock(node.Body, false)
+
+		// Update iterator
+		self.insert(newOneStringInstruction(Opcode_Label, update_label), node.Range)
+		self.insert(newPrimitiveInstruction(Opcode_IteratorAdvance), node.Range)
+
+		// Jump back to head
 		self.insert(newOneStringInstruction(Opcode_Jump, head_label), node.Range)
 
-		self.insert(newOneStringInstruction(Opcode_Label, update_label), node.Range)
-		// TODO: update
-
 		self.insert(newOneStringInstruction(Opcode_Label, after_label), node.Range)
+		// TODO: does this satisfy our needs?
 	case ast.ExpressionStatementKind:
 		node := node.(ast.AnalyzedExpressionStatement)
 		self.compileExpr(node.Expression)
@@ -397,12 +503,18 @@ func (self *Compiler) compilePrefixOp(op ast.PrefixOperator, span errors.Span) {
 
 func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 	// push each arg onto the stack
-	for _, arg := range node.Arguments {
-		self.compileExpr(arg.Expression)
+	for i := len(node.Arguments) - 1; i >= 0; i-- {
+		self.compileExpr(node.Arguments[i].Expression)
 	}
 
 	if node.Base.Kind() == ast.IdentExpressionKind {
 		base := node.Base.(ast.AnalyzedIdentExpression)
+
+		// Special case: base is `throw`
+		if base.Ident.Ident() == "throw" {
+			self.insert(newPrimitiveInstruction(Opcode_Throw), node.Range)
+			return
+		}
 
 		mangled, found := self.getMangled(base.Ident.Ident())
 		if found {
@@ -425,10 +537,14 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 					panic("This is an impossible state.")
 				}
 
-				// insert number of args
+				self.insert(newOneStringInstruction(Opcode_GetGlobImm, base.Ident.Ident()), node.Range)
 				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
+				self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Range)
+
+				// insert number of args
+				// self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
 				// perform actual call
-				self.insert(newOneStringInstruction(Opcode_HostCall, base.Ident.Ident()), node.Span())
+				// self.insert(newOneStringInstruction(Opcode_HostCall, base.Ident.Ident()), node.Span())
 			}
 		}
 	} else {
@@ -492,8 +608,8 @@ func (self *Compiler) arithmeticHelper(op pAst.InfixOperator, span errors.Span) 
 func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 	switch node.Operator {
 	case pAst.LogicalOrInfixOperator:
-		returnTrue := self.mangle("return_true")
-		afterLabel := self.mangle("after_infix")
+		returnTrue := self.mangleLabel("return_true")
+		afterLabel := self.mangleLabel("after_infix")
 
 		self.compileExpr(node.Lhs)
 		self.insert(newPrimitiveInstruction(Opcode_Not), node.Range)
@@ -507,8 +623,8 @@ func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 
 		self.insert(newOneStringInstruction(Opcode_Label, afterLabel), node.Range)
 	case pAst.LogicalAndInfixOperator:
-		returnFalse := self.mangle("return_false")
-		afterLabel := self.mangle("after_infix")
+		returnFalse := self.mangleLabel("return_false")
+		afterLabel := self.mangleLabel("after_infix")
 
 		self.compileExpr(node.Lhs)
 		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, returnFalse), node.Range)
@@ -580,7 +696,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 
 		for _, element := range node.Values {
 			self.compileExpr(element)
-			self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(1)), node.Range)
+			self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(2)), node.Range)
 			self.insert(newOneStringInstruction(Opcode_HostCall, LIST_PUSH), node.Range)
 		}
 	case ast.AnyObjectLiteralExpressionKind:
@@ -628,7 +744,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 			}
 
 			opCodeGet := Opcode_GetVarImm
-			opCodeSet := Opcode_SetVatImm
+			opCodeSet := Opcode_SetVarImm
 
 			if lhs.IsGlobal {
 				opCodeGet = Opcode_GetGlobImm
@@ -684,10 +800,10 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		self.compileExpr(node.ControlExpression)
 
 		branches := make(map[int]string)
-		after_branch := self.mangle("match_after")
+		after_branch := self.mangleLabel("match_after")
 
 		for i, option := range node.Arms {
-			name := self.mangle(fmt.Sprintf("case_%d", i))
+			name := self.mangleLabel(fmt.Sprintf("case_%d", i))
 			branches[i] = name
 
 			// Insert value to compare with
@@ -701,7 +817,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 			self.insert(newOneStringInstruction(Opcode_JumpIfFalse, name), node.Range)
 		}
 
-		default_branch := self.mangle("match_default")
+		default_branch := self.mangleLabel("match_default")
 		if node.DefaultArmAction != nil {
 			self.insert(newOneStringInstruction(Opcode_Jump, default_branch), node.Range)
 		} else {
@@ -723,18 +839,22 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	case ast.TryExpressionKind:
 		node := node.(ast.AnalyzedTryExpression)
 		// TODO: name mangling
-		exceptionLabel := self.mangle("exception_label")
-		afterTryLabel := self.mangle("after_try_label")
+		exceptionLabel := self.mangleLabel("exception_label")
+		afterCatchLabel := self.mangleLabel("after_catch_label")
 		self.insert(newOneStringInstruction(Opcode_SetTryLabel, exceptionLabel), node.Range)
 		self.compileBlock(node.TryBlock, true)
-		self.insert(newOneStringInstruction(Opcode_Jump, afterTryLabel), node.Range)
-		self.insert(newOneStringInstruction(Opcode_Label, exceptionLabel), node.Range)
+		self.insert(newPrimitiveInstruction(Opcode_PopTryLabel), node.Range)
+		self.insert(newOneStringInstruction(Opcode_Jump, afterCatchLabel), node.Range)
 
+		// exception case
+		mangledExceptionName := self.mangleVar(node.CatchIdent.Ident())
+		self.insert(newOneStringInstruction(Opcode_Label, exceptionLabel), node.Range)
+		self.insert(newPrimitiveInstruction(Opcode_PopTryLabel), node.Range)
 		self.pushScope()
 		defer self.popScope()
-
-		self.insert(newOneStringInstruction(Opcode_SetVatImm, node.CatchIdent.Ident()), node.Range) // TODO: mangle names
+		self.insert(newOneStringInstruction(Opcode_SetVarImm, mangledExceptionName), node.Range) // TODO: mangle names
 		self.compileBlock(node.CatchBlock, false)
+		self.insert(newOneStringInstruction(Opcode_Label, afterCatchLabel), node.Range)
 	default:
 		panic("Unreachable")
 	}

@@ -1,8 +1,7 @@
 package runtime
 
 import (
-	"fmt"
-	"strings"
+	"context"
 	"sync"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
@@ -17,9 +16,9 @@ type Globals struct {
 	Mutex sync.RWMutex
 }
 
-func newGlobals() Globals {
+func newGlobals(scopeAdditions map[string]value.Value) Globals {
 	return Globals{
-		Data:  make(map[string]value.Value),
+		Data:  scopeAdditions,
 		Mutex: sync.RWMutex{},
 	}
 
@@ -38,24 +37,32 @@ func newCores() Cores {
 }
 
 type VM struct {
-	Program  compiler.Program
-	Globals  Globals
-	Cores    Cores
-	Executor value.Executor
-	Lock     sync.RWMutex
-	coreCnt  uint
-	Verbose  bool
+	Program   compiler.Program
+	Globals   Globals
+	Cores     Cores
+	Executor  value.Executor
+	Lock      sync.RWMutex
+	coreCnt   uint
+	Verbose   bool
+	CancelCtx *context.Context
 }
 
-func NewVM(program compiler.Program, executor value.Executor, verbose bool) VM {
+func NewVM(
+	program compiler.Program,
+	executor value.Executor,
+	verbose bool,
+	ctx *context.Context,
+	scopeAdditions map[string]value.Value,
+) VM {
 	return VM{
-		Program:  program,
-		Globals:  newGlobals(),
-		Cores:    newCores(),
-		Executor: executor,
-		Lock:     sync.RWMutex{},
-		coreCnt:  0,
-		Verbose:  verbose,
+		Program:   program,
+		Globals:   newGlobals(scopeAdditions),
+		Cores:     newCores(),
+		Executor:  executor,
+		Lock:      sync.RWMutex{},
+		coreCnt:   0,
+		Verbose:   verbose,
+		CancelCtx: ctx,
 	}
 }
 
@@ -69,39 +76,15 @@ func hostcall(self *VM, function string, args []*value.Value) (*value.Value, *va
 	defer self.Lock.Unlock()
 
 	switch function {
-	case "println":
-		output := make([]string, 0)
-		for _, arg := range args {
-			disp, i := (*arg).Display()
-			if i != nil {
-				return nil, i
-			}
-			output = append(output, disp)
-		}
+	case "__internal_list_push":
+		elem := args[0]
+		list := (*args[1]).(value.ValueList)
 
-		outStr := strings.Join(output, " ") + "\n"
-
-		fmt.Print(outStr)
-
-		return value.NewValueNull(), nil
-	case "print":
-		output := make([]string, 0)
-		for _, arg := range args {
-			disp, i := (*arg).Display()
-			if i != nil {
-				return nil, i
-			}
-			output = append(output, disp)
-		}
-
-		outStr := strings.Join(output, " ")
-
-		fmt.Print(outStr)
-
-		return value.NewValueNull(), nil
+		(*list.Values) = append((*list.Values), elem)
+		return args[1], nil
 	}
 
-	panic("INVALID HOSTCALL: " + function)
+	panic("Invalid hostcall: " + function)
 }
 
 func (self *VM) spawnCore() *Core {
@@ -109,7 +92,7 @@ func (self *VM) spawnCore() *Core {
 	defer self.Lock.Unlock()
 
 	ch := make(chan *value.Interrupt)
-	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt, self.Verbose, ch)
+	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt, self.Verbose, ch, self.CancelCtx)
 
 	self.Cores.Lock.Lock()
 	defer self.Cores.Lock.Unlock()
@@ -121,16 +104,6 @@ func (self *VM) spawnCore() *Core {
 
 func (self *VM) Spawn(function string, verbose bool) {
 	core := self.spawnCore()
-	catchPanic := func() {
-		if err := recover(); err != nil {
-			fmt.Printf("Panic occured in core %d: %s\n", core.Corenum, err)
-		}
-	}
-
-	if CATCH_PANIC {
-		defer catchPanic()
-	}
-
 	go (*core).Run(function)
 }
 

@@ -471,9 +471,10 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 		}
 
 		return ast.AnalyzedImport{
-			ToImport:   toImport,
-			FromModule: node.FromModule,
-			Range:      node.Range,
+			ToImport:    toImport,
+			FromModule:  node.FromModule,
+			Range:       node.Range,
+			TargetIsHMS: true,
 		}
 	}
 
@@ -519,9 +520,10 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 	}
 
 	return ast.AnalyzedImport{
-		ToImport:   toImport,
-		FromModule: node.FromModule,
-		Range:      node.Range,
+		ToImport:    toImport,
+		FromModule:  node.FromModule,
+		Range:       node.Range,
+		TargetIsHMS: false,
 	}
 }
 

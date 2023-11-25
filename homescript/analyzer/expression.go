@@ -701,6 +701,16 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 			} else {
 				for idx := 0; idx < len(baseParams.Params); idx++ {
 					argExpr := self.expression(node.Arguments[idx])
+
+					if argExpr.Type().Kind() == ast.NullTypeKind {
+						self.error(
+							fmt.Sprintf("Cannot use a value of result type `%s` in function call", argExpr.Type()),
+							[]string{"This expression generates no value, therefore it can be omitted"},
+							argExpr.Span(),
+						)
+						continue
+					}
+
 					if err := self.TypeCheck(argExpr.Type(), baseParams.Params[idx].Type, true); err != nil {
 						self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 					} else {
@@ -734,6 +744,15 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 			} else {
 				for idx, arg := range node.Arguments {
 					argExpr := self.expression(arg)
+
+					if argExpr.Type().Kind() == ast.NullTypeKind {
+						self.error(
+							fmt.Sprintf("Cannot use a value of result type `%s` in function call", argExpr.Type()),
+							[]string{"This expression generates no value, therefore it can be omitted"},
+							argExpr.Span(),
+						)
+						continue
+					}
 
 					toCheck := varArgType.RemainingType
 					if idx < len(varArgType.ParamTypes) {

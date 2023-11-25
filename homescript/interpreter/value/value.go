@@ -23,6 +23,7 @@ const (
 	ClosureValueKind
 	BuiltinFunctionValueKind
 	PointerValueKind
+	IteratorValueKind
 )
 
 func (self ValueKind) String() string {
@@ -55,6 +56,8 @@ func (self ValueKind) String() string {
 		return "builtin-function"
 	case PointerValueKind:
 		return "pointer"
+	case IteratorValueKind:
+		return "iterator"
 	default:
 		panic("A new ValueKind was introduced without updating this code")
 	}

@@ -29,7 +29,7 @@ const (
 	Opcode_JumpIfFalse
 	Opcode_GetVarImm
 	Opcode_GetGlobImm
-	Opcode_SetVatImm
+	Opcode_SetVarImm
 	Opcode_SetGlobImm
 	Opcode_Assign // assigns pointers on the stack???
 	Opcode_Cast
@@ -55,11 +55,16 @@ const (
 	Opcode_BitXor
 	Opcode_Index
 	Opcode_SetTryLabel
+	Opcode_PopTryLabel
+	Opcode_Throw
 	Opcode_Member
 	Opcode_Import
 	Opcode_Label
 	Opcode_Into_Range
 	Opcode_Duplicate
+	Opcode_AddMempointer
+	Opcode_IteratorAdvance
+	Opcode_IntoIter
 )
 
 func (self Opcode) String() string {
@@ -88,8 +93,8 @@ func (self Opcode) String() string {
 		return "GetVarImm"
 	case Opcode_GetGlobImm:
 		return "GetGlobImm"
-	case Opcode_SetVatImm:
-		return "SetVatImm"
+	case Opcode_SetVarImm:
+		return "SetVarImm"
 	case Opcode_SetGlobImm:
 		return "SetGlobImm"
 	case Opcode_Assign:
@@ -138,6 +143,10 @@ func (self Opcode) String() string {
 		return "Index"
 	case Opcode_SetTryLabel:
 		return "SetTryLabel"
+	case Opcode_PopTryLabel:
+		return "PopTryLabel"
+	case Opcode_Throw:
+		return "Throw"
 	case Opcode_Member:
 		return "Member"
 	case Opcode_Import:
@@ -148,6 +157,12 @@ func (self Opcode) String() string {
 		return "Into_Range"
 	case Opcode_Duplicate:
 		return "Duplicate"
+	case Opcode_AddMempointer:
+		return "AddMempointer"
+	case Opcode_IteratorAdvance:
+		return "IterAdvance"
+	case Opcode_IntoIter:
+		return "IntoIter"
 	default:
 		panic(fmt.Sprintf("Invalid instruction: %d", self))
 	}
