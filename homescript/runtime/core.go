@@ -396,10 +396,14 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueFloat(lFloat.Inner * rFloat.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Pow:
-		panic("TODO")
+		// TODO: improve performance here
+		r := (*self.pop()).(value.ValueInt).Inner
+		l := (*self.pop()).(value.ValueInt).Inner
+		res := math.Pow(float64(l), float64(r))
+		self.push(value.NewValueInt(int64(res)))
 	case compiler.Opcode_Div:
 		r := *self.pop()
 		l := *self.pop()
