@@ -362,7 +362,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueFloat(lFloat.Inner + rFloat.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Sub:
 		r := *self.pop()
@@ -378,7 +378,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueFloat(lFloat.Inner - rFloat.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Mul:
 		l := *self.pop()
@@ -412,7 +412,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueFloat(lFloat.Inner / rFloat.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Rem:
 		r := *self.pop()
@@ -424,7 +424,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rInt := r.(value.ValueInt)
 			self.push(value.NewValueInt(lInt.Inner % rInt.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Eq:
 		l := *self.pop()
@@ -461,7 +461,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueBool(lFloat.Inner < rFloat.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Gt:
 		r := *self.pop()
@@ -477,7 +477,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueBool(lFloat.Inner > rFloat.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Le:
 		r := *self.pop()
@@ -493,7 +493,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueBool(lFloat.Inner <= rFloat.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Ge:
 		r := *self.pop()
@@ -509,7 +509,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueBool(lFloat.Inner >= rFloat.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Shl:
 		r := *self.pop()
@@ -521,7 +521,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rInt := r.(value.ValueInt)
 			self.push(value.NewValueInt(lInt.Inner << rInt.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_Shr:
 		r := *self.pop()
@@ -580,8 +580,6 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		i := instruction.(compiler.TwoStringInstruction)
 		v := self.importItem(i.Values[0], i.Values[1])
 		self.push(&v)
-	case compiler.Opcode_Label:
-		panic("This shalll not happen")
 	case compiler.Opcode_Into_Range:
 		end := *self.pop()
 		start := *self.pop()
@@ -595,6 +593,8 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		val, shallContinue := iterator()
 		self.push(&val)
 		self.push(value.NewValueBool(shallContinue))
+	default:
+		panic(fmt.Sprintf("Illegal instruction erorr: %v", instruction))
 	}
 
 	self.callFrame().InstructionPointer++

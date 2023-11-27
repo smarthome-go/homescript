@@ -230,6 +230,8 @@ func (self *Compiler) renameVariables() {
 }
 
 func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram) Program {
+	// BUG: cross-module calls do not work
+	// BUG: furthermore, cross-module pub-let definitions also do not work
 	self.compileProgram(program)
 
 	self.relocateLabels()
@@ -810,6 +812,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 			self.compileExpr(option.Literal)
 
 			// Compare control and branch value
+			// TODO: could DUP also work?
 			self.insert(newPrimitiveInstruction(Opcode_Eq_PopOnce), node.Range)
 
 			// if true, jump to the label of this branch
