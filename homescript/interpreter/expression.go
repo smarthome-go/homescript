@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
@@ -469,61 +470,11 @@ func (self *Interpreter) indexExpression(node ast.AnalyzedIndexExpression) (*val
 		return nil, i
 	}
 
-	switch (*base).Kind() {
-	case value.ObjectValueKind, value.AnyObjectValueKind:
-		idx := (*index).(value.ValueString)
-		fields, i := (*base).Fields()
-		if i != nil {
-			return nil, i
-		}
-		val, found := fields[idx.Inner]
-		if !found {
-			return nil, value.NewRuntimeErr(
-				fmt.Sprintf("Value of type '%s' has no field named '%s'", (*base).Kind(), idx.Inner),
-				value.IndexOutOfBoundsErrorKind,
-				node.Range,
-			)
-		}
-		return val, nil
-	case value.ListValueKind:
-		list := (*base).(value.ValueList)
-		index := (*index).(value.ValueInt).Inner
-
-		// handle index wrapping (-1 = len - 1)
-		length := int64(len(*list.Values))
-		if index < 0 {
-			index = index + length
-		}
-
-		if index < 0 || index >= length {
-			return nil, value.NewRuntimeErr(
-				fmt.Sprintf("Index out of bounds: cannot index a list of length %d with %d", len(*list.Values), index),
-				value.IndexOutOfBoundsErrorKind,
-				node.Index.Span(),
-			)
-		}
-		return (*list.Values)[int(index)], nil
-	case value.StringValueKind:
-		str := (*base).(value.ValueString).Inner
-		index := (*index).(value.ValueInt).Inner
-
-		// handle index wrapping (-1 = len - 1)
-		length := int64(len(str))
-		if index < 0 {
-			index = index + length
-		}
-
-		if index < 0 || index >= length {
-			return nil, value.NewRuntimeErr(
-				fmt.Sprintf("Index out of bounds: cannot index a string of length %d with %d", len(str), index),
-				value.IndexOutOfBoundsErrorKind,
-				node.Index.Span(),
-			)
-		}
-		return value.NewValueString(string((str)[int(index)])), nil
+	span := func() errors.Span {
+		return node.Span()
 	}
 
-	panic(fmt.Sprintf("A new type which can be indexed was added without updating this code: %s", (*base).Kind()))
+	return value.IndexValue(base, index, span)
 }
 
 //

@@ -3,10 +3,12 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
+	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 )
 
@@ -533,16 +535,70 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			rInt := r.(value.ValueInt)
 			self.push(value.NewValueInt(lInt.Inner >> rInt.Inner))
 		default:
-			panic("Unsupported")
+			panic("This value combination is unsupported")
 		}
 	case compiler.Opcode_BitOr:
-		panic("TODO")
+		r := *self.pop()
+		l := *self.pop()
+
+		switch l.Kind() {
+		case value.IntValueKind:
+			lInt := l.(value.ValueInt)
+			rInt := r.(value.ValueInt)
+			self.push(value.NewValueInt(lInt.Inner | rInt.Inner))
+		case value.BoolValueKind:
+			lBool := l.(value.ValueBool)
+			rBool := r.(value.ValueBool)
+			self.push(value.NewValueBool(lBool.Inner || rBool.Inner))
+		default:
+			panic("This value combination is unsupported")
+		}
 	case compiler.Opcode_BitAnd:
-		panic("TODO")
+		r := *self.pop()
+		l := *self.pop()
+
+		switch l.Kind() {
+		case value.IntValueKind:
+			lInt := l.(value.ValueInt)
+			rInt := r.(value.ValueInt)
+			self.push(value.NewValueInt(lInt.Inner & rInt.Inner))
+		case value.BoolValueKind:
+			lBool := l.(value.ValueBool)
+			rBool := r.(value.ValueBool)
+			self.push(value.NewValueBool(lBool.Inner && rBool.Inner))
+		default:
+			panic("This value combination is unsupported")
+		}
 	case compiler.Opcode_BitXor:
-		panic("TODO")
+		r := *self.pop()
+		l := *self.pop()
+
+		switch l.Kind() {
+		case value.IntValueKind:
+			lInt := l.(value.ValueInt)
+			rInt := r.(value.ValueInt)
+			self.push(value.NewValueInt(lInt.Inner ^ rInt.Inner))
+		case value.BoolValueKind:
+			lBool := l.(value.ValueBool)
+			rBool := r.(value.ValueBool)
+			self.push(value.NewValueBool(lBool.Inner != rBool.Inner))
+		default:
+			panic("This value combination is unsupported")
+		}
 	case compiler.Opcode_Index:
-		panic("TODO")
+		indexV := self.pop()
+		baseV := self.pop()
+
+		// Only used for performance reasons
+		span := func() errors.Span {
+			return self.parent.SourceMap(*self.callFrame())
+		}
+
+		indexed, interrupt := value.IndexValue(baseV, indexV, span)
+		if interrupt != nil {
+			return interrupt
+		}
+		self.push(indexed)
 	case compiler.Opcode_Throw:
 		v := *self.pop()
 

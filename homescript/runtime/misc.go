@@ -1,6 +1,8 @@
 package runtime
 
-import "github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
+import (
+	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
+)
 
 func (self *Core) importItem(module string, toImport string) value.Value {
 	val, found := self.Executor.GetBuiltinImport(module, toImport)
