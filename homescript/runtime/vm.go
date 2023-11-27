@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
@@ -37,14 +38,16 @@ func newCores() Cores {
 }
 
 type VM struct {
-	Program   compiler.Program
-	Globals   Globals
-	Cores     Cores
-	Executor  value.Executor
-	Lock      sync.RWMutex
-	coreCnt   uint
-	Verbose   bool
-	CancelCtx *context.Context
+	Program    compiler.Program
+	Globals    Globals
+	Cores      Cores
+	Executor   value.Executor
+	Lock       sync.RWMutex
+	coreCnt    uint
+	Verbose    bool
+	CancelCtx  *context.Context
+	CancelFunc *context.CancelFunc
+	Interrupts map[uint]value.Interrupt
 }
 
 func NewVM(
@@ -52,17 +55,20 @@ func NewVM(
 	executor value.Executor,
 	verbose bool,
 	ctx *context.Context,
+	cancelFunc *context.CancelFunc,
 	scopeAdditions map[string]value.Value,
 ) VM {
 	return VM{
-		Program:   program,
-		Globals:   newGlobals(scopeAdditions),
-		Cores:     newCores(),
-		Executor:  executor,
-		Lock:      sync.RWMutex{},
-		coreCnt:   0,
-		Verbose:   verbose,
-		CancelCtx: ctx,
+		Program:    program,
+		Globals:    newGlobals(scopeAdditions),
+		Cores:      newCores(),
+		Executor:   executor,
+		Lock:       sync.RWMutex{},
+		coreCnt:    0,
+		Verbose:    verbose,
+		CancelCtx:  ctx,
+		CancelFunc: cancelFunc,
+		Interrupts: make(map[uint]value.Interrupt),
 	}
 }
 
@@ -107,16 +113,71 @@ func (self *VM) Spawn(function string, verbose bool) {
 	go (*core).Run(function)
 }
 
-func (self *VM) Wait() *value.Interrupt {
+func (self *VM) WaitNonConsuming() {
+	for {
+		self.Cores.Lock.RLock()
+
+		if len(self.Cores.Cores) == 0 {
+			fmt.Printf("breakout..")
+			break
+		}
+
+		self.Cores.Lock.RUnlock()
+	}
+}
+
+func (self *VM) Wait() (uint, *value.Interrupt) {
 	for {
 		self.Cores.Lock.RLock()
 		for _, core := range self.Cores.Cores {
+			// fmt.Printf("checking core: %d | %v\n", core.Corenum, time.Now())
+
 			select {
 			case i := <-core.Handle:
-				return i
+				if i == nil {
+					newCores := make([]Core, 0)
+
+					for _, coreIter := range self.Cores.Cores {
+						if coreIter.Corenum == core.Corenum {
+							continue
+						}
+
+						newCores = append(newCores, coreIter)
+					}
+
+					self.Cores.Lock.RUnlock()
+
+					self.Cores.Lock.Lock()
+					self.Cores.Cores = newCores
+					self.Cores.Lock.Unlock()
+
+					self.Cores.Lock.RLock()
+				} else {
+
+					self.Cores.Lock.RUnlock()
+
+					// TODO: is this OK?
+					self.Cores.Lock.Lock()
+
+					(*self.CancelFunc)()
+
+					self.Cores.Cores = make([]Core, 0)
+					self.Cores.Lock.Unlock()
+
+					self.Cores.Lock.RLock()
+
+					return core.Corenum, i
+				}
 			default:
 			}
 		}
+
+		if len(self.Cores.Cores) == 0 {
+			break
+		}
+
 		self.Cores.Lock.RUnlock()
 	}
+
+	return 0, nil
 }

@@ -3,6 +3,8 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
@@ -34,6 +36,7 @@ type Core struct {
 	// TODO: write documentation
 	MemoryPointer int64
 	CancelCtx     *context.Context
+	CancelFunc    *context.CancelFunc
 }
 
 func NewCore(
@@ -140,36 +143,37 @@ outer:
 
 			i := fn[callFrame.InstructionPointer]
 
-			// if self.Verbose {
-			// 	stack := make([]string, 0)
-			// 	for _, elem := range self.Stack {
-			// 		if elem == nil || *elem == nil {
-			// 			stack = append(stack, "<nil>")
-			// 		} else {
-			// 			disp, i := (*elem).Display()
-			// 			if i != nil {
-			// 				panic(*i)
-			// 			}
-			// 			stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
-			// 		}
-			// 	}
-			//
-			// 	mem := make([]string, 0)
-			// 	for key, elem := range self.Memory {
-			// 		if elem == nil {
-			// 			continue
-			// 		}
-			//
-			// 		disp, i := (*elem).Display()
-			// 		if i != nil {
-			// 			panic(*i)
-			// 		}
-			// 		mem = append(mem, fmt.Sprintf("%d=%s", key, strings.ReplaceAll(disp, "\n", " ")))
-			// 	}
-			//
-			// 	fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s | CLSTCK: %v | STCKSS=%d | STCK: %s | MEM: [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, len(self.Stack), stack, strings.Join(mem, ", "))
-			// 	time.Sleep(10 * time.Millisecond)
-			// }
+			// TODO: remove the verbose mode if possible
+			if self.Verbose {
+				stack := make([]string, 0)
+				for _, elem := range self.Stack {
+					if elem == nil || *elem == nil {
+						stack = append(stack, "<nil>")
+					} else {
+						disp, i := (*elem).Display()
+						if i != nil {
+							panic(*i)
+						}
+						stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
+					}
+				}
+
+				mem := make([]string, 0)
+				for key, elem := range self.Memory {
+					if elem == nil {
+						continue
+					}
+
+					disp, i := (*elem).Display()
+					if i != nil {
+						panic(*i)
+					}
+					mem = append(mem, fmt.Sprintf("%d=%s", key, strings.ReplaceAll(disp, "\n", " ")))
+				}
+
+				fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s | CLSTCK: %v | STCKSS=%d | STCK: %s | MEM: [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, len(self.Stack), stack, strings.Join(mem, ", "))
+				time.Sleep(10 * time.Millisecond)
+			}
 
 			if i := self.runInstruction(i); i != nil {
 				switch (*i).Kind() {

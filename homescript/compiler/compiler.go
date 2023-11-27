@@ -403,7 +403,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 			labelBreak:    after_label,
 			labelContinue: head_label,
 		})
-		self.popLoop()
+		defer self.popLoop()
 
 		self.compileBlock(node.Body, true)
 		self.insert(newOneStringInstruction(Opcode_Jump, head_label), node.Span())
