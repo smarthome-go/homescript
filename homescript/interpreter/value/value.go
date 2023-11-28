@@ -21,6 +21,7 @@ const (
 	RangeValueKind
 	FunctionValueKind
 	ClosureValueKind
+	VmFunctionValueKind
 	BuiltinFunctionValueKind
 	PointerValueKind
 	IteratorValueKind
@@ -51,6 +52,8 @@ func (self ValueKind) String() string {
 	case FunctionValueKind:
 		return "function"
 	case ClosureValueKind:
+		return "closure"
+	case VmFunctionValueKind:
 		return "closure"
 	case BuiltinFunctionValueKind:
 		return "builtin-function"

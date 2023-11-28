@@ -10,8 +10,9 @@ import (
 )
 
 type Program struct {
-	Functions map[string][]Instruction
-	SourceMap map[string][]errors.Span
+	Functions   map[string][]Instruction
+	SourceMap   map[string][]errors.Span
+	EntryPoints map[string]string
 }
 
 type Opcode uint8

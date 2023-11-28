@@ -108,7 +108,7 @@ func (self *VM) spawnCore() *Core {
 	return &core
 }
 
-func (self *VM) Spawn(function string, verbose bool) {
+func (self *VM) Spawn(function string) {
 	core := self.spawnCore()
 	go (*core).Run(function)
 }

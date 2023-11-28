@@ -24,7 +24,7 @@ type Function struct {
 }
 
 type Compiler struct {
-	functions       map[string]*Function
+	functions       map[string]map[string]*Function
 	currFn          string
 	loops           []Loop
 	fnNameMangle    map[string]uint64
@@ -41,7 +41,7 @@ func NewCompiler() Compiler {
 	currScope := &scopes[0]
 
 	return Compiler{
-		functions:       make(map[string]*Function),
+		functions:       make(map[string]map[string]*Function),
 		loops:           make([]Loop, 0),
 		fnNameMangle:    make(map[string]uint64),
 		varNameMangle:   make(map[string]uint64),
@@ -55,6 +55,8 @@ func NewCompiler() Compiler {
 const (
 	LIST_PUSH = "__internal_list_push"
 )
+
+func (self Compiler) CurrFn() *Function { return self.functions[self.currModule][self.currFn] }
 
 func (self Compiler) currLoop() Loop { return self.loops[len(self.loops)-1] }
 func (self *Compiler) pushLoop(l Loop) {
@@ -79,22 +81,29 @@ func (self *Compiler) popScope() {
 }
 
 func (self *Compiler) mangleFn(input string) string {
-	cnt, exists := self.varNameMangle[input]
+	cnt, exists := self.fnNameMangle[input]
 	if !exists {
-		self.varNameMangle[input]++
+		self.fnNameMangle[input]++
 		cnt = 0
+	} else {
+		self.fnNameMangle[input]++
 	}
 
 	mangled := fmt.Sprintf("@%s_%s%d", self.currModule, input, cnt)
 
+	// TODO: this is kind of broken
+
+	return mangled
+}
+
+func (self *Compiler) addFn(srcIdent string, mangledName string) {
 	fn := Function{
-		MangledName:  mangled,
+		MangledName:  mangledName,
 		Instructions: make([]Instruction, 0),
 		SourceMap:    make([]errors.Span, 0),
 		CntVariables: 0,
 	}
-	self.functions[input] = &fn
-	return mangled
+	self.functions[self.currModule][srcIdent] = &fn
 }
 
 func (self *Compiler) mangleVar(input string) string {
@@ -126,9 +135,18 @@ func (self *Compiler) mangleLabel(input string) string {
 }
 
 func (self Compiler) getMangledFn(input string) (string, bool) {
-	for key, fn := range self.functions {
+	for key, fn := range self.functions[self.currFn] {
 		if key == input {
 			return fn.MangledName, true
+		}
+	}
+
+	// TODO: i don't think that this is really reliable
+	for _, module := range self.functions {
+		for key, fn := range module {
+			if key == input {
+				return fn.MangledName, true
+			}
 		}
 	}
 
@@ -147,84 +165,88 @@ func (self Compiler) getMangled(input string) (string, bool) {
 }
 
 func (self *Compiler) relocateLabels() {
-	for name, fn := range self.functions {
-		labels := make(map[string]int64)
+	for moduleName, module := range self.functions {
+		for name, fn := range module {
+			labels := make(map[string]int64)
 
-		fnOut := make([]Instruction, 0)
-		sourceMapOut := make([]errors.Span, 0)
+			fnOut := make([]Instruction, 0)
+			sourceMapOut := make([]errors.Span, 0)
 
-		index := 0
-		for idx, inst := range fn.Instructions {
-			if inst.Opcode() == Opcode_Label {
-				i := inst.(OneStringInstruction).Value
-				labels[i] = int64(index)
-				fmt.Printf("I: %v | IP: %d\n", inst, index)
-			} else {
-				fnOut = append(fnOut, inst)
-				sourceMapOut = append(sourceMapOut, fn.SourceMap[idx])
-				index++
-			}
-		}
-
-		for idx, inst := range fnOut {
-			switch inst.Opcode() {
-			case Opcode_Jump, Opcode_JumpIfFalse:
-				i := inst.(OneStringInstruction)
-
-				ip, found := labels[i.Value]
-				if !found {
-					panic("Every label needs to appear in the code")
+			index := 0
+			for idx, inst := range fn.Instructions {
+				if inst.Opcode() == Opcode_Label {
+					i := inst.(OneStringInstruction).Value
+					labels[i] = int64(index)
+					fmt.Printf("I: %v | IP: %d\n", inst, index)
+				} else {
+					fnOut = append(fnOut, inst)
+					sourceMapOut = append(sourceMapOut, fn.SourceMap[idx])
+					index++
 				}
-
-				fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
-				fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
-			case Opcode_SetTryLabel:
-				i := inst.(OneStringInstruction)
-
-				ip, found := labels[i.Value]
-				if !found {
-					panic("Every label needs to appear in the code")
-				}
-
-				fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
-				fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
-			case Opcode_Label:
-				panic("This should not happen")
 			}
-		}
 
-		self.functions[name].Instructions = fnOut
-		self.functions[name].SourceMap = sourceMapOut
+			for idx, inst := range fnOut {
+				switch inst.Opcode() {
+				case Opcode_Jump, Opcode_JumpIfFalse:
+					i := inst.(OneStringInstruction)
+
+					ip, found := labels[i.Value]
+					if !found {
+						panic("Every label needs to appear in the code")
+					}
+
+					fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
+					fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
+				case Opcode_SetTryLabel:
+					i := inst.(OneStringInstruction)
+
+					ip, found := labels[i.Value]
+					if !found {
+						panic("Every label needs to appear in the code")
+					}
+
+					fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
+					fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
+				case Opcode_Label:
+					panic("This should not happen")
+				}
+			}
+
+			self.functions[moduleName][name].Instructions = fnOut
+			self.functions[moduleName][name].SourceMap = sourceMapOut
+		}
 	}
 }
 
 func (self *Compiler) renameVariables() {
 	slot := make(map[string]int64, 0)
 
-	for name, fn := range self.functions {
-		cnt := 0
-		for idx, inst := range fn.Instructions {
-			// TODO: this can be done better
-			switch inst.Opcode() {
-			case Opcode_GetVarImm:
-				i := inst.(OneStringInstruction)
-				if _, found := slot[i.Value]; !found {
-					slot[i.Value] = int64(cnt)
-					cnt++
+	for _, module := range self.functions {
+		for name, fn := range module {
+			cnt := 0
+			for idx, inst := range fn.Instructions {
+				// TODO: this can be done better
+				switch inst.Opcode() {
+				case Opcode_GetVarImm:
+					i := inst.(OneStringInstruction)
+					if _, found := slot[i.Value]; !found {
+						slot[i.Value] = int64(cnt)
+						cnt++
+					}
+					module[name].Instructions[idx] = newOneIntInstruction(Opcode_GetVarImm, slot[i.Value])
+				case Opcode_SetVarImm:
+					i := inst.(OneStringInstruction)
+					if _, found := slot[i.Value]; !found {
+						slot[i.Value] = int64(cnt)
+						cnt++
+					}
+					module[name].Instructions[idx] = newOneIntInstruction(Opcode_SetVarImm, slot[i.Value])
+				default:
+					continue
 				}
-				self.functions[name].Instructions[idx] = newOneIntInstruction(Opcode_GetVarImm, slot[i.Value])
-			case Opcode_SetVarImm:
-				i := inst.(OneStringInstruction)
-				if _, found := slot[i.Value]; !found {
-					slot[i.Value] = int64(cnt)
-					cnt++
-				}
-				self.functions[name].Instructions[idx] = newOneIntInstruction(Opcode_SetVarImm, slot[i.Value])
-			default:
-				continue
-			}
 
-			fmt.Printf(":: == Patched Symbol %v -> %v\n", inst, self.functions[name].Instructions[idx])
+				fmt.Printf(":: == Patched Symbol %v -> %v\n", inst, module[name].Instructions[idx])
+			}
 		}
 	}
 }
@@ -232,7 +254,7 @@ func (self *Compiler) renameVariables() {
 func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram) Program {
 	// BUG: cross-module calls do not work
 	// BUG: furthermore, cross-module pub-let definitions also do not work
-	self.compileProgram(program)
+	entryPoints := self.compileProgram(program)
 
 	self.relocateLabels()
 	self.renameVariables()
@@ -240,31 +262,42 @@ func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram) Program {
 	functions := make(map[string][]Instruction)
 	sourceMap := make(map[string][]errors.Span)
 
-	for _, fn := range self.functions {
-		functions[fn.MangledName] = fn.Instructions
-		sourceMap[fn.MangledName] = fn.SourceMap
+	for _, module := range self.functions {
+		for _, fn := range module {
+			functions[fn.MangledName] = fn.Instructions
+			sourceMap[fn.MangledName] = fn.SourceMap
+		}
 	}
 
 	return Program{
-		Functions: functions,
-		SourceMap: sourceMap,
+		Functions:   functions,
+		SourceMap:   sourceMap,
+		EntryPoints: entryPoints,
 	}
 }
 
 func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
-	// fmt.Printf("fn: `%s` %v\n", self.currFn, self.functions[self.currFn])
-	self.functions[self.currFn].Instructions = append(self.functions[self.currFn].Instructions, instruction)
-	self.functions[self.currFn].SourceMap = append(self.functions[self.currFn].SourceMap, span)
-	return len(self.functions[self.currFn].Instructions) - 1
+	fmt.Printf("fn: `%s` %v\n", self.currFn, self.functions[self.currFn])
+	self.CurrFn().Instructions = append(self.CurrFn().Instructions, instruction)
+	self.CurrFn().SourceMap = append(self.CurrFn().SourceMap, span)
+	return len(self.CurrFn().Instructions) - 1
 }
 
-func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) {
+// Returns the entrypoint of each module
+func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map[string]string {
 	// TODO: handle imports to also compile imported modules
 
-	for moduleName, module := range program {
-		self.currModule = moduleName
+	entryPoints := make(map[string]string)
 
-		self.mangleFn("@init")
+	for moduleName, module := range program {
+		fmt.Printf("Compiling module %s...\n", moduleName)
+
+		self.currModule = moduleName
+		self.functions[self.currModule] = make(map[string]*Function)
+
+		moduleEntryPoint := self.mangleFn("@init")
+		self.addFn("@init", moduleEntryPoint)
+		entryPoints[moduleName] = moduleEntryPoint
 		self.currFn = "@init"
 
 		for _, glob := range module.Globals {
@@ -281,12 +314,10 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) {
 			}
 		}
 
-		// TODO: do the mangling correctly
-		self.insert(newOneStringInstruction(Opcode_Call_Imm, fmt.Sprintf("@%s_main0", self.currModule)), errors.Span{})
-
 		// compile all function declarations
 		for _, fn := range module.Functions {
-			self.mangleFn(fn.Ident.Ident())
+			mangled := self.mangleFn(fn.Ident.Ident())
+			self.addFn(fn.Ident.Ident(), mangled)
 		}
 
 		// compile all functions
@@ -297,10 +328,30 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) {
 		// compile all events
 		for _, fn := range module.Events {
 			fn.Ident = pAst.NewSpannedIdent(fmt.Sprintf("@event_%s", fn.Ident.Ident()), fn.Ident.Span())
-			self.mangleFn(fn.Ident.Ident())
+			mangled := self.mangleFn(fn.Ident.Ident())
+			self.addFn(fn.Ident.Ident(), mangled)
 			self.compileFn(fn)
 		}
+
+		// go back to the init function and insert the main function call
+		self.currFn = "@init" // TODO: i hope this works
+
+		mangledMain, found := self.getMangledFn("main")
+		if !found {
+			for _, module := range self.functions {
+				for sourceName, fn := range module {
+					fmt.Printf("%s -> %s\n", sourceName, fn.MangledName)
+				}
+			}
+
+			panic("Could not find mangled main function in current module")
+		}
+
+		// TODO: do the mangling correctly
+		self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), errors.Span{})
 	}
+
+	return entryPoints
 }
 
 func (self *Compiler) compileBlock(node ast.AnalyzedBlock, pushScope bool) {
@@ -353,13 +404,13 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 		name := self.mangleVar(node.Parameters[i].Ident.Ident())
 		fmt.Printf("%s->%s\n", node.Parameters[i].Ident.Ident(), name)
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
-		self.functions[self.currFn].CntVariables++
+		self.CurrFn().CntVariables++
 	}
 
 	self.compileBlock(node.Body, false)
 
-	varCnt := int64(self.functions[self.currFn].CntVariables)
-	self.functions[self.currFn].Instructions[mpIdx] = newOneIntInstruction(Opcode_AddMempointer, varCnt)
+	varCnt := int64(self.CurrFn().CntVariables)
+	self.CurrFn().Instructions[mpIdx] = newOneIntInstruction(Opcode_AddMempointer, varCnt)
 	self.insert(newOneIntInstruction(Opcode_AddMempointer, -varCnt), node.Range)
 }
 
@@ -378,7 +429,7 @@ func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal boo
 	// bind value to identifier
 	name := self.mangleVar(node.Ident.Ident())
 	self.insert(newOneStringInstruction(opcode, name), node.Range) // TODO: mangle
-	self.functions[self.currFn].CntVariables++                     // FIXME: have reference
+	self.CurrFn().CntVariables++                                   // FIXME: have reference
 }
 
 func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
@@ -518,37 +569,43 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 			return
 		}
 
-		mangled, found := self.getMangled(base.Ident.Ident())
+		name, found := self.getMangledFn(base.Ident.Ident())
 		if found {
+			opcode := Opcode_Call_Imm
+			if node.IsSpawn {
+				opcode = Opcode_Spawn
+			}
+
+			self.insert(newOneStringInstruction(opcode, name), node.Span())
+		} else {
 			if node.IsSpawn {
 				panic("This is an impossible state.")
 			}
 
-			self.insert(newOneStringInstruction(Opcode_Call_Imm, mangled), node.Span())
-		} else {
-			name, found := self.getMangledFn(base.Ident.Ident())
+			// check whether the scope is local or global
+			_, found := self.getMangled(base.Ident.Ident())
 			if found {
-				opcode := Opcode_Call_Imm
-				if node.IsSpawn {
-					opcode = Opcode_Spawn
-				}
-
-				self.insert(newOneStringInstruction(opcode, name), node.Span())
-			} else {
 				if node.IsSpawn {
 					panic("This is an impossible state.")
 				}
 
+				self.compileExpr(node.Base)
+				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
+				self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Span())
+			} else {
+
 				self.insert(newOneStringInstruction(Opcode_GetGlobImm, base.Ident.Ident()), node.Range)
 				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
 				self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Range)
-
-				// insert number of args
-				// self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
-				// perform actual call
-				// self.insert(newOneStringInstruction(Opcode_HostCall, base.Ident.Ident()), node.Span())
 			}
+
+			// insert number of args
+			// self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
+			// perform actual call
+			// self.insert(newOneStringInstruction(Opcode_HostCall, base.Ident.Ident()), node.Span())
 		}
+
+		// }
 	} else {
 		if node.IsSpawn {
 			panic("This is an impossible state.")
@@ -721,7 +778,24 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 			self.insert(newPrimitiveInstruction(Opcode_Assign), node.Range)
 		}
 	case ast.FunctionLiteralExpressionKind:
-		panic("TODO: function value")
+		node := node.(ast.AnalyzedFunctionLiteralExpression)
+
+		fnName := self.mangleFn("$lambda")
+		self.addFn(fnName, fnName)
+
+		oldCurrFn := self.currFn
+
+		self.compileFn(ast.AnalyzedFunctionDefinition{
+			Ident:      pAst.NewSpannedIdent(fnName, node.Range),
+			Parameters: node.Parameters,
+			ReturnType: node.ReturnType,
+			Body:       node.Body,
+			Modifier:   pAst.FN_MODIFIER_NONE,
+			Range:      node.Range,
+		})
+		self.currFn = oldCurrFn
+
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueVMFunction(fnName)), node.Span())
 	case ast.GroupedExpressionKind:
 		node := node.(ast.AnalyzedGroupedExpression)
 		self.compileExpr(node.Inner)

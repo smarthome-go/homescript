@@ -144,6 +144,7 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 				Ident:      node.Ident,
 				ResultType: ast.NewUnknownType(),
 				IsGlobal:   false,
+				IsFunction: true,
 			}
 
 		}
@@ -176,7 +177,8 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 				fn.ReturnType,
 				fn.FnType.(normalFunction).Ident.Span(),
 			),
-			IsGlobal: false,
+			IsGlobal:   false,
+			IsFunction: false,
 		}
 	}
 
@@ -662,6 +664,11 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 
 	returnType := base.Type()
 
+	isNormalFunction := false
+	if base.Kind() == ast.IdentExpressionKind {
+		isNormalFunction = base.(ast.AnalyzedIdentExpression).IsFunction
+	}
+
 	// make arguments
 	arguments := make([]ast.AnalyzedCallArgument, 0)
 
@@ -798,11 +805,12 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 	}
 
 	return ast.AnalyzedCallExpression{
-		Base:       base,
-		Arguments:  arguments,
-		ResultType: returnType.SetSpan(node.Range),
-		Range:      node.Range,
-		IsSpawn:    node.IsSpawn,
+		Base:             base,
+		Arguments:        arguments,
+		ResultType:       returnType.SetSpan(node.Range),
+		Range:            node.Range,
+		IsSpawn:          node.IsSpawn,
+		IsNormalFunction: isNormalFunction,
 	}
 }
 

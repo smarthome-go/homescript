@@ -141,6 +141,7 @@ type AnalyzedIdentExpression struct {
 	Ident      ast.SpannedIdent
 	ResultType Type
 	IsGlobal   bool
+	IsFunction bool
 }
 
 func (self AnalyzedIdentExpression) Kind() ExpressionKind { return IdentExpressionKind }
@@ -439,6 +440,8 @@ type AnalyzedCallExpression struct {
 	ResultType Type
 	Range      errors.Span
 	IsSpawn    bool
+	// Specifies whether the call is referring to a `real` function or a closure or other stuff
+	IsNormalFunction bool
 }
 
 func (self AnalyzedCallExpression) Kind() ExpressionKind { return CallExpressionKind }

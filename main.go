@@ -432,11 +432,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	start := time.Now()
-	vm := runtime.NewVM(compiled, Executor{}, os.Args[2] == "1", &ctx, iScopeAdditions())
+	vm := runtime.NewVM(compiled, Executor{}, os.Args[2] == "1", &ctx, &cancel, iScopeAdditions())
 
-	vm.Spawn("@init0", os.Args[2] == "1")
-	if i := vm.Wait(); i != nil {
-		panic(*i)
+	vm.Spawn(compiled.EntryPoints[filename])
+	if coreNum, i := vm.Wait(); i != nil {
+		panic(fmt.Sprintf("Core %d panicked %s", coreNum, *i))
 	}
 
 	// time.Sleep(2 * time.Second)
