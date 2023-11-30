@@ -191,7 +191,7 @@ func (self *Compiler) relocateLabels() {
 
 					ip, found := labels[i.Value]
 					if !found {
-						panic("Every label needs to appear in the code")
+						panic(fmt.Sprintf("Every label needs to appear in the code: %s", i.Value))
 					}
 
 					fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
@@ -880,7 +880,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		after_branch := self.mangleLabel("match_after")
 
 		for i, option := range node.Arms {
-			name := self.mangleLabel(fmt.Sprintf("case_%d", i))
+			name := self.mangleLabel("case")
 			branches[i] = name
 
 			// Insert value to compare with
@@ -904,6 +904,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 
 		// Each individual branch
 		for i, option := range node.Arms {
+			fmt.Printf("Inserted new case %s\n", branches[i])
 			self.insert(newOneStringInstruction(Opcode_Label, branches[i]), node.Range)
 			self.compileExpr(option.Action)
 			self.insert(newOneStringInstruction(Opcode_Jump, after_branch), node.Range)
@@ -914,6 +915,8 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 			self.compileExpr(*node.DefaultArmAction)
 			self.insert(newOneStringInstruction(Opcode_Jump, after_branch), node.Range)
 		}
+
+		self.insert(newOneStringInstruction(Opcode_Label, after_branch), node.Range)
 	case ast.TryExpressionKind:
 		node := node.(ast.AnalyzedTryExpression)
 		exceptionLabel := self.mangleLabel("exception_label")
