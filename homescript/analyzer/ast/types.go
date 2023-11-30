@@ -345,7 +345,7 @@ type RangeType struct {
 }
 
 func (self RangeType) Kind() TypeKind                { return RangeTypeKind }
-func (self RangeType) String() string                { return "num..num" }
+func (self RangeType) String() string                { return "int..int" }
 func (self RangeType) Span() errors.Span             { return self.SpanRange }
 func (self RangeType) SetSpan(span errors.Span) Type { return NewRangeType(span) }
 func (self RangeType) Fields(fieldSpan errors.Span) map[string]Type {
@@ -361,7 +361,7 @@ func (self RangeType) Fields(fieldSpan errors.Span) map[string]Type {
 		"diff": NewFunctionType(
 			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
 			fieldSpan,
-			NewNullType(fieldSpan),
+			NewIntType(fieldSpan),
 			fieldSpan,
 		),
 	}
