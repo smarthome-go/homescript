@@ -376,8 +376,8 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		boolV := v.(value.ValueBool)
 		self.push(value.NewValueBool(!boolV.Inner))
 	case compiler.Opcode_Add:
-		l := *self.pop()
 		r := *self.pop()
+		l := *self.pop()
 
 		switch l.Kind() {
 		case value.IntValueKind:
@@ -388,8 +388,12 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueFloat(lFloat.Inner + rFloat.Inner))
+		case value.StringValueKind:
+			lStr := l.(value.ValueString)
+			rStr := r.(value.ValueString)
+			self.push(value.NewValueString(lStr.Inner + rStr.Inner))
 		default:
-			panic("This value combination is unsupported")
+			panic(fmt.Sprintf("This value combination is unsupported: %v", l.Kind()))
 		}
 	case compiler.Opcode_Sub:
 		r := *self.pop()
