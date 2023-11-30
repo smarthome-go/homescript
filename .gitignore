@@ -15,3 +15,5 @@
 
 # Local Homescript testing files
 *.hms
+
+!tests/*.hms

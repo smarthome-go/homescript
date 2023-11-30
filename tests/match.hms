@@ -1,0 +1,33 @@
+fn main() {
+    let inputs = [1, 2, 42, 69, 4711];
+
+    for i in inputs {
+        let is = match i {
+            1 => 2,
+            2 => 3,
+            42 => 69,
+            _ => -1
+        };
+
+        let should = if i == 1 {
+            2
+        } else if i == 2 {
+            3
+        } else if i == 42 {
+            69
+        } else {
+            -1
+        };
+
+        assert(should == is);
+    }
+}
+
+fn main2() {
+    let res = match 42 {
+        42 => 69,
+        _ => 4711,
+    };
+
+    println(res);
+}

@@ -1,0 +1,27 @@
+// ImportStatement
+//import i_am_exported from export;
+
+//fn importStmt() {
+    //assert_eq(42, i_am_exported());
+//}
+
+fn typeDef() {
+    type User = {
+        name: str,
+        password: str,
+    };
+
+    let me: User = '{"name": "foo", "password": "bar"}'.parse_json();
+    assert_eq(me, new { name: "foo", password: "bar" });
+}
+
+fn main() {
+    let tests = [
+        importStmt,
+    ];
+
+
+    for test in tests {
+        test();
+    }
+}

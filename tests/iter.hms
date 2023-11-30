@@ -1,0 +1,17 @@
+fn main() {
+    // Range
+    let sum = 0;
+    for i in 0..10 {
+        for j in 0..10 {
+            sum += i + j;
+        }
+    }
+    assert(sum == 900);
+
+    // List
+    let buf = "";
+    for c in [ 'a', 'b', 'c', 'd' ] {
+        buf += c;
+    }
+    assert(buf == "abcd");
+}
