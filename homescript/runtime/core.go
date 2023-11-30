@@ -171,10 +171,18 @@ outer:
 						continue
 					}
 
-					disp, i := (*elem).Display()
-					if i != nil {
-						panic(*i)
+					var disp string
+					if *elem == nil {
+						// This can occur if an iterator is terminated
+						disp = "<nil>"
+					} else {
+						dispTemp, i := (*elem).Display()
+						if i != nil {
+							panic(*i)
+						}
+						disp = dispTemp
 					}
+
 					mem = append(mem, fmt.Sprintf("%d=%s", key, strings.ReplaceAll(disp, "\n", " ")))
 				}
 
@@ -332,7 +340,13 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		i := instruction.(compiler.OneIntInstruction)
 		v := self.pop()
 
-		self.Memory[self.absolute(i.Value)] = v
+		abs := self.absolute(i.Value)
+
+		if self.Verbose {
+			fmt.Printf("Memory write access `%v` at %x\n", *v, abs)
+		}
+
+		self.Memory[abs] = v
 	case compiler.Opcode_SetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
 		self.parent.Globals.Mutex.Lock()
