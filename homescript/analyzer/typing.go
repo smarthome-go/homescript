@@ -367,6 +367,8 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 				diagnostic.Diagnostic{
 					Level:   diagnostic.DiagnosticLevelError,
 					Message: fmt.Sprintf("Expected parameter kind '%s', found '%s'", expectedFn.Params.Kind(), gotFn.Params.Kind()),
+					Notes:   []string{"There is a difference between a function which takes a fixed number of arguments and one which can take an arbitrary amount"},
+					Span:    gotFn.ParamsSpan,
 				},
 				nil,
 			)
