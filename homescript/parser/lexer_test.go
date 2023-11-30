@@ -13,7 +13,7 @@ import (
 func TestLexer(t *testing.T) {
 	start := time.Now()
 
-	program := "[]{}+-*/\\%**"
+	program := "[]{}+-*/%**"
 	lexer := NewLexer(string(program), "test")
 
 	tokens := make([]string, 0)

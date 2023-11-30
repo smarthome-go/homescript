@@ -10,10 +10,12 @@ import (
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	herrors "github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -169,6 +171,11 @@ func TestScripts(t *testing.T) {
 			Path:           "../tests/string_conversion.hms",
 			ExpectedOutput: "",
 		},
+		{
+			Name:           "TestStatements",
+			Path:           "../tests/statements.hms",
+			ExpectedOutput: "",
+		},
 	}
 
 	for idx, test := range tests {
@@ -185,7 +192,11 @@ func runScript(path string, t *testing.T) {
 		return
 	}
 
-	modules, diagnostics, syntax := Analyze(InputProgram{Filename: path, ProgramText: string(code)}, analyzerScopeAdditions(), analyzerHost{})
+	modules, diagnostics, syntax := Analyze(
+		InputProgram{
+			Filename:    path,
+			ProgramText: string(code),
+		}, analyzerScopeAdditions(), analyzerHost{})
 	hasErr := false
 	if len(syntax) > 0 {
 		for _, s := range syntax {
@@ -210,21 +221,32 @@ func runScript(path string, t *testing.T) {
 		return
 	}
 
+	compiler := compiler.NewCompiler()
+	compiled := compiler.Compile(modules)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	if i := Run(10, modules, path, executor{}, interpreterScopeAdditions(), &ctx); i != nil {
-		switch (*i).Kind() {
-		case value.RuntimeErrorInterruptKind:
-			runtimErr := (*i).(value.RuntimeErr)
-			program, err := os.ReadFile(runtimErr.Span.Filename)
-			assert.NoError(t, err)
-			t.Errorf(diagnostic.Diagnostic{
-				Level:   diagnostic.DiagnosticLevelError,
-				Message: fmt.Sprintf("%s: %s", runtimErr.ErrKind, runtimErr.MessageInternal),
-				Span:    runtimErr.Span,
-			}.Display(string(program)))
-		default:
-			t.Errorf("%s: %s", (*i).Kind(), (*i).Message())
+
+	vm := runtime.NewVM(compiled, executor{}, os.Args[2] == "1", &ctx, &cancel, interpreterScopeAdditions())
+
+	vm.Spawn(compiled.EntryPoints[path])
+	if coreNum, i := vm.Wait(); i != nil {
+		i := *i
+
+		d := diagnostic.Diagnostic{
+			Level:   diagnostic.DiagnosticLevelError,
+			Message: i.Message(),
+			Notes:   []string{fmt.Sprintf("Exception occurred on core %d", coreNum)},
+			Span:    i.GetSpan(), // this call might panic
 		}
+
+		fmt.Printf("Reading: %s...\n", i.GetSpan().Filename)
+
+		file, err := os.ReadFile(fmt.Sprintf("%s.hms", i.GetSpan().Filename))
+		if err != nil {
+			panic(fmt.Sprintf("Could not read file `%s`: %s\n", i.GetSpan().Filename, err.Error()))
+		}
+
+		fmt.Printf("%s\n", d.Display(string(file)))
+		panic(fmt.Sprintf("Core %d crashed", coreNum))
 	}
-	cancel()
 }

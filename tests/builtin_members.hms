@@ -55,7 +55,7 @@ fn str() {
         "x".parse_int();
         throw("Unreachable code was executed");
     } catch e {
-        assert_eq(e, "strconv.ParseInt: parsing \"x\": invalid syntax");
+        assert_eq(e.message, "strconv.ParseInt: parsing \"x\": invalid syntax");
     }
 
     assert_eq("true".parse_bool(), true);
@@ -65,7 +65,7 @@ fn str() {
         "x".parse_bool();
         throw("Unreachable code was executed");
     } catch e {
-        assert_eq(e, "strconv.ParseBool: parsing \"x\": invalid syntax");
+        assert_eq(e.message, "strconv.ParseBool: parsing \"x\": invalid syntax");
     }
 
     assert_eq(x.to_lower(), "hello world!");
