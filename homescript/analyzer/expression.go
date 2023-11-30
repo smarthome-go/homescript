@@ -658,6 +658,8 @@ func (self *Analyzer) assignErr(operator pAst.AssignOperator, typ ast.Type, span
 // Call expression
 //
 
+// TODO: also forbid invoking a spawn fn which returns a closure.
+// TODO: also completely rewrite this function, it is very obfuscated.
 func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallExpression {
 	// check that the base is a value that can be called
 	base := self.expression(node.Base)
@@ -718,6 +720,18 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 						continue
 					}
 
+					// Sending closures accros threads is UB, prevent this.
+					// When sending a closure which captures values to a new thread, the old captured values are not deepcopie'd.
+					// Therefore, sending these closures accross threads will cause weird memory bugs which must not occur in a Smarthome system.
+					if node.IsSpawn && argExpr.Type().Kind() == ast.FnTypeKind {
+						self.error(
+							"Sending closures across threads is undefined behaviour.",
+							[]string{fmt.Sprintf("It is not possible to use a value of type `%s` as an argument to a `spawn` invocation.", argExpr.Type())},
+							argExpr.Span(),
+						)
+						continue
+					}
+
 					if err := self.TypeCheck(argExpr.Type(), baseParams.Params[idx].Type, true); err != nil {
 						self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 					} else {
@@ -756,6 +770,18 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 						self.error(
 							fmt.Sprintf("Cannot use a value of result type `%s` in function call", argExpr.Type()),
 							[]string{"This expression generates no value, therefore it can be omitted"},
+							argExpr.Span(),
+						)
+						continue
+					}
+
+					// Sending closures accros threads is UB, prevent this.
+					// When sending a closure which captures values to a new thread, the old captured values are not deepcopie'd.
+					// Therefore, sending these closures accross threads will cause weird memory bugs which must not occur in a Smarthome system.
+					if node.IsSpawn && argExpr.Type().Kind() == ast.FnTypeKind {
+						self.error(
+							"Sending closures across threads is undefined behaviour.",
+							[]string{fmt.Sprintf("It is not possible to use a value of type `%s` as an argument to a `spawn` invocation.", argExpr.Type())},
 							argExpr.Span(),
 						)
 						continue
