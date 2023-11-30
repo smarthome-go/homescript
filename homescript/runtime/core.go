@@ -232,7 +232,17 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		self.push(self.getStackTop())
 	case compiler.Opcode_Spawn:
 		i := instruction.(compiler.OneStringInstruction)
-		self.parent.Spawn(i.Value)
+
+		// TODO: implement deepcopy
+
+		args := make([]value.Value, 0)
+		numArgs := (*self.pop()).(value.ValueInt).Inner
+		for i := 0; i < int(numArgs); i++ {
+			args = append([]value.Value{*self.pop()}, args...) // TODO: implement deepcopy
+		}
+
+		self.parent.spawnCoreInternal(i.Value, args)
+		// TODO: get thread handle
 		self.push(value.NewValueNull())
 	case compiler.Opcode_Call_Val:
 		n := *self.pop()

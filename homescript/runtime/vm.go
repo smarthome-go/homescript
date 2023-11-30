@@ -109,7 +109,16 @@ func (self *VM) spawnCore() *Core {
 }
 
 func (self *VM) Spawn(function string) {
+	self.spawnCoreInternal(function, make([]value.Value, 0))
+}
+
+func (self *VM) spawnCoreInternal(function string, addToStack []value.Value) {
 	core := self.spawnCore()
+	for _, elem := range addToStack {
+		// TODO: However, the VM should not do this implicitly,
+		// Smarter would be to insert clones manually?
+		core.push(&elem) // Implement a deep copy? Or clone?
+	}
 	go (*core).Run(function)
 }
 
