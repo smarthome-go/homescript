@@ -392,7 +392,7 @@ func (self *Analyzer) prefixExpression(node pAst.PrefixExpression) ast.AnalyzedP
 	case pAst.MinusPrefixOperator:
 		operator = ast.MinusPrefixOperator
 		switch base.Type().Kind() {
-		case ast.IntTypeKind:
+		case ast.IntTypeKind, ast.FloatTypeKind:
 		case ast.NeverTypeKind, ast.UnknownTypeKind:
 			resultType = ast.NewUnknownType()
 		default:
