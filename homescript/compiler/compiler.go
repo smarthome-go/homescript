@@ -18,7 +18,6 @@ type Loop struct {
 type Function struct {
 	MangledName  string
 	Instructions []Instruction
-	// TODO: disable these in an elegant manner
 	SourceMap    []errors.Span
 	CntVariables uint
 }
@@ -91,7 +90,7 @@ func (self *Compiler) mangleFn(input string) string {
 
 	mangled := fmt.Sprintf("@%s_%s%d", self.currModule, input, cnt)
 
-	// TODO: this is kind of broken
+	// TODO: test if this is kind of broken
 
 	return mangled
 }
@@ -225,7 +224,6 @@ func (self *Compiler) renameVariables() {
 		for name, fn := range module {
 			cnt := 0
 			for idx, inst := range fn.Instructions {
-				// TODO: this can be done better
 				switch inst.Opcode() {
 				case Opcode_GetVarImm:
 					i := inst.(OneStringInstruction)
@@ -305,6 +303,7 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 		}
 
 		for _, item := range module.Imports {
+			// No need to handle anything, the analyzer has already taken care of these cases.
 			if item.TargetIsHMS {
 				continue
 			}
@@ -334,7 +333,7 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 		}
 
 		// go back to the init function and insert the main function call
-		self.currFn = "@init" // TODO: i hope this works
+		self.currFn = "@init"
 
 		mangledMain, found := self.getMangledFn("main")
 		if !found {
@@ -347,7 +346,6 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 			panic("Could not find mangled main function in current module")
 		}
 
-		// TODO: do the mangling correctly
 		self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), errors.Span{})
 	}
 
@@ -424,7 +422,6 @@ func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal boo
 		self.insert(newCastInstruction(node.OptType, false), node.Type().Span())
 	}
 
-	// TODO: handle global
 	opcode := Opcode_SetVarImm
 	if isGlobal {
 		opcode = Opcode_SetGlobImm
@@ -515,7 +512,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		self.insert(newPrimitiveInstruction(Opcode_IteratorAdvance), node.Range)
 
 		// loop body
-		name := self.mangleVar(node.Identifier.Ident()) // TODO: does this break?
+		name := self.mangleVar(node.Identifier.Ident())
 		self.insert(newOneStringInstruction(Opcode_Label, head_label), node.Range)
 
 		// On top of the stack, there will now be a bool describing whether or not to contiue.
@@ -613,7 +610,6 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 			panic("This is an impossible state.")
 		}
 
-		// TODO: wtf: compile the base
 		self.compileExpr(node.Base)
 
 		// insert number of args
@@ -653,7 +649,7 @@ func (self *Compiler) arithmeticHelper(op pAst.InfixOperator, span errors.Span) 
 	case pAst.NotEqualInfixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_Eq), span)
 		self.insert(newPrimitiveInstruction(Opcode_Not), span)
-	case pAst.LessThanInfixOperator: // TODO: make this more RISC-y
+	case pAst.LessThanInfixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_Lt), span)
 	case pAst.LessThanEqualInfixOperator:
 		self.insert(newPrimitiveInstruction(Opcode_Le), span)
@@ -721,12 +717,10 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		node := node.(ast.AnalyzedStringLiteralExpression)
 		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(node.Value)), node.Range)
 	case ast.IdentExpressionKind:
-		// TODO: must find out if global.
 		node := node.(ast.AnalyzedIdentExpression)
 		name, found := self.getMangled(node.Ident.Ident())
 
 		opCode := Opcode_GetVarImm
-		// TODO: i hope this does not break
 		if node.IsGlobal {
 			opCode = Opcode_GetGlobImm
 		}
@@ -746,7 +740,6 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	case ast.NoneLiteralExpressionKind:
 		self.insert(newValueInstruction(Opcode_Push, *value.NewNoneOption()), node.Span())
 	case ast.RangeLiteralExpressionKind:
-		// TODO: eliminate ranges at compile time
 		node := node.(ast.AnalyzedRangeLiteralExpression)
 		self.compileExpr(node.Start)
 		self.compileExpr(node.End)
@@ -811,7 +804,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	case ast.AssignExpressionKind:
 		node := node.(ast.AnalyzedAssignExpression)
 
-		// TODO: assignment operators
+		// TODO: implement all different assignment operators
 
 		// TODO: handle other types of LHS
 		if node.Lhs.Kind() == ast.IdentExpressionKind {
@@ -862,11 +855,11 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	case ast.MemberExpressionKind:
 		node := node.(ast.AnalyzedMemberExpression)
 		self.compileExpr(node.Base)
-		self.insert(newOneStringInstruction(Opcode_Member, node.Member.Ident()), node.Range) // TODO: add monomorphization
+		self.insert(newOneStringInstruction(Opcode_Member, node.Member.Ident()), node.Range)
 	case ast.CastExpressionKind:
 		node := node.(ast.AnalyzedCastExpression)
 		self.compileExpr(node.Base)
-		self.insert(newCastInstruction(node.AsType, true), node.Range) // TODO: add monomorphization
+		self.insert(newCastInstruction(node.AsType, true), node.Range)
 	case ast.BlockExpressionKind:
 		self.compileBlock(node.(ast.AnalyzedBlockExpression).Block, true)
 	case ast.IfExpressionKind:
@@ -917,7 +910,6 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		}
 	case ast.TryExpressionKind:
 		node := node.(ast.AnalyzedTryExpression)
-		// TODO: name mangling
 		exceptionLabel := self.mangleLabel("exception_label")
 		afterCatchLabel := self.mangleLabel("after_catch_label")
 		self.insert(newOneStringInstruction(Opcode_SetTryLabel, exceptionLabel), node.Range)
