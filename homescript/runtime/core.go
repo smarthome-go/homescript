@@ -351,7 +351,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		i := instruction.(compiler.CastInstruction)
 		v := self.pop()
 
-		casted, interrupt := value.DeepCast(*v, i.Type, self.parent.SourceMap(*self.callFrame()))
+		casted, interrupt := value.DeepCast(*v, i.Type, self.parent.SourceMap(*self.callFrame()), i.AllowCast)
 		if interrupt != nil {
 			return interrupt
 		}

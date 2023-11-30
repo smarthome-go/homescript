@@ -524,7 +524,7 @@ func (self *Interpreter) castExpression(node ast.AnalyzedCastExpression) (*value
 	// }
 
 	// TODO: implement a `deepCast` method which can convert [ {} ] -> [ { ? } ]
-	return value.DeepCast(*base, node.AsType, node.Span())
+	return value.DeepCast(*base, node.AsType, node.Span(), true)
 
 	panic(fmt.Sprintf("Unsupported runtime cast from %v to %s", (*base).Kind(), node.AsType.Kind()))
 }

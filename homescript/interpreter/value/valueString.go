@@ -82,7 +82,7 @@ func (self ValueString) Fields() (map[string]*Value, *Interrupt) {
 		"parse_json": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *Interrupt) {
 			var raw interface{}
 			if err := json.Unmarshal([]byte(self.Inner), &raw); err != nil {
-				return nil, NewRuntimeErr(err.Error(), JsonErrorKind, span)
+				return nil, NewRuntimeErr(fmt.Sprintf("JSON parse error: %s", err.Error()), JsonErrorKind, span)
 			}
 			value, i := unmarshalValue(span, raw)
 			if i != nil {

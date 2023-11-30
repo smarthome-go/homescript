@@ -71,7 +71,8 @@ func (self *Interpreter) letStatement(node ast.AnalyzedLetStatement) *value.Inte
 
 	// TODO: improve performance here (not so much deref)
 
-	newValue, i := value.DeepCast(*rhsVal, node.OptType, node.Range)
+	// TODO: is this ok? is it required to dynamically cast a value in here?
+	newValue, i := value.DeepCast(*rhsVal, node.OptType, node.Range, false)
 	if i != nil {
 		return i
 	}

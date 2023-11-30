@@ -8,7 +8,7 @@ import (
 )
 
 // TODO: set maximum recursion here
-func DeepCast(val Value, typ ast.Type, span errors.Span) (*Value, *Interrupt) {
+func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Value, *Interrupt) {
 	// TODO: is this OK?
 	if typ.Kind() == ast.OptionTypeKind {
 		if val.Kind() == OptionValueKind {
@@ -21,7 +21,7 @@ func DeepCast(val Value, typ ast.Type, span errors.Span) (*Value, *Interrupt) {
 			valInner := *valOption.Inner
 			typInner := typOption.Inner
 
-			innerCast, i := DeepCast(valInner, typInner, span)
+			innerCast, i := DeepCast(valInner, typInner, span, allowCasts)
 			if i != nil {
 				return nil, i
 			}
@@ -32,6 +32,14 @@ func DeepCast(val Value, typ ast.Type, span errors.Span) (*Value, *Interrupt) {
 
 	switch val.Kind() {
 	case BoolValueKind:
+		if !allowCasts && typ.Kind() != ast.BoolTypeKind {
+			return nil, NewRuntimeErr(
+				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				CastErrorKind,
+				span,
+			)
+		}
+
 		baseBool := val.(ValueBool).Inner
 		switch typ.Kind() {
 		case ast.IntTypeKind:
@@ -54,6 +62,14 @@ func DeepCast(val Value, typ ast.Type, span errors.Span) (*Value, *Interrupt) {
 			return &val, nil
 		}
 	case IntValueKind:
+		if !allowCasts && typ.Kind() != ast.IntTypeKind {
+			return nil, NewRuntimeErr(
+				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				CastErrorKind,
+				span,
+			)
+		}
+
 		baseInt := val.(ValueInt).Inner
 		switch typ.Kind() {
 		case ast.BoolTypeKind:
@@ -71,6 +87,14 @@ func DeepCast(val Value, typ ast.Type, span errors.Span) (*Value, *Interrupt) {
 			return &val, nil
 		}
 	case FloatValueKind:
+		if !allowCasts && typ.Kind() != ast.FloatTypeKind {
+			return nil, NewRuntimeErr(
+				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				CastErrorKind,
+				span,
+			)
+		}
+
 		baseFloat := val.(ValueFloat).Inner
 		switch typ.Kind() {
 		case ast.BoolTypeKind:
@@ -88,6 +112,14 @@ func DeepCast(val Value, typ ast.Type, span errors.Span) (*Value, *Interrupt) {
 			return &val, nil
 		}
 	case ObjectValueKind:
+		if !allowCasts && typ.Kind() != ast.ObjectTypeKind {
+			return nil, NewRuntimeErr(
+				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				CastErrorKind,
+				span,
+			)
+		}
+
 		objVal := val.(ValueObject)
 		switch typ.Kind() {
 		case ast.AnyObjectTypeKind:
@@ -102,7 +134,7 @@ func DeepCast(val Value, typ ast.Type, span errors.Span) (*Value, *Interrupt) {
 				found := false
 				for _, otherField := range objType.ObjFields {
 					if key == otherField.FieldName.Ident() {
-						newField, i := DeepCast(*field, otherField.Type, span)
+						newField, i := DeepCast(*field, otherField.Type, span, allowCasts)
 						if i != nil {
 							return nil, i
 						}
@@ -148,7 +180,7 @@ func DeepCast(val Value, typ ast.Type, span errors.Span) (*Value, *Interrupt) {
 
 			outputList := make([]*Value, 0)
 			for _, item := range *listVal.Values {
-				newVal, i := DeepCast(*item, asType.Inner, span)
+				newVal, i := DeepCast(*item, asType.Inner, span, allowCasts)
 				if i != nil {
 					return nil, i
 				}
@@ -183,7 +215,7 @@ func DeepCast(val Value, typ ast.Type, span errors.Span) (*Value, *Interrupt) {
 		}
 
 		// otherwise, the inner type must also match
-		return DeepCast(*opt.Inner, optType, span)
+		return DeepCast(*opt.Inner, optType, span, allowCasts)
 	case ClosureValueKind, FunctionValueKind, BuiltinFunctionValueKind:
 		panic("Unreachable, the analyzer prevents this")
 	case NullValueKind:

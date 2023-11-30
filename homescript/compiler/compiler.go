@@ -415,10 +415,14 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 }
 
 func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal bool) {
-	// TODO: handle deep casts
-
 	// push value onto the stack
 	self.compileExpr(node.Expression)
+
+	// handle deep casts if required
+	if node.NeedsRuntimeTypeValidation {
+		// TODO: is this ok?
+		self.insert(newCastInstruction(node.OptType, false), node.Type().Span())
+	}
 
 	// TODO: handle global
 	opcode := Opcode_SetVarImm
@@ -435,7 +439,8 @@ func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal boo
 func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 	switch node.Kind() {
 	case ast.TypeDefinitionStatementKind:
-		panic("This should not be reachable!")
+		// This kind of statement is just ignored.
+		break
 	case ast.LetStatementKind:
 		self.compileLetStmt(node.(ast.AnalyzedLetStatement), false)
 	case ast.ReturnStatementKind:
@@ -861,7 +866,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	case ast.CastExpressionKind:
 		node := node.(ast.AnalyzedCastExpression)
 		self.compileExpr(node.Base)
-		self.insert(newCastInstruction(node.AsType), node.Range) // TODO: add monomorphization
+		self.insert(newCastInstruction(node.AsType, true), node.Range) // TODO: add monomorphization
 	case ast.BlockExpressionKind:
 		self.compileBlock(node.(ast.AnalyzedBlockExpression).Block, true)
 	case ast.IfExpressionKind:

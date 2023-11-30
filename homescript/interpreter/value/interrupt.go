@@ -76,6 +76,8 @@ func (self InterruptKind) String() string {
 type Interrupt interface {
 	Kind() InterruptKind
 	Message() string
+	// This function may panic if the target value has no span
+	GetSpan() errors.Span
 }
 
 //
@@ -87,8 +89,9 @@ type ExitInterrupt struct {
 	Span errors.Span
 }
 
-func (self ExitInterrupt) Kind() InterruptKind { return ExitInterruptKind }
-func (self ExitInterrupt) Message() string     { return "<exit-interrupt>" }
+func (self ExitInterrupt) Kind() InterruptKind  { return ExitInterruptKind }
+func (self ExitInterrupt) Message() string      { return "<exit-interrupt>" }
+func (self ExitInterrupt) GetSpan() errors.Span { return self.Span }
 func NewExitInterrupt(code int64, span errors.Span) *Interrupt {
 	i := Interrupt(ExitInterrupt{Code: code, Span: span})
 	return &i
@@ -102,6 +105,9 @@ type BreakInterrupt struct{}
 
 func (self BreakInterrupt) Kind() InterruptKind { return BreakInterruptKind }
 func (self BreakInterrupt) Message() string     { return "<break-interrupt>" }
+func (self BreakInterrupt) GetSpan() errors.Span {
+	panic("This interrupt kind does not contain a span")
+}
 func NewBreakInterrupt() *Interrupt {
 	i := Interrupt(BreakInterrupt{})
 	return &i
@@ -115,6 +121,9 @@ type ContinueInterrupt struct{}
 
 func (self ContinueInterrupt) Kind() InterruptKind { return ContinueInterruptKind }
 func (self ContinueInterrupt) Message() string     { return "<continue-interrupt>" }
+func (self ContinueInterrupt) GetSpan() errors.Span {
+	panic("This interrupt kind does not contain a span")
+}
 func NewContinueInterrupt() *Interrupt {
 	i := Interrupt(ContinueInterrupt{})
 	return &i
@@ -134,6 +143,10 @@ func (self ReturnInterrupt) Message() string {
 	return "<return-interrupt>"
 }
 
+func (self ReturnInterrupt) GetSpan() errors.Span {
+	panic("This interrupt kind does not contain a span")
+}
+
 func NewReturnInterrupt(value Value) *Interrupt {
 	i := Interrupt(ReturnInterrupt{ReturnValue: value})
 	return &i
@@ -150,6 +163,9 @@ type ThrowInterrupt struct {
 
 func (self ThrowInterrupt) Kind() InterruptKind { return ThrowInterruptKind }
 func (self ThrowInterrupt) Message() string     { return self.MessageInternal }
+func (self ThrowInterrupt) GetSpan() errors.Span {
+	return self.Span
+}
 
 func NewThrowInterrupt(span errors.Span, message string) *Interrupt {
 	i := Interrupt(ThrowInterrupt{MessageInternal: message, Span: span})
@@ -172,6 +188,10 @@ func (self RuntimeErr) Message() string {
 	return self.MessageInternal
 }
 
+func (self RuntimeErr) GetSpan() errors.Span {
+	return self.Span
+}
+
 func NewRuntimeErr(message string, kind RuntimeErrorKind, span errors.Span) *Interrupt {
 	i := Interrupt(RuntimeErr{
 		MessageInternal: message,
@@ -192,6 +212,9 @@ type TerminationInterrupt struct {
 
 func (self TerminationInterrupt) Kind() InterruptKind { return TerminateInterruptKind }
 func (self TerminationInterrupt) Message() string     { return self.Reason }
+func (self TerminationInterrupt) GetSpan() errors.Span {
+	return self.Span
+}
 
 func NewTerminationInterrupt(reason string, span errors.Span) *Interrupt {
 	i := Interrupt(TerminationInterrupt{Reason: reason, Span: span})

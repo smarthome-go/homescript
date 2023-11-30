@@ -247,17 +247,21 @@ func newTwoStringInstruction(opCode Opcode, value0 string, value1 string) TwoStr
 // Cast Instruction
 
 type CastInstruction struct {
-	opCode Opcode
-	Type   ast.Type
+	opCode    Opcode
+	Type      ast.Type
+	AllowCast bool
 }
 
 func (self CastInstruction) Opcode() Opcode { return self.opCode }
-func (self CastInstruction) String() string { return fmt.Sprintf("%v(%v)", self.Opcode(), self.Type) }
+func (self CastInstruction) String() string {
+	return fmt.Sprintf("%v(%v; %t)", self.Opcode(), self.Type, self.AllowCast)
+}
 
-func newCastInstruction(type_ ast.Type) CastInstruction {
+func newCastInstruction(type_ ast.Type, allowCast bool) CastInstruction {
 	return CastInstruction{
-		opCode: Opcode_Cast,
-		Type:   type_,
+		opCode:    Opcode_Cast,
+		Type:      type_,
+		AllowCast: allowCast,
 	}
 }
 
