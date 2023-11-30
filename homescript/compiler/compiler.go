@@ -509,24 +509,30 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 
 		// convert into iterator
 		self.insert(newPrimitiveInstruction(Opcode_IntoIter), node.Range)
-		self.insert(newPrimitiveInstruction(Opcode_IteratorAdvance), node.Range)
+		iterName := self.mangleVar(fmt.Sprintf("$iter_%s", node.Identifier.Ident()))
+		self.insert(newOneStringInstruction(Opcode_SetVarImm, iterName), node.Range)
 
 		// loop body
-		name := self.mangleVar(node.Identifier.Ident())
+		headIdentName := self.mangleVar(node.Identifier.Ident())
+
+		// Bind induction variable to name
+
 		self.insert(newOneStringInstruction(Opcode_Label, head_label), node.Range)
+
+		self.insert(newOneStringInstruction(Opcode_GetVarImm, iterName), node.Range)
+		self.insert(newPrimitiveInstruction(Opcode_IteratorAdvance), node.Range)
+
+		self.insert(newOneStringInstruction(Opcode_SetVarImm, headIdentName), node.Range)
 
 		// On top of the stack, there will now be a bool describing whether or not to contiue.
 		// Check if there are still values left: if not, break.
 		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, after_label), node.Range)
 
-		// Bind induction variable to name
-		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
-
 		self.compileBlock(node.Body, false)
 
 		// Update iterator
 		self.insert(newOneStringInstruction(Opcode_Label, update_label), node.Range)
-		self.insert(newPrimitiveInstruction(Opcode_IteratorAdvance), node.Range)
+		///self.insert(newPrimitiveInstruction(Opcode_IteratorAdvance), node.Range)
 
 		// Jump back to head
 		self.insert(newOneStringInstruction(Opcode_Jump, head_label), node.Range)

@@ -675,10 +675,10 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		self.push(value.NewValueIter(v))
 	case compiler.Opcode_IteratorAdvance:
 		// Get the iterator from the stack.
-		iterator := (*self.getStackTop()).(value.ValueIterator).Func
+		iterator := (*self.pop()).(value.ValueIterator).Func
 		val, shallContinue := iterator()
-		self.push(&val)
 		self.push(value.NewValueBool(shallContinue))
+		self.push(&val)
 	default:
 		panic(fmt.Sprintf("Illegal instruction erorr: %v", instruction))
 	}
