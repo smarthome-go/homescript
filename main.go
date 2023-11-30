@@ -362,7 +362,7 @@ func iScopeAdditions() map[string]value.Value {
 func main() {
 	programRaw, err := os.ReadFile(os.Args[1])
 	if err != nil {
-		panic(err.Error())
+		panic(fmt.Sprintf("Could not read file `%s`: %s", os.Args[1], err.Error()))
 	}
 	program := string(programRaw)
 	filename := strings.Split(os.Args[1], ".")[0]
@@ -397,7 +397,7 @@ func main() {
 
 		file, err := os.ReadFile(fmt.Sprintf("%s.hms", item.Span.Filename))
 		if err != nil {
-			panic(err.Error())
+			panic(fmt.Sprintf("Could not read file `%s`: %s\n%s | %v", item.Span.Filename, err.Error(), item.Message, item.Span))
 		}
 
 		fmt.Println(item.Display(string(file)))
