@@ -569,41 +569,38 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 			return
 		}
 
-		name, found := self.getMangledFn(base.Ident.Ident())
+		// check whether the scope is local or global
+		_, found := self.getMangled(base.Ident.Ident())
 		if found {
-			opcode := Opcode_Call_Imm
-			if node.IsSpawn {
-				opcode = Opcode_Spawn
-			}
-
-			self.insert(newOneStringInstruction(opcode, name), node.Span())
-		} else {
 			if node.IsSpawn {
 				panic("This is an impossible state.")
 			}
 
-			// check whether the scope is local or global
-			_, found := self.getMangled(base.Ident.Ident())
+			self.compileExpr(node.Base)
+			self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
+			self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Span())
+		} else {
+			name, found := self.getMangledFn(base.Ident.Ident())
 			if found {
+				opcode := Opcode_Call_Imm
 				if node.IsSpawn {
-					panic("This is an impossible state.")
+					opcode = Opcode_Spawn
+					self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
 				}
 
-				self.compileExpr(node.Base)
-				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
-				self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Span())
+				self.insert(newOneStringInstruction(opcode, name), node.Span())
 			} else {
-
+				// call a global value
 				self.insert(newOneStringInstruction(Opcode_GetGlobImm, base.Ident.Ident()), node.Range)
 				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
 				self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Range)
 			}
-
-			// insert number of args
-			// self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
-			// perform actual call
-			// self.insert(newOneStringInstruction(Opcode_HostCall, base.Ident.Ident()), node.Span())
 		}
+
+		// insert number of args
+		// self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
+		// perform actual call
+		// self.insert(newOneStringInstruction(Opcode_HostCall, base.Ident.Ident()), node.Span())
 
 		// }
 	} else {
