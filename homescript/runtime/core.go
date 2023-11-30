@@ -130,7 +130,6 @@ func (self *Core) Run(function string) {
 
 outer:
 	for len(self.CallStack) > 0 {
-		fmt.Printf("======== CHECK CANCEL ==========\n")
 		if i := self.checkCancelation(); i != nil {
 			self.Handle <- i
 			return
@@ -144,7 +143,7 @@ outer:
 			}
 
 			if callFrame.InstructionPointer >= uint(len(fn)) { // TODO: len can be shortened
-				fmt.Printf("Terminating from fn `%s` with ip=%d\n", callFrame.Function, callFrame.InstructionPointer)
+				// fmt.Printf("Terminating from fn `%s` with ip=%d\n", callFrame.Function, callFrame.InstructionPointer)
 				self.popCallStack()
 				continue outer
 			}
@@ -257,7 +256,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 			self.callFrame().InstructionPointer++
 			self.pushCallStack(function.Ident)
 
-			fmt.Printf("calling: %s\n", function.Ident)
+			// fmt.Printf("calling: %s\n", function.Ident)
 
 			return nil
 		case value.BuiltinFunctionValueKind:

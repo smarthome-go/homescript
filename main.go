@@ -436,7 +436,24 @@ func main() {
 
 	vm.Spawn(compiled.EntryPoints[filename])
 	if coreNum, i := vm.Wait(); i != nil {
-		panic(fmt.Sprintf("Core %d panicked %s", coreNum, *i))
+		i := *i
+
+		d := diagnostic.Diagnostic{
+			Level:   diagnostic.DiagnosticLevelError,
+			Message: i.Message(),
+			Notes:   []string{fmt.Sprintf("Exception occurred on core %d", coreNum)},
+			Span:    i.GetSpan(), // this call might panic
+		}
+
+		fmt.Printf("Reading: %s...\n", i.GetSpan().Filename)
+
+		file, err := os.ReadFile(fmt.Sprintf("%s.hms", i.GetSpan().Filename))
+		if err != nil {
+			panic(fmt.Sprintf("Could not read file `%s`: %s\n", i.GetSpan().Filename, err.Error()))
+		}
+
+		fmt.Printf("%s\n", d.Display(string(file)))
+		panic(fmt.Sprintf("Core %d crashed", coreNum))
 	}
 
 	// time.Sleep(2 * time.Second)
