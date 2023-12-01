@@ -1,0 +1,101 @@
+fn main() {
+    t_hack();
+    t_loop();
+    t_while();
+    t_for();
+}
+
+fn t_loop() {
+    let count = 0;
+    loop {
+        if count == 100 {
+            break;
+        }
+        count+=1;
+    }
+    assert(count == 100);
+
+    let count2 = 0;
+    loop {
+        if count2 == 100 {
+            break;
+        }
+        count2+=1;
+        continue;
+    }
+    assert(count2 == 100);
+
+    let count3 = 0;
+    loop {
+        break;
+        count3 = 42;
+    }
+    assert(count3 == 0);
+}
+
+fn t_while() {
+    let count = 0;
+    while count < 100 {
+        count+=1;
+        continue;
+    }
+    assert(count == 100);
+
+    let count2 = 0;
+    while count2 < 100 {
+        count2+=1;
+    }
+    assert(count2 == 100);
+
+    let count3 = 0;
+    while true {
+        break;
+        count3 = 42;
+    }
+    assert(count3 == 0)
+}
+
+fn t_for() {
+    let sum = 0;
+    for i in 0..100 {
+        continue;
+        sum += 1;
+    }
+    assert(sum == 0);
+
+    let sum2 = 0;
+    for i in 0..100 {
+        sum2 += 1;
+        continue;
+    }
+    assert(sum2 == 100);
+
+    let count3 = 0;
+    for _ in 0..1 {
+        break;
+        count3 = 42;
+    }
+    assert(count3 == 0)
+}
+
+fn t_hack() {
+    let a = 42;
+    let b = 10;
+    while true {
+        a = 69;
+        while { break; } {}
+        b = 42;
+    }
+    assert(a == 69);
+    assert(b == 10);
+
+    let c = 69;
+    let d = 4711;
+    for _ in 0..100 {
+        d = 42;
+        while { break; } {}
+        c += 1;
+    }
+    assert(c == 69);
+    assert(d == 42);
+}

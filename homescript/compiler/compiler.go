@@ -471,18 +471,19 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		node := node.(ast.AnalyzedWhileStatement)
 		head_label := self.mangleLabel("loop_head")
 		after_label := self.mangleLabel("loop_end")
-		self.pushLoop(Loop{
-			labelStart:    head_label,
-			labelBreak:    after_label,
-			labelContinue: head_label,
-		})
-		defer self.popLoop()
 
 		self.insert(newOneStringInstruction(Opcode_Label, head_label), node.Range)
 
 		// check the condition
 		self.compileExpr(node.Condition)
 		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, after_label), node.Range)
+
+		self.pushLoop(Loop{
+			labelStart:    head_label,
+			labelBreak:    after_label,
+			labelContinue: head_label,
+		})
+		defer self.popLoop()
 
 		self.compileBlock(node.Body, true)
 		self.insert(newOneStringInstruction(Opcode_Jump, head_label), node.Range)
@@ -496,13 +497,6 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		head_label := self.mangleLabel("loop_head")
 		update_label := self.mangleLabel("loop_update")
 		after_label := self.mangleLabel("loop_end")
-
-		self.pushLoop(Loop{
-			labelStart:    head_label,
-			labelBreak:    after_label,
-			labelContinue: update_label,
-		})
-		defer self.popLoop()
 
 		// create initial state of iterator
 		self.pushScope()
@@ -531,6 +525,13 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		// On top of the stack, there will now be a bool describing whether or not to contiue.
 		// Check if there are still values left: if not, break.
 		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, after_label), node.Range)
+
+		self.pushLoop(Loop{
+			labelStart:    head_label,
+			labelBreak:    after_label,
+			labelContinue: update_label,
+		})
+		defer self.popLoop()
 
 		self.compileBlock(node.Body, false)
 
