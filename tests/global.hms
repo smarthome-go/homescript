@@ -1,0 +1,7 @@
+let a = 42;
+
+fn main() {
+    assert(a == 42);
+    a += 5;
+    assert(a == 47)
+}

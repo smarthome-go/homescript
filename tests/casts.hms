@@ -1,0 +1,8 @@
+fn main() {
+    type Raw = {
+        val: ?int,
+    };
+
+    let raw = "{ \"val\": 42 }";
+    assert(raw.parse_json() as Raw == new { val: ?42 });
+}

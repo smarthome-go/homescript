@@ -1,0 +1,17 @@
+ fn main() {
+    let foo = 69;
+
+    let bar = new {
+        value: foo
+    };
+
+    let foo = new {
+        field: bar
+    };
+
+    assert(foo.field.value = 69);
+
+    foo.field.value *= 2;
+
+    assert(foo.field.value == 138);
+ }

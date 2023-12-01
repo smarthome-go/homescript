@@ -1,0 +1,9 @@
+fn main() {
+    let a = 0;
+    let res = match a {
+        0 => 1,
+        1 => 0,
+        _ => throw("no"),
+    };
+    assert(res == 1);
+}
