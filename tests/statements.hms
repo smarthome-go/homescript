@@ -1,9 +1,9 @@
 // ImportStatement
-//import i_am_exported from export;
+import import_me from export;
 
-//fn importStmt() {
-    //assert_eq(42, i_am_exported());
-//}
+fn importStmt() {
+    assert(42 == import_me());
+}
 
 fn typeDef() {
     type User = {
@@ -12,7 +12,7 @@ fn typeDef() {
     };
 
     let me: User = '{"name": "foo", "password": "bar"}'.parse_json();
-    assert_eq(me, new { name: "foo", password: "bar" });
+    assert(me == new { name: "foo", password: "bar" });
 }
 
 fn main() {
@@ -24,4 +24,7 @@ fn main() {
     for test in tests {
         test();
     }
+
+    typeDef();
+    importStmt();
 }

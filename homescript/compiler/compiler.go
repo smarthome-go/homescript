@@ -275,7 +275,8 @@ func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram) Program {
 }
 
 func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
-	fmt.Printf("fn: `%s` %v\n", self.currFn, self.functions[self.currFn])
+	// TODO: remove this
+	// fmt.Printf("fn: `%s` %v\n", self.currFn, self.functions[self.currFn])
 	self.CurrFn().Instructions = append(self.CurrFn().Instructions, instruction)
 	self.CurrFn().SourceMap = append(self.CurrFn().SourceMap, span)
 	return len(self.CurrFn().Instructions) - 1

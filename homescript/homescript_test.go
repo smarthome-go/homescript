@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,13 +26,54 @@ import (
 //
 
 func analyzerScopeAdditions() map[string]analyzer.Variable {
-	return make(map[string]analyzer.Variable)
+	return map[string]analyzer.Variable{
+		"print": analyzer.NewBuiltinVar(
+			ast.NewFunctionType(
+				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{}, ast.NewUnknownType()),
+				herrors.Span{},
+				ast.NewNullType(herrors.Span{}),
+				herrors.Span{},
+			),
+		),
+		"println": analyzer.NewBuiltinVar(
+			ast.NewFunctionType(
+				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{}, ast.NewUnknownType()),
+				herrors.Span{},
+				ast.NewNullType(herrors.Span{}),
+				herrors.Span{},
+			),
+		),
+		"debug": analyzer.NewBuiltinVar(
+			ast.NewFunctionType(
+				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{}, ast.NewUnknownType()),
+				herrors.Span{},
+				ast.NewNullType(herrors.Span{}),
+				herrors.Span{},
+			),
+		),
+		"assert": analyzer.NewBuiltinVar(
+			ast.NewFunctionType(
+				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{}, ast.NewBoolType(herrors.Span{})),
+				herrors.Span{},
+				ast.NewNullType(herrors.Span{}),
+				herrors.Span{},
+			),
+		),
+	}
 }
 
 type analyzerHost struct{}
 
 func (self analyzerHost) ResolveCodeModule(moduleName string) (code string, moduleFound bool, err error) {
-	path := fmt.Sprintf("%s.hms", moduleName)
+	path := fmt.Sprintf("../tests/%s.hms", moduleName)
+
+	fmt.Printf("attempting import from: %s\n", path)
+
+	p, err := os.Getwd()
+	if err != nil {
+		log.Println(err)
+	}
+	fmt.Println(p)
 
 	file, err := os.ReadFile(path)
 	if err != nil {
@@ -78,8 +121,88 @@ func (self analyzerHost) GetBuiltinImport(moduleName string, valueName string, s
 // Interpreter
 //
 
-func interpreterScopeAdditions() map[string]value.Value {
-	return make(map[string]value.Value)
+func interpeterScopeAdditions() map[string]value.Value {
+	return map[string]value.Value{
+		"print": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
+
+			outStr := strings.Join(output, " ")
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, value.NewRuntimeErr(
+					err.Error(),
+					value.HostErrorKind,
+					span,
+				)
+			}
+
+			return value.NewValueNull(), nil
+		},
+		),
+		"println": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
+
+			outStr := strings.Join(output, " ") + "\n"
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, value.NewRuntimeErr(
+					err.Error(),
+					value.HostErrorKind,
+					span,
+				)
+			}
+
+			return value.NewValueNull(), nil
+		},
+		),
+		"debug": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
+
+			outStr := "DEBUG: " + strings.Join(output, " ") + "\n"
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, value.NewRuntimeErr(
+					err.Error(),
+					value.HostErrorKind,
+					span,
+				)
+			}
+
+			return value.NewValueNull(), nil
+		},
+		),
+		"assert": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+			if !args[0].(value.ValueBool).Inner {
+				return nil, value.NewRuntimeErr(
+					"Assert failed",
+					value.HostErrorKind,
+					span,
+				)
+			}
+			return value.NewValueNull(), nil
+		}),
+	}
 }
 
 type executor struct{}
@@ -130,8 +253,19 @@ func (self executor) GetBuiltinImport(moduleName string, toImport string) (val v
 	}
 }
 
+// returns the Homescript code of the requested module
 func (self executor) ResolveModuleCode(moduleName string) (code string, found bool, err error) {
-	return "", false, nil
+	path := fmt.Sprintf("tests/%s.hms", moduleName)
+
+	file, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+
+	return string(file), true, nil
 }
 
 func (self executor) WriteStringTo(input string) error {
@@ -226,7 +360,11 @@ func runScript(path string, t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
-	vm := runtime.NewVM(compiled, executor{}, os.Args[2] == "1", &ctx, &cancel, interpreterScopeAdditions(), 10)
+	vm := runtime.NewVM(compiled, executor{}, os.Args[2] == "1", &ctx, &cancel, interpeterScopeAdditions(), runtime.CoreLimits{
+		CallStackMaxSize: 1024,
+		StackMaxSize:     1024,
+		MaxMemorySize:    1024,
+	})
 
 	vm.Spawn(compiled.EntryPoints[path])
 	if coreNum, i := vm.Wait(); i != nil {
