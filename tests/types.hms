@@ -1,0 +1,27 @@
+fn main() {
+    type User = {
+        username: str,
+        password: str,
+        age: int,
+    };
+
+
+    let user: User = new {
+        username: "foo",
+        password: "bar",
+        age: 42,
+    };
+
+    println(user as User);
+
+    //
+    //
+    //
+
+    type Number = int;
+
+    let number: Number = 4711;
+
+    println(number as Number);
+}
+

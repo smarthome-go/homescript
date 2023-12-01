@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -312,6 +313,28 @@ func TestScripts(t *testing.T) {
 		},
 	}
 
+	files, err := filepath.Glob("../tests/*.hms")
+	if err != nil {
+		panic(err)
+	}
+
+	for _, file := range files {
+		for _, test := range tests {
+			if test.Path == file {
+				continue
+			}
+		}
+
+		fmt.Printf("Added file to test: `%s`\n", file)
+
+		split := strings.Split(file, "/")
+		tests = append(tests, Test{
+			Name:           split[len(split)-1],
+			Path:           file,
+			ExpectedOutput: "",
+		})
+	}
+
 	for idx, test := range tests {
 		t.Run(fmt.Sprintf("program-%d-%s", idx, test.Name), func(t *testing.T) {
 			runScript(test.Path, t)
@@ -361,9 +384,9 @@ func runScript(path string, t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	vm := runtime.NewVM(compiled, executor{}, os.Args[2] == "1", &ctx, &cancel, interpeterScopeAdditions(), runtime.CoreLimits{
-		CallStackMaxSize: 1024,
-		StackMaxSize:     1024,
-		MaxMemorySize:    1024,
+		CallStackMaxSize: 10024,
+		StackMaxSize:     10024,
+		MaxMemorySize:    10024,
 	})
 
 	vm.Spawn(compiled.EntryPoints[path])
@@ -379,7 +402,7 @@ func runScript(path string, t *testing.T) {
 
 		fmt.Printf("Reading: %s...\n", i.GetSpan().Filename)
 
-		file, err := os.ReadFile(fmt.Sprintf("%s.hms", i.GetSpan().Filename))
+		file, err := os.ReadFile(i.GetSpan().Filename)
 		if err != nil {
 			panic(fmt.Sprintf("Could not read file `%s`: %s\n", i.GetSpan().Filename, err.Error()))
 		}

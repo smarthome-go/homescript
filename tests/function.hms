@@ -1,0 +1,26 @@
+let leaf_reached = false;
+
+fn main() {
+    recursive(2000);
+    fib(10);
+}
+
+fn recursive(n: int) {
+    if n == 0 {
+        leaf()
+    } else {
+        recursive(n-1)
+    }
+}
+
+fn leaf() {
+    leaf_reached = true;
+}
+
+fn fib(n: int) -> int {
+    if n < 2 {
+        n
+    } else {
+        fib(n - 2) + fib(n - 1)
+    }
+}

@@ -1,0 +1,5 @@
+pub fn import_me() -> int {
+    42
+}
+
+fn main() {}
