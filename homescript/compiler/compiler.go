@@ -320,7 +320,11 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 		}
 
 		// compile all functions
+		var mainFnSpan errors.Span
 		for _, fn := range module.Functions {
+			if fn.Ident.Ident() == "main" {
+				mainFnSpan = fn.Range
+			}
 			self.compileFn(fn)
 		}
 
@@ -346,7 +350,7 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 			panic("Could not find mangled main function in current module")
 		}
 
-		self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), errors.Span{})
+		self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
 	}
 
 	return entryPoints
@@ -396,7 +400,7 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 	defer self.popScope()
 
 	// value is replaced later
-	mpIdx := self.insert(newOneIntInstruction(Opcode_AddMempointer, 0), errors.Span{})
+	mpIdx := self.insert(newOneIntInstruction(Opcode_AddMempointer, 0), node.Range)
 
 	for i := len(node.Parameters) - 1; i >= 0; i-- {
 		name := self.mangleVar(node.Parameters[i].Ident.Ident())
@@ -590,7 +594,7 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 		} else {
 			name, found := self.getMangledFn(base.Ident.Ident())
 			if found {
-				opcode := Opcode_Call_Imm
+				opcode := Opcode_Call_Imm // TODO: the span mapping is broken here?
 				if node.IsSpawn {
 					opcode = Opcode_Spawn
 					self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())

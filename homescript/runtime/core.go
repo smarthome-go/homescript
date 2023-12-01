@@ -41,6 +41,13 @@ type Core struct {
 	MemoryPointer int64
 	CancelCtx     *context.Context
 	CancelFunc    *context.CancelFunc
+	Limits        CoreLimits
+}
+
+type CoreLimits struct {
+	CallStackMaxSize uint
+	StackMaxSize     uint
+	MaxMemorySize    uint
 }
 
 func NewCore(
@@ -52,10 +59,11 @@ func NewCore(
 	verbose bool,
 	handle chan *value.Interrupt,
 	ctx *context.Context,
+	limits CoreLimits,
 ) Core {
 	return Core{
 		CallStack:       make([]CallFrame, 0),
-		Memory:          make([]*value.Value, 1024), // TODO: configure memory
+		Memory:          make([]*value.Value, limits.MaxMemorySize),
 		Stack:           make([]*value.Value, 0),
 		Program:         program,
 		hostCall:        hostCall,
@@ -67,6 +75,7 @@ func NewCore(
 		Verbose:         verbose,
 		Handle:          handle,
 		CancelCtx:       ctx,
+		Limits:          limits,
 	}
 }
 
@@ -130,8 +139,29 @@ func (self *Core) Run(function string) {
 
 outer:
 	for len(self.CallStack) > 0 {
+		// Check cancelation
 		if i := self.checkCancelation(); i != nil {
 			self.Handle <- i
+			return
+		}
+
+		// Check for stack overflow
+		if len(self.Stack) > int(self.Limits.StackMaxSize) {
+			self.Handle <- self.runtimeErr(
+				fmt.Sprintf("Runtime stack limit of %d was exceeded by %d", self.Limits.StackMaxSize, len(self.Stack)-int(self.Limits.StackMaxSize)),
+				value.StackOverFlowErrorKind,
+				self.parent.SourceMap(self.CallStack[len(self.CallStack)-2]),
+			)
+			return
+		}
+
+		// Check for callstack overflows
+		if len(self.CallStack) > int(self.Limits.CallStackMaxSize) {
+			self.Handle <- self.runtimeErr(
+				fmt.Sprintf("Runtime callstack limit of %d was exceeded by %d", self.Limits.CallStackMaxSize, len(self.CallStack)-int(self.Limits.CallStackMaxSize)),
+				value.StackOverFlowErrorKind,
+				self.parent.SourceMap(*self.callFrame()),
+			)
 			return
 		}
 
@@ -139,7 +169,7 @@ outer:
 			callFrame := *self.callFrame()
 			fn, found := (*self.Program)[callFrame.Function]
 			if !found {
-				panic(fmt.Sprintf("Canot execute instructions of non-existent routine: %s", callFrame.Function))
+				panic(fmt.Sprintf("Cannot execute instructions of non-existent routine: %s", callFrame.Function))
 			}
 
 			if callFrame.InstructionPointer >= uint(len(fn)) { // TODO: len can be shortened
@@ -196,7 +226,7 @@ outer:
 					throwError := (*i).(value.ThrowInterrupt)
 
 					if len(self.ExceptionCatchLabels) == 0 {
-						self.Handle <- value.NewRuntimeErr(throwError.Message(), value.UncaughtThrowKind, throwError.Span)
+						self.Handle <- self.runtimeErr(throwError.Message(), value.UncaughtThrowKind, throwError.Span)
 						return
 					}
 
@@ -211,7 +241,7 @@ outer:
 							"filename": value.NewValueString(throwError.Span.Filename),
 						}))
 				default:
-					self.Handle <- i
+					self.Handle <- i // TODO: add universal stacktrace
 					return
 				}
 			}
@@ -228,6 +258,14 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 	case compiler.Opcode_AddMempointer:
 		i := instruction.(compiler.OneIntInstruction)
 		self.MemoryPointer += i.Value
+
+		if int(self.MemoryPointer) >= int(self.Limits.MaxMemorySize) {
+			return self.runtimeErr(
+				fmt.Sprintf("Memory capacity of %d variables was exceeded (mp=%d)", self.MemoryPointer, self.Limits.MaxMemorySize),
+				value.StackOverFlowErrorKind,
+				self.parent.SourceMap(*self.callFrame()),
+			)
+		}
 	case compiler.Opcode_Push:
 		i := instruction.(compiler.ValueInstruction)
 		v := i.Value
@@ -328,7 +366,14 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		}
 	case compiler.Opcode_GetVarImm:
 		i := instruction.(compiler.OneIntInstruction)
-		self.push(self.Memory[self.absolute(i.Value)])
+
+		abs := self.absolute(i.Value)
+
+		if self.Verbose {
+			fmt.Printf("Memory read access at %x\n", abs)
+		}
+
+		self.push(self.Memory[abs])
 	case compiler.Opcode_GetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
 		self.parent.Globals.Mutex.RLock()

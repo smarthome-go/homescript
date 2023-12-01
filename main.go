@@ -432,7 +432,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	start := time.Now()
-	vm := runtime.NewVM(compiled, Executor{}, os.Args[2] == "1", &ctx, &cancel, iScopeAdditions())
+	vm := runtime.NewVM(compiled, Executor{}, os.Args[2] == "1", &ctx, &cancel, iScopeAdditions(), runtime.CoreLimits{
+		CallStackMaxSize: 100,
+		StackMaxSize:     500,
+		MaxMemorySize:    100000,
+	})
 
 	vm.Spawn(compiled.EntryPoints[filename])
 	if coreNum, i := vm.Wait(); i != nil {
@@ -449,7 +453,7 @@ func main() {
 
 		file, err := os.ReadFile(fmt.Sprintf("%s.hms", i.GetSpan().Filename))
 		if err != nil {
-			panic(fmt.Sprintf("Could not read file `%s`: %s\n", i.GetSpan().Filename, err.Error()))
+			panic(fmt.Sprintf("Could not read file `%s`: %s | %s\n", i.GetSpan().Filename, err.Error(), i.Message()))
 		}
 
 		fmt.Printf("%s\n", d.Display(string(file)))

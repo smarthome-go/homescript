@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
-	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 )
 
@@ -38,16 +37,17 @@ func newCores() Cores {
 }
 
 type VM struct {
-	Program    compiler.Program
-	Globals    Globals
-	Cores      Cores
-	Executor   value.Executor
-	Lock       sync.RWMutex
-	coreCnt    uint
-	Verbose    bool
-	CancelCtx  *context.Context
-	CancelFunc *context.CancelFunc
-	Interrupts map[uint]value.Interrupt
+	Program       compiler.Program
+	Globals       Globals
+	Cores         Cores
+	Executor      value.Executor
+	Lock          sync.RWMutex
+	coreCnt       uint
+	Verbose       bool
+	CancelCtx     *context.Context
+	CancelFunc    *context.CancelFunc
+	Interrupts    map[uint]value.Interrupt
+	LimitsPerCore CoreLimits
 }
 
 func NewVM(
@@ -57,23 +57,21 @@ func NewVM(
 	ctx *context.Context,
 	cancelFunc *context.CancelFunc,
 	scopeAdditions map[string]value.Value,
+	limits CoreLimits,
 ) VM {
 	return VM{
-		Program:    program,
-		Globals:    newGlobals(scopeAdditions),
-		Cores:      newCores(),
-		Executor:   executor,
-		Lock:       sync.RWMutex{},
-		coreCnt:    0,
-		Verbose:    verbose,
-		CancelCtx:  ctx,
-		CancelFunc: cancelFunc,
-		Interrupts: make(map[uint]value.Interrupt),
+		Program:       program,
+		Globals:       newGlobals(scopeAdditions),
+		Cores:         newCores(),
+		Executor:      executor,
+		Lock:          sync.RWMutex{},
+		coreCnt:       0,
+		Verbose:       verbose,
+		CancelCtx:     ctx,
+		CancelFunc:    cancelFunc,
+		Interrupts:    make(map[uint]value.Interrupt),
+		LimitsPerCore: limits,
 	}
-}
-
-func (self *VM) SourceMap(frame CallFrame) errors.Span {
-	return self.Program.SourceMap[frame.Function][frame.InstructionPointer]
 }
 
 func hostcall(self *VM, function string, args []*value.Value) (*value.Value, *value.Interrupt) {
@@ -98,7 +96,7 @@ func (self *VM) spawnCore() *Core {
 	defer self.Lock.Unlock()
 
 	ch := make(chan *value.Interrupt)
-	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt, self.Verbose, ch, self.CancelCtx)
+	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt, self.Verbose, ch, self.CancelCtx, self.LimitsPerCore)
 
 	self.Cores.Lock.Lock()
 	defer self.Cores.Lock.Unlock()

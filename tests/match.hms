@@ -2,6 +2,8 @@ fn main() {
     let inputs = [1, 2, 42, 69, 4711];
 
     for i in inputs {
+        println(i);
+
         let is = match i {
             1 => 2,
             2 => 3,

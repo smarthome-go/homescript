@@ -226,7 +226,7 @@ func runScript(path string, t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
-	vm := runtime.NewVM(compiled, executor{}, os.Args[2] == "1", &ctx, &cancel, interpreterScopeAdditions())
+	vm := runtime.NewVM(compiled, executor{}, os.Args[2] == "1", &ctx, &cancel, interpreterScopeAdditions(), 10)
 
 	vm.Spawn(compiled.EntryPoints[path])
 	if coreNum, i := vm.Wait(); i != nil {

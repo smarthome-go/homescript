@@ -8,6 +8,7 @@ type RuntimeErrorKind uint8
 
 const (
 	StackOverFlowErrorKind RuntimeErrorKind = iota
+	OutOfMemoryErrorKind
 	ValueErrorKind
 	ImportErrorKind
 	HostErrorKind
@@ -21,6 +22,8 @@ func (self RuntimeErrorKind) String() string {
 	switch self {
 	case StackOverFlowErrorKind:
 		return "StackOverFlow"
+	case OutOfMemoryErrorKind:
+		return "OutOfMemoryError"
 	case ValueErrorKind:
 		return "ValueError"
 	case ImportErrorKind:
