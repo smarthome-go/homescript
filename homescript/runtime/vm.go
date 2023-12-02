@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
-	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
 const CATCH_PANIC = false
@@ -46,7 +46,7 @@ type VM struct {
 	Verbose       bool
 	CancelCtx     *context.Context
 	CancelFunc    *context.CancelFunc
-	Interrupts    map[uint]value.Interrupt
+	Interrupts    map[uint]value.VmInterrupt
 	LimitsPerCore CoreLimits
 }
 
@@ -69,12 +69,12 @@ func NewVM(
 		Verbose:       verbose,
 		CancelCtx:     ctx,
 		CancelFunc:    cancelFunc,
-		Interrupts:    make(map[uint]value.Interrupt),
+		Interrupts:    make(map[uint]value.VmInterrupt),
 		LimitsPerCore: limits,
 	}
 }
 
-func hostcall(self *VM, function string, args []*value.Value) (*value.Value, *value.Interrupt) {
+func hostcall(self *VM, function string, args []*value.Value) (*value.Value, *value.VmInterrupt) {
 	// TODO: this is extremely bad!!!
 	self.Lock.Lock()
 	defer self.Lock.Unlock()
@@ -95,7 +95,7 @@ func (self *VM) spawnCore() *Core {
 	self.Lock.Lock()
 	defer self.Lock.Unlock()
 
-	ch := make(chan *value.Interrupt)
+	ch := make(chan *value.VmInterrupt)
 	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt, self.Verbose, ch, self.CancelCtx, self.LimitsPerCore)
 
 	self.Cores.Lock.Lock()
@@ -133,7 +133,7 @@ func (self *VM) WaitNonConsuming() {
 	}
 }
 
-func (self *VM) Wait() (uint, *value.Interrupt) {
+func (self *VM) Wait() (uint, *value.VmInterrupt) {
 	for {
 		self.Cores.Lock.RLock()
 		for _, core := range self.Cores.Cores {

@@ -383,7 +383,7 @@ func runScript(path string, t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
-	vm := runtime.NewVM(compiled, executor{}, os.Args[2] == "1", &ctx, &cancel, interpeterScopeAdditions(), runtime.CoreLimits{
+	vm := runtime.NewVM(compiled, executor{}, os.Args[2] == "1", &ctx, &cancel, interpeterScopeAdditions, runtime.CoreLimits{
 		CallStackMaxSize: 10024,
 		StackMaxSize:     10024,
 		MaxMemorySize:    10024,

@@ -17,43 +17,46 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
+	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
-type Executor struct {
+// Vm executor
+
+type VmExecutor struct {
 }
 
-func (self Executor) GetUser() string { return "<unknown>" }
+func (self VmExecutor) GetUser() string { return "<unknown>" }
 
-func createTimeObject(t time.Time) *value.Value {
-	return value.NewValueObject(
-		map[string]*value.Value{
-			"year":       value.NewValueInt(int64(t.Year())),
-			"month":      value.NewValueInt(int64(t.Month())),
-			"year_day":   value.NewValueInt(int64(t.YearDay())),
-			"hour":       value.NewValueInt(int64(t.Hour())),
-			"minute":     value.NewValueInt(int64(t.Minute())),
-			"second":     value.NewValueInt(int64(t.Second())),
-			"month_day":  value.NewValueInt(int64(t.Day())),
-			"week_day":   value.NewValueInt(int64(t.Weekday())),
-			"unix_milli": value.NewValueInt(t.UnixMilli()),
+func vmCreateTimeObject(t time.Time) *vmValue.Value {
+	return vmValue.NewValueObject(
+		map[string]*vmValue.Value{
+			"year":       vmValue.NewValueInt(int64(t.Year())),
+			"month":      vmValue.NewValueInt(int64(t.Month())),
+			"year_day":   vmValue.NewValueInt(int64(t.YearDay())),
+			"hour":       vmValue.NewValueInt(int64(t.Hour())),
+			"minute":     vmValue.NewValueInt(int64(t.Minute())),
+			"second":     vmValue.NewValueInt(int64(t.Second())),
+			"month_day":  vmValue.NewValueInt(int64(t.Day())),
+			"week_day":   vmValue.NewValueInt(int64(t.Weekday())),
+			"unix_milli": vmValue.NewValueInt(t.UnixMilli()),
 		},
 	)
 }
 
-func createTimeStructFromObject(t value.Value) time.Time {
-	tObj := t.(value.ValueObject)
+func vmCreateTimeStructFromObject(t vmValue.Value) time.Time {
+	tObj := t.(vmValue.ValueObject)
 	fields, i := tObj.Fields()
 	if i != nil {
 		panic(i)
 	}
-	millis := (*fields["unix_milli"]).(value.ValueInt).Inner
+	millis := (*fields["unix_milli"]).(vmValue.ValueInt).Inner
 	return time.UnixMilli(millis)
 }
 
-func checkCancelation(ctx *context.Context, span syntaxErrors.Span) *value.Interrupt {
+func vmCheckCancelation(ctx *context.Context, span syntaxErrors.Span) *vmValue.VmInterrupt {
 	select {
 	case <-(*ctx).Done():
-		return value.NewTerminationInterrupt((*ctx).Err().Error(), span)
+		return vmValue.NewVMTerminationInterrupt((*ctx).Err().Error(), span)
 	default:
 		// do nothing, this should not block the entire interpreter
 		return nil
@@ -102,6 +105,109 @@ func (self Executor) GetBuiltinImport(moduleName string, toImport string) (val v
 				now := time.Now()
 
 				return createTimeObject(now), nil
+			}),
+		}), true
+	default:
+		return nil, false
+
+	}
+}
+
+// returns the Homescript code of the requested module
+func (self VmExecutor) ResolveModuleCode(moduleName string) (code string, found bool, err error) {
+	return "", false, nil
+}
+
+func (self VmExecutor) WriteStringTo(input string) error {
+	fmt.Print(input)
+	return nil
+}
+
+// Interpreter executor
+
+type Executor struct {
+}
+
+func (self Executor) GetUser() string { return "<unknown>" }
+
+func createTimeObject(t time.Time) *value.Value {
+	return value.NewValueObject(
+		map[string]*value.Value{
+			"year":       value.NewValueInt(int64(t.Year())),
+			"month":      value.NewValueInt(int64(t.Month())),
+			"year_day":   value.NewValueInt(int64(t.YearDay())),
+			"hour":       value.NewValueInt(int64(t.Hour())),
+			"minute":     value.NewValueInt(int64(t.Minute())),
+			"second":     value.NewValueInt(int64(t.Second())),
+			"month_day":  value.NewValueInt(int64(t.Day())),
+			"week_day":   value.NewValueInt(int64(t.Weekday())),
+			"unix_milli": value.NewValueInt(t.UnixMilli()),
+		},
+	)
+}
+
+func createTimeStructFromObject(t value.Value) time.Time {
+	tObj := t.(value.ValueObject)
+	fields, i := tObj.Fields()
+	if i != nil {
+		panic(i)
+	}
+	millis := (*fields["unix_milli"]).(value.ValueInt).Inner
+	return time.UnixMilli(millis)
+}
+
+func checkCancelation(ctx *context.Context, span syntaxErrors.Span) *value.Interrupt {
+	select {
+	case <-(*ctx).Done():
+		return value.NewTerminationInterrupt((*ctx).Err().Error(), span)
+	default:
+		// do nothing, this should not block the entire interpreter
+		return nil
+	}
+}
+
+func (self VmExecutor) GetBuiltinImport(moduleName string, toImport string) (val vmValue.Value, found bool) {
+	if moduleName != "sys" {
+		return nil, false
+	}
+
+	switch toImport {
+	case "any_list":
+		return *vmValue.NewValueList([]*vmValue.Value{
+			vmValue.NewValueInt(42),
+		}), true
+	case "any_list2":
+		return *vmValue.NewValueList([]*vmValue.Value{
+			vmValue.NewValueList([]*vmValue.Value{vmValue.NewValueString("Hello World")}),
+		}), true
+	case "any_func":
+		return *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			return vmValue.NewValueInt(42), nil
+		}), true
+	case "time":
+		return *vmValue.NewValueObject(map[string]*vmValue.Value{
+			"sleep": vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+				durationSecs := args[0].(vmValue.ValueFloat).Inner
+
+				for i := 0; i < int(durationSecs*1000); i += 10 {
+					if i := vmCheckCancelation(cancelCtx, span); i != nil {
+						return nil, i
+					}
+					time.Sleep(time.Millisecond * 10)
+				}
+
+				return nil, nil
+			},
+			),
+			"add_days": vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+				base := vmCreateTimeStructFromObject(args[0])
+				days := args[1].(vmValue.ValueInt).Inner
+				return vmCreateTimeObject(base.Add(time.Hour * 24 * time.Duration(days))), nil
+			}),
+			"now": vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+				now := time.Now()
+
+				return vmCreateTimeObject(now), nil
 			}),
 		}), true
 	default:
@@ -275,6 +381,90 @@ func scopeAdditions() map[string]analyzer.Variable {
 	}
 }
 
+func vmiScopeAdditions() map[string]vmValue.Value {
+	return map[string]vmValue.Value{
+		"print": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
+
+			outStr := strings.Join(output, " ")
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, vmValue.NewVMFatalException(
+					err.Error(),
+					vmValue.Vm_HostErrorKind,
+					span,
+				)
+			}
+
+			return vmValue.NewValueNull(), nil
+		},
+		),
+		"println": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
+
+			outStr := strings.Join(output, " ") + "\n"
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, vmValue.NewVMFatalException(
+					err.Error(),
+					vmValue.Vm_HostErrorKind,
+					span,
+				)
+			}
+
+			return vmValue.NewValueNull(), nil
+		},
+		),
+		"debug": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
+
+			outStr := "DEBUG: " + strings.Join(output, " ") + "\n"
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, vmValue.NewVMFatalException(
+					err.Error(),
+					vmValue.Vm_HostErrorKind,
+					span,
+				)
+			}
+
+			return vmValue.NewValueNull(), nil
+		},
+		),
+		"assert": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			if !args[0].(vmValue.ValueBool).Inner {
+				return nil, vmValue.NewVMFatalException(
+					"Assert failed",
+					vmValue.Vm_HostErrorKind,
+					span,
+				)
+			}
+			return vmValue.NewValueNull(), nil
+		}),
+	}
+}
+
 func iScopeAdditions() map[string]value.Value {
 	return map[string]value.Value{
 		"print": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
@@ -432,7 +622,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	start := time.Now()
-	vm := runtime.NewVM(compiled, Executor{}, os.Args[2] == "1", &ctx, &cancel, iScopeAdditions(), runtime.CoreLimits{
+	vm := runtime.NewVM(compiled, VmExecutor{}, os.Args[2] == "1", &ctx, &cancel, vmiScopeAdditions(), runtime.CoreLimits{
 		CallStackMaxSize: 100,
 		StackMaxSize:     500,
 		MaxMemorySize:    100000,
@@ -487,7 +677,7 @@ func main() {
 			&ctx,
 		); i != nil {
 			switch (*i).Kind() {
-			case value.RuntimeErrorInterruptKind:
+			case value.FatalExceptionInterruptKind:
 				runtimErr := (*i).(value.RuntimeErr)
 				program, err := os.ReadFile(fmt.Sprintf("%s.hms", runtimErr.Span.Filename))
 				if err != nil {

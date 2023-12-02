@@ -1,4 +1,9 @@
 fn main() {
+    simple();
+    complex();
+}
+
+fn complex() {
     let inputs = [1, 2, 42, 69, 4711];
 
     for i in inputs {
@@ -25,7 +30,7 @@ fn main() {
     }
 }
 
-fn main2() {
+fn simple() {
     let res = match 42 {
         42 => 69,
         _ => 4711,

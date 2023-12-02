@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
-	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
 func (self *VM) SourceMap(frame CallFrame) errors.Span {
@@ -16,18 +16,31 @@ func (self *VM) SourceMap(frame CallFrame) errors.Span {
 	return self.Program.SourceMap[frame.Function][frame.InstructionPointer]
 }
 
-func (self Core) runtimeErr(
+func (self Core) fatalErr(
 	message string,
-	kind value.RuntimeErrorKind,
+	kind value.VMFatalExceptionKind,
 	span errors.Span,
-) *value.Interrupt {
+) *value.VmInterrupt {
 	trace := self.unwind()
 
 	// TODO: add stack unwinding to the runtime err itself
-	return value.NewRuntimeErr(
+	return value.NewVMFatalException(
 		fmt.Sprintf("%s\n=== Stacktrace ===\n%s", message, strings.Join(trace, "\n")),
 		kind,
 		span,
+	)
+}
+
+func (self Core) normalException(
+	message string,
+	span errors.Span,
+) *value.VmInterrupt {
+	trace := self.unwind()
+
+	// TODO: add stack unwinding to the runtime err itself
+	return value.NewVMThrowInterrupt(
+		span,
+		fmt.Sprintf("%s\n=== Stacktrace ===\n%s", message, strings.Join(trace, "\n")),
 	)
 }
 

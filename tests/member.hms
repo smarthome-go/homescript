@@ -9,7 +9,7 @@
         field: bar
     };
 
-    assert(foo.field.value = 69);
+    assert(foo.field.value == 69);
 
     foo.field.value *= 2;
 

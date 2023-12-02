@@ -9,7 +9,7 @@ import (
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
-	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
 const NUM_INSTRUCTIONS_EXECUTE_IN_VCYCLE = 50
@@ -27,13 +27,13 @@ type Core struct {
 	Stack           []*value.Value
 	Program         *map[string][]compiler.Instruction
 	Labels          map[string]uint // each index is relative to the function, but doesn't matter
-	hostCall        func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt)
+	hostCall        func(*VM, string, []*value.Value) (*value.Value, *value.VmInterrupt)
 	parent          *VM
 	isAssignmentLhs bool
 	Executor        value.Executor
 	Corenum         uint
 	Verbose         bool
-	Handle          chan *value.Interrupt
+	Handle          chan *value.VmInterrupt
 
 	ExceptionCatchLabels []uint
 
@@ -52,12 +52,12 @@ type CoreLimits struct {
 
 func NewCore(
 	program *map[string][]compiler.Instruction,
-	hostCall func(*VM, string, []*value.Value) (*value.Value, *value.Interrupt),
+	hostCall func(*VM, string, []*value.Value) (*value.Value, *value.VmInterrupt),
 	executor value.Executor,
 	vm *VM,
 	coreNum uint,
 	verbose bool,
-	handle chan *value.Interrupt,
+	handle chan *value.VmInterrupt,
 	ctx *context.Context,
 	limits CoreLimits,
 ) Core {
@@ -113,11 +113,11 @@ func (self *Core) absolute(rel int64) int {
 	return int(rel + self.MemoryPointer)
 }
 
-func (self *Core) checkCancelation() *value.Interrupt {
+func (self *Core) checkCancelation() *value.VmInterrupt {
 	select {
 	case <-(*self.CancelCtx).Done():
 		span := self.parent.SourceMap(*self.callFrame())
-		return value.NewTerminationInterrupt(context.Cause((*self.CancelCtx)).Error(), span)
+		return value.NewVMTerminationInterrupt(context.Cause((*self.CancelCtx)).Error(), span)
 	default:
 		// do nothing, this should not block the entire interpreter
 		return nil
@@ -147,9 +147,9 @@ outer:
 
 		// Check for stack overflow
 		if len(self.Stack) > int(self.Limits.StackMaxSize) {
-			self.Handle <- self.runtimeErr(
+			self.Handle <- self.fatalErr(
 				fmt.Sprintf("Runtime stack limit of %d was exceeded by %d", self.Limits.StackMaxSize, len(self.Stack)-int(self.Limits.StackMaxSize)),
-				value.StackOverFlowErrorKind,
+				value.VMFatalExceptionKind(value.Vm_StackOverFlowErrorKind),
 				self.parent.SourceMap(self.CallStack[len(self.CallStack)-2]),
 			)
 			return
@@ -157,9 +157,9 @@ outer:
 
 		// Check for callstack overflows
 		if len(self.CallStack) > int(self.Limits.CallStackMaxSize) {
-			self.Handle <- self.runtimeErr(
+			self.Handle <- self.fatalErr(
 				fmt.Sprintf("Runtime callstack limit of %d was exceeded by %d", self.Limits.CallStackMaxSize, len(self.CallStack)-int(self.Limits.CallStackMaxSize)),
-				value.StackOverFlowErrorKind,
+				value.Vm_StackOverFlowErrorKind,
 				self.parent.SourceMap(*self.callFrame()),
 			)
 			return
@@ -222,11 +222,13 @@ outer:
 
 			if i := self.runInstruction(i); i != nil {
 				switch (*i).Kind() {
-				case value.ThrowInterruptKind:
-					throwError := (*i).(value.ThrowInterrupt)
+				// Only non-fatal exceptions can be handled
+				case value.Vm_NormalExceptionInterruptKind:
+					throwError := (*i).(value.Vm_NormalException)
 
+					// If there is no catch-block, terminate this core
 					if len(self.ExceptionCatchLabels) == 0 {
-						self.Handle <- self.runtimeErr(throwError.Message(), value.UncaughtThrowKind, throwError.Span)
+						self.Handle <- self.fatalErr(throwError.Message(), value.Vm_UncaughtThrowKind, throwError.Span)
 						return
 					}
 
@@ -251,7 +253,7 @@ outer:
 	self.Handle <- nil
 }
 
-func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interrupt {
+func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInterrupt {
 	switch instruction.Opcode() {
 	case compiler.Opcode_Nop:
 		break
@@ -260,9 +262,9 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		self.MemoryPointer += i.Value
 
 		if int(self.MemoryPointer) >= int(self.Limits.MaxMemorySize) {
-			return self.runtimeErr(
+			return self.fatalErr(
 				fmt.Sprintf("Memory capacity of %d variables was exceeded (mp=%d)", self.MemoryPointer, self.Limits.MaxMemorySize),
-				value.StackOverFlowErrorKind,
+				value.Vm_OutOfMemoryErrorKind,
 				self.parent.SourceMap(*self.callFrame()),
 			)
 		}
@@ -500,10 +502,24 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 		case value.IntValueKind:
 			lInt := l.(value.ValueInt)
 			rInt := r.(value.ValueInt)
+			if rInt.Inner == 0 {
+				return self.fatalErr(
+					"Division by zero error: this is operation is illegal",
+					value.Vm_ValueErrorKind,
+					self.parent.SourceMap(*self.callFrame()),
+				)
+			}
 			self.push(value.NewValueInt(lInt.Inner / rInt.Inner))
 		case value.FloatValueKind:
 			lFloat := l.(value.ValueFloat)
 			rFloat := r.(value.ValueFloat)
+			if rFloat.Inner == 0.0 {
+				return self.fatalErr(
+					"Division by zero error: this is operation is illegal",
+					value.Vm_ValueErrorKind,
+					self.parent.SourceMap(*self.callFrame()),
+				)
+			}
 			self.push(value.NewValueFloat(lFloat.Inner / rFloat.Inner))
 		default:
 			panic("This value combination is unsupported")
@@ -701,7 +717,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.Interr
 
 		self.callFrame().InstructionPointer++
 
-		return value.NewThrowInterrupt(
+		return value.NewVMThrowInterrupt(
 			self.parent.SourceMap(*self.callFrame()),
 			display,
 		)

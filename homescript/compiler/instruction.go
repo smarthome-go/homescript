@@ -6,7 +6,7 @@ import (
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
-	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
 type Program struct {

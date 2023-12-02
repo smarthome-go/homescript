@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
 func (self *Core) importItem(module string, toImport string) value.Value {

@@ -1,0 +1,20 @@
+fn main() {
+
+}
+
+fn add() {
+    let a = 20;
+    let b = 22;
+
+
+    assert(a + b == 42);
+    assert(b + a == 42);
+
+    let c = -20;
+    assert(42 + c == 22);
+    assert(-22 + c == -42);
+    assert(c + 20 == 0);
+    assert(20 + c == 0);
+    assert(5 + c == -15);
+    assert(-c + 5 == 25);
+}

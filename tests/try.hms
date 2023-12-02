@@ -1,1 +1,46 @@
-fail
+fn main() {
+    simple();
+    try {
+        nested()
+    } catch e {
+        // TODO: also validate that the spans are correct
+        assert(e.message == "bazException");
+    }
+}
+
+fn simple() {
+    let catch_taken = false;
+
+    try {
+        println("nop");
+    } catch _ {
+        catch_taken = true;
+    }
+
+    assert(!catch_taken);
+
+
+    try {
+        "foo".parse_json() as int;
+    } catch e {
+        println(e);
+        assert(e.message == "JSON parse error: invalid character 'o' in literal false (expecting 'a')");
+        catch_taken = true;
+    }
+
+    assert(catch_taken);
+}
+
+fn nested() {
+    try {
+        try {
+            throw("fooException");
+        } catch e {
+            assert(e.message == "fooException");
+            throw("barException");
+        }
+    } catch e {
+        assert(e.message == "barException");
+        throw("bazException");
+    }
+}
