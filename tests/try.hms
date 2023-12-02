@@ -36,7 +36,7 @@ fn nested() {
         try {
             throw("fooException");
         } catch e {
-            assert(e.message == "fooException");
+            assert_eq(e.message, "fooException");
             throw("barException");
         }
     } catch e {

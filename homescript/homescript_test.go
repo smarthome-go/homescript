@@ -19,6 +19,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
+	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,7 +55,29 @@ func analyzerScopeAdditions() map[string]analyzer.Variable {
 		),
 		"assert": analyzer.NewBuiltinVar(
 			ast.NewFunctionType(
-				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{}, ast.NewBoolType(herrors.Span{})),
+				ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+					{
+						Name: pAst.NewSpannedIdent("t", herrors.Span{}),
+						Type: ast.NewBoolType(herrors.Span{}),
+					},
+				}),
+				herrors.Span{},
+				ast.NewNullType(herrors.Span{}),
+				herrors.Span{},
+			),
+		),
+		"assert_eq": analyzer.NewBuiltinVar(
+			ast.NewFunctionType(
+				ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+					{
+						Name: pAst.NewSpannedIdent("l", herrors.Span{}),
+						Type: ast.NewUnknownType(),
+					},
+					{
+						Name: pAst.NewSpannedIdent("r", herrors.Span{}),
+						Type: ast.NewUnknownType(),
+					},
+				}),
 				herrors.Span{},
 				ast.NewNullType(herrors.Span{}),
 				herrors.Span{},
@@ -203,14 +226,155 @@ func interpeterScopeAdditions() map[string]value.Value {
 			}
 			return value.NewValueNull(), nil
 		}),
+		"assert_eq": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+			eq, i := args[0].IsEqual(args[1])
+			if i != nil {
+				return nil, i
+			}
+
+			if !eq {
+				a, i := args[0].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				b, i := args[1].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				return nil, value.NewRuntimeErr(
+					fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
+					value.HostErrorKind,
+					span,
+				)
+			}
+			return value.NewValueNull(), nil
+		}),
 	}
 }
 
-type executor struct{}
+//
+// Vm
+//
 
-func (self executor) GetUser() string { return "<unknown>" }
+func vmiScopeAdditions() map[string]vmValue.Value {
+	return map[string]vmValue.Value{
+		"print": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
 
-func (self executor) GetBuiltinImport(moduleName string, toImport string) (val value.Value, found bool) {
+			outStr := strings.Join(output, " ")
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, vmValue.NewVMFatalException(
+					err.Error(),
+					vmValue.Vm_HostErrorKind,
+					span,
+				)
+			}
+
+			return vmValue.NewValueNull(), nil
+		},
+		),
+		"println": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
+
+			outStr := strings.Join(output, " ") + "\n"
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, vmValue.NewVMFatalException(
+					err.Error(),
+					vmValue.Vm_HostErrorKind,
+					span,
+				)
+			}
+
+			return vmValue.NewValueNull(), nil
+		},
+		),
+		"debug": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			output := make([]string, 0)
+			for _, arg := range args {
+				disp, i := arg.Display()
+				if i != nil {
+					return nil, i
+				}
+				output = append(output, disp)
+			}
+
+			outStr := "DEBUG: " + strings.Join(output, " ") + "\n"
+
+			if err := executor.WriteStringTo(outStr); err != nil {
+				return nil, vmValue.NewVMFatalException(
+					err.Error(),
+					vmValue.Vm_HostErrorKind,
+					span,
+				)
+			}
+
+			return vmValue.NewValueNull(), nil
+		},
+		),
+		"assert": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			if !args[0].(vmValue.ValueBool).Inner {
+				return nil, vmValue.NewVMFatalException(
+					"Assert failed",
+					vmValue.Vm_HostErrorKind,
+					span,
+				)
+			}
+			return vmValue.NewValueNull(), nil
+		}),
+		"assert_eq": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			eq, i := args[0].IsEqual(args[1])
+			if i != nil {
+				return nil, i
+			}
+
+			if !eq {
+				a, i := args[0].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				b, i := args[1].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				return nil, vmValue.NewVMThrowInterrupt(
+					span,
+					fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
+				)
+			}
+			return vmValue.NewValueNull(), nil
+		}),
+	}
+}
+
+//
+// Tree-walking interpreter
+//
+
+type treeExecutor struct{}
+
+func (self treeExecutor) GetUser() string { return "<unknown>" }
+
+func (self treeExecutor) GetBuiltinImport(moduleName string, toImport string) (val value.Value, found bool) {
 	switch moduleName {
 	case "testing":
 		switch toImport {
@@ -255,7 +419,7 @@ func (self executor) GetBuiltinImport(moduleName string, toImport string) (val v
 }
 
 // returns the Homescript code of the requested module
-func (self executor) ResolveModuleCode(moduleName string) (code string, found bool, err error) {
+func (self treeExecutor) ResolveModuleCode(moduleName string) (code string, found bool, err error) {
 	path := fmt.Sprintf("tests/%s.hms", moduleName)
 
 	file, err := os.ReadFile(path)
@@ -269,7 +433,79 @@ func (self executor) ResolveModuleCode(moduleName string) (code string, found bo
 	return string(file), true, nil
 }
 
-func (self executor) WriteStringTo(input string) error {
+func (self treeExecutor) WriteStringTo(input string) error {
+	fmt.Print(input)
+	return nil
+}
+
+//
+// Vm interpreter
+//
+
+type vmExecutor struct{}
+
+func (self vmExecutor) GetUser() string { return "<unknown>" }
+
+func (self vmExecutor) GetBuiltinImport(moduleName string, toImport string) (val vmValue.Value, found bool) {
+	switch moduleName {
+	case "testing":
+		switch toImport {
+		case "assert_eq":
+			return *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+				lhsDisp, i := args[0].Display()
+				if i != nil {
+					return nil, i
+				}
+				rhsDisp, i := args[1].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				if args[0].Kind() != args[1].Kind() {
+					return nil, vmValue.NewVMThrowInterrupt(span, fmt.Sprintf("`%s` is not equal to `%s`", lhsDisp, rhsDisp))
+				}
+
+				isEqual, i := args[0].IsEqual(args[1])
+				if i != nil {
+					return nil, i
+				}
+
+				if !isEqual {
+					return nil, vmValue.NewVMThrowInterrupt(span, fmt.Sprintf("`%s` is not equal to `%s`", lhsDisp, rhsDisp))
+				}
+
+				return vmValue.NewValueNull(), nil
+			}), true
+		case "any_func":
+			return *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+				return vmValue.NewValueInt(42), nil
+			}), true
+		case "any_list":
+			return *vmValue.NewValueList([]*vmValue.Value{vmValue.NewValueString("Test")}), true
+		}
+		return nil, false
+	default:
+		return nil, false
+
+	}
+}
+
+// returns the Homescript code of the requested module
+func (self vmExecutor) ResolveModuleCode(moduleName string) (code string, found bool, err error) {
+	path := fmt.Sprintf("tests/%s.hms", moduleName)
+
+	file, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+
+	return string(file), true, nil
+}
+
+func (self vmExecutor) WriteStringTo(input string) error {
 	fmt.Print(input)
 	return nil
 }
@@ -282,6 +518,7 @@ type Test struct {
 	Name           string
 	Path           string
 	ExpectedOutput string
+	Debug          bool
 }
 
 func TestScripts(t *testing.T) {
@@ -290,26 +527,31 @@ func TestScripts(t *testing.T) {
 			Name:           "TestAllBuiltinMembers",
 			Path:           "../tests/builtin_members.hms",
 			ExpectedOutput: "",
+			Debug:          false,
 		},
 		{
 			Name:           "TestAllNormalCasts",
 			Path:           "../tests/normal_casts.hms",
 			ExpectedOutput: "",
+			Debug:          false,
 		},
 		{
 			Name:           "TestAllAnyCasts",
 			Path:           "../tests/any_casts.hms",
 			ExpectedOutput: "",
+			Debug:          false,
 		},
 		{
 			Name:           "TestSringConversion",
 			Path:           "../tests/string_conversion.hms",
 			ExpectedOutput: "",
+			Debug:          false,
 		},
 		{
 			Name:           "TestStatements",
 			Path:           "../tests/statements.hms",
 			ExpectedOutput: "",
+			Debug:          false,
 		},
 	}
 
@@ -331,18 +573,19 @@ func TestScripts(t *testing.T) {
 		tests = append(tests, Test{
 			Name:           split[len(split)-1],
 			Path:           file,
+			Debug:          false,
 			ExpectedOutput: "",
 		})
 	}
 
 	for idx, test := range tests {
 		t.Run(fmt.Sprintf("program-%d-%s", idx, test.Name), func(t *testing.T) {
-			runScript(test.Path, t)
+			runScript(test.Path, test.Debug, t)
 		})
 	}
 }
 
-func runScript(path string, t *testing.T) {
+func runScript(path string, debug bool, t *testing.T) {
 	code, err := os.ReadFile(path)
 	if err != nil {
 		t.Error(err.Error())
@@ -381,9 +624,20 @@ func runScript(path string, t *testing.T) {
 	compiler := compiler.NewCompiler()
 	compiled := compiler.Compile(modules)
 
+	i := 0
+	for name, function := range compiled.Functions {
+		fmt.Printf("%03d ===> func: %s\n", i, name)
+
+		for idx, inst := range function {
+			fmt.Printf("%03d | %s\n", idx, inst)
+		}
+
+		i++
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
-	vm := runtime.NewVM(compiled, executor{}, os.Args[2] == "1", &ctx, &cancel, interpeterScopeAdditions, runtime.CoreLimits{
+	vm := runtime.NewVM(compiled, vmExecutor{}, debug, &ctx, &cancel, vmiScopeAdditions(), runtime.CoreLimits{
 		CallStackMaxSize: 10024,
 		StackMaxSize:     10024,
 		MaxMemorySize:    10024,
