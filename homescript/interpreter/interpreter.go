@@ -73,7 +73,7 @@ func (self *Interpreter) Execute(entryModule string) *value.Interrupt {
 
 				_, i := self.callFunc(errors.Span{}, (*fn).(value.ValueFunction), make([]ast.AnalyzedCallArgument, 0))
 				if i != nil {
-					if (*i).Kind() == value.ThrowInterruptKind {
+					if (*i).Kind() == value.NormalExceptionInterruptKind {
 						throw := (*i).(value.ThrowInterrupt)
 						return value.NewRuntimeErr(throw.Message(), value.UncaughtThrowKind, throw.Span)
 					}
@@ -81,7 +81,7 @@ func (self *Interpreter) Execute(entryModule string) *value.Interrupt {
 			}
 		}
 
-		if (*i).Kind() == value.ThrowInterruptKind {
+		if (*i).Kind() == value.NormalExceptionInterruptKind {
 			throw := (*i).(value.ThrowInterrupt)
 			return value.NewRuntimeErr(throw.Message(), value.UncaughtThrowKind, throw.Span)
 		}

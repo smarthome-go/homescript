@@ -51,8 +51,8 @@ const (
 	ReturnInterruptKind
 	BreakInterruptKind
 	ContinueInterruptKind
-	ThrowInterruptKind
-	RuntimeErrorInterruptKind
+	NormalExceptionInterruptKind
+	FatalExceptionInterruptKind
 )
 
 func (self InterruptKind) String() string {
@@ -67,10 +67,10 @@ func (self InterruptKind) String() string {
 		return "break"
 	case ContinueInterruptKind:
 		return "continue"
-	case ThrowInterruptKind:
-		return "throw"
-	case RuntimeErrorInterruptKind:
-		return "error"
+	case NormalExceptionInterruptKind:
+		return "exception"
+	case FatalExceptionInterruptKind:
+		return "fatal exception"
 	default:
 		panic("A new interrupt kind was added without updating this code")
 	}
@@ -164,7 +164,7 @@ type ThrowInterrupt struct {
 	Span            errors.Span
 }
 
-func (self ThrowInterrupt) Kind() InterruptKind { return ThrowInterruptKind }
+func (self ThrowInterrupt) Kind() InterruptKind { return NormalExceptionInterruptKind }
 func (self ThrowInterrupt) Message() string     { return self.MessageInternal }
 func (self ThrowInterrupt) GetSpan() errors.Span {
 	return self.Span
@@ -185,7 +185,7 @@ type RuntimeErr struct {
 	Span            errors.Span
 }
 
-func (self RuntimeErr) Kind() InterruptKind { return RuntimeErrorInterruptKind }
+func (self RuntimeErr) Kind() InterruptKind { return FatalExceptionInterruptKind }
 
 func (self RuntimeErr) Message() string {
 	return self.MessageInternal

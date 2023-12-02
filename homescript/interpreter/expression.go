@@ -605,8 +605,8 @@ func (self *Interpreter) tryExpression(node ast.AnalyzedTryExpression) (*value.V
 		return tryRes, nil
 	}
 
-	if (*i).Kind() != value.ThrowInterruptKind {
-		// only throw-errors can be caught
+	if (*i).Kind() != value.NormalExceptionInterruptKind {
+		// only non-fatal interrupts can be caught
 		return nil, i
 	}
 
