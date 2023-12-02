@@ -35,7 +35,7 @@ type Core struct {
 	Verbose         bool
 	Handle          chan *value.VmInterrupt
 
-	ExceptionCatchLabels []uint
+	ExceptionCatchLabels []CallFrame
 
 	// TODO: write documentation
 	MemoryPointer int64
@@ -232,8 +232,12 @@ outer:
 						return
 					}
 
-					catchIndex := self.ExceptionCatchLabels[len(self.ExceptionCatchLabels)-1]
-					self.callFrame().InstructionPointer = catchIndex
+					// TODO: this is a bit cursed, it needs to be fixed
+					catchLocation := self.ExceptionCatchLabels[len(self.ExceptionCatchLabels)-1]
+					if self.callFrame().Function != catchLocation.Function {
+						self.popCallStack()
+					}
+					*self.callFrame() = catchLocation
 
 					self.push(
 						value.NewValueObject(map[string]*value.Value{
@@ -722,8 +726,11 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 			display,
 		)
 	case compiler.Opcode_SetTryLabel:
-		i := instruction.(compiler.OneIntInstruction)
-		self.ExceptionCatchLabels = append(self.ExceptionCatchLabels, uint(i.Value))
+		i := instruction.(compiler.OneIntOneStringInstruction)
+		self.ExceptionCatchLabels = append(self.ExceptionCatchLabels, CallFrame{
+			Function:           i.ValueString,
+			InstructionPointer: uint(i.ValueInt),
+		})
 	case compiler.Opcode_PopTryLabel:
 		self.ExceptionCatchLabels = self.ExceptionCatchLabels[:len(self.ExceptionCatchLabels)-1]
 	case compiler.Opcode_Member:

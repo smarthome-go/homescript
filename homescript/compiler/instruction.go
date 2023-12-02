@@ -187,6 +187,27 @@ func newPrimitiveInstruction(opCode Opcode) Instruction {
 	return PrimitiveInstruction{opCode: opCode}
 }
 
+// OneInt OneString Instruction
+
+type OneIntOneStringInstruction struct {
+	opCode      Opcode
+	ValueInt    int64
+	ValueString string
+}
+
+func (self OneIntOneStringInstruction) Opcode() Opcode { return self.opCode }
+func (self OneIntOneStringInstruction) String() string {
+	return fmt.Sprintf("%s(%s:%d)", self.opCode, self.ValueString, self.ValueInt)
+}
+
+func newOneIntOneStringInstruction(opCode Opcode, valueString string, valueInt int64) OneIntOneStringInstruction {
+	return OneIntOneStringInstruction{
+		opCode:      opCode,
+		ValueInt:    valueInt,
+		ValueString: valueString,
+	}
+}
+
 // OneInt Instruction
 
 type OneIntInstruction struct {

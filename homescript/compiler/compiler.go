@@ -197,14 +197,14 @@ func (self *Compiler) relocateLabels() {
 					fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
 					fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
 				case Opcode_SetTryLabel:
-					i := inst.(OneStringInstruction)
+					i := inst.(TwoStringInstruction)
 
-					ip, found := labels[i.Value]
+					ip, found := labels[i.Values[1]]
 					if !found {
 						panic("Every label needs to appear in the code")
 					}
 
-					fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
+					fnOut[idx] = newOneIntOneStringInstruction(inst.Opcode(), i.Values[0], ip)
 					fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
 				case Opcode_Label:
 					panic("This should not happen")
@@ -924,10 +924,15 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 
 		self.insert(newOneStringInstruction(Opcode_Label, after_branch), node.Range)
 	case ast.TryExpressionKind:
+		mangledCurr, found := self.getMangledFn(self.currFn)
+		if !found {
+			panic("Impossible state: every current function should also be found")
+		}
+
 		node := node.(ast.AnalyzedTryExpression)
 		exceptionLabel := self.mangleLabel("exception_label")
 		afterCatchLabel := self.mangleLabel("after_catch_label")
-		self.insert(newOneStringInstruction(Opcode_SetTryLabel, exceptionLabel), node.Range)
+		self.insert(newTwoStringInstruction(Opcode_SetTryLabel, mangledCurr, exceptionLabel), node.Range)
 		self.compileBlock(node.TryBlock, true)
 		self.insert(newPrimitiveInstruction(Opcode_PopTryLabel), node.Range)
 		self.insert(newOneStringInstruction(Opcode_Jump, afterCatchLabel), node.Range)
@@ -935,10 +940,10 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		// exception case
 		mangledExceptionName := self.mangleVar(node.CatchIdent.Ident())
 		self.insert(newOneStringInstruction(Opcode_Label, exceptionLabel), node.Range)
-		self.insert(newPrimitiveInstruction(Opcode_PopTryLabel), node.Range)
 		self.pushScope()
 		defer self.popScope()
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, mangledExceptionName), node.Range) // TODO: mangle names
+		self.insert(newPrimitiveInstruction(Opcode_PopTryLabel), node.Range)
 		self.compileBlock(node.CatchBlock, false)
 		self.insert(newOneStringInstruction(Opcode_Label, afterCatchLabel), node.Range)
 	default:
