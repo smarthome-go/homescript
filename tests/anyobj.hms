@@ -1,1 +1,15 @@
-fail
+fn main() {
+    type obj = {
+        foo: int,
+    };
+    let a = new { foo: 42 } as { ? };
+    println(a);
+
+    let b: int = a.get("foo").unwrap();
+    println(b);
+
+    b += 1;
+    assert_eq(a.get("foo").unwrap() as int, 42);
+
+    assert_eq(b, 43);
+}
