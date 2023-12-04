@@ -912,6 +912,8 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		for i, option := range node.Arms {
 			fmt.Printf("Inserted new case %s\n", branches[i])
 			self.insert(newOneStringInstruction(Opcode_Label, branches[i]), node.Range)
+			// Insert a `drop` since a eq_poponce was used
+			self.insert(newPrimitiveInstruction(Opcode_Drop), node.Range)
 			self.compileExpr(option.Action)
 			self.insert(newOneStringInstruction(Opcode_Jump, after_branch), node.Range)
 		}
