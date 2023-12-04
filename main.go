@@ -603,6 +603,46 @@ func iScopeAdditions() map[string]value.Value {
 			}
 			return value.NewValueNull(), nil
 		}),
+		"assert_eq": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+			if args[0].Kind() != args[1].Kind() {
+				a, i := args[0].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				b, i := args[1].Display()
+				if i != nil {
+					return nil, i
+				}
+				return nil, value.NewThrowInterrupt(
+					span,
+					fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
+				)
+			}
+
+			eq, i := args[0].IsEqual(args[1])
+			if i != nil {
+				return nil, i
+			}
+
+			if !eq {
+				a, i := args[0].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				b, i := args[1].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				return nil, value.NewThrowInterrupt(
+					span,
+					fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
+				)
+			}
+			return value.NewValueNull(), nil
+		}),
 	}
 }
 

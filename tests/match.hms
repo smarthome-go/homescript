@@ -1,6 +1,6 @@
 fn main() {
-    //simple();
-    //complex();
+    simple();
+    complex();
     assert_eq(nested(), "ok");
 }
 
