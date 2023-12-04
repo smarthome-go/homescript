@@ -1,6 +1,7 @@
 fn main() {
     simple();
     complex();
+    assert_eq(nested(), "ok");
 }
 
 fn complex() {
@@ -37,4 +38,19 @@ fn simple() {
     };
 
     println(res);
+}
+
+fn nested() -> str {
+    let a = 42;
+    let b = 69;
+
+    match a {
+        12 => throw("illegal state"),
+        42 => match b {
+            12 => throw("illegal state"),
+            69 => "ok",
+            _ => throw("illegal state"),
+        }
+        _ => throw("illegal state"),
+    }
 }

@@ -1,5 +1,3 @@
-import assert_eq from testing;
-
 fn from_num() {
     type FromNumTest = {
         n: int,

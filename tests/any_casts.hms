@@ -1,5 +1,4 @@
 import {
-    assert_eq,
     any_func,
     any_list,
 } from testing;

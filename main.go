@@ -378,6 +378,23 @@ func scopeAdditions() map[string]analyzer.Variable {
 				syntaxErrors.Span{},
 			),
 		),
+		"assert_eq": analyzer.NewBuiltinVar(
+			ast.NewFunctionType(
+				ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+					{
+						Name: pAst.NewSpannedIdent("l", syntaxErrors.Span{}),
+						Type: ast.NewUnknownType(),
+					},
+					{
+						Name: pAst.NewSpannedIdent("r", syntaxErrors.Span{}),
+						Type: ast.NewUnknownType(),
+					},
+				}),
+				syntaxErrors.Span{},
+				ast.NewNullType(syntaxErrors.Span{}),
+				syntaxErrors.Span{},
+			),
+		),
 	}
 }
 
@@ -458,6 +475,46 @@ func vmiScopeAdditions() map[string]vmValue.Value {
 					"Assert failed",
 					vmValue.Vm_HostErrorKind,
 					span,
+				)
+			}
+			return vmValue.NewValueNull(), nil
+		}),
+		"assert_eq": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			if args[0].Kind() != args[1].Kind() {
+				a, i := args[0].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				b, i := args[1].Display()
+				if i != nil {
+					return nil, i
+				}
+				return nil, vmValue.NewVMThrowInterrupt(
+					span,
+					fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
+				)
+			}
+
+			eq, i := args[0].IsEqual(args[1])
+			if i != nil {
+				return nil, i
+			}
+
+			if !eq {
+				a, i := args[0].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				b, i := args[1].Display()
+				if i != nil {
+					return nil, i
+				}
+
+				return nil, vmValue.NewVMThrowInterrupt(
+					span,
+					fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
 				)
 			}
 			return vmValue.NewValueNull(), nil
