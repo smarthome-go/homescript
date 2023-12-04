@@ -232,7 +232,9 @@ outer:
 						return
 					}
 
-					// TODO: this is a bit cursed, it needs to be fixed
+					// If the exception occured in another function, also pop the call frame of this function
+					// If this was not the case, a function would basically "return twice",
+					// as the jump to the error-handling code would not pop the most current call frame.
 					catchLocation := self.ExceptionCatchLabels[len(self.ExceptionCatchLabels)-1]
 					if self.callFrame().Function != catchLocation.Function {
 						self.popCallStack()
