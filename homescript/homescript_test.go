@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -90,14 +89,6 @@ type analyzerHost struct{}
 
 func (self analyzerHost) ResolveCodeModule(moduleName string) (code string, moduleFound bool, err error) {
 	path := fmt.Sprintf("../tests/%s.hms", moduleName)
-
-	fmt.Printf("attempting import from: %s\n", path)
-
-	p, err := os.Getwd()
-	if err != nil {
-		log.Println(err)
-	}
-	fmt.Println(p)
 
 	file, err := os.ReadFile(path)
 	if err != nil {
@@ -534,43 +525,37 @@ func (self vmExecutor) WriteStringTo(input string) error {
 //
 
 type Test struct {
-	Name           string
-	Path           string
-	ExpectedOutput string
-	Debug          bool
+	Name  string
+	Path  string
+	Debug bool
 }
 
 func TestScripts(t *testing.T) {
 	tests := []Test{
 		{
-			Name:           "TestAllBuiltinMembers",
-			Path:           "../tests/builtin_members.hms",
-			ExpectedOutput: "",
-			Debug:          false,
+			Name:  "TestAllBuiltinMembers",
+			Path:  "../tests/builtin_members.hms",
+			Debug: false,
 		},
 		{
-			Name:           "TestAllNormalCasts",
-			Path:           "../tests/normal_casts.hms",
-			ExpectedOutput: "",
-			Debug:          false,
+			Name:  "TestAllNormalCasts",
+			Path:  "../tests/normal_casts.hms",
+			Debug: false,
 		},
 		{
-			Name:           "TestAllAnyCasts",
-			Path:           "../tests/any_casts.hms",
-			ExpectedOutput: "",
-			Debug:          false,
+			Name:  "TestAllAnyCasts",
+			Path:  "../tests/any_casts.hms",
+			Debug: false,
 		},
 		{
-			Name:           "TestSringConversion",
-			Path:           "../tests/string_conversion.hms",
-			ExpectedOutput: "",
-			Debug:          false,
+			Name:  "TestSringConversion",
+			Path:  "../tests/string_conversion.hms",
+			Debug: false,
 		},
 		{
-			Name:           "TestStatements",
-			Path:           "../tests/statements.hms",
-			ExpectedOutput: "",
-			Debug:          false,
+			Name:  "TestStatements",
+			Path:  "../tests/statements.hms",
+			Debug: false,
 		},
 	}
 
@@ -586,14 +571,11 @@ func TestScripts(t *testing.T) {
 			}
 		}
 
-		fmt.Printf("Added file to test: `%s`\n", file)
-
 		split := strings.Split(file, "/")
 		tests = append(tests, Test{
-			Name:           split[len(split)-1],
-			Path:           file,
-			Debug:          false,
-			ExpectedOutput: "",
+			Name:  split[len(split)-1],
+			Path:  file,
+			Debug: false,
 		})
 	}
 
@@ -626,14 +608,18 @@ func runScript(path string, debug bool, t *testing.T) {
 		hasErr = true
 	}
 
-	for _, d := range diagnostics {
-		file, err := os.ReadFile(d.Span.Filename)
-		assert.NoError(t, err)
+	if debug {
+		for _, d := range diagnostics {
+			file, err := os.ReadFile(d.Span.Filename)
+			assert.NoError(t, err)
 
-		t.Error(d.Display(string(file)))
-		if d.Level == diagnostic.DiagnosticLevelError {
-			hasErr = true
+			t.Error(d.Display(string(file)))
+			if d.Level == diagnostic.DiagnosticLevelError {
+				hasErr = true
+			}
 		}
+	} else if len(diagnostics) > 0 {
+		fmt.Printf("Program `%s` generated %d diagnostics.\n", t.Name(), len(diagnostics))
 	}
 
 	if hasErr {
@@ -643,15 +629,17 @@ func runScript(path string, debug bool, t *testing.T) {
 	compiler := compiler.NewCompiler()
 	compiled := compiler.Compile(modules)
 
-	i := 0
-	for name, function := range compiled.Functions {
-		fmt.Printf("%03d ===> func: %s\n", i, name)
+	if debug {
+		i := 0
+		for name, function := range compiled.Functions {
+			fmt.Printf("%03d ===> func: %s\n", i, name)
 
-		for idx, inst := range function {
-			fmt.Printf("%03d | %s\n", idx, inst)
+			for idx, inst := range function {
+				fmt.Printf("%03d | %s\n", idx, inst)
+			}
+
+			i++
 		}
-
-		i++
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

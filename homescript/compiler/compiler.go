@@ -176,7 +176,6 @@ func (self *Compiler) relocateLabels() {
 				if inst.Opcode() == Opcode_Label {
 					i := inst.(OneStringInstruction).Value
 					labels[i] = int64(index)
-					fmt.Printf("I: %v | IP: %d\n", inst, index)
 				} else {
 					fnOut = append(fnOut, inst)
 					sourceMapOut = append(sourceMapOut, fn.SourceMap[idx])
@@ -195,7 +194,6 @@ func (self *Compiler) relocateLabels() {
 					}
 
 					fnOut[idx] = newOneIntInstruction(inst.Opcode(), ip)
-					fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
 				case Opcode_SetTryLabel:
 					i := inst.(TwoStringInstruction)
 
@@ -205,7 +203,6 @@ func (self *Compiler) relocateLabels() {
 					}
 
 					fnOut[idx] = newOneIntOneStringInstruction(inst.Opcode(), i.Values[0], ip)
-					fmt.Printf(":: :: Patched %v -> %v\n", inst, fnOut[idx])
 				case Opcode_Label:
 					panic("This should not happen")
 				}
@@ -242,8 +239,6 @@ func (self *Compiler) renameVariables() {
 				default:
 					continue
 				}
-
-				fmt.Printf(":: == Patched Symbol %v -> %v\n", inst, module[name].Instructions[idx])
 			}
 		}
 	}
@@ -289,8 +284,6 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 	entryPoints := make(map[string]string)
 
 	for moduleName, module := range program {
-		fmt.Printf("Compiling module %s...\n", moduleName)
-
 		self.currModule = moduleName
 		self.functions[self.currModule] = make(map[string]*Function)
 
@@ -405,7 +398,6 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 
 	for i := len(node.Parameters) - 1; i >= 0; i-- {
 		name := self.mangleVar(node.Parameters[i].Ident.Ident())
-		fmt.Printf("%s->%s\n", node.Parameters[i].Ident.Ident(), name)
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
 		self.CurrFn().CntVariables++
 	}
@@ -910,7 +902,6 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 
 		// Each individual branch
 		for i, option := range node.Arms {
-			fmt.Printf("Inserted new case %s\n", branches[i])
 			self.insert(newOneStringInstruction(Opcode_Label, branches[i]), node.Range)
 			// Insert a `drop` since a eq_poponce was used
 			self.insert(newPrimitiveInstruction(Opcode_Drop), node.Range)
