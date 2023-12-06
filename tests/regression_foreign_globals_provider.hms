@@ -1,0 +1,16 @@
+let INTERNAL_GLOBAL = [ 1, 2, 3 ];
+
+pub fn test() {
+    // This line caused a panic previously
+    println(INTERNAL_GLOBAL);
+    assert_eq(INTERNAL_GLOBAL, [ 42, 69 ]);
+}
+
+pub fn set() {
+    INTERNAL_GLOBAL = [ 42, 69 ]
+}
+
+// Cannot throw: this script is executed automatically by the test suite
+fn main() {
+    INTERNAL_GLOBAL = [ 42, 69 ];
+}

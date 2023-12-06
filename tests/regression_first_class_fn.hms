@@ -1,0 +1,21 @@
+let count = 0;
+
+fn foo() {
+    count += 1;
+    println("Hello World!", count);
+}
+
+fn main() {
+    let a = foo;
+    a();
+
+    let tests = [
+        foo,
+    ];
+
+    for test in tests {
+        test();
+    }
+
+    assert_eq(count, 2);
+}

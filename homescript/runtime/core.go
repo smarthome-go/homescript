@@ -325,35 +325,35 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		n := *self.pop()
 		numArgs := n.(value.ValueInt).Inner
 
-		stack := make([]string, 0)
-		for _, elem := range self.Stack {
-			if elem == nil || *elem == nil {
-				stack = append(stack, "<nil>")
-			} else {
-				disp, i := (*elem).Display()
-				if i != nil {
-					panic(*i)
-				}
-				stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
-			}
-		}
-		fmt.Printf("[%s]\n", strings.Join(stack, ", "))
-
+		// stack := make([]string, 0)
+		// for _, elem := range self.Stack {
+		// 	if elem == nil || *elem == nil {
+		// 		stack = append(stack, "<nil>")
+		// 	} else {
+		// 		disp, i := (*elem).Display()
+		// 		if i != nil {
+		// 			panic(*i)
+		// 		}
+		// 		stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
+		// 	}
+		// }
+		// fmt.Printf("STACK=[%s]\n", strings.Join(stack, ", "))
+		//
 		v := *self.pop()
-
-		stack = make([]string, 0)
-		for _, elem := range self.Stack {
-			if elem == nil || *elem == nil {
-				stack = append(stack, "<nil>")
-			} else {
-				disp, i := (*elem).Display()
-				if i != nil {
-					panic(*i)
-				}
-				stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
-			}
-		}
-		fmt.Printf("[%s]\n", strings.Join(stack, ", "))
+		//
+		// stack = make([]string, 0)
+		// for _, elem := range self.Stack {
+		// 	if elem == nil || *elem == nil {
+		// 		stack = append(stack, "<nil>")
+		// 	} else {
+		// 		disp, i := (*elem).Display()
+		// 		if i != nil {
+		// 			panic(*i)
+		// 		}
+		// 		stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
+		// 	}
+		// }
+		// fmt.Printf("STACK=[%s]\n", strings.Join(stack, ", "))
 
 		switch v.Kind() {
 		// TODO: support arguments

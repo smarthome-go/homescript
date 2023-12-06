@@ -531,52 +531,37 @@ type Test struct {
 }
 
 func TestScripts(t *testing.T) {
+	includeOthers := true
+
 	tests := []Test{
-		{
-			Name:  "TestAllBuiltinMembers",
-			Path:  "../tests/builtin_members.hms",
-			Debug: false,
-		},
-		{
-			Name:  "TestAllNormalCasts",
-			Path:  "../tests/normal_casts.hms",
-			Debug: false,
-		},
-		{
-			Name:  "TestAllAnyCasts",
-			Path:  "../tests/any_casts.hms",
-			Debug: false,
-		},
-		{
-			Name:  "TestSringConversion",
-			Path:  "../tests/string_conversion.hms",
-			Debug: false,
-		},
-		{
-			Name:  "TestStatements",
-			Path:  "../tests/statements.hms",
-			Debug: false,
-		},
+		// Can be used for manual override
+		// {
+		// 	Name:  "TestAllBuiltinMembers",
+		// 	Path:  "../tests/builtin_members.hms",
+		// 	Debug: false,
+		// },
 	}
 
-	files, err := filepath.Glob("../tests/*.hms")
-	if err != nil {
-		panic(err)
-	}
-
-	for _, file := range files {
-		for _, test := range tests {
-			if test.Path == file {
-				continue
-			}
+	if includeOthers {
+		files, err := filepath.Glob("../tests/*.hms")
+		if err != nil {
+			panic(err)
 		}
 
-		split := strings.Split(file, "/")
-		tests = append(tests, Test{
-			Name:  split[len(split)-1],
-			Path:  file,
-			Debug: false,
-		})
+		for _, file := range files {
+			for _, test := range tests {
+				if test.Path == file {
+					continue
+				}
+			}
+
+			split := strings.Split(file, "/")
+			tests = append(tests, Test{
+				Name:  split[len(split)-1],
+				Path:  file,
+				Debug: false,
+			})
+		}
 	}
 
 	for idx, test := range tests {
@@ -663,9 +648,14 @@ func runScript(path string, debug bool, t *testing.T) {
 
 		fmt.Printf("Reading: %s...\n", i.GetSpan().Filename)
 
-		file, err := os.ReadFile(i.GetSpan().Filename)
+		file, err := os.ReadFile(fmt.Sprintf("../tests/%s.hms", i.GetSpan().Filename))
 		if err != nil {
-			panic(fmt.Sprintf("Could not read file `%s`: %s\n", i.GetSpan().Filename, err.Error()))
+			fmt.Println(err.Error())
+			wd, err2 := os.Getwd()
+			if err2 != nil {
+				panic(err2.Error())
+			}
+			panic(fmt.Sprintf("Could not read file `%s`: %s\nDIR=%s\n", i.GetSpan().Filename, err.Error(), wd))
 		}
 
 		fmt.Printf("%s\n", d.Display(string(file)))

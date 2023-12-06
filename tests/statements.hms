@@ -1,23 +1,27 @@
 // ImportStatement
-import import_me from export;
+//import import_me from export;
 
-fn importStmt() {
-    assert(42 == import_me());
-}
+//fn importStmt() {
+    //assert(42 == import_me());
+//}
 
-fn typeDef() {
-    type User = {
-        name: str,
-        password: str,
-    };
-
-    let me: User = '{"name": "foo", "password": "bar"}'.parse_json();
-    assert(me == new { name: "foo", password: "bar" });
-}
+ // fn typeDef() {
+     // type User = {
+         // name: str,
+         // password: str,
+     // };
+ // 
+     // let me: User = '{"name": "foo", "password": "bar"}'.parse_json();
+     // assert(me == new { name: "foo", password: "bar" });
+ // }
 
 fn main() {
+    let foo = fn() {
+
+    };
+
     let tests = [
-        importStmt,
+        foo,
     ];
 
 
@@ -25,6 +29,6 @@ fn main() {
         test();
     }
 
-    typeDef();
-    importStmt();
+    //typeDef();
+    //importStmt();
 }

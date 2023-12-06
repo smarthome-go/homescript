@@ -1,0 +1,6 @@
+import { test, set } from regression_foreign_globals_provider;
+
+fn main() {
+    set();
+    test();
+}
