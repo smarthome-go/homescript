@@ -97,7 +97,7 @@ func (self *Analyzer) letStatement(node pAst.LetStatement, isGlobal bool) ast.An
 		if !initExpr.Constant() {
 			self.error(
 				"Global initializer must be constant",
-				[]string{"Consider using a literal value"},
+				[]string{fmt.Sprintf("Values of type `%s` are not allowed in global variables.", initExpr.Type()), "Consider using a value with a supported type."},
 				node.Expression.Span(),
 			)
 			forceUnknownType = true
