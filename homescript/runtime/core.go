@@ -811,8 +811,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		self.push(field)
 	case compiler.Opcode_Import:
 		i := instruction.(compiler.TwoStringInstruction)
-		v := self.importItem(i.Values[0], i.Values[1])
-		self.push(&v)
+		self.importItem(i.Values[0], i.Values[1])
 	case compiler.Opcode_Into_Range:
 		end := *self.pop()
 		start := *self.pop()

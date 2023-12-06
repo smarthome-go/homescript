@@ -43,6 +43,4 @@ func (self *Core) importItem(module string, toImport string) {
 	// TODO: is this really legal
 	self.parent.Globals.Data[toImport] = val
 	defer self.parent.Globals.Mutex.Unlock()
-
-	return val
 }
