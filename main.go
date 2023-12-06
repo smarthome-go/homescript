@@ -703,7 +703,7 @@ func main() {
 	fmt.Println("=== COMPILED ===")
 
 	compiler := compiler.NewCompiler()
-	compiled := compiler.Compile(analyzed)
+	compiled := compiler.Compile(analyzed, filename)
 
 	i := 0
 	for name, function := range compiled.Functions {
@@ -725,7 +725,7 @@ func main() {
 		MaxMemorySize:    100000,
 	})
 
-	vm.Spawn(compiled.EntryPoints[filename])
+	vm.Spawn(compiled.EntryPoint)
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i
 

@@ -627,7 +627,7 @@ func runScript(path string, debug bool, t *testing.T) {
 	}
 
 	compiler := compiler.NewCompiler()
-	compiled := compiler.Compile(modules)
+	compiled := compiler.Compile(modules, path)
 
 	if debug {
 		i := 0
@@ -650,7 +650,7 @@ func runScript(path string, debug bool, t *testing.T) {
 		MaxMemorySize:    10024,
 	})
 
-	vm.Spawn(compiled.EntryPoints[path])
+	vm.Spawn(compiled.EntryPoint)
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i
 

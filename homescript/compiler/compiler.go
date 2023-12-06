@@ -244,10 +244,10 @@ func (self *Compiler) renameVariables() {
 	}
 }
 
-func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram) Program {
+func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram, entryPointModule string) Program {
 	// BUG: cross-module calls do not work
 	// BUG: furthermore, cross-module pub-let definitions also do not work
-	entryPoints := self.compileProgram(program)
+	entryPoint := self.compileProgram(program, entryPointModule)
 
 	self.relocateLabels()
 	self.renameVariables()
@@ -263,9 +263,9 @@ func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram) Program {
 	}
 
 	return Program{
-		Functions:   functions,
-		SourceMap:   sourceMap,
-		EntryPoints: entryPoints,
+		Functions:  functions,
+		SourceMap:  sourceMap,
+		EntryPoint: entryPoint,
 	}
 }
 
@@ -277,8 +277,7 @@ func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
 	return len(self.CurrFn().Instructions) - 1
 }
 
-// Returns the entrypoint of each module
-func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map[string]string {
+func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, entryPointModule string) string {
 	// TODO: handle imports to also compile imported modules
 
 	entryPoints := make(map[string]string)
@@ -306,7 +305,9 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 				self.insert(newTwoStringInstruction(Opcode_Import, item.FromModule.Ident(), importItem.Ident.Ident()), item.Range)
 			}
 		}
+	}
 
+	for moduleName, module := range program {
 		var mangledMain string
 
 		// compile all function declarations
@@ -337,14 +338,25 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 			self.compileFn(fn)
 		}
 
-		// go back to the init function and insert the main function call
-		self.currFn = "@init"
+		if moduleName == entryPointModule {
+			// If the current module is the entry module,
+			// Go back to the init function and insert the main function call
+			self.currFn = "@init"
 
-		fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
-		self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
+			for moduleName, otherInit := range entryPoints {
+				if moduleName == entryPointModule {
+					continue
+				}
+				fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
+				self.insert(newOneStringInstruction(Opcode_Call_Imm, otherInit), mainFnSpan)
+			}
+
+			fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
+			self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
+		}
 	}
 
-	return entryPoints
+	return entryPoints[entryPointModule]
 }
 
 func (self *Compiler) compileBlock(node ast.AnalyzedBlock, pushScope bool) {
