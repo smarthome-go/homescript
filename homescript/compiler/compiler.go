@@ -720,6 +720,31 @@ func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 	}
 }
 
+func (self *Compiler) compileIdentExpression(node ast.AnalyzedIdentExpression) {
+	name, found := self.getMangled(node.Ident.Ident())
+
+	opCode := Opcode_GetVarImm
+	if node.IsGlobal {
+		opCode = Opcode_GetGlobImm
+	}
+
+	if found {
+		self.insert(newOneStringInstruction(opCode, name), node.Span())
+	} else {
+		name, found := self.getMangledFn(node.Ident.Ident())
+
+		if found {
+			// This value is a function, it should also be wrapped like one
+			self.insert(newValueInstruction(Opcode_Push, *value.NewValueVMFunction(
+				name,
+			)), node.Span())
+		} else {
+			// This value is not a function. Instead, it is a global variable.
+			self.insert(newOneStringInstruction(opCode, node.Ident.Ident()), node.Span())
+		}
+	}
+}
+
 func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	switch node.Kind() {
 	case ast.UnknownExpressionKind:
@@ -737,24 +762,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		node := node.(ast.AnalyzedStringLiteralExpression)
 		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(node.Value)), node.Range)
 	case ast.IdentExpressionKind:
-		node := node.(ast.AnalyzedIdentExpression)
-		name, found := self.getMangled(node.Ident.Ident())
-
-		opCode := Opcode_GetVarImm
-		if node.IsGlobal {
-			opCode = Opcode_GetGlobImm
-		}
-
-		if found {
-			self.insert(newOneStringInstruction(opCode, name), node.Span())
-		} else {
-			name, found := self.getMangledFn(node.Ident.Ident())
-			if found {
-				self.insert(newOneStringInstruction(opCode, name), node.Span())
-			} else {
-				self.insert(newOneStringInstruction(opCode, node.Ident.Ident()), node.Span())
-			}
-		}
+		self.compileIdentExpression(node.(ast.AnalyzedIdentExpression))
 	case ast.NullLiteralExpressionKind:
 		self.insert(newValueInstruction(Opcode_Push, *value.NewValueNull()), node.Span())
 	case ast.NoneLiteralExpressionKind:
