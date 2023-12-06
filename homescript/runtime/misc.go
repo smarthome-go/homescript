@@ -1,10 +1,9 @@
 package runtime
 
-import (
-	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
-)
+import "fmt"
 
-func (self *Core) importItem(module string, toImport string) value.Value {
+func (self *Core) importItem(module string, toImport string) {
+	fmt.Printf("  ===== Importing %s  %s =====\n", module, toImport)
 	val, found := self.Executor.GetBuiltinImport(module, toImport)
 	if !found {
 		panic("Every imported value is always found")

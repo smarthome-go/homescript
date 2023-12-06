@@ -216,7 +216,31 @@ outer:
 					mem = append(mem, fmt.Sprintf("%d=%s", key, strings.ReplaceAll(disp, "\n", " ")))
 				}
 
-				fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s | CLSTCK: %v | STCKSS=%d | STCK: %s | MEM: [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, len(self.Stack), stack, strings.Join(mem, ", "))
+				globals := make([]string, 0)
+				for key, elem := range self.parent.Globals.Data {
+					if elem == nil {
+						continue
+					}
+
+					var disp string
+					if elem == nil {
+						disp = "<nil>"
+					} else {
+						if elem.Kind() == value.ObjectValueKind {
+							disp = "<obj>"
+						} else {
+							dispTemp, i := elem.Display()
+							if i != nil {
+								panic(*i)
+							}
+							disp = dispTemp
+						}
+					}
+
+					globals = append(globals, fmt.Sprintf("%s=%s", key, strings.ReplaceAll(disp, "\n", " ")))
+				}
+
+				fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s | CLSTCK: %v | STCKSS=%d | STCK: [%s] | MEM: [%s] | GLOB:  [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, len(self.Stack), strings.Join(stack, ", "), strings.Join(mem, ", "), strings.Join(globals, ", "))
 				time.Sleep(10 * time.Millisecond)
 			}
 
@@ -301,7 +325,36 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		n := *self.pop()
 		numArgs := n.(value.ValueInt).Inner
 
+		stack := make([]string, 0)
+		for _, elem := range self.Stack {
+			if elem == nil || *elem == nil {
+				stack = append(stack, "<nil>")
+			} else {
+				disp, i := (*elem).Display()
+				if i != nil {
+					panic(*i)
+				}
+				stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
+			}
+		}
+		fmt.Printf("[%s]\n", strings.Join(stack, ", "))
+
 		v := *self.pop()
+
+		stack = make([]string, 0)
+		for _, elem := range self.Stack {
+			if elem == nil || *elem == nil {
+				stack = append(stack, "<nil>")
+			} else {
+				disp, i := (*elem).Display()
+				if i != nil {
+					panic(*i)
+				}
+				stack = append(stack, strings.ReplaceAll(disp, "\n", ""))
+			}
+		}
+		fmt.Printf("[%s]\n", strings.Join(stack, ", "))
+
 		switch v.Kind() {
 		// TODO: support arguments
 		case value.VmFunctionValueKind:
@@ -749,7 +802,11 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		field, found := fields[i.Value]
 		if !found {
 			span := self.parent.SourceMap(*self.callFrame())
-			panic(fmt.Sprintf("Field `%s` not found on `%v`: %s:%d:%d", i.Value, v, span.Filename, span.Start.Index, span.Start.Column))
+			disp, interrupt := v.Display()
+			if interrupt != nil {
+				panic(interrupt)
+			}
+			panic(fmt.Sprintf("Field `%s` not found on `%s`: %s:%d:%d", i.Value, disp, span.Filename, span.Start.Index, span.Start.Column))
 		}
 		self.push(field)
 	case compiler.Opcode_Import:

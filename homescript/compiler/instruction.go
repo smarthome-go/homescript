@@ -104,6 +104,8 @@ func (self Opcode) String() string {
 		return "Cast"
 	case Opcode_Neg:
 		return "Neg"
+	case Opcode_Some:
+		return "Some"
 	case Opcode_Not:
 		return "Not"
 	case Opcode_Add:
@@ -299,6 +301,11 @@ func (self ValueInstruction) String() string {
 	if i != nil {
 		panic(*i)
 	}
+
+	if self.Value.Kind() == value.StringValueKind {
+		str = "\"" + str + "\""
+	}
+
 	str = strings.ReplaceAll(strings.ReplaceAll(str, "\n    ", ""), "\n", "")
 	return fmt.Sprintf("%v(%s)", self.Opcode(), str)
 }
