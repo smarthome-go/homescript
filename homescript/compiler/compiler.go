@@ -259,8 +259,6 @@ func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram, entryPoint
 }
 
 func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
-	// TODO: remove this
-	// fmt.Printf("fn: `%s` %v | inserted: %s\n", self.currFn, self.functions[self.currFn], instruction)
 	self.CurrFn().Instructions = append(self.CurrFn().Instructions, instruction)
 	self.CurrFn().SourceMap = append(self.CurrFn().SourceMap, span)
 	return len(self.CurrFn().Instructions) - 1
@@ -269,17 +267,9 @@ func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
 const initFnName = "@init"
 
 func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, entryPointModule string) string {
-	// TODO: handle imports to also compile imported modules
-
 	initFns := make(map[string]string)
 
-	type Module struct {
-		name string
-		mod  ast.AnalyzedProgram
-	}
-
 	for moduleName, module := range program {
-		fmt.Printf("Preparing module %s...\n", moduleName)
 		self.currModule = moduleName
 		self.modules[self.currModule] = make(map[string]*Function)
 
@@ -306,20 +296,14 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 		// Mangle all functions so that later stages know about them
 		for _, fn := range module.Functions {
 			mangled := self.mangleFn(fn.Ident.Ident())
-
-			// if fn.Ident.Ident() == "main" {
-			// 	mangledMain = mangled
-			// }
-
 			self.addFn(fn.Ident.Ident(), mangled)
 		}
 	}
 
 	for moduleName, module := range program {
-		fmt.Printf("Compiling module %s...\n", moduleName)
 		self.currModule = moduleName
 
-		// compile all functions
+		// Compile all functions
 		var mainFnSpan errors.Span
 		for _, fn := range module.Functions {
 			if fn.Ident.Ident() == "main" {
@@ -328,7 +312,7 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 			self.compileFn(fn)
 		}
 
-		// compile all events
+		// Compile all events
 		for _, fn := range module.Events {
 			fn.Ident = pAst.NewSpannedIdent(fmt.Sprintf("@event_%s", fn.Ident.Ident()), fn.Ident.Span())
 			mangled := self.mangleFn(fn.Ident.Ident())
@@ -399,13 +383,11 @@ func (self *Compiler) compileIfExpr(node ast.AnalyzedIfExpression) {
 }
 
 func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
-	// set current function
 	self.currFn = node.Ident.Ident()
-
 	self.pushScope()
 	defer self.popScope()
 
-	// value is replaced later
+	// Value / stack  depth is replaced later
 	mpIdx := self.insert(newOneIntInstruction(Opcode_AddMempointer, 0), node.Range)
 
 	// Parameters are pushed in reverse-order, so they can be popped them in the correct order.
@@ -423,12 +405,12 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 }
 
 func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal bool) {
-	// push value onto the stack
+	// Push value onto the stack
 	self.compileExpr(node.Expression)
 
-	// handle deep casts if required
+	// Handle deep casts if required
 	if node.NeedsRuntimeTypeValidation {
-		// TODO: is this ok?
+		// TODO: test this: is this ok?
 		self.insert(newCastInstruction(node.OptType, false), node.Type().Span())
 	}
 
@@ -437,10 +419,10 @@ func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal boo
 		opcode = Opcode_SetGlobImm
 	}
 
-	// bind value to identifier
+	// Bind value to identifier
 	name := self.mangleVar(node.Ident.Ident())
-	self.insert(newOneStringInstruction(opcode, name), node.Range) // TODO: mangle
-	self.CurrFn().CntVariables++                                   // FIXME: have reference
+	self.insert(newOneStringInstruction(opcode, name), node.Range)
+	self.CurrFn().CntVariables++ // FIXME: have reference
 }
 
 func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
@@ -510,19 +492,19 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		update_label := self.mangleLabel("loop_update")
 		after_label := self.mangleLabel("loop_end")
 
-		// create initial state of iterator
+		// Create initial state of iterator
 		self.pushScope()
 		defer self.popScope()
 
-		// push iter expr onto the stack
+		// Push iter expr onto the stack
 		self.compileExpr(node.IterExpression)
 
-		// convert into iterator
+		// Convert into iterator
 		self.insert(newPrimitiveInstruction(Opcode_IntoIter), node.Range)
 		iterName := self.mangleVar(fmt.Sprintf("$iter_%s", node.Identifier.Ident()))
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, iterName), node.Range)
 
-		// loop body
+		// Loop body
 		headIdentName := self.mangleVar(node.Identifier.Ident())
 
 		// Bind induction variable to name
@@ -549,13 +531,11 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 
 		// Update iterator
 		self.insert(newOneStringInstruction(Opcode_Label, update_label), node.Range)
-		///self.insert(newPrimitiveInstruction(Opcode_IteratorAdvance), node.Range)
 
 		// Jump back to head
 		self.insert(newOneStringInstruction(Opcode_Jump, head_label), node.Range)
 
 		self.insert(newOneStringInstruction(Opcode_Label, after_label), node.Range)
-		// TODO: does this satisfy our needs?
 	case ast.ExpressionStatementKind:
 		node := node.(ast.AnalyzedExpressionStatement)
 		self.compileExpr(node.Expression)
@@ -580,7 +560,8 @@ func (self *Compiler) compilePrefixOp(op ast.PrefixOperator, span errors.Span) {
 }
 
 func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
-	// push each arg onto the stack
+	// Push each argument onto the stack
+	// The order is reversed so that later popping can be done naturally
 	for i := len(node.Arguments) - 1; i >= 0; i-- {
 		self.compileExpr(node.Arguments[i].Expression)
 	}
@@ -594,7 +575,7 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 			return
 		}
 
-		// check whether the scope is local or global
+		// Check whether the scope is local or global
 		_, found := self.getMangled(base.Ident.Ident())
 		if found {
 			if node.IsSpawn {
@@ -605,9 +586,10 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 			self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
 			self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Span())
 		} else {
+			// TODO: the span mapping is broken here?
 			name, found := self.getMangledFn(base.Ident.Ident())
 			if found {
-				opcode := Opcode_Call_Imm // TODO: the span mapping is broken here?
+				opcode := Opcode_Call_Imm
 				if node.IsSpawn {
 					opcode = Opcode_Spawn
 					self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
@@ -621,13 +603,6 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 				self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Range)
 			}
 		}
-
-		// insert number of args
-		// self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
-		// perform actual call
-		// self.insert(newOneStringInstruction(Opcode_HostCall, base.Ident.Ident()), node.Span())
-
-		// }
 	} else {
 		if node.IsSpawn {
 			panic("This is an impossible state.")
@@ -836,8 +811,6 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		node := node.(ast.AnalyzedAssignExpression)
 
 		// TODO: implement all different assignment operators
-
-		// TODO: handle other types of LHS
 		if node.Lhs.Kind() == ast.IdentExpressionKind {
 			lhs := node.Lhs.(ast.AnalyzedIdentExpression)
 			name, found := self.getMangled(lhs.Ident.Ident())
@@ -962,7 +935,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		self.insert(newOneStringInstruction(Opcode_Label, exceptionLabel), node.Range)
 		self.pushScope()
 		defer self.popScope()
-		self.insert(newOneStringInstruction(Opcode_SetVarImm, mangledExceptionName), node.Range) // TODO: mangle names
+		self.insert(newOneStringInstruction(Opcode_SetVarImm, mangledExceptionName), node.Range)
 		self.insert(newPrimitiveInstruction(Opcode_PopTryLabel), node.Range)
 		self.compileBlock(node.CatchBlock, false)
 		self.insert(newOneStringInstruction(Opcode_Label, afterCatchLabel), node.Range)

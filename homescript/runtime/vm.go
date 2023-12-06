@@ -140,7 +140,7 @@ func (self *VM) Wait() (uint, *value.VmInterrupt) {
 			// fmt.Printf("checking core: %d | %v\n", core.Corenum, time.Now())
 
 			select {
-			case i := <-core.Handle:
+			case i := <-core.SignalHandle:
 				if i == nil {
 					newCores := make([]Core, 0)
 
