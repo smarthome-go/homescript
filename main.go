@@ -719,7 +719,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	start := time.Now()
-	vm := runtime.NewVM(compiled, VmExecutor{}, os.Args[2] == "1", &ctx, &cancel, vmiScopeAdditions(), runtime.CoreLimits{
+	vm := runtime.NewVM(compiled, VmExecutor{}, &ctx, &cancel, vmiScopeAdditions(), runtime.CoreLimits{
 		CallStackMaxSize: 100,
 		StackMaxSize:     500,
 		MaxMemorySize:    100000,

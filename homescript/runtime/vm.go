@@ -43,7 +43,6 @@ type VM struct {
 	Executor      value.Executor
 	Lock          sync.RWMutex
 	coreCnt       uint
-	Verbose       bool
 	CancelCtx     *context.Context
 	CancelFunc    *context.CancelFunc
 	Interrupts    map[uint]value.VmInterrupt
@@ -53,7 +52,6 @@ type VM struct {
 func NewVM(
 	program compiler.Program,
 	executor value.Executor,
-	verbose bool,
 	ctx *context.Context,
 	cancelFunc *context.CancelFunc,
 	scopeAdditions map[string]value.Value,
@@ -66,7 +64,6 @@ func NewVM(
 		Executor:      executor,
 		Lock:          sync.RWMutex{},
 		coreCnt:       0,
-		Verbose:       verbose,
 		CancelCtx:     ctx,
 		CancelFunc:    cancelFunc,
 		Interrupts:    make(map[uint]value.VmInterrupt),
@@ -96,7 +93,7 @@ func (self *VM) spawnCore() *Core {
 	defer self.Lock.Unlock()
 
 	ch := make(chan *value.VmInterrupt)
-	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt, self.Verbose, ch, self.CancelCtx, self.LimitsPerCore)
+	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt, ch, self.CancelCtx, self.LimitsPerCore)
 
 	self.Cores.Lock.Lock()
 	defer self.Cores.Lock.Unlock()

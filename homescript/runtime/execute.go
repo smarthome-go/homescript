@@ -55,7 +55,6 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		numArgs := numberArgsRaw.(value.ValueInt).Inner
 		function := *self.pop()
 		switch function.Kind() {
-		// TODO: support arguments for closures
 		case value.VmFunctionValueKind:
 			function := function.(value.ValueVMFunction)
 
@@ -95,7 +94,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		return nil
 	case compiler.Opcode_Return:
 		self.popCallStack()
-		// Otherwise, the callstack would have been popped, instantly skipping the next instruction
+		// Need to return, otherwise, the callstack would have been popped, instantly skipping the next instruction
 		return nil
 	case compiler.Opcode_HostCall:
 		i := instruction.(compiler.OneStringInstruction)
@@ -115,14 +114,14 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 	case compiler.Opcode_Jump:
 		i := instruction.(compiler.OneIntInstruction)
 		self.callFrame().InstructionPointer = uint(i.Value)
-		return nil // do not increment the new instruction
+		return nil // Do not increment the new instruction
 	case compiler.Opcode_JumpIfFalse:
 		v := *self.pop()
 
 		if !v.(value.ValueBool).Inner {
 			i := instruction.(compiler.OneIntInstruction)
 			self.callFrame().InstructionPointer = uint(i.Value)
-			return nil // do not increment the new instruction
+			return nil // Do not increment the new instruction
 		}
 	case compiler.Opcode_GetVarImm:
 		i := instruction.(compiler.OneIntInstruction)
@@ -159,11 +158,11 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 
 		v := self.pop()
 		self.parent.Globals.Data[i.Value] = *v
-	case compiler.Opcode_Assign: // assigns pointers on the stack???
+	case compiler.Opcode_Assign: // TODO: Assigns pointers on the stack???
 		src := self.pop()
 		dest := self.pop()
 
-		// perform assignment here
+		// Perform actual assignment here
 		*dest = *src
 	case compiler.Opcode_Cast:
 		i := instruction.(compiler.CastInstruction)
