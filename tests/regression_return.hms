@@ -1,0 +1,8 @@
+fn tag() -> str {
+    return 'TODO';
+}
+
+fn main() {
+    println(tag()); // Previously, this panicked
+    assert(tag() == 'TODO');
+}

@@ -1,0 +1,8 @@
+fn tag(input: str, tag: str, style: str, raw_id: ?str) -> str {
+    let id = raw_id.unwrap_or(""); // This line caused a crash previously
+    "<" + tag + " id='" + id + "' style='" + style + "'>" + input + "</" + tag + ">"
+}
+
+fn main() {
+    println(tag('a', 'b', 'c', ?'d'))
+}
