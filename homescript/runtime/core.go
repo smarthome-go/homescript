@@ -345,6 +345,8 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		return nil
 	case compiler.Opcode_Return:
 		self.popCallStack()
+		// Otherwise, the callstack would have been popped, instantly skipping the next instruction
+		return nil
 	case compiler.Opcode_HostCall:
 		i := instruction.(compiler.OneStringInstruction)
 

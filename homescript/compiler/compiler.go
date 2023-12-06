@@ -436,6 +436,12 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 	case ast.LetStatementKind:
 		self.compileLetStmt(node.(ast.AnalyzedLetStatement), false)
 	case ast.ReturnStatementKind:
+		node := node.(ast.AnalyzedReturnStatement)
+		// If there is a return-expression, insert it
+		if node.ReturnValue != nil {
+			self.compileExpr(node.ReturnValue)
+		}
+
 		self.insert(newPrimitiveInstruction(Opcode_Return), node.Span())
 	case ast.BreakStatementKind:
 		self.insert(newOneStringInstruction(Opcode_Jump, self.currLoop().labelBreak), node.Span())
