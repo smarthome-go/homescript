@@ -257,7 +257,7 @@ type TwoStringInstruction struct {
 
 func (self TwoStringInstruction) Opcode() Opcode { return self.opCode }
 func (self TwoStringInstruction) String() string {
-	return fmt.Sprintf("%s(%s, %s)", self.opCode, self.Values[0], self.Values[0])
+	return fmt.Sprintf("%s(%s, %s)", self.opCode, self.Values[0], self.Values[1])
 }
 
 func newTwoStringInstruction(opCode Opcode, value0 string, value1 string) TwoStringInstruction {
