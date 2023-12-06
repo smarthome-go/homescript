@@ -393,8 +393,9 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 	// value is replaced later
 	mpIdx := self.insert(newOneIntInstruction(Opcode_AddMempointer, 0), node.Range)
 
-	for i := len(node.Parameters) - 1; i >= 0; i-- {
-		name := self.mangleVar(node.Parameters[i].Ident.Ident())
+	// Parameters are pushed in reverse-order, so they can be popped them in the correct order.
+	for _, param := range node.Parameters {
+		name := self.mangleVar(param.Ident.Ident())
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
 		self.CurrFn().CntVariables++
 	}
