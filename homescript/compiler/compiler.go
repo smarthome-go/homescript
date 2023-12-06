@@ -23,7 +23,7 @@ type Function struct {
 }
 
 type Compiler struct {
-	functions       map[string]map[string]*Function
+	modules         map[string]map[string]*Function
 	currFn          string
 	loops           []Loop
 	fnNameMangle    map[string]uint64
@@ -40,7 +40,7 @@ func NewCompiler() Compiler {
 	currScope := &scopes[0]
 
 	return Compiler{
-		functions:       make(map[string]map[string]*Function),
+		modules:         make(map[string]map[string]*Function),
 		loops:           make([]Loop, 0),
 		fnNameMangle:    make(map[string]uint64),
 		varNameMangle:   make(map[string]uint64),
@@ -55,7 +55,7 @@ const (
 	LIST_PUSH = "__internal_list_push"
 )
 
-func (self Compiler) CurrFn() *Function { return self.functions[self.currModule][self.currFn] }
+func (self Compiler) CurrFn() *Function { return self.modules[self.currModule][self.currFn] }
 
 func (self Compiler) currLoop() Loop { return self.loops[len(self.loops)-1] }
 func (self *Compiler) pushLoop(l Loop) {
@@ -80,18 +80,7 @@ func (self *Compiler) popScope() {
 }
 
 func (self *Compiler) mangleFn(input string) string {
-	cnt, exists := self.fnNameMangle[input]
-	if !exists {
-		self.fnNameMangle[input]++
-		cnt = 0
-	} else {
-		self.fnNameMangle[input]++
-	}
-
-	mangled := fmt.Sprintf("@%s_%s%d", self.currModule, input, cnt)
-
-	// TODO: test if this is kind of broken
-
+	mangled := fmt.Sprintf("@%s_%s", self.currModule, input)
 	return mangled
 }
 
@@ -102,11 +91,11 @@ func (self *Compiler) addFn(srcIdent string, mangledName string) {
 		SourceMap:    make([]errors.Span, 0),
 		CntVariables: 0,
 	}
-	self.functions[self.currModule][srcIdent] = &fn
+	self.modules[self.currModule][srcIdent] = &fn
 }
 
 func (self *Compiler) mangleVar(input string) string {
-	cnt, exists := self.varNameMangle[input]
+	cnt, exists := self.varNameMangle[input] // TODO: determine if this really works
 	if !exists {
 		self.varNameMangle[input]++
 		cnt = 0
@@ -134,14 +123,14 @@ func (self *Compiler) mangleLabel(input string) string {
 }
 
 func (self Compiler) getMangledFn(input string) (string, bool) {
-	for key, fn := range self.functions[self.currFn] {
+	for key, fn := range self.modules[self.currModule] {
 		if key == input {
 			return fn.MangledName, true
 		}
 	}
 
 	// TODO: i don't think that this is really reliable
-	for _, module := range self.functions {
+	for _, module := range self.modules {
 		for key, fn := range module {
 			if key == input {
 				return fn.MangledName, true
@@ -164,7 +153,7 @@ func (self Compiler) getMangled(input string) (string, bool) {
 }
 
 func (self *Compiler) relocateLabels() {
-	for moduleName, module := range self.functions {
+	for moduleName, module := range self.modules {
 		for name, fn := range module {
 			labels := make(map[string]int64)
 
@@ -208,8 +197,8 @@ func (self *Compiler) relocateLabels() {
 				}
 			}
 
-			self.functions[moduleName][name].Instructions = fnOut
-			self.functions[moduleName][name].SourceMap = sourceMapOut
+			self.modules[moduleName][name].Instructions = fnOut
+			self.modules[moduleName][name].SourceMap = sourceMapOut
 		}
 	}
 }
@@ -217,7 +206,7 @@ func (self *Compiler) relocateLabels() {
 func (self *Compiler) renameVariables() {
 	slot := make(map[string]int64, 0)
 
-	for _, module := range self.functions {
+	for _, module := range self.modules {
 		for name, fn := range module {
 			cnt := 0
 			for idx, inst := range fn.Instructions {
@@ -255,7 +244,7 @@ func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram, entryPoint
 	functions := make(map[string][]Instruction)
 	sourceMap := make(map[string][]errors.Span)
 
-	for _, module := range self.functions {
+	for _, module := range self.modules {
 		for _, fn := range module {
 			functions[fn.MangledName] = fn.Instructions
 			sourceMap[fn.MangledName] = fn.SourceMap
@@ -277,19 +266,27 @@ func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
 	return len(self.CurrFn().Instructions) - 1
 }
 
+const initFnName = "@init"
+
 func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, entryPointModule string) string {
 	// TODO: handle imports to also compile imported modules
 
-	entryPoints := make(map[string]string)
+	initFns := make(map[string]string)
+
+	type Module struct {
+		name string
+		mod  ast.AnalyzedProgram
+	}
 
 	for moduleName, module := range program {
+		fmt.Printf("Preparing module %s...\n", moduleName)
 		self.currModule = moduleName
-		self.functions[self.currModule] = make(map[string]*Function)
+		self.modules[self.currModule] = make(map[string]*Function)
 
-		moduleEntryPoint := self.mangleFn("@init")
-		self.addFn("@init", moduleEntryPoint)
-		entryPoints[moduleName] = moduleEntryPoint
-		self.currFn = "@init"
+		initFn := self.mangleFn(initFnName)
+		self.addFn(initFnName, initFn)
+		initFns[moduleName] = initFn
+		self.currFn = initFnName
 
 		for _, glob := range module.Globals {
 			self.compileLetStmt(glob, true)
@@ -305,21 +302,22 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 				self.insert(newTwoStringInstruction(Opcode_Import, item.FromModule.Ident(), importItem.Ident.Ident()), item.Range)
 			}
 		}
-	}
 
-	for moduleName, module := range program {
-		var mangledMain string
-
-		// compile all function declarations
+		// Mangle all functions so that later stages know about them
 		for _, fn := range module.Functions {
 			mangled := self.mangleFn(fn.Ident.Ident())
 
-			if fn.Ident.Ident() == "main" {
-				mangledMain = mangled
-			}
+			// if fn.Ident.Ident() == "main" {
+			// 	mangledMain = mangled
+			// }
 
 			self.addFn(fn.Ident.Ident(), mangled)
 		}
+	}
+
+	for moduleName, module := range program {
+		fmt.Printf("Compiling module %s...\n", moduleName)
+		self.currModule = moduleName
 
 		// compile all functions
 		var mainFnSpan errors.Span
@@ -341,22 +339,27 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 		if moduleName == entryPointModule {
 			// If the current module is the entry module,
 			// Go back to the init function and insert the main function call
-			self.currFn = "@init"
+			self.currFn = initFnName
+			self.currModule = entryPointModule
 
-			for moduleName, otherInit := range entryPoints {
+			for moduleName, otherInit := range initFns {
 				if moduleName == entryPointModule {
 					continue
 				}
-				fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
+
 				self.insert(newOneStringInstruction(Opcode_Call_Imm, otherInit), mainFnSpan)
 			}
 
+			mangledMain, found := self.getMangledFn("main")
+			if !found {
+				panic("`main` function not found in current module")
+			}
 			fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
 			self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
 		}
 	}
 
-	return entryPoints[entryPointModule]
+	return initFns[entryPointModule]
 }
 
 func (self *Compiler) compileBlock(node ast.AnalyzedBlock, pushScope bool) {
