@@ -271,7 +271,7 @@ func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram) Program {
 
 func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
 	// TODO: remove this
-	// fmt.Printf("fn: `%s` %v\n", self.currFn, self.functions[self.currFn])
+	// fmt.Printf("fn: `%s` %v | inserted: %s\n", self.currFn, self.functions[self.currFn], instruction)
 	self.CurrFn().Instructions = append(self.CurrFn().Instructions, instruction)
 	self.CurrFn().SourceMap = append(self.CurrFn().SourceMap, span)
 	return len(self.CurrFn().Instructions) - 1
@@ -307,9 +307,16 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 			}
 		}
 
+		var mangledMain string
+
 		// compile all function declarations
 		for _, fn := range module.Functions {
 			mangled := self.mangleFn(fn.Ident.Ident())
+
+			if fn.Ident.Ident() == "main" {
+				mangledMain = mangled
+			}
+
 			self.addFn(fn.Ident.Ident(), mangled)
 		}
 
@@ -333,17 +340,7 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram) map
 		// go back to the init function and insert the main function call
 		self.currFn = "@init"
 
-		mangledMain, found := self.getMangledFn("main")
-		if !found {
-			for _, module := range self.functions {
-				for sourceName, fn := range module {
-					fmt.Printf("%s -> %s\n", sourceName, fn.MangledName)
-				}
-			}
-
-			panic("Could not find mangled main function in current module")
-		}
-
+		fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
 		self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
 	}
 
