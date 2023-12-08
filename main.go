@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/md5"
 	"errors"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	syntaxErrors "github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/fuzzer"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
@@ -647,6 +649,8 @@ func iScopeAdditions() map[string]value.Value {
 }
 
 func main() {
+	startAll := time.Now()
+
 	programRaw, err := os.ReadFile(os.Args[1])
 	if err != nil {
 		panic(fmt.Sprintf("Could not read file `%s`: %s", os.Args[1], err.Error()))
@@ -698,6 +702,54 @@ func main() {
 	for name, module := range analyzed {
 		fmt.Printf("=== MODULE: %s ===\n", name)
 		fmt.Println(module)
+	}
+
+	if os.Args[2] == "fuzz" {
+		const passes = 3
+		const seed = 42
+
+		trans := fuzzer.NewTransformer(100, seed)
+
+		hashset := make(map[string]struct{})
+		countNoNew := 0
+
+		for countNoNew < 100 {
+			if countNoNew > 11 {
+				fmt.Printf("%d ", countNoNew)
+			} else if countNoNew > 10 {
+				fmt.Printf("No new outputs since %d iterations.\n", countNoNew)
+			}
+
+			newTrees := trans.TransformPasses(analyzed[filename], passes)
+
+			for _, newTree := range newTrees {
+				newTreeStr := newTree.String()
+
+				sumRam := md5.Sum([]byte(newTreeStr))
+				sum := fmt.Sprintf("%x", sumRam)
+
+				_, signatureExists := hashset[sum]
+				if signatureExists {
+					countNoNew++
+					continue
+				}
+
+				countNoNew = 0
+				hashset[sum] = struct{}{}
+
+				file, err := os.Create(fmt.Sprintf("fuzz/%s.hms", sum))
+				if err != nil {
+					panic(err.Error())
+				}
+
+				if _, err := file.WriteString(newTreeStr); err != nil {
+					panic(err.Error())
+				}
+			}
+		}
+
+		fmt.Printf("Fuzz: %v, generated: %d\n", time.Since(startAll), len(hashset))
+		return
 	}
 
 	fmt.Println("=== COMPILED ===")
