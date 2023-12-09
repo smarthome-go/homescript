@@ -705,7 +705,7 @@ func main() {
 	}
 
 	if os.Args[2] == "fuzz" {
-		const passes = 3
+		const passes = 4
 		const seed = 42
 
 		trans := fuzzer.NewTransformer(100, seed)
@@ -720,6 +720,7 @@ func main() {
 				fmt.Printf("No new outputs since %d iterations.\n", countNoNew)
 			}
 
+			trans.Out = ""
 			newTrees := trans.TransformPasses(analyzed[filename], passes)
 
 			for _, newTree := range newTrees {
@@ -727,6 +728,14 @@ func main() {
 
 				sumRam := md5.Sum([]byte(newTreeStr))
 				sum := fmt.Sprintf("%x", sumRam)
+
+				if sum == "581622754bb36daf1d22cb14b983ce8c" {
+					for _, t := range newTrees {
+						fmt.Println()
+						fmt.Println(t.String())
+					}
+					fmt.Println(trans.Out)
+				}
 
 				_, signatureExists := hashset[sum]
 				if signatureExists {
@@ -748,7 +757,7 @@ func main() {
 			}
 		}
 
-		fmt.Printf("Fuzz: %v, generated: %d\n", time.Since(startAll), len(hashset))
+		fmt.Printf("\nFuzz: %v, generated: %d\n", time.Since(startAll), len(hashset))
 		return
 	}
 
@@ -768,7 +777,7 @@ func main() {
 		i++
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 
 	start := time.Now()
 	vm := runtime.NewVM(compiled, VmExecutor{}, &ctx, &cancel, vmiScopeAdditions(), runtime.CoreLimits{
