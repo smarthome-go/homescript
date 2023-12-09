@@ -191,8 +191,17 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		self.push(value.NewValueOption(&v))
 	case compiler.Opcode_Not:
 		v := *self.pop()
-		boolV := v.(value.ValueBool)
-		self.push(value.NewValueBool(!boolV.Inner))
+
+		switch v.Kind() {
+		case value.IntValueKind:
+			intV := v.(value.ValueInt)
+			self.push(value.NewValueInt(^intV.Inner))
+		case value.BoolValueKind:
+			boolV := v.(value.ValueBool)
+			self.push(value.NewValueBool(!boolV.Inner))
+		default:
+			panic("Unsupported value kind: " + v.Kind().String())
+		}
 	case compiler.Opcode_Add:
 		r := *self.pop()
 		l := *self.pop()
