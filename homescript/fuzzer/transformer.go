@@ -812,37 +812,34 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 
 	output = append(output, node)
 
-	if node.Kind() != ast.LetStatementKind {
-		// Always true `if`
-		output = append(output, ast.AnalyzedExpressionStatement{
-			Expression: ast.AnalyzedIfExpression{
-				Condition: ast.AnalyzedBoolLiteralExpression{
-					Value: true,
-					Range: node.Span(),
-				},
-				ThenBlock: ast.AnalyzedBlock{
-					Statements: []ast.AnalyzedStatement{node},
-					Expression: nil,
-					Range:      node.Span(),
-					ResultType: node.Type(),
-				},
-				ElseBlock:  nil,
-				ResultType: node.Type(),
-				Range:      node.Span(),
-			},
-			Range: node.Span(),
-		})
-	}
-
 	// The following transformations will create a new scope for the statement, rendering let-statements useless.
-	switch node.Kind() {
-	case ast.LetStatementKind:
+	if node.Kind() == ast.LetStatementKind {
 		return output
-	default:
-		// do nothing
 	}
 
-	// TODO: also include matches and maybe tru-catch
+	// Always true `if`
+
+	// TODO: maybe check if the node is NEVER? (if this breaks)
+	output = append(output, ast.AnalyzedExpressionStatement{
+		Expression: ast.AnalyzedIfExpression{
+			Condition: ast.AnalyzedBoolLiteralExpression{
+				Value: true,
+				Range: node.Span(),
+			},
+			ThenBlock: ast.AnalyzedBlock{
+				Statements: []ast.AnalyzedStatement{node},
+				Expression: nil,
+				Range:      node.Span(),
+				ResultType: node.Type(),
+			},
+			ElseBlock:  nil,
+			ResultType: node.Type(),
+			Range:      node.Span(),
+		},
+		Range: node.Span(),
+	})
+
+	// TODO: also include matches and maybe tru-catch to obfuscate
 
 	// If the current statement is something like `continue` / `break`, do not wrap it in a loop
 	if node.Kind() != ast.ReturnStatementKind && node.Type().Kind() == ast.NeverTypeKind {
@@ -851,23 +848,6 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 	}
 
 	output = append(output, self.IterOnceWhileLoop(node))
-
-	// Iter-once `loop`
-	output = append(output, ast.AnalyzedLoopStatement{
-		Body: ast.AnalyzedBlock{
-			Statements: []ast.AnalyzedStatement{
-				node,
-				ast.AnalyzedBreakStatement{
-					Range: node.Span(),
-				},
-			},
-			Expression: nil,
-			Range:      node.Span(),
-			ResultType: ast.NewNullType(node.Span()),
-		},
-		NeverTerminates: false,
-		Range:           node.Span(),
-	})
 
 	// Iter-once `for` loop using ranges
 	output = append(output, ast.AnalyzedForStatement{

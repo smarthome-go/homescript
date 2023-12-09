@@ -705,7 +705,7 @@ func main() {
 	}
 
 	if os.Args[2] == "fuzz" {
-		const passes = 4
+		const passes = 1
 		const seed = 42
 
 		trans := fuzzer.NewTransformer(100, seed)
