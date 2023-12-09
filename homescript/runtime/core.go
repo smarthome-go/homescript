@@ -242,7 +242,7 @@ outer:
 					globals = append(globals, fmt.Sprintf("%s=%s", key, strings.ReplaceAll(disp, "\n", " ")))
 				}
 
-				fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function)
+				fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function)
 				// fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s | CLSTCK: %v | STCKSS=%d | STCK: [%s] | MEM: [%s] | GLOB:  [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, len(self.Stack), strings.Join(stack, ", "), strings.Join(mem, ", "), strings.Join(globals, ", "))
 				time.Sleep(10 * time.Millisecond)
 			}
