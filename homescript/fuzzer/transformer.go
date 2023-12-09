@@ -245,8 +245,11 @@ func (self *Transformer) expressionVariants(node ast.AnalyzedExpression) []ast.A
 		variants = append(variants, ast.AnalyzedPrefixExpression{
 			Operator: ast.NegatePrefixOperator,
 			Base: ast.AnalyzedPrefixExpression{
-				Operator:   ast.NegatePrefixOperator,
-				Base:       node,
+				Operator: ast.NegatePrefixOperator,
+				Base: ast.AnalyzedGroupedExpression{
+					Inner: node,
+					Range: node.Span(),
+				},
 				ResultType: ast.NewBoolType(node.Span()),
 				Range:      node.Span(),
 			},
@@ -536,12 +539,15 @@ func (self *Transformer) infixExpr(node ast.AnalyzedInfixExpression) []ast.Analy
 
 		variants = append(variants, ast.AnalyzedPrefixExpression{
 			Operator: ast.NegatePrefixOperator,
-			Base: ast.AnalyzedInfixExpression{
-				Lhs:        self.Expression(node.Lhs),
-				Rhs:        self.Expression(node.Rhs),
-				Operator:   innerOp,
-				ResultType: ast.NewBoolType(node.Range),
-				Range:      node.Range,
+			Base: ast.AnalyzedGroupedExpression{
+				Inner: ast.AnalyzedInfixExpression{
+					Lhs:        self.Expression(node.Lhs),
+					Rhs:        self.Expression(node.Rhs),
+					Operator:   innerOp,
+					ResultType: ast.NewBoolType(node.Range),
+					Range:      node.Range,
+				},
+				Range: node.Range,
 			},
 			ResultType: ast.NewBoolType(node.Range),
 			Range:      node.Range,
@@ -550,12 +556,15 @@ func (self *Transformer) infixExpr(node ast.AnalyzedInfixExpression) []ast.Analy
 		variants = append(variants, ast.AnalyzedPrefixExpression{
 			Operator: ast.NegatePrefixOperator,
 			Base: ast.AnalyzedGroupedExpression{
-				Inner: ast.AnalyzedInfixExpression{
-					Lhs:        self.Expression(node.Lhs),
-					Rhs:        self.Expression(node.Rhs),
-					Operator:   innerOp,
-					ResultType: ast.NewBoolType(node.Range),
-					Range:      node.Range,
+				Inner: ast.AnalyzedGroupedExpression{
+					Inner: ast.AnalyzedInfixExpression{
+						Lhs:        self.Expression(node.Lhs),
+						Rhs:        self.Expression(node.Rhs),
+						Operator:   innerOp,
+						ResultType: ast.NewBoolType(node.Range),
+						Range:      node.Range,
+					},
+					Range: node.Range,
 				},
 				Range: node.Range,
 			},
@@ -964,8 +973,11 @@ func (self *Transformer) WhileStmtAsLoop(node ast.AnalyzedWhileStatement) []ast.
 		ast.AnalyzedExpressionStatement{
 			Expression: ast.AnalyzedIfExpression{
 				Condition: ast.AnalyzedPrefixExpression{
-					Operator:   ast.NegatePrefixOperator,
-					Base:       node.Condition,
+					Operator: ast.NegatePrefixOperator,
+					Base: ast.AnalyzedGroupedExpression{
+						Inner: node.Condition,
+						Range: node.Range,
+					},
 					ResultType: ast.NewBoolType(node.Range),
 					Range:      node.Range,
 				},
