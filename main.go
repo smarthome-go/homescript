@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/md5"
 	"errors"
 	"fmt"
 	"os"
@@ -649,8 +648,6 @@ func iScopeAdditions() map[string]value.Value {
 }
 
 func main() {
-	startAll := time.Now()
-
 	programRaw, err := os.ReadFile(os.Args[1])
 	if err != nil {
 		panic(fmt.Sprintf("Could not read file `%s`: %s", os.Args[1], err.Error()))
@@ -705,59 +702,72 @@ func main() {
 	}
 
 	if os.Args[2] == "fuzz" {
-		const passes = 1
+		const passes = 4
 		const seed = 42
+		const passLimit = 10
+		const terminateAfterMinFound = 0 // 0 is unlimited
 
-		trans := fuzzer.NewTransformer(100, seed)
+		// trans := fuzzer.NewTransformer(100, seed)
+		//
+		// hashset := make(map[string]struct{})
+		// countNoNew := 0
+		//
+		// for countNoNew < 100 {
+		// 	if countNoNew > 11 {
+		// 		fmt.Printf("%d ", countNoNew)
+		// 	} else if countNoNew > 10 {
+		// 		fmt.Printf("No new outputs since %d iterations.\n", countNoNew)
+		// 	}
+		//
+		// 	trans.Out = ""
+		// 	newTrees := trans.TransformPasses(analyzed[filename], passes)
+		//
+		// 	for _, newTree := range newTrees {
+		// 		newTreeStr := newTree.String()
+		//
+		// 		sumRam := md5.Sum([]byte(newTreeStr))
+		// 		sum := fmt.Sprintf("%x", sumRam)
+		//
+		// 		if sum == "581622754bb36daf1d22cb14b983ce8c" {
+		// 			for _, t := range newTrees {
+		// 				fmt.Println()
+		// 				fmt.Println(t.String())
+		// 			}
+		// 			fmt.Println(trans.Out)
+		// 		}
+		//
+		// 		_, signatureExists := hashset[sum]
+		// 		if signatureExists {
+		// 			countNoNew++
+		// 			continue
+		// 		}
+		//
+		// 		countNoNew = 0
+		// 		hashset[sum] = struct{}{}
+		//
+		// 		file, err := os.Create(fmt.Sprintf("fuzz/%s.hms", sum))
+		// 		if err != nil {
+		// 			panic(err.Error())
+		// 		}
+		//
+		// 		if _, err := file.WriteString(newTreeStr); err != nil {
+		// 			panic(err.Error())
+		// 		}
+		// 	}
+		// }
+		//
+		// fmt.Printf("\nFuzz: %v, generated: %d\n", time.Since(startAll), len(hashset))
 
-		hashset := make(map[string]struct{})
-		countNoNew := 0
+		gen := fuzzer.NewGenerator(
+			analyzed[filename],
+			"fuzz",
+			seed,
+			passes,
+			terminateAfterMinFound,
+			passLimit,
+		)
+		gen.Gen()
 
-		for countNoNew < 100 {
-			if countNoNew > 11 {
-				fmt.Printf("%d ", countNoNew)
-			} else if countNoNew > 10 {
-				fmt.Printf("No new outputs since %d iterations.\n", countNoNew)
-			}
-
-			trans.Out = ""
-			newTrees := trans.TransformPasses(analyzed[filename], passes)
-
-			for _, newTree := range newTrees {
-				newTreeStr := newTree.String()
-
-				sumRam := md5.Sum([]byte(newTreeStr))
-				sum := fmt.Sprintf("%x", sumRam)
-
-				if sum == "581622754bb36daf1d22cb14b983ce8c" {
-					for _, t := range newTrees {
-						fmt.Println()
-						fmt.Println(t.String())
-					}
-					fmt.Println(trans.Out)
-				}
-
-				_, signatureExists := hashset[sum]
-				if signatureExists {
-					countNoNew++
-					continue
-				}
-
-				countNoNew = 0
-				hashset[sum] = struct{}{}
-
-				file, err := os.Create(fmt.Sprintf("fuzz/%s.hms", sum))
-				if err != nil {
-					panic(err.Error())
-				}
-
-				if _, err := file.WriteString(newTreeStr); err != nil {
-					panic(err.Error())
-				}
-			}
-		}
-
-		fmt.Printf("\nFuzz: %v, generated: %d\n", time.Since(startAll), len(hashset))
 		return
 	}
 
