@@ -20,6 +20,9 @@ type Function struct {
 	Instructions []Instruction
 	SourceMap    []errors.Span
 	CntVariables uint
+	// When `return` is encountered, a jump to this label is performed.
+	// This label only restores the memory pointer to the value it was before the call.
+	CleanupLabel string
 }
 
 type Compiler struct {
@@ -95,6 +98,7 @@ func (self *Compiler) addFn(srcIdent string, mangledName string) {
 }
 
 func (self *Compiler) mangleVar(input string) string {
+	self.CurrFn().CntVariables++
 	cnt, exists := self.varNameMangle[input]
 	if !exists {
 		// The next time this variable is mangled, 0 MUST NOT be used as the counter.
@@ -398,14 +402,21 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 	for _, param := range node.Parameters {
 		name := self.mangleVar(param.Ident.Ident())
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
-		self.CurrFn().CntVariables++
 	}
+
+	// When `return` is encountered, the compiler inserts a jump to this label.
+	// Needed for restoring the memory pointer.
+	cleanupLabel := self.mangleLabel("cleanup")
+	self.CurrFn().CleanupLabel = cleanupLabel
 
 	self.compileBlock(node.Body, false)
 
 	varCnt := int64(self.CurrFn().CntVariables)
 	self.CurrFn().Instructions[mpIdx] = newOneIntInstruction(Opcode_AddMempointer, varCnt)
+
+	self.insert(newOneStringInstruction(Opcode_Label, cleanupLabel), node.Range)
 	self.insert(newOneIntInstruction(Opcode_AddMempointer, -varCnt), node.Range)
+	self.insert(newPrimitiveInstruction(Opcode_Return), node.Span())
 }
 
 func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal bool) {
@@ -443,7 +454,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 			self.compileExpr(node.ReturnValue)
 		}
 
-		self.insert(newPrimitiveInstruction(Opcode_Return), node.Span())
+		self.insert(newOneStringInstruction(Opcode_Jump, self.CurrFn().CleanupLabel), node.Span())
 	case ast.BreakStatementKind:
 		self.insert(newOneStringInstruction(Opcode_Jump, self.currLoop().labelBreak), node.Span())
 	case ast.ContinueStatementKind:
