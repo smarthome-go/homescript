@@ -704,7 +704,7 @@ func main() {
 	if os.Args[2] == "fuzz" {
 		const passes = 4
 		const seed = 42
-		const passLimit = 10
+		const passLimit = 100
 		const terminateAfterMinFound = 0 // 0 is unlimited
 
 		// trans := fuzzer.NewTransformer(100, seed)
@@ -771,6 +771,50 @@ func main() {
 		return
 	}
 
+	if os.Args[2] == "vm" {
+		runVm(analyzed, filename)
+		return
+	}
+	if os.Args[2] == "tree" {
+		runInterpreter(analyzed, filename)
+		return
+	}
+
+	if os.Args[2] == "both" {
+		runVm(analyzed, filename)
+		runInterpreter(analyzed, filename)
+		return
+	}
+
+	panic(fmt.Sprintf("Illegal run command `%s`", os.Args[2]))
+}
+
+func ShowDebug(debuggerOutput *chan runtime.DebugOutput) {
+	for {
+		select {
+		case msg, open := <-*debuggerOutput:
+			if !open {
+				return
+			}
+
+			// Read input file
+			program, err := os.ReadFile(fmt.Sprintf("%s.hms", msg.CurrentSpan.Filename))
+			if err != nil {
+				panic(err.Error())
+			}
+
+			programStr := string(program)
+			lines := strings.Split(programStr, "\n")
+
+			// Hightlight active line
+			lines[msg.CurrentSpan.Start.Line] = fmt.Sprintf("\x1b[1;32m%s\x1b[1;0m       (%s)", lines[msg.CurrentSpan.Start.Line], msg.CurrentInstruction)
+
+			fmt.Printf("\033[2J\033[H%s\n", strings.Join(lines, "\n"))
+		}
+	}
+}
+
+func runVm(analyzed map[string]ast.AnalyzedProgram, filename string) {
 	fmt.Println("=== COMPILED ===")
 
 	compiler := compiler.NewCompiler()
@@ -829,11 +873,13 @@ func main() {
 	// time.Sleep(100 * time.Second)
 
 	fmt.Printf("VM elapsed: %v\n", time.Since(start))
+}
 
+func runInterpreter(analyzed map[string]ast.AnalyzedProgram, filename string) {
 	fmt.Println("=== BEGIN INTERPRET ===")
 
-	start = time.Now()
-	ctx, cancel = context.WithTimeout(context.Background(), time.Minute)
+	start := time.Now()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	blocking := make(chan struct{})
 	go func() {
@@ -870,29 +916,4 @@ func main() {
 
 	<-blocking
 	cancel()
-}
-
-func ShowDebug(debuggerOutput *chan runtime.DebugOutput) {
-	for {
-		select {
-		case msg, open := <-*debuggerOutput:
-			if !open {
-				return
-			}
-
-			// Read input file
-			program, err := os.ReadFile(fmt.Sprintf("%s.hms", msg.CurrentSpan.Filename))
-			if err != nil {
-				panic(err.Error())
-			}
-
-			programStr := string(program)
-			lines := strings.Split(programStr, "\n")
-
-			// Hightlight active line
-			lines[msg.CurrentSpan.Start.Line] = fmt.Sprintf("\x1b[1;32m%s\x1b[1;0m       (%s)", lines[msg.CurrentSpan.Start.Line], msg.CurrentInstruction)
-
-			fmt.Printf("\033[2J\033[H%s\n", strings.Join(lines, "\n"))
-		}
-	}
 }
