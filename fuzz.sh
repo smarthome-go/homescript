@@ -1,1 +1,1 @@
-/bin/rm fuzz/*; go run -race -v . "$1" fuzz; ./run.sh
+/bin/rm fuzz/*; go run -race -v . "$1" fuzz
