@@ -1,6 +1,10 @@
 package fuzzer
 
-import "github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+import (
+	"fmt"
+
+	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+)
 
 // This method is used for determining whether a tree node contains the `break` or `continue` keyword.
 // If this is the case, loop obfuscations are not apllied on this node.
@@ -80,6 +84,7 @@ func (self *Transformer) exprCanControlLoop(node ast.AnalyzedExpression) bool {
 				return true
 			}
 		}
+		return false
 	case ast.FunctionLiteralExpressionKind:
 		return false
 	case ast.GroupedExpressionKind:
@@ -118,7 +123,7 @@ func (self *Transformer) exprCanControlLoop(node ast.AnalyzedExpression) bool {
 		return self.exprCanControlLoop(node.Base)
 	case ast.BlockExpressionKind:
 		node := node.(ast.AnalyzedBlockExpression)
-		self.bloclCanControlLoop(node.Block)
+		return self.blockCanControlLoop(node.Block)
 	case ast.IfExpressionKind:
 		node := node.(ast.AnalyzedIfExpression)
 
@@ -126,12 +131,12 @@ func (self *Transformer) exprCanControlLoop(node ast.AnalyzedExpression) bool {
 			return true
 		}
 
-		if self.bloclCanControlLoop(node.ThenBlock) {
+		if self.blockCanControlLoop(node.ThenBlock) {
 			return true
 		}
 
 		if node.ElseBlock != nil {
-			return self.bloclCanControlLoop(*node.ElseBlock)
+			return self.blockCanControlLoop(*node.ElseBlock)
 		}
 
 		return false
@@ -151,16 +156,17 @@ func (self *Transformer) exprCanControlLoop(node ast.AnalyzedExpression) bool {
 	case ast.TryExpressionKind:
 		node := node.(ast.AnalyzedTryExpression)
 
-		if self.bloclCanControlLoop(node.TryBlock) {
+		if self.blockCanControlLoop(node.TryBlock) {
 			return true
 		}
 
-		return self.bloclCanControlLoop(node.CatchBlock)
+		return self.blockCanControlLoop(node.CatchBlock)
+	default:
+		panic(fmt.Sprintf("A new expression kind was added without updating this code: %v", node))
 	}
-	return false
 }
 
-func (self *Transformer) bloclCanControlLoop(node ast.AnalyzedBlock) bool {
+func (self *Transformer) blockCanControlLoop(node ast.AnalyzedBlock) bool {
 	for _, stmt := range node.Statements {
 		if self.stmtCanControlLoop(stmt) {
 			return true
