@@ -169,7 +169,8 @@ func execTest(test Test, t *testing.T) {
 		MaxMemorySize:    10024,
 	})
 
-	vm.Spawn(compiled.EntryPoint)
+	// TODO: how to handle the debugger at this point?
+	vm.Spawn(compiled.EntryPoint, nil)
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i
 

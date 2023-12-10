@@ -796,7 +796,10 @@ func main() {
 		MaxMemorySize:    100000,
 	})
 
-	vm.Spawn(compiled.EntryPoint)
+	debuggerOut := make(chan runtime.DebugOutput)
+	vm.Spawn(compiled.EntryPoint, &debuggerOut)
+	go ShowDebug(&debuggerOut)
+
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i
 
@@ -867,4 +870,29 @@ func main() {
 
 	<-blocking
 	cancel()
+}
+
+func ShowDebug(debuggerOutput *chan runtime.DebugOutput) {
+	for {
+		select {
+		case msg, open := <-*debuggerOutput:
+			if !open {
+				return
+			}
+
+			// Read input file
+			program, err := os.ReadFile(fmt.Sprintf("%s.hms", msg.CurrentSpan.Filename))
+			if err != nil {
+				panic(err.Error())
+			}
+
+			programStr := string(program)
+			lines := strings.Split(programStr, "\n")
+
+			// Hightlight active line
+			lines[msg.CurrentSpan.Start.Line] = fmt.Sprintf("\x1b[1;32m%s\x1b[1;0m       (%s)", lines[msg.CurrentSpan.Start.Line], msg.CurrentInstruction)
+
+			fmt.Printf("\033[2J\033[H%s\n", strings.Join(lines, "\n"))
+		}
+	}
 }

@@ -46,7 +46,8 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 			args = append([]value.Value{*self.pop()}, args...) // TODO: implement deepcopy here
 		}
 
-		self.parent.spawnCoreInternal(i.Value, args)
+		// TODO: how to handle the debugger
+		self.parent.spawnCoreInternal(i.Value, args, nil)
 		// TODO: implement a wrapper around the threading model and add it to a std-lib
 		// TODO: get thread handle and push it onto the stack
 		self.push(value.NewValueNull())

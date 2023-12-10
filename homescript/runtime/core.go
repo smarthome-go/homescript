@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
+	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
@@ -17,6 +18,9 @@ const NUM_INSTRUCTIONS_EXECUTE_PER_VCYCLE = 50
 
 // Whether the VM should print its current state for each cycle.
 const VM_VERBOSE = false
+
+const VM_DEBUGGER = false
+const VM_DEBUGGER_SLEEP = 100 * time.Millisecond
 
 type CallFrame struct {
 	Function           string
@@ -127,7 +131,17 @@ func (self *Core) checkCancelation() *value.VmInterrupt {
 	}
 }
 
-func (self *Core) Run(function string) {
+type DebugOutput struct {
+	CurrentInstruction compiler.Instruction
+	CurrentSpan        errors.Span
+	CurrentCallFrame   CallFrame
+}
+
+func (self *Core) Run(function string, debuggerOut *chan DebugOutput) {
+	if debuggerOut != nil {
+		defer close(*debuggerOut)
+	}
+
 	catchPanic := func() {
 		if err := recover(); err != nil {
 			fmt.Printf("Panic occured in core %d at (%s:%d): `%s`\n", self.Corenum, self.callFrame().Function, self.callFrame().InstructionPointer, err)
@@ -245,6 +259,19 @@ outer:
 				fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function)
 				// fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s | CLSTCK: %v | STCKSS=%d | STCK: [%s] | MEM: [%s] | GLOB:  [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.CallStack, len(self.Stack), strings.Join(stack, ", "), strings.Join(mem, ", "), strings.Join(globals, ", "))
 				time.Sleep(10 * time.Millisecond)
+			}
+
+			if VM_DEBUGGER {
+				// If there is a debugger attached, send it information
+				if debuggerOut != nil {
+					*debuggerOut <- DebugOutput{
+						CurrentInstruction: i,
+						CurrentSpan:        self.parent.SourceMap(*self.callFrame()),
+						CurrentCallFrame:   *self.callFrame(),
+					}
+				}
+
+				time.Sleep(VM_DEBUGGER_SLEEP)
 			}
 
 			if i := self.runInstruction(i); i != nil {
