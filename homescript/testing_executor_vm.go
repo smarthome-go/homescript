@@ -145,8 +145,9 @@ func vmiScopeAdditions() map[string]vmValue.Value {
 //
 
 type vmExecutor struct {
-	PrintBuf     *string
-	PintBufMutex *sync.Mutex
+	PrintToStdout bool
+	PrintBuf      *string
+	PintBufMutex  *sync.Mutex
 }
 
 func (self vmExecutor) GetUser() string { return "<unknown>" }
@@ -214,7 +215,9 @@ func (self vmExecutor) ResolveModuleCode(moduleName string) (code string, found 
 }
 
 func (self vmExecutor) WriteStringTo(input string) error {
-	fmt.Print(input)
+	if self.PrintToStdout {
+		fmt.Print(input)
+	}
 	self.PintBufMutex.Lock()
 	*self.PrintBuf += input
 	self.PintBufMutex.Unlock()

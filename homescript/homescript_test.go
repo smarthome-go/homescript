@@ -156,11 +156,12 @@ func execTest(test Test, t *testing.T) {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 
 	executor := vmExecutor{
-		PrintBuf:     new(string),
-		PintBufMutex: &sync.Mutex{},
+		PrintToStdout: test.Debug,
+		PrintBuf:      new(string),
+		PintBufMutex:  &sync.Mutex{},
 	}
 
 	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, vmiScopeAdditions(), runtime.CoreLimits{

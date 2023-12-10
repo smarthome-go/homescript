@@ -341,7 +341,8 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 			if !found {
 				panic("`main` function not found in current module")
 			}
-			fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
+			// TODO: remove this comment
+			// fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
 			self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
 		}
 	}

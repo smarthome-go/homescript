@@ -20,7 +20,7 @@ const NUM_INSTRUCTIONS_EXECUTE_PER_VCYCLE = 50
 const VM_VERBOSE = false
 
 const VM_DEBUGGER = false
-const VM_DEBUGGER_SLEEP = 100 * time.Millisecond
+const VM_DEBUGGER_SLEEP = 1 * time.Millisecond
 
 type CallFrame struct {
 	Function           string

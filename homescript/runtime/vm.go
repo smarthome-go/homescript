@@ -104,12 +104,12 @@ func (self *VM) spawnCore() *Core {
 }
 
 // Returns the corenum of the newly spawned process
-func (self *VM) Spawn(function string, debuggerOut *chan DebugOutput) uint {
+func (self *VM) Spawn(function string, debuggerOut *chan DebugOutput) *Core {
 	return self.spawnCoreInternal(function, make([]value.Value, 0), debuggerOut)
 }
 
 // Returns the corenum of the newly spawned process
-func (self *VM) spawnCoreInternal(function string, addToStack []value.Value, debuggerOutput *chan DebugOutput) uint {
+func (self *VM) spawnCoreInternal(function string, addToStack []value.Value, debuggerOutput *chan DebugOutput) *Core {
 	core := self.spawnCore()
 	for _, elem := range addToStack {
 		// TODO: However, the VM should not do this implicitly,
@@ -117,7 +117,7 @@ func (self *VM) spawnCoreInternal(function string, addToStack []value.Value, deb
 		core.push(&elem) // Implement a deep copy? Or clone?
 	}
 	go (*core).Run(function, debuggerOutput)
-	return core.Corenum
+	return core
 }
 
 func (self *VM) WaitNonConsuming() {

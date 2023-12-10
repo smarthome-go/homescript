@@ -24,6 +24,7 @@ import (
 // Vm executor
 
 type VmExecutor struct {
+	OutputBuf *string
 }
 
 func (self VmExecutor) GetUser() string { return "<unknown>" }
@@ -120,6 +121,7 @@ func (self VmExecutor) ResolveModuleCode(moduleName string) (code string, found 
 }
 
 func (self VmExecutor) WriteStringTo(input string) error {
+	*self.OutputBuf += input
 	fmt.Print(input)
 	return nil
 }
@@ -704,7 +706,7 @@ func main() {
 	if os.Args[2] == "fuzz" {
 		const passes = 4
 		const seed = 42
-		const passLimit = 100
+		const passLimit = 1000
 		const terminateAfterMinFound = 0 // 0 is unlimited
 
 		// trans := fuzzer.NewTransformer(100, seed)
@@ -789,7 +791,10 @@ func main() {
 	panic(fmt.Sprintf("Illegal run command `%s`", os.Args[2]))
 }
 
-func ShowDebug(debuggerOutput *chan runtime.DebugOutput) {
+func ShowDebug(debuggerOutput *chan runtime.DebugOutput, core *runtime.Core) {
+	hits := make(map[uint]int)
+	colors := []int{0, 10, 2, 12, 4, 14, 3, 11, 1}
+
 	for {
 		select {
 		case msg, open := <-*debuggerOutput:
@@ -800,16 +805,36 @@ func ShowDebug(debuggerOutput *chan runtime.DebugOutput) {
 			// Read input file
 			program, err := os.ReadFile(fmt.Sprintf("%s.hms", msg.CurrentSpan.Filename))
 			if err != nil {
-				panic(err.Error())
+				fmt.Printf("Debugger: cannot open input file `%s.hms`: %s\n", msg.CurrentSpan.Filename, err.Error())
+				return
 			}
 
 			programStr := string(program)
 			lines := strings.Split(programStr, "\n")
 
-			// Hightlight active line
-			lines[msg.CurrentSpan.Start.Line] = fmt.Sprintf("\x1b[1;32m%s\x1b[1;0m       (%s)", lines[msg.CurrentSpan.Start.Line], msg.CurrentInstruction)
+			lineIdx := msg.CurrentSpan.Start.Line - 1
+			hits[lineIdx]++
 
-			fmt.Printf("\033[2J\033[H%s\n", strings.Join(lines, "\n"))
+			// Hightlight active line
+			for idx := range lines {
+				lineHit := hits[uint(idx)]
+				sumHits := 0
+				for _, lineHitsI := range hits {
+					sumHits += lineHitsI
+				}
+
+				cpuTimePercent := (float64(lineHit) / float64(sumHits))
+
+				color := colors[int(cpuTimePercent*float64(len(colors)-1))]
+
+				if idx == int(lineIdx) {
+					lines[idx] = fmt.Sprintf("\x1b[4m\x1b[1;3%dm%s\x1b[0m       (%s)", color, lines[lineIdx], msg.CurrentInstruction)
+				} else {
+					lines[idx] = fmt.Sprintf("\x1b[1;3%dm%s\x1b[1;0m", color, lines[idx])
+				}
+			}
+
+			fmt.Printf("\033[2J\033[H%s\n---------------------------\n%s\n", *core.Executor.(VmExecutor).OutputBuf, strings.Join(lines, "\n"))
 		}
 	}
 }
@@ -833,16 +858,20 @@ func runVm(analyzed map[string]ast.AnalyzedProgram, filename string) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 
+	executor := VmExecutor{
+		OutputBuf: new(string),
+	}
+
 	start := time.Now()
-	vm := runtime.NewVM(compiled, VmExecutor{}, &ctx, &cancel, vmiScopeAdditions(), runtime.CoreLimits{
+	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, vmiScopeAdditions(), runtime.CoreLimits{
 		CallStackMaxSize: 100,
 		StackMaxSize:     500,
 		MaxMemorySize:    100000,
 	})
 
 	debuggerOut := make(chan runtime.DebugOutput)
-	vm.Spawn(compiled.EntryPoint, &debuggerOut)
-	go ShowDebug(&debuggerOut)
+	core := vm.Spawn(compiled.EntryPoint, &debuggerOut)
+	go ShowDebug(&debuggerOut, core)
 
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i
