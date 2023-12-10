@@ -1,7 +1,6 @@
 package fuzzer
 
 import (
-	"fmt"
 	"math/rand"
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
@@ -851,8 +850,15 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 	// TODO: also include matches and maybe tru-catch to obfuscate
 
 	// If the current statement is something like `continue` / `break`, do not wrap it in a loop
-	if node.Kind() != ast.ReturnStatementKind && node.Type().Kind() == ast.NeverTypeKind {
-		self.Out += fmt.Sprintf("Not further transforming stmt with !: `%s`\n", node.String())
+	// if node.Kind() != ast.ReturnStatementKind && node.Type().Kind() == ast.NeverTypeKind {
+	// 	self.Out += fmt.Sprintf("Not further transforming stmt with !: `%s`\n", node.String())
+	// 	return output
+	// }
+
+	// Detect whether the current statment is able to control a parent loop
+	// If so, do not apply loop obfuscations on top of this node.
+	if self.stmtCanControlLoop(node) {
+		self.Out += "Statement contains loop control code, not apllying loop obfuscations"
 		return output
 	}
 
