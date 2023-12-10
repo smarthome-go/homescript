@@ -1,0 +1,15 @@
+fn main() {
+    let a = 42;
+    {
+        let a = 69;
+        println(a);
+
+        {
+            let a = 123;
+            println(a);
+        }
+
+        println(a);
+    }
+    println(a);
+}

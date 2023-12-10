@@ -45,6 +45,14 @@ func TestScripts(t *testing.T) {
 			ExpectedOutput: "2\n3\n5\n7\n11\n13\n17\n19\n23\n29\n31\n37\n41\n43\n47\n53\n",
 			ValidateOutput: true,
 		},
+		{
+			Name:           "scoping_regression",
+			Path:           "../tests/regression_scoping.hms",
+			IsGlob:         false,
+			Debug:          false,
+			ExpectedOutput: "69\n123\n69\n42\n",
+			ValidateOutput: true,
+		},
 	}
 
 	outputTests := make([]Test, 0)

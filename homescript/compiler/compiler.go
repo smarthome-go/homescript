@@ -95,9 +95,10 @@ func (self *Compiler) addFn(srcIdent string, mangledName string) {
 }
 
 func (self *Compiler) mangleVar(input string) string {
-	cnt, exists := self.varNameMangle[input] // TODO: determine if this really works
+	cnt, exists := self.varNameMangle[input]
 	if !exists {
-		self.varNameMangle[input]++
+		// The next time this variable is mangled, 0 MUST NOT be used as the counter.
+		self.varNameMangle[input] = 1
 		cnt = 0
 	} else {
 		self.varNameMangle[input]++
@@ -142,7 +143,9 @@ func (self Compiler) getMangledFn(input string) (string, bool) {
 }
 
 func (self Compiler) getMangled(input string) (string, bool) {
-	for _, scope := range self.varScopes {
+	// Iterate over the scopes backwards: Most current scope should be considered first.
+	for i := len(self.varScopes) - 1; i >= 0; i-- {
+		scope := self.varScopes[i]
 		name, found := scope[input]
 		if found {
 			return name, true
