@@ -117,7 +117,7 @@ func (self *Core) callFrame() *CallFrame {
 }
 
 func (self *Core) absolute(rel int64) int {
-	return int(rel + self.MemoryPointer)
+	return int(self.MemoryPointer - rel)
 }
 
 func (self *Core) checkCancelation() *value.VmInterrupt {
