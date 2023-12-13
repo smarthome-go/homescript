@@ -19,14 +19,23 @@ import (
 // Tests
 //
 
+type OUTPUT_VALIDATION uint
+
+const (
+	OUTPUT_VALIDATION_NONE OUTPUT_VALIDATION = iota
+	OUTPUT_VALIDATION_FILE
+	OUTPUT_VALIDATION_RAW
+)
+
 type Test struct {
-	Name           string
-	Path           string
-	IsGlob         bool
-	Debug          bool
-	ExpectedOutput string
-	ValidateOutput bool
-	Skip           bool
+	Name               string
+	Path               string
+	IsGlob             bool
+	Debug              bool
+	ExpectedOutputFile string
+	ExpectedOutputRaw  string
+	ValidateOutput     OUTPUT_VALIDATION
+	Skip               bool
 }
 
 func TestScripts(t *testing.T) {
@@ -37,40 +46,58 @@ func TestScripts(t *testing.T) {
 		// 	Path:  "../tests/builtin_members.hms",
 		// 	Debug: false,
 		// },
-		// {
-		// 	Name:           "Fuzz",
-		// 	Path:           "../prime_fuzz/*.hms",
-		// 	IsGlob:         true,
-		// 	Debug:          false,
-		// 	ExpectedOutput: "2\n3\n5\n7\n11\n13\n17\n19\n23\n29\n31\n37\n41\n43\n47\n53\n",
-		// 	ValidateOutput: true,
-		// },
-		// TODO: fizzbuzz is broken in the VM
 		{
-			Name:           "FizzBuzzFuzz",
-			Path:           "../fizz_fuzz/*.hms",
-			IsGlob:         true,
-			Debug:          false,
-			ExpectedOutput: "FizzBuzz\n1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n",
-			ValidateOutput: true,
+			Name:               "PrimeFuzz",
+			Path:               "../prime_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "../examples/primes.hms.out",
+			ValidateOutput:     OUTPUT_VALIDATION_FILE,
 		},
 		{
-			Name:           "scoping_regression",
-			Path:           "../tests/regression_scoping.hms",
-			IsGlob:         false,
-			Debug:          false,
-			ExpectedOutput: "69\n123\n69\n42\n",
-			ValidateOutput: true,
+			Name:               "FizzBuzzFuzz",
+			Path:               "../fizz_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "../examples/fizzbuzz.hms.out",
+			ValidateOutput:     OUTPUT_VALIDATION_FILE,
+		},
+		{
+			Name:               "BoxFuzz",
+			Path:               "../box_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "../examples/box.hms.out",
+			ValidateOutput:     OUTPUT_VALIDATION_FILE,
+		},
+		{
+			Name:              "scoping_regression",
+			Path:              "../tests/regression_scoping.hms",
+			IsGlob:            false,
+			Debug:             false,
+			ExpectedOutputRaw: "69\n123\n69\n42\n",
+			ValidateOutput:    OUTPUT_VALIDATION_RAW,
 		},
 	}
 
 	outputTests := make([]Test, 0)
+
+	fileCache := make(map[string]string)
 
 	// Prepare the tests
 	for _, test := range tests {
 		if test.Skip {
 			t.Logf("Skipping test `%s` and all its expansions\n", test.Name)
 			continue
+		}
+
+		var fileContent string
+		if test.ValidateOutput == OUTPUT_VALIDATION_FILE {
+			fileCont, err := os.ReadFile(test.ExpectedOutputFile)
+			if err != nil {
+				panic(err.Error())
+			}
+			fileContent = string(fileCont)
 		}
 
 		if test.IsGlob {
@@ -86,14 +113,19 @@ func TestScripts(t *testing.T) {
 					}
 				}
 
+				testName := fmt.Sprintf("%s: %s", test.Name, file)
+
 				outputTests = append(outputTests, Test{
-					Name:           fmt.Sprintf("%s: %s", test.Name, file),
-					Path:           file,
-					IsGlob:         false,
-					Debug:          test.Debug,
-					ExpectedOutput: test.ExpectedOutput,
-					ValidateOutput: test.ValidateOutput,
+					Name:               testName,
+					Path:               file,
+					IsGlob:             false,
+					Debug:              test.Debug,
+					ExpectedOutputRaw:  test.ExpectedOutputRaw,
+					ExpectedOutputFile: test.ExpectedOutputFile,
+					ValidateOutput:     test.ValidateOutput,
 				})
+
+				fileCache[testName] = fileContent
 			}
 		} else {
 			outputTests = append(outputTests, test)
@@ -103,13 +135,18 @@ func TestScripts(t *testing.T) {
 
 	// After preparation, run the tests
 	for idx, test := range outputTests {
-		t.Run(fmt.Sprintf("%d: %s", idx, test.Name), func(t *testing.T) {
-			execTest(test, t)
-		})
+		execTestWrapper(idx, test, fileCache[test.Name], t)
 	}
 }
 
-func execTest(test Test, t *testing.T) {
+func execTestWrapper(idx int, test Test, expectedOutputCache string, t *testing.T) {
+	t.Run(fmt.Sprintf("%d: %s", idx, test.Name), func(t *testing.T) {
+		t.Parallel()
+		execTest(test, expectedOutputCache, t)
+	})
+}
+
+func execTest(test Test, expectedOutputCache string, t *testing.T) {
 	code, err := os.ReadFile(test.Path)
 	if err != nil {
 		t.Error(err.Error())
@@ -207,7 +244,13 @@ func execTest(test Test, t *testing.T) {
 		panic(fmt.Sprintf("Core %d crashed", coreNum))
 	}
 
-	if test.ValidateOutput {
-		assert.Equal(t, test.ExpectedOutput, *executor.PrintBuf, "Generated output does match expected output.")
+	switch test.ValidateOutput {
+	case OUTPUT_VALIDATION_NONE:
+		break
+	case OUTPUT_VALIDATION_FILE:
+		assert.Equal(t, expectedOutputCache, *executor.PrintBuf, "Generated output does match expected output.")
+	case OUTPUT_VALIDATION_RAW:
+		assert.Equal(t, test.ExpectedOutputRaw, *executor.PrintBuf, "Generated output does match expected output.")
 	}
+
 }
