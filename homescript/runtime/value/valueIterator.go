@@ -4,7 +4,7 @@ type ValueIterator struct {
 	Func func() (Value, bool)
 }
 
-func (_ ValueIterator) Kind() ValueKind { return PointerValueKind }
+func (_ ValueIterator) Kind() ValueKind { return IteratorValueKind }
 
 func (self ValueIterator) Display() (string, *VmInterrupt) {
 	return "<iterator>", nil // use float fallback
