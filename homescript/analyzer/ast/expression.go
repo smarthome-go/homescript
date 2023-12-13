@@ -120,6 +120,24 @@ func (self AnalyzedBoolLiteralExpression) Constant() bool    { return true }
 // String literal
 //
 
+// TODO: add more escapes
+func escapeHmsString(input string) string {
+	output := input
+
+	escapes := map[string]string{
+		"\n": "\\n",
+		"\"": "\\\"",
+		"\t": "\\n",
+	}
+
+	for from, to := range escapes {
+		output = strings.ReplaceAll(output, from, to)
+	}
+
+	return output
+
+}
+
 type AnalyzedStringLiteralExpression struct {
 	Value string
 	Range errors.Span
@@ -129,9 +147,11 @@ func (self AnalyzedStringLiteralExpression) Kind() ExpressionKind {
 	return StringLiteralExpressionKind
 }
 func (self AnalyzedStringLiteralExpression) Span() errors.Span { return self.Range }
-func (self AnalyzedStringLiteralExpression) String() string    { return fmt.Sprintf("\"%s\"", self.Value) }
-func (self AnalyzedStringLiteralExpression) Type() Type        { return NewStringType(self.Range) }
-func (self AnalyzedStringLiteralExpression) Constant() bool    { return true }
+func (self AnalyzedStringLiteralExpression) String() string {
+	return fmt.Sprintf("\"%s\"", escapeHmsString(self.Value))
+}
+func (self AnalyzedStringLiteralExpression) Type() Type     { return NewStringType(self.Range) }
+func (self AnalyzedStringLiteralExpression) Constant() bool { return true }
 
 //
 // Ident expression
