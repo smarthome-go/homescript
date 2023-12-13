@@ -37,9 +37,18 @@ func TestScripts(t *testing.T) {
 		// 	Path:  "../tests/builtin_members.hms",
 		// 	Debug: false,
 		// },
+		// {
+		// 	Name:           "Fuzz",
+		// 	Path:           "../prime_fuzz/*.hms",
+		// 	IsGlob:         true,
+		// 	Debug:          false,
+		// 	ExpectedOutput: "2\n3\n5\n7\n11\n13\n17\n19\n23\n29\n31\n37\n41\n43\n47\n53\n",
+		// 	ValidateOutput: true,
+		// },
+		// TODO: fizzbuzz is broken in the VM
 		{
-			Name:           "Fuzz",
-			Path:           "../prime_fuzz/*.hms",
+			Name:           "FizzBuzzFuzz",
+			Path:           "../fizz_fuzz/*.hms",
 			IsGlob:         true,
 			Debug:          false,
 			ExpectedOutput: "2\n3\n5\n7\n11\n13\n17\n19\n23\n29\n31\n37\n41\n43\n47\n53\n",

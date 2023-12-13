@@ -514,9 +514,9 @@ func (self *Transformer) infixExpr(node ast.AnalyzedInfixExpression) []ast.Analy
 
 		// TODO: implement using loops
 	case pAst.DivideInfixOperator:
-		panic("TODO") // TODO: implement using loops
+		variants = append(variants, node)
 	case pAst.ModuloInfixOperator:
-		panic("TODO") // TODO: implement using loops
+		variants = append(variants, node)
 	case pAst.PowerInfixOperator, pAst.ShiftLeftInfixOperator, pAst.ShiftRightInfixOperator, pAst.BitOrInfixOperator, pAst.BitAndInfixOperator, pAst.BitXorInfixOperator:
 		// Cannot really display these operations differently
 		variants = append(variants, node)
