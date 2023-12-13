@@ -338,7 +338,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 			rFloat := r.(value.ValueFloat)
 			self.push(value.NewValueBool(lFloat.Inner < rFloat.Inner))
 		default:
-			panic("This value combination is unsupported")
+			panic(fmt.Sprintf("This value combination is unsupported: `%v` `%v`", l, r))
 		}
 	case compiler.Opcode_Gt:
 		r := *self.pop()

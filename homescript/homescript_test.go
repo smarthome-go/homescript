@@ -51,7 +51,7 @@ func TestScripts(t *testing.T) {
 			Path:           "../fizz_fuzz/*.hms",
 			IsGlob:         true,
 			Debug:          false,
-			ExpectedOutput: "2\n3\n5\n7\n11\n13\n17\n19\n23\n29\n31\n37\n41\n43\n47\n53\n",
+			ExpectedOutput: "FizzBuzz\n1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n",
 			ValidateOutput: true,
 		},
 		{
