@@ -27,5 +27,5 @@ fn main() {
 
     println(some_object.keys());
 
-    time.sleep(1);
+    time.sleep(1f);
 }

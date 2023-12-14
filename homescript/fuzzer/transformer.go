@@ -269,7 +269,8 @@ func (self *Transformer) expressionVariants(node ast.AnalyzedExpression) []ast.A
 		// TODO: also add a block in which there are two variables (lower upper)
 		variants = append(variants, node)
 	case ast.ListLiteralExpressionKind:
-		panic("TODO")
+		// TODO: this can be extremely obfuscated.
+		variants = append(variants, node)
 	case ast.AnyObjectLiteralExpressionKind:
 		panic("TODO")
 	case ast.ObjectLiteralExpressionKind:

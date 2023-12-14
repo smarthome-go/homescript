@@ -95,7 +95,7 @@ func (self Executor) GetBuiltinImport(moduleName string, toImport string) (val v
 					time.Sleep(time.Millisecond * 10)
 				}
 
-				return nil, nil
+				return value.NewValueNull(), nil
 			},
 			),
 			"add_days": value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
@@ -199,7 +199,7 @@ func (self VmExecutor) GetBuiltinImport(moduleName string, toImport string) (val
 					time.Sleep(time.Millisecond * 10)
 				}
 
-				return nil, nil
+				return vmValue.NewValueNull(), nil
 			},
 			),
 			"add_days": vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span syntaxErrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
@@ -291,7 +291,7 @@ func (self Host) GetBuiltinImport(moduleName string, valueName string, span synt
 					pAst.NewSpannedIdent("sleep", span),
 					ast.NewFunctionType(
 						ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-							ast.NewFunctionTypeParam(pAst.NewSpannedIdent("seconds", span), ast.NewIntType(span)),
+							ast.NewFunctionTypeParam(pAst.NewSpannedIdent("seconds", span), ast.NewFloatType(span)),
 						}),
 						span,
 						ast.NewNullType(span),
@@ -707,62 +707,13 @@ func main() {
 		const passes = 4
 		const seed = 42
 		const passLimit = 1000
-		const terminateAfterMinFound = 0 // 0 is unlimited
+		const terminateAfterMinFound = 200 // 0 is unlimited
 
-		// trans := fuzzer.NewTransformer(100, seed)
-		//
-		// hashset := make(map[string]struct{})
-		// countNoNew := 0
-		//
-		// for countNoNew < 100 {
-		// 	if countNoNew > 11 {
-		// 		fmt.Printf("%d ", countNoNew)
-		// 	} else if countNoNew > 10 {
-		// 		fmt.Printf("No new outputs since %d iterations.\n", countNoNew)
-		// 	}
-		//
-		// 	trans.Out = ""
-		// 	newTrees := trans.TransformPasses(analyzed[filename], passes)
-		//
-		// 	for _, newTree := range newTrees {
-		// 		newTreeStr := newTree.String()
-		//
-		// 		sumRam := md5.Sum([]byte(newTreeStr))
-		// 		sum := fmt.Sprintf("%x", sumRam)
-		//
-		// 		if sum == "581622754bb36daf1d22cb14b983ce8c" {
-		// 			for _, t := range newTrees {
-		// 				fmt.Println()
-		// 				fmt.Println(t.String())
-		// 			}
-		// 			fmt.Println(trans.Out)
-		// 		}
-		//
-		// 		_, signatureExists := hashset[sum]
-		// 		if signatureExists {
-		// 			countNoNew++
-		// 			continue
-		// 		}
-		//
-		// 		countNoNew = 0
-		// 		hashset[sum] = struct{}{}
-		//
-		// 		file, err := os.Create(fmt.Sprintf("fuzz/%s.hms", sum))
-		// 		if err != nil {
-		// 			panic(err.Error())
-		// 		}
-		//
-		// 		if _, err := file.WriteString(newTreeStr); err != nil {
-		// 			panic(err.Error())
-		// 		}
-		// 	}
-		// }
-		//
-		// fmt.Printf("\nFuzz: %v, generated: %d\n", time.Since(startAll), len(hashset))
+		outputDir := os.Args[3]
 
 		gen := fuzzer.NewGenerator(
 			analyzed[filename],
-			"fuzz",
+			outputDir,
 			seed,
 			passes,
 			terminateAfterMinFound,

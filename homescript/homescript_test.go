@@ -71,6 +71,22 @@ func TestScripts(t *testing.T) {
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
 		},
 		{
+			Name:               "BinaryFuzz",
+			Path:               "../binary_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "../examples/binary.hms.out",
+			ValidateOutput:     OUTPUT_VALIDATION_FILE,
+		},
+		{
+			Name:               "DevFuzz",
+			Path:               "../dev_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "../examples/dev.hms.out",
+			ValidateOutput:     OUTPUT_VALIDATION_FILE,
+		},
+		{
 			Name:              "scoping_regression",
 			Path:              "../tests/regression_scoping.hms",
 			IsGlob:            false,

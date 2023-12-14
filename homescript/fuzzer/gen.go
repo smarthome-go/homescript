@@ -166,9 +166,9 @@ func (self *Generator) Pass(
 	for (countNoNew < self.terminateAfterNTries || self.terminateAfterNTries <= 0) && len(hashset) <= outputSizeLimit {
 		if GEN_VERBOSE {
 			if countNoNew > 11 {
-				fmt.Printf("%d ", countNoNew)
+				fmt.Printf("%d (%d remaining) ", countNoNew, self.terminateAfterNTries-countNoNew)
 			} else if countNoNew > 10 {
-				fmt.Printf("No new outputs since %d iterations.\n", countNoNew)
+				fmt.Printf("No new outputs since %d iterations (%d remaining).\n", countNoNew, self.terminateAfterNTries-countNoNew)
 			}
 		}
 

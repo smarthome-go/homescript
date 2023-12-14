@@ -144,7 +144,8 @@ func (self *Core) Run(function string, debuggerOut *chan DebugOutput) {
 
 	catchPanic := func() {
 		if err := recover(); err != nil {
-			fmt.Printf("Panic occured in core %d at (%s:%d): `%s`\n", self.Corenum, self.callFrame().Function, self.callFrame().InstructionPointer, err)
+			span := self.parent.SourceMap(*self.callFrame())
+			fmt.Printf("Panic occured in core %d at (%s:%d => l.%d): `%s`\n", self.Corenum, self.callFrame().Function, self.callFrame().InstructionPointer, span.Start.Line, err)
 		}
 	}
 
