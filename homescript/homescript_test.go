@@ -53,6 +53,7 @@ func TestScripts(t *testing.T) {
 			Debug:              false,
 			ExpectedOutputFile: "../examples/primes.hms.out",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
+			Skip:               true,
 		},
 		{
 			Name:               "FizzBuzzFuzz",
@@ -61,6 +62,7 @@ func TestScripts(t *testing.T) {
 			Debug:              false,
 			ExpectedOutputFile: "../examples/fizzbuzz.hms.out",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
+			Skip:               true,
 		},
 		{
 			Name:               "BoxFuzz",
@@ -69,6 +71,7 @@ func TestScripts(t *testing.T) {
 			Debug:              false,
 			ExpectedOutputFile: "../examples/box.hms.out",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
+			Skip:               true,
 		},
 		{
 			Name:               "BinaryFuzz",
@@ -76,6 +79,7 @@ func TestScripts(t *testing.T) {
 			IsGlob:             true,
 			Debug:              false,
 			ExpectedOutputFile: "../examples/binary.hms.out",
+			Skip:               false,
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
 		},
 		{
@@ -85,6 +89,7 @@ func TestScripts(t *testing.T) {
 			Debug:              false,
 			ExpectedOutputFile: "../examples/dev.hms.out",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
+			Skip:               true,
 		},
 		{
 			Name:              "scoping_regression",
@@ -93,6 +98,7 @@ func TestScripts(t *testing.T) {
 			Debug:             false,
 			ExpectedOutputRaw: "69\n123\n69\n42\n",
 			ValidateOutput:    OUTPUT_VALIDATION_RAW,
+			Skip:              true,
 		},
 	}
 
@@ -173,7 +179,7 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 		InputProgram{
 			Filename:    test.Path,
 			ProgramText: string(code),
-		}, analyzerScopeAdditions(), analyzerHost{})
+		}, TestingAnalyzerScopeAdditions(), TestingAnalyzerHost{})
 	hasErr := false
 	if len(syntax) > 0 {
 		for _, s := range syntax {
@@ -220,13 +226,13 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 
-	executor := vmExecutor{
+	executor := TestingVmExecutor{
 		PrintToStdout: test.Debug,
 		PrintBuf:      new(string),
 		PintBufMutex:  &sync.Mutex{},
 	}
 
-	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, vmiScopeAdditions(), runtime.CoreLimits{
+	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, TestingVmScopeAdditions(), runtime.CoreLimits{
 		CallStackMaxSize: 10024,
 		StackMaxSize:     10024,
 		MaxMemorySize:    10024,

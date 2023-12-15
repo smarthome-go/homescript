@@ -15,7 +15,7 @@ import (
 // Analyzer
 //
 
-func analyzerScopeAdditions() map[string]analyzer.Variable {
+func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 	return map[string]analyzer.Variable{
 		"print": analyzer.NewBuiltinVar(
 			ast.NewFunctionType(
@@ -74,9 +74,9 @@ func analyzerScopeAdditions() map[string]analyzer.Variable {
 	}
 }
 
-type analyzerHost struct{}
+type TestingAnalyzerHost struct{}
 
-func (self analyzerHost) ResolveCodeModule(moduleName string) (code string, moduleFound bool, err error) {
+func (self TestingAnalyzerHost) ResolveCodeModule(moduleName string) (code string, moduleFound bool, err error) {
 	path := fmt.Sprintf("../tests/%s.hms", moduleName)
 
 	file, err := os.ReadFile(path)
@@ -90,7 +90,7 @@ func (self analyzerHost) ResolveCodeModule(moduleName string) (code string, modu
 	return string(file), true, nil
 }
 
-func (self analyzerHost) GetBuiltinImport(moduleName string, valueName string, span herrors.Span) (valueType ast.Type, moduleFound bool, valueFound bool) {
+func (self TestingAnalyzerHost) GetBuiltinImport(moduleName string, valueName string, span herrors.Span) (valueType ast.Type, moduleFound bool, valueFound bool) {
 	switch moduleName {
 	case "testing":
 		switch valueName {

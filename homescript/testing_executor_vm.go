@@ -16,7 +16,7 @@ import (
 // Vm scope additions
 //
 
-func vmiScopeAdditions() map[string]vmValue.Value {
+func TestingVmScopeAdditions() map[string]vmValue.Value {
 	return map[string]vmValue.Value{
 		"print": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
 			output := make([]string, 0)
@@ -144,15 +144,15 @@ func vmiScopeAdditions() map[string]vmValue.Value {
 // Vm interpreter
 //
 
-type vmExecutor struct {
+type TestingVmExecutor struct {
 	PrintToStdout bool
 	PrintBuf      *string
 	PintBufMutex  *sync.Mutex
 }
 
-func (self vmExecutor) GetUser() string { return "<unknown>" }
+func (self TestingVmExecutor) GetUser() string { return "<unknown>" }
 
-func (self vmExecutor) GetBuiltinImport(moduleName string, toImport string) (val vmValue.Value, found bool) {
+func (self TestingVmExecutor) GetBuiltinImport(moduleName string, toImport string) (val vmValue.Value, found bool) {
 	switch moduleName {
 	case "testing":
 		switch toImport {
@@ -200,7 +200,7 @@ func (self vmExecutor) GetBuiltinImport(moduleName string, toImport string) (val
 }
 
 // returns the Homescript code of the requested module
-func (self vmExecutor) ResolveModuleCode(moduleName string) (code string, found bool, err error) {
+func (self TestingVmExecutor) ResolveModuleCode(moduleName string) (code string, found bool, err error) {
 	path := fmt.Sprintf("tests/%s.hms", moduleName)
 
 	file, err := os.ReadFile(path)
@@ -214,7 +214,7 @@ func (self vmExecutor) ResolveModuleCode(moduleName string) (code string, found 
 	return string(file), true, nil
 }
 
-func (self vmExecutor) WriteStringTo(input string) error {
+func (self TestingVmExecutor) WriteStringTo(input string) error {
 	if self.PrintToStdout {
 		fmt.Print(input)
 	}

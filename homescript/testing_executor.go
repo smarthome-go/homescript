@@ -15,7 +15,7 @@ import (
 // Tree-walking interpreter scope additions
 //
 
-func interpeterScopeAdditions() map[string]value.Value {
+func TestingInterpeterScopeAdditions() map[string]value.Value {
 	return map[string]value.Value{
 		"print": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
 			output := make([]string, 0)
@@ -128,11 +128,13 @@ func interpeterScopeAdditions() map[string]value.Value {
 // Tree-walking interpreter
 //
 
-type treeExecutor struct{}
+type TestingTreeExecutor struct {
+	Output *string
+}
 
-func (self treeExecutor) GetUser() string { return "<unknown>" }
+func (self TestingTreeExecutor) GetUser() string { return "<unknown>" }
 
-func (self treeExecutor) GetBuiltinImport(moduleName string, toImport string) (val value.Value, found bool) {
+func (self TestingTreeExecutor) GetBuiltinImport(moduleName string, toImport string) (val value.Value, found bool) {
 	switch moduleName {
 	case "testing":
 		switch toImport {
@@ -177,7 +179,7 @@ func (self treeExecutor) GetBuiltinImport(moduleName string, toImport string) (v
 }
 
 // returns the Homescript code of the requested module
-func (self treeExecutor) ResolveModuleCode(moduleName string) (code string, found bool, err error) {
+func (self TestingTreeExecutor) ResolveModuleCode(moduleName string) (code string, found bool, err error) {
 	path := fmt.Sprintf("tests/%s.hms", moduleName)
 
 	file, err := os.ReadFile(path)
@@ -191,7 +193,8 @@ func (self treeExecutor) ResolveModuleCode(moduleName string) (code string, foun
 	return string(file), true, nil
 }
 
-func (self treeExecutor) WriteStringTo(input string) error {
+func (self TestingTreeExecutor) WriteStringTo(input string) error {
+	*self.Output += input
 	fmt.Print(input)
 	return nil
 }

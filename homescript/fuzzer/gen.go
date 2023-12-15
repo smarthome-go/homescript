@@ -3,7 +3,6 @@ package fuzzer
 import (
 	"crypto/md5"
 	"fmt"
-	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -14,7 +13,7 @@ import (
 const GEN_VERBOSE = true
 
 type Generator struct {
-	outputDir            string
+	onOutput             func(ast.AnalyzedProgram, string) error
 	seed                 int64
 	input                ast.AnalyzedProgram
 	passes               int
@@ -24,14 +23,14 @@ type Generator struct {
 
 func NewGenerator(
 	input ast.AnalyzedProgram,
-	outputDir string,
+	onOutput func(ast.AnalyzedProgram, string) error,
 	seed int64,
 	passes int,
 	terminateAfterNTries int,
 	outputSizeLimit int,
 ) Generator {
 	return Generator{
-		outputDir:            outputDir,
+		onOutput:             onOutput,
 		seed:                 seed,
 		input:                input,
 		passes:               passes,
@@ -61,10 +60,6 @@ func chunkInput(input []ast.AnalyzedProgram, chunkSize int) [][]ast.AnalyzedProg
 
 func (self *Generator) Gen() {
 	startAll := time.Now()
-
-	if err := os.MkdirAll(self.outputDir, 0755); err != nil {
-		panic(err.Error())
-	}
 
 	passResults := make([][]ast.AnalyzedProgram, self.passes+1)
 	passResults[0] = []ast.AnalyzedProgram{self.input}
@@ -200,14 +195,7 @@ func (self *Generator) Pass(
 
 			hashset[sum] = struct{}{}
 
-			file, err := os.Create(fmt.Sprintf("%s/%s.hms", self.outputDir, sum))
-			if err != nil {
-				panic(err.Error())
-			}
-
-			if _, err := file.WriteString(newTreeStr); err != nil {
-				panic(err.Error())
-			}
+			self.onOutput(newTree, newTreeStr)
 		}
 	}
 }
