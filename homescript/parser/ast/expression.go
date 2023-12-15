@@ -69,7 +69,14 @@ type FloatLiteralExpression struct {
 
 func (self FloatLiteralExpression) Kind() ExpressionKind { return FloatLiteralExpressionKind }
 func (self FloatLiteralExpression) Span() errors.Span    { return self.Range }
-func (self FloatLiteralExpression) String() string       { return fmt.Sprint(self.Value) }
+func (self FloatLiteralExpression) String() string {
+	// If the float can be replresented as an int without loss, the 'f' extension is forced.
+	if float64(int64(self.Value)) == self.Value {
+		return fmt.Sprintf("%df", int64(self.Value))
+	}
+
+	return fmt.Sprint(self.Value)
+}
 
 //
 // Bool literal

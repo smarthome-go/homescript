@@ -59,30 +59,24 @@ func (self *Transformer) Transform(tree ast.AnalyzedProgram) ast.AnalyzedProgram
 	}
 
 	// Iterate over the imports and shuffle the order around
-	newImports, nModifications := ShuffleSlice(tree.Imports, self.randSource)
-	output.Imports = newImports
-	self.modifications += nModifications
+	ShuffleSlice(tree.Imports, self.randSource)
 
 	// Iterate over the globals and shuffle their order around
-	newGlobals, nModifications := ShuffleSlice(tree.Globals, self.randSource)
-	output.Globals = newGlobals
-	self.modifications += nModifications
+	ShuffleSlice(tree.Globals, self.randSource)
 
 	// Iterate over the functions and shuffle their order around
-	newFunctions, nModifications := ShuffleSlice(tree.Functions, self.randSource)
-	self.modifications += nModifications
+	ShuffleSlice(tree.Functions, self.randSource)
 
 	// Iterate over the events and shuffle their order around
-	newEvents, nModifications := ShuffleSlice(tree.Events, self.randSource)
-	self.modifications += nModifications
+	ShuffleSlice(tree.Events, self.randSource)
 
 	// Iterate over the ast's functions in order to transform each one
-	for _, fn := range newFunctions {
+	for _, fn := range tree.Functions {
 		output.Functions = append(output.Functions, self.Function(fn))
 	}
 
 	// Iterate over the ast's events and transform each one
-	for _, eventFn := range newEvents {
+	for _, eventFn := range tree.Events {
 		output.Events = append(output.Events, self.Function(eventFn))
 	}
 
@@ -97,22 +91,16 @@ func ChoseRandom[T any](input []T, randSource rand.Source) T {
 }
 
 // Returns the new, shuffled slice and the number of modifications applied
-func ShuffleSlice[T any](input []T, randSource rand.Source) ([]T, uint) {
+func ShuffleSlice[T any](input []T, randSource rand.Source) {
 	if len(input) <= 1 {
-		return input, 0
+		return
 	}
 
-	output := make([]T, len(input))
+	r := rand.New(randSource)
 
-	var modifications uint = 0
-	for i := range input {
-		r := rand.New(randSource)
-		j := r.Intn(i + 1)
-		output[i], output[j] = input[j], input[i]
-		modifications++
-	}
-
-	return output, modifications
+	r.Shuffle(len(input), func(i, j int) {
+		input[i], input[j] = input[j], input[i]
+	})
 }
 
 func (self *Transformer) Function(node ast.AnalyzedFunctionDefinition) ast.AnalyzedFunctionDefinition {
@@ -274,7 +262,8 @@ func (self *Transformer) expressionVariants(node ast.AnalyzedExpression) []ast.A
 	case ast.AnyObjectLiteralExpressionKind:
 		panic("TODO")
 	case ast.ObjectLiteralExpressionKind:
-		panic("TODO")
+		// TODO: this can be obfuscated
+		variants = append(variants, node)
 	case ast.FunctionLiteralExpressionKind:
 		panic("TODO")
 	case ast.GroupedExpressionKind:

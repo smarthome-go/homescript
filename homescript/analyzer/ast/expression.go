@@ -95,9 +95,16 @@ func (self AnalyzedFloatLiteralExpression) Kind() ExpressionKind {
 	return FloatLiteralExpressionKind
 }
 func (self AnalyzedFloatLiteralExpression) Span() errors.Span { return self.Range }
-func (self AnalyzedFloatLiteralExpression) String() string    { return fmt.Sprint(self.Value) }
-func (self AnalyzedFloatLiteralExpression) Type() Type        { return NewFloatType(self.Range) }
-func (self AnalyzedFloatLiteralExpression) Constant() bool    { return true }
+func (self AnalyzedFloatLiteralExpression) String() string {
+	// If the float can be replresented as an int without loss, the 'f' extension is forced.
+	if float64(int64(self.Value)) == self.Value {
+		return fmt.Sprintf("%df", int64(self.Value))
+	}
+
+	return fmt.Sprint(self.Value)
+}
+func (self AnalyzedFloatLiteralExpression) Type() Type     { return NewFloatType(self.Range) }
+func (self AnalyzedFloatLiteralExpression) Constant() bool { return true }
 
 //
 // Bool literal

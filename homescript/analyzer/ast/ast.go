@@ -161,12 +161,20 @@ type AnalyzedBlock struct {
 func (self AnalyzedBlock) String() string {
 	contents := make([]string, 0)
 
+	isEmpty := true
+
 	for _, stmt := range self.Statements {
 		contents = append(contents, strings.ReplaceAll(stmt.String(), "\n", "\n    "))
+		isEmpty = false
 	}
 
 	if self.Expression != nil {
 		contents = append(contents, strings.ReplaceAll(self.Expression.String(), "\n", "\n    "))
+		isEmpty = false
+	}
+
+	if isEmpty {
+		return "{}"
 	}
 
 	return fmt.Sprintf("{\n    %s\n}", strings.Join(contents, "\n    "))
