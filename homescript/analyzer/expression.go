@@ -582,7 +582,7 @@ func (self *Analyzer) assignExpression(node pAst.AssignExpression) ast.AnalyzedA
 	case ast.IntTypeKind:
 		switch node.AssignOperator {
 		case pAst.StdAssignOperatorKind, pAst.PlusAssignOperatorKind, pAst.MinusAssignOperatorKind,
-			pAst.MultiplyAssignOperatorKind, pAst.ModuloAssignOperatorKind, pAst.PowerAssignOperatorKind,
+			pAst.MultiplyAssignOperatorKind, pAst.DivideAssignOperatorKind, pAst.ModuloAssignOperatorKind, pAst.PowerAssignOperatorKind,
 			pAst.ShiftLeftAssignOperatorKind, pAst.ShiftRightAssignOperatorKind,
 			pAst.BitOrAssignOperatorKind, pAst.BitAndAssignOperatorKind, pAst.BitXorAssignOperatorKind:
 		default:
