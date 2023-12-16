@@ -1,5 +1,3 @@
-import time from sys;
-
 fn num2bin(input: int, bytes: int) -> [int] {
     let out_bin: [int] = [];
 

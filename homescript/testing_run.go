@@ -15,28 +15,32 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
 )
 
-func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string) string {
+const PRINT_COMPILED = false
+
+func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, printToStdout bool) string {
 	fmt.Println("=== COMPILED ===")
 
 	compiler := compiler.NewCompiler()
 	compiled := compiler.Compile(analyzed, filename)
 
-	i := 0
-	for name, function := range compiled.Functions {
-		fmt.Printf("%03d ===> func: %s\n", i, name)
+	if PRINT_COMPILED {
+		i := 0
+		for name, function := range compiled.Functions {
+			fmt.Printf("%03d ===> func: %s\n", i, name)
 
-		for idx, inst := range function {
-			fmt.Printf("%03d | %s\n", idx, inst)
+			for idx, inst := range function {
+				fmt.Printf("%03d | %s\n", idx, inst)
+			}
+
+			i++
 		}
-
-		i++
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 
 	executor := TestingVmExecutor{
-		PrintToStdout: false,
-		PrintBuf:      nil,
+		PrintToStdout: printToStdout,
+		PrintBuf:      new(string),
 		PintBufMutex:  &sync.Mutex{},
 	}
 
@@ -86,11 +90,15 @@ func TestingRunInterpreter(analyzed map[string]ast.AnalyzedProgram, filename str
 	go func() {
 		defer func() { blocking <- struct{}{} }()
 
+		executor := TestingTreeExecutor{
+			Output: new(string),
+		}
+
 		if i := Run(
 			20_000,
 			analyzed,
 			filename,
-			TestingTreeExecutor{},
+			executor,
 			TestingInterpeterScopeAdditions(),
 			&ctx,
 		); i != nil {

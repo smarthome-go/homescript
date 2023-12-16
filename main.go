@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript"
+	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/fuzzer"
 )
@@ -71,10 +72,16 @@ func main() {
 		const terminateAfterMinFound = 200 // 0 is unlimited
 
 		outputDir := os.Args[3]
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			panic(err.Error())
+		}
 
 		gen := fuzzer.NewGenerator(
 			analyzed[filename],
-			outputDir,
+			func(tree ast.AnalyzedProgram, treeString string, hashSum string) error {
+				path := fmt.Sprintf("%s/%s.hms", outputDir, hashSum)
+				return os.WriteFile(path, []byte(treeString), 0755)
+			},
 			seed,
 			passes,
 			terminateAfterMinFound,
@@ -86,7 +93,7 @@ func main() {
 	}
 
 	if os.Args[2] == "vm" {
-		homescript.TestingRunVm(analyzed, filename)
+		homescript.TestingRunVm(analyzed, filename, true)
 		return
 	}
 	if os.Args[2] == "tree" {
@@ -95,7 +102,7 @@ func main() {
 	}
 
 	if os.Args[2] == "both" {
-		homescript.TestingRunVm(analyzed, filename)
+		homescript.TestingRunVm(analyzed, filename, true)
 		homescript.TestingRunInterpreter(analyzed, filename)
 		return
 	}

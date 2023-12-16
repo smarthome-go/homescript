@@ -53,7 +53,7 @@ func TestScripts(t *testing.T) {
 			Debug:              false,
 			ExpectedOutputFile: "../examples/primes.hms.out",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
-			Skip:               true,
+			Skip:               false,
 		},
 		{
 			Name:               "FizzBuzzFuzz",
@@ -62,7 +62,7 @@ func TestScripts(t *testing.T) {
 			Debug:              false,
 			ExpectedOutputFile: "../examples/fizzbuzz.hms.out",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
-			Skip:               true,
+			Skip:               false,
 		},
 		{
 			Name:               "BoxFuzz",
@@ -71,7 +71,7 @@ func TestScripts(t *testing.T) {
 			Debug:              false,
 			ExpectedOutputFile: "../examples/box.hms.out",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
-			Skip:               true,
+			Skip:               false,
 		},
 		{
 			Name:               "BinaryFuzz",
@@ -89,7 +89,39 @@ func TestScripts(t *testing.T) {
 			Debug:              false,
 			ExpectedOutputFile: "../examples/dev.hms.out",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
-			Skip:               true,
+			Skip:               false,
+		},
+		{
+			Name:           "PowFuzz",
+			Path:           "../pow_fuzz/*.hms",
+			IsGlob:         true,
+			Debug:          false,
+			ValidateOutput: OUTPUT_VALIDATION_NONE,
+			Skip:           false,
+		},
+		{
+			Name:           "PiFuzz",
+			Path:           "../pi_fuzz/*.hms",
+			IsGlob:         true,
+			Debug:          false,
+			ValidateOutput: OUTPUT_VALIDATION_NONE,
+			Skip:           false,
+		},
+		{
+			Name:           "EFuzz",
+			Path:           "../e_fuzz/*.hms",
+			IsGlob:         true,
+			Debug:          false,
+			ValidateOutput: OUTPUT_VALIDATION_NONE,
+			Skip:           false,
+		},
+		{
+			Name:           "AperyFuzz",
+			Path:           "../apery_fuzz/*.hms",
+			IsGlob:         true,
+			Debug:          false,
+			ValidateOutput: OUTPUT_VALIDATION_NONE,
+			Skip:           false,
 		},
 		{
 			Name:              "scoping_regression",
@@ -98,7 +130,7 @@ func TestScripts(t *testing.T) {
 			Debug:             false,
 			ExpectedOutputRaw: "69\n123\n69\n42\n",
 			ValidateOutput:    OUTPUT_VALIDATION_RAW,
-			Skip:              true,
+			Skip:              false,
 		},
 	}
 

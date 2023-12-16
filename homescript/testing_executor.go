@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	herrors "github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
@@ -63,6 +64,31 @@ func TestingInterpeterScopeAdditions() map[string]value.Value {
 			return value.NewValueNull(), nil
 		},
 		),
+		"time": *value.NewValueObject(map[string]*value.Value{
+			"sleep": value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+				durationSecs := args[0].(value.ValueFloat).Inner
+
+				for i := 0; i < int(durationSecs*1000); i += 10 {
+					if i := checkCancelationTree(cancelCtx, span); i != nil {
+						return nil, i
+					}
+					time.Sleep(time.Millisecond * 10)
+				}
+
+				return nil, nil
+			},
+			),
+			"add_days": value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+				base := createTimeStructFromObjectTree(args[0])
+				days := args[1].(value.ValueInt).Inner
+				return createTimeObjectTree(base.Add(time.Hour * 24 * time.Duration(days))), nil
+			}),
+			"now": value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+				now := time.Now()
+
+				return createTimeObjectTree(now), nil
+			}),
+		}),
 		"debug": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
 			output := make([]string, 0)
 			for _, arg := range args {
@@ -197,4 +223,40 @@ func (self TestingTreeExecutor) WriteStringTo(input string) error {
 	*self.Output += input
 	fmt.Print(input)
 	return nil
+}
+
+func createTimeObjectTree(t time.Time) *value.Value {
+	return value.NewValueObject(
+		map[string]*value.Value{
+			"year":       value.NewValueInt(int64(t.Year())),
+			"month":      value.NewValueInt(int64(t.Month())),
+			"year_day":   value.NewValueInt(int64(t.YearDay())),
+			"hour":       value.NewValueInt(int64(t.Hour())),
+			"minute":     value.NewValueInt(int64(t.Minute())),
+			"second":     value.NewValueInt(int64(t.Second())),
+			"month_day":  value.NewValueInt(int64(t.Day())),
+			"week_day":   value.NewValueInt(int64(t.Weekday())),
+			"unix_milli": value.NewValueInt(t.UnixMilli()),
+		},
+	)
+}
+
+func createTimeStructFromObjectTree(t value.Value) time.Time {
+	tObj := t.(value.ValueObject)
+	fields, i := tObj.Fields()
+	if i != nil {
+		panic(i)
+	}
+	millis := (*fields["unix_milli"]).(value.ValueInt).Inner
+	return time.UnixMilli(millis)
+}
+
+func checkCancelationTree(ctx *context.Context, span herrors.Span) *value.Interrupt {
+	select {
+	case <-(*ctx).Done():
+		return value.NewTerminationInterrupt((*ctx).Err().Error(), span)
+	default:
+		// do nothing, this should not block the entire interpreter
+		return nil
+	}
 }

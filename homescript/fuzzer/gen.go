@@ -13,7 +13,7 @@ import (
 const GEN_VERBOSE = true
 
 type Generator struct {
-	onOutput             func(ast.AnalyzedProgram, string) error
+	onOutput             func(tree ast.AnalyzedProgram, treeStr string, hashSum string) error
 	seed                 int64
 	input                ast.AnalyzedProgram
 	passes               int
@@ -23,7 +23,7 @@ type Generator struct {
 
 func NewGenerator(
 	input ast.AnalyzedProgram,
-	onOutput func(ast.AnalyzedProgram, string) error,
+	onOutput func(ast.AnalyzedProgram, string, string) error,
 	seed int64,
 	passes int,
 	terminateAfterNTries int,
@@ -195,7 +195,7 @@ func (self *Generator) Pass(
 
 			hashset[sum] = struct{}{}
 
-			self.onOutput(newTree, newTreeStr)
+			self.onOutput(newTree, newTreeStr, sum)
 		}
 	}
 }

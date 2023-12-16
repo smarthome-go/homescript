@@ -33,6 +33,48 @@ func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 				herrors.Span{},
 			),
 		),
+		"time": analyzer.NewBuiltinVar(
+			ast.NewObjectType(
+				[]ast.ObjectTypeField{
+					ast.NewObjectTypeField(
+						pAst.NewSpannedIdent("sleep", herrors.Span{}),
+						ast.NewFunctionType(
+							ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("seconds", herrors.Span{}), ast.NewIntType(herrors.Span{})),
+							}),
+							herrors.Span{},
+							ast.NewNullType(herrors.Span{}),
+							herrors.Span{},
+						),
+						herrors.Span{},
+					),
+					ast.NewObjectTypeField(
+						pAst.NewSpannedIdent("now", herrors.Span{}),
+						ast.NewFunctionType(
+							ast.NewNormalFunctionTypeParamKind(make([]ast.FunctionTypeParam, 0)),
+							herrors.Span{},
+							timeObjType(herrors.Span{}),
+							herrors.Span{},
+						),
+						herrors.Span{},
+					),
+					ast.NewObjectTypeField(
+						pAst.NewSpannedIdent("add_days", herrors.Span{}),
+						ast.NewFunctionType(
+							ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("time", herrors.Span{}), timeObjType(herrors.Span{})),
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("days", herrors.Span{}), ast.NewIntType(herrors.Span{})),
+							}),
+							herrors.Span{},
+							timeObjType(herrors.Span{}),
+							herrors.Span{},
+						),
+						herrors.Span{},
+					),
+				},
+				herrors.Span{},
+			),
+		),
 		"debug": analyzer.NewBuiltinVar(
 			ast.NewFunctionType(
 				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{}, ast.NewUnknownType()),
@@ -119,4 +161,21 @@ func (self TestingAnalyzerHost) GetBuiltinImport(moduleName string, valueName st
 		return nil, false, false
 
 	}
+}
+
+func timeObjType(span herrors.Span) ast.Type {
+	return ast.NewObjectType(
+		[]ast.ObjectTypeField{
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("year", span), ast.NewIntType(span), span),
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("month", span), ast.NewIntType(span), span),
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("year_day", span), ast.NewIntType(span), span),
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("hour", span), ast.NewIntType(span), span),
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("minute", span), ast.NewIntType(span), span),
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("second", span), ast.NewIntType(span), span),
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("month_day", span), ast.NewIntType(span), span),
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("week_day", span), ast.NewIntType(span), span),
+			ast.NewObjectTypeField(pAst.NewSpannedIdent("unix_milli", span), ast.NewIntType(span), span),
+		},
+		span,
+	)
 }

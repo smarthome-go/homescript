@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	herrors "github.com/smarthome-go/homescript/v3/homescript/errors"
 	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
@@ -64,6 +65,31 @@ func TestingVmScopeAdditions() map[string]vmValue.Value {
 			return vmValue.NewValueNull(), nil
 		},
 		),
+		"time": *vmValue.NewValueObject(map[string]*vmValue.Value{
+			"sleep": vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+				durationSecs := args[0].(vmValue.ValueFloat).Inner
+
+				for i := 0; i < int(durationSecs*1000); i += 10 {
+					if i := checkCancelationVM(cancelCtx, span); i != nil {
+						return nil, i
+					}
+					time.Sleep(time.Millisecond * 10)
+				}
+
+				return nil, nil
+			},
+			),
+			"add_days": vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+				base := createTimeStructFromObjectVM(args[0])
+				days := args[1].(vmValue.ValueInt).Inner
+				return createTimeObjectVM(base.Add(time.Hour * 24 * time.Duration(days))), nil
+			}),
+			"now": vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+				now := time.Now()
+
+				return createTimeObjectVM(now), nil
+			}),
+		}),
 		"debug": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
 			output := make([]string, 0)
 			for _, arg := range args {
@@ -222,4 +248,40 @@ func (self TestingVmExecutor) WriteStringTo(input string) error {
 	*self.PrintBuf += input
 	self.PintBufMutex.Unlock()
 	return nil
+}
+
+func createTimeObjectVM(t time.Time) *vmValue.Value {
+	return vmValue.NewValueObject(
+		map[string]*vmValue.Value{
+			"year":       vmValue.NewValueInt(int64(t.Year())),
+			"month":      vmValue.NewValueInt(int64(t.Month())),
+			"year_day":   vmValue.NewValueInt(int64(t.YearDay())),
+			"hour":       vmValue.NewValueInt(int64(t.Hour())),
+			"minute":     vmValue.NewValueInt(int64(t.Minute())),
+			"second":     vmValue.NewValueInt(int64(t.Second())),
+			"month_day":  vmValue.NewValueInt(int64(t.Day())),
+			"week_day":   vmValue.NewValueInt(int64(t.Weekday())),
+			"unix_milli": vmValue.NewValueInt(t.UnixMilli()),
+		},
+	)
+}
+
+func createTimeStructFromObjectVM(t vmValue.Value) time.Time {
+	tObj := t.(vmValue.ValueObject)
+	fields, i := tObj.Fields()
+	if i != nil {
+		panic(i)
+	}
+	millis := (*fields["unix_milli"]).(vmValue.ValueInt).Inner
+	return time.UnixMilli(millis)
+}
+
+func checkCancelationVM(ctx *context.Context, span herrors.Span) *vmValue.VmInterrupt {
+	select {
+	case <-(*ctx).Done():
+		return vmValue.NewVMTerminationInterrupt((*ctx).Err().Error(), span)
+	default:
+		// do nothing, this should not block the entire interpreter
+		return nil
+	}
 }
