@@ -19,6 +19,8 @@ import (
 // Tests
 //
 
+const DEFAULT_TIMEOUT = time.Second * 5
+
 type OUTPUT_VALIDATION uint
 
 const (
@@ -36,6 +38,8 @@ type Test struct {
 	ExpectedOutputRaw  string
 	ValidateOutput     OUTPUT_VALIDATION
 	Skip               bool
+	OverrideTimeout    time.Duration
+	UseOverrideTimeout bool
 }
 
 func TestScripts(t *testing.T) {
@@ -100,12 +104,14 @@ func TestScripts(t *testing.T) {
 			Skip:           false,
 		},
 		{
-			Name:           "PiFuzz",
-			Path:           "../pi_fuzz/*.hms",
-			IsGlob:         true,
-			Debug:          false,
-			ValidateOutput: OUTPUT_VALIDATION_NONE,
-			Skip:           false,
+			Name:               "PiFuzz",
+			Path:               "../pi_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ValidateOutput:     OUTPUT_VALIDATION_NONE,
+			Skip:               false,
+			OverrideTimeout:    time.Second * 60,
+			UseOverrideTimeout: true,
 		},
 		{
 			Name:           "EFuzz",
@@ -177,6 +183,8 @@ func TestScripts(t *testing.T) {
 					ExpectedOutputRaw:  test.ExpectedOutputRaw,
 					ExpectedOutputFile: test.ExpectedOutputFile,
 					ValidateOutput:     test.ValidateOutput,
+					OverrideTimeout:    test.OverrideTimeout,
+					UseOverrideTimeout: test.UseOverrideTimeout,
 				})
 
 				fileCache[testName] = fileContent
@@ -234,9 +242,20 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 		}
 	} else if len(diagnostics) > 0 {
 		fmt.Printf("Program `%s` generated %d diagnostics.\n", t.Name(), len(diagnostics))
+
+		for _, d := range diagnostics {
+			if d.Level == diagnostic.DiagnosticLevelError {
+				file, err := os.ReadFile(d.Span.Filename)
+				assert.NoError(t, err)
+
+				t.Error(d.Display(string(file)))
+				hasErr = true
+			}
+		}
 	}
 
 	if hasErr {
+		t.Error("Homescript contains errors")
 		return
 	}
 
@@ -256,13 +275,20 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	timeout := DEFAULT_TIMEOUT
+	if test.UseOverrideTimeout {
+		timeout = test.OverrideTimeout
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	executor := TestingVmExecutor{
 		PrintToStdout: test.Debug,
 		PrintBuf:      new(string),
 		PintBufMutex:  &sync.Mutex{},
 	}
+
+	start := time.Now()
 
 	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, TestingVmScopeAdditions(), runtime.CoreLimits{
 		CallStackMaxSize: 10024,
@@ -278,7 +304,7 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 		d := diagnostic.Diagnostic{
 			Level:   diagnostic.DiagnosticLevelError,
 			Message: i.Message(),
-			Notes:   []string{fmt.Sprintf("Exception occurred on core %d", coreNum)},
+			Notes:   []string{fmt.Sprintf("Exception occurred on core %d (timeout = %v (override: %v), runtime = %v)", coreNum, timeout, test.UseOverrideTimeout, time.Since(start))},
 			Span:    i.GetSpan(), // this call might panic
 		}
 

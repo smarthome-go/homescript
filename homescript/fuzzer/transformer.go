@@ -80,6 +80,22 @@ func (self *Transformer) Transform(tree ast.AnalyzedProgram) ast.AnalyzedProgram
 		output.Events = append(output.Events, self.Function(eventFn))
 	}
 
+	output.Types = tree.Types
+	output.Imports = tree.Imports
+
+	for _, glob := range tree.Globals {
+		newGlob := ast.AnalyzedLetStatement{
+			Ident:                      glob.Ident,
+			Expression:                 self.Expression(glob.Expression, true),
+			VarType:                    glob.VarType,
+			NeedsRuntimeTypeValidation: glob.NeedsRuntimeTypeValidation,
+			OptType:                    glob.OptType,
+			Range:                      glob.Range,
+		}
+
+		output.Globals = append(output.Globals, newGlob)
+	}
+
 	return output
 }
 
@@ -132,7 +148,7 @@ func (self *Transformer) Block(node ast.AnalyzedBlock) ast.AnalyzedBlock {
 	var outputExpression ast.AnalyzedExpression = nil
 
 	if node.Expression != nil {
-		outputExpression = self.Expression(node.Expression)
+		outputExpression = self.Expression(node.Expression, false)
 	}
 
 	return ast.AnalyzedBlock{
@@ -143,13 +159,13 @@ func (self *Transformer) Block(node ast.AnalyzedBlock) ast.AnalyzedBlock {
 	}
 }
 
-func (self *Transformer) Expression(node ast.AnalyzedExpression) ast.AnalyzedExpression {
-	variants := self.expressionVariants(node)
+func (self *Transformer) Expression(node ast.AnalyzedExpression, needsToBeStatic bool) ast.AnalyzedExpression {
+	variants := self.expressionVariants(node, needsToBeStatic)
 	selected := ChoseRandom[ast.AnalyzedExpression](variants, self.randSource)
 	return selected
 }
 
-func (self *Transformer) expressionVariants(node ast.AnalyzedExpression) []ast.AnalyzedExpression {
+func (self *Transformer) expressionVariants(node ast.AnalyzedExpression, needsToBeStatic bool) []ast.AnalyzedExpression {
 	variants := make([]ast.AnalyzedExpression, 0) // TODO: replace this by actual transformations being applied
 
 	switch node.Kind() {
@@ -289,7 +305,7 @@ func (self *Transformer) expressionVariants(node ast.AnalyzedExpression) []ast.A
 	case ast.InfixExpressionKind:
 		// TODO: add transformers here
 		node := node.(ast.AnalyzedInfixExpression)
-		variants = append(variants, self.infixExpr(node)...)
+		variants = append(variants, self.infixExpr(node, needsToBeStatic)...)
 	case ast.AssignExpressionKind:
 		variants = append(variants, node)
 	case ast.CallExpressionKind:
@@ -318,10 +334,12 @@ func (self *Transformer) expressionVariants(node ast.AnalyzedExpression) []ast.A
 		variants = append(variants, node)
 	}
 
+	// TODO: add call-obfuscations
+
 	return variants
 }
 
-func (self *Transformer) infixExpr(node ast.AnalyzedInfixExpression) []ast.AnalyzedExpression {
+func (self *Transformer) infixExpr(node ast.AnalyzedInfixExpression, needsToBeStatic bool) []ast.AnalyzedExpression {
 	variants := make([]ast.AnalyzedExpression, 0)
 	variants = append(variants, node)
 
@@ -373,6 +391,11 @@ func (self *Transformer) infixExpr(node ast.AnalyzedInfixExpression) []ast.Analy
 				ResultType: node.ResultType,
 				Range:      node.Range,
 			})
+		}
+
+		// If the expression is required to be static, terminate here
+		if needsToBeStatic {
+			return variants
 		}
 
 		lhsInitIdent := pAst.NewSpannedIdent("lhs_init", node.Range)
@@ -530,8 +553,8 @@ func (self *Transformer) infixExpr(node ast.AnalyzedInfixExpression) []ast.Analy
 			Operator: ast.NegatePrefixOperator,
 			Base: ast.AnalyzedGroupedExpression{
 				Inner: ast.AnalyzedInfixExpression{
-					Lhs:        self.Expression(node.Lhs),
-					Rhs:        self.Expression(node.Rhs),
+					Lhs:        self.Expression(node.Lhs, needsToBeStatic),
+					Rhs:        self.Expression(node.Rhs, needsToBeStatic),
 					Operator:   innerOp,
 					ResultType: ast.NewBoolType(node.Range),
 					Range:      node.Range,
@@ -547,8 +570,8 @@ func (self *Transformer) infixExpr(node ast.AnalyzedInfixExpression) []ast.Analy
 			Base: ast.AnalyzedGroupedExpression{
 				Inner: ast.AnalyzedGroupedExpression{
 					Inner: ast.AnalyzedInfixExpression{
-						Lhs:        self.Expression(node.Lhs),
-						Rhs:        self.Expression(node.Rhs),
+						Lhs:        self.Expression(node.Lhs, needsToBeStatic),
+						Rhs:        self.Expression(node.Rhs, needsToBeStatic),
 						Operator:   innerOp,
 						ResultType: ast.NewBoolType(node.Range),
 						Range:      node.Range,
@@ -571,8 +594,8 @@ func (self *Transformer) infixExpr(node ast.AnalyzedInfixExpression) []ast.Analy
 		}
 
 		variants = append(variants, ast.AnalyzedInfixExpression{
-			Lhs:        self.Expression(node.Rhs),
-			Rhs:        self.Expression(node.Lhs),
+			Lhs:        self.Expression(node.Rhs, needsToBeStatic),
+			Rhs:        self.Expression(node.Lhs, needsToBeStatic),
 			Operator:   reversed[node.Operator],
 			ResultType: node.ResultType,
 			Range:      node.Range,
@@ -618,7 +641,7 @@ func (self *Transformer) ifExpression(node ast.AnalyzedIfExpression) []ast.Analy
 		Condition: ast.AnalyzedPrefixExpression{
 			Operator: ast.NegatePrefixOperator,
 			Base: ast.AnalyzedGroupedExpression{
-				Inner: self.Expression(node.Condition),
+				Inner: self.Expression(node.Condition, false),
 				Range: node.Range,
 			},
 			ResultType: ast.NewBoolType(node.Range),
@@ -650,7 +673,7 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 		// TODO: make two definitions out of one
 		output = append(output, ast.AnalyzedLetStatement{
 			Ident:                      node.Ident,
-			Expression:                 self.Expression(node.Expression),
+			Expression:                 self.Expression(node.Expression, false),
 			VarType:                    node.VarType,
 			NeedsRuntimeTypeValidation: node.NeedsRuntimeTypeValidation,
 			OptType:                    node.OptType,
@@ -661,7 +684,7 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 
 		var expr ast.AnalyzedExpression
 		if nodeTemp.ReturnValue != nil {
-			expr = self.Expression(nodeTemp.ReturnValue)
+			expr = self.Expression(nodeTemp.ReturnValue, false)
 		}
 
 		node := ast.AnalyzedReturnStatement{
@@ -785,7 +808,7 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 		node := node.(ast.AnalyzedWhileStatement)
 		output = append(output, self.WhileStmtAsLoop(node)...)
 		output = append(output, ast.AnalyzedWhileStatement{
-			Condition:       self.Expression(node.Condition),
+			Condition:       self.Expression(node.Condition, false),
 			Body:            self.Block(node.Body),
 			NeverTerminates: false,
 			Range:           node.Range,
@@ -794,7 +817,7 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 		node := node.(ast.AnalyzedForStatement)
 		output = append(output, ast.AnalyzedForStatement{
 			Identifier:      node.Identifier,
-			IterExpression:  self.Expression(node.IterExpression),
+			IterExpression:  self.Expression(node.IterExpression, false),
 			IterVarType:     node.IterVarType,
 			Body:            self.Block(node.Body),
 			NeverTerminates: node.NeverTerminates,
@@ -802,7 +825,7 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 		})
 	case ast.ExpressionStatementKind:
 		exprOut := ast.AnalyzedExpressionStatement{
-			Expression: self.Expression(node.(ast.AnalyzedExpressionStatement).Expression),
+			Expression: self.Expression(node.(ast.AnalyzedExpressionStatement).Expression, false),
 			Range:      node.Span(),
 		}
 		output = append(output, exprOut)
