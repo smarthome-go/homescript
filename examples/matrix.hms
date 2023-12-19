@@ -1,0 +1,72 @@
+type Matrix = [[int]];
+
+fn main() {
+    let a = [
+        [2,  5,  3],
+        [0,  1,  7],
+        [6,  3, -2],
+    ];
+
+    let b = [
+        [1,  4,  2],
+        [-3, 7, -1],
+        [9,  1,  5],
+    ];
+
+    let res = mul_matrices(a, b);
+
+    println(display_matrix(res));
+
+    assert_eq(res, [
+        [ 14,   46,  14],
+        [ 60,   14,  34],
+        [-21,   43,  -1],
+    ])
+}
+
+fn display_matrix(input: Matrix) -> str {
+    let dim = input.len();
+    let output = "";
+
+    for y in 0..dim {
+        output += "| ";
+
+        for x in 0..dim {
+            let this = input[y][x];
+            if this >= 0 && this < 10 {
+                output += " ";
+            }
+            output += this.to_string();
+            output += " "
+        }
+
+        output += " |\n";
+    }
+
+    output
+}
+
+fn mul_matrices(a: Matrix, b: Matrix) -> Matrix {
+    let dim = a.len();
+
+    let output: [[int]] = [];
+    for _ in 0..dim {
+        let row: [int] = [];
+
+        for _ in 0..dim {
+            row.push(0);
+        }
+
+        output.push(row)
+    }
+
+    for i in 0..dim {
+        for j in 0..dim {
+            for k in 0..dim {
+                output[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+
+    output
+}

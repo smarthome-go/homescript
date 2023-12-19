@@ -7,4 +7,5 @@
 ./fuzz.sh ./examples/pi.hms pi_fuzz &
 ./fuzz.sh ./examples/e.hms e_fuzz &
 ./fuzz.sh ./examples/apery.hms apery_fuzz &
+./fuzz.sh ./examples/matrix.hms matrix_fuzz &
 wait

@@ -130,6 +130,14 @@ func TestScripts(t *testing.T) {
 			Skip:           false,
 		},
 		{
+			Name:           "MatrixFuzz",
+			Path:           "../matrix_fuzz/*.hms",
+			IsGlob:         true,
+			Debug:          false,
+			ValidateOutput: OUTPUT_VALIDATION_NONE,
+			Skip:           false,
+		},
+		{
 			Name:              "scoping_regression",
 			Path:              "../tests/regression_scoping.hms",
 			IsGlob:            false,
