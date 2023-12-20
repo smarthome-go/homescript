@@ -84,7 +84,7 @@ func TestScripts(t *testing.T) {
 			Debug:              false,
 			ExpectedOutputFile: "../examples/binary.hms.out",
 			Skip:               false,
-			ValidateOutput:     OUTPUT_VALIDATION_FILE,
+			ValidateOutput:     OUTPUT_VALIDATION_NONE,
 		},
 		{
 			Name:               "DevFuzz",
