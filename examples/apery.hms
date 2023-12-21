@@ -1,0 +1,14 @@
+// This script approximates some digits of Apéry's theorem.
+// The final output is an integer which approximates to Apéry * 10000000
+fn main() {
+    let res = 1f;
+
+    for i in 2..30000 {
+        res += (1f / (i ** 3) as float);
+    }
+
+    let FAC = 10000000f;
+    let res = (res * FAC) as int;
+    println(res);
+    assert_eq(res, 12020569);
+}

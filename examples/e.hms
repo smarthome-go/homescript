@@ -1,0 +1,15 @@
+// This script approximates some digits of E.
+// The final output is an integer which approximates to E * 1000000000000000
+fn main() {
+  let e = 1f;
+  let f = 1f;
+
+  for i in 2..100000 {
+    e += 1f / f;
+    f *= i as float;
+  }
+
+  let result = (e * 1000000000000000f) as int;
+  println(result);
+  assert_eq(result, 2718281828459045)
+}

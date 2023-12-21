@@ -1,0 +1,26 @@
+fn main() {
+    let res = pow(2, 4);
+    println(res);
+    assert_eq(res, 16);
+}
+
+fn pow(base: int, exp: int) -> int {
+    if exp == 0 {
+        return 1;
+    }
+    if exp < 0 {
+        return 0;
+    }
+
+    let acc = 1;
+
+    while exp > 1 {
+        if (exp & 1) == 1 {
+            acc *= base
+        }
+        exp /= 2;
+        base *= base;
+    }
+
+    acc * base
+}
