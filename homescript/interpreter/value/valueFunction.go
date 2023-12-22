@@ -5,8 +5,14 @@ import (
 )
 
 type ValueFunction struct {
-	Module string
-	Block  ast.AnalyzedBlock
+	Module                   string
+	Block                    ast.AnalyzedBlock
+	ExtractedSingletonParams []SingletonExtraction
+}
+
+type SingletonExtraction struct {
+	ParameterIdent string
+	SingletonIdent string
 }
 
 func (_ ValueFunction) Kind() ValueKind { return FunctionValueKind }
@@ -27,10 +33,11 @@ func (self ValueFunction) IntoIter() func() (Value, bool) {
 	panic("A value of type function cannot be used as an iterator")
 }
 
-func NewValueFunction(module string, block ast.AnalyzedBlock) *Value {
+func NewValueFunction(module string, block ast.AnalyzedBlock, extractedSingletonIdents []SingletonExtraction) *Value {
 	val := Value(ValueFunction{
-		Module: module,
-		Block:  block,
+		Module:                   module,
+		Block:                    block,
+		ExtractedSingletonParams: extractedSingletonIdents,
 	})
 
 	return &val

@@ -30,7 +30,7 @@ func NewAnalyzer(host HostDependencies, scopeAdditions map[string]Variable) Anal
 	scopeAdditions["throw"] = NewBuiltinVar(
 		ast.NewFunctionType(
 			ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-				ast.NewFunctionTypeParam(pAst.NewSpannedIdent("error", errors.Span{}), ast.NewUnknownType(), false),
+				ast.NewFunctionTypeParam(pAst.NewSpannedIdent("error", errors.Span{}), ast.NewUnknownType(), nil),
 			}),
 			errors.Span{},
 			ast.NewNeverType(),
@@ -145,7 +145,7 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		ImportsModules:           make([]string, 0),
 		Functions:                make([]*function, 0),
 		Scopes:                   make([]scope, 0),
-		Singletons:               make(map[string]ast.Type),
+		Singletons:               make(map[string]ast.AnalyzedSingleton),
 		LoopDepth:                0, // `break` and `continue` are legal if > 0
 		CurrentFunction:          nil,
 		CurrentLoopIsTerminated:  false,
@@ -189,11 +189,19 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 	for _, fn := range module.Functions {
 		newParams := make([]ast.AnalyzedFnParam, 0)
 		for _, param := range fn.Parameters {
+			singletonIdent := ""
+			isSingletonExtractor := false
+			if param.Type.Kind() == pAst.SingletonReferenceParserTypeKind {
+				isSingletonExtractor = true
+				singletonIdent = param.Type.(pAst.SingletonReferenceType).Ident.Ident()
+			}
+
 			newParams = append(newParams, ast.AnalyzedFnParam{
 				Ident:                param.Ident,
 				Type:                 self.ConvertType(param.Type, false), // errors are only reported in the `self.functionDefinition` method
 				Span:                 param.Span,
-				IsSingletonExtractor: param.Type.Kind() == pAst.SingletonReferenceParserTypeKind,
+				IsSingletonExtractor: isSingletonExtractor,
+				SingletonIdent:       singletonIdent,
 			})
 		}
 
@@ -622,8 +630,11 @@ func (self *Analyzer) analyzeParams(params []pAst.FnParam) []ast.AnalyzedFnParam
 
 	for _, param := range params {
 		isSingletonExtractor := false
+		singletonIdent := ""
 
 		if param.Type.Kind() == pAst.SingletonReferenceParserTypeKind {
+			typ := param.Type.(pAst.SingletonReferenceType)
+			singletonIdent = typ.Ident.Ident()
 			isSingletonExtractor = true
 
 			if encounteredNonSingletonParam {
@@ -633,6 +644,7 @@ func (self *Analyzer) analyzeParams(params []pAst.FnParam) []ast.AnalyzedFnParam
 						Type:                 ast.NewUnknownType(),
 						Span:                 param.Span,
 						IsSingletonExtractor: true,
+						SingletonIdent:       singletonIdent,
 					},
 				)
 
@@ -689,6 +701,7 @@ func (self *Analyzer) analyzeParams(params []pAst.FnParam) []ast.AnalyzedFnParam
 				Type:                 newType,
 				Span:                 param.Span,
 				IsSingletonExtractor: isSingletonExtractor,
+				SingletonIdent:       singletonIdent,
 			},
 		)
 

@@ -355,7 +355,7 @@ func (self AnalyzedFunctionLiteralExpression) String() string {
 func (self AnalyzedFunctionLiteralExpression) Type() Type {
 	params := make([]FunctionTypeParam, 0)
 	for _, param := range self.Parameters {
-		params = append(params, NewFunctionTypeParam(param.Ident, param.Type, false))
+		params = append(params, NewFunctionTypeParam(param.Ident, param.Type, nil))
 	}
 	return NewFunctionType(NewNormalFunctionTypeParamKind(params), self.ParamSpan, self.ReturnType, self.Range)
 }

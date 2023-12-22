@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	herrors "github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 )
@@ -156,6 +157,16 @@ func TestingInterpeterScopeAdditions() map[string]value.Value {
 
 type TestingTreeExecutor struct {
 	Output *string
+}
+
+func (self TestingTreeExecutor) LoadSingleton(ident string, typ ast.Type) (*value.Value, bool, *value.Interrupt) {
+	if ident == "@Foo" {
+		return value.NewValueObject(map[string]*value.Value{
+			"field": value.NewValueInt(42),
+		}), true, nil
+	}
+
+	return nil, false, nil
 }
 
 func (self TestingTreeExecutor) GetUser() string { return "<unknown>" }

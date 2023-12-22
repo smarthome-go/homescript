@@ -18,6 +18,7 @@ func (self *Interpreter) getVar(ident string) *value.Value {
 			return val
 		}
 	}
+
 	panic(fmt.Sprintf("CurrModuleName: %s | ModuleName: %v | Variable '%s' not found", self.currentModuleName, self.currentModule, ident))
 }
 
@@ -57,6 +58,13 @@ func (self *Interpreter) execModule(moduleName string, restorePrev bool) *value.
 	// add all scope additions to the root scope
 	for key, val := range self.scopeAdditions {
 		self.addVar(key, val)
+	}
+
+	// Instantiate all singletons
+	for _, singleton := range sourceModule.Singletons {
+		if err := self.instantiateSingleton(singleton); err != nil {
+			return err
+		}
 	}
 
 	// bring all imports into the new scope

@@ -49,6 +49,12 @@ func (self *Interpreter) callFunc(span errors.Span, val value.Value, args []ast.
 			}
 		}()
 
+		// Add singleton extractors
+		for _, singleton := range fn.ExtractedSingletonParams {
+			self.addVar(singleton.ParameterIdent, *self.getVar(singleton.SingletonIdent))
+		}
+
+		// Add arguments
 		for key, val := range argsOut {
 			self.addVar(key, val)
 		}

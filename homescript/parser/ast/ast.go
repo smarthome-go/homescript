@@ -78,7 +78,15 @@ func (self Program) String() string {
 		types += typ.String() + "\n"
 	}
 	if types != "" {
-		types = "\n"
+		types += "\n"
+	}
+
+	singletonTypes := ""
+	for _, singleton := range self.Singletons {
+		singletonTypes += singleton.String() + "\n"
+	}
+	if singletonTypes != "" {
+		singletonTypes += "\n"
 	}
 
 	globals := ""
@@ -94,5 +102,5 @@ func (self Program) String() string {
 		functions = append(functions, fn.String())
 	}
 
-	return fmt.Sprintf("%s%s%s%s", imports, types, globals, strings.Join(functions, "\n\n"))
+	return fmt.Sprintf("%s%s%s%s%s", imports, types, singletonTypes, globals, strings.Join(functions, "\n\n"))
 }

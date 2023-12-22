@@ -35,7 +35,15 @@ func (self AnalyzedProgram) String() string {
 		types += typ.String() + "\n"
 	}
 	if types != "" {
-		types = "\n"
+		types += "\n"
+	}
+
+	singletons := ""
+	for _, singleton := range self.Singletons {
+		singletons += singleton.String() + "\n"
+	}
+	if singletons != "" {
+		singletons += "\n"
 	}
 
 	globals := ""
@@ -61,7 +69,7 @@ func (self AnalyzedProgram) String() string {
 		eventsStr = "\n\n" + strings.Join(events, "\n\n")
 	}
 
-	return fmt.Sprintf("%s%s%s%s%s", imports, types, globals, strings.Join(functions, "\n\n"), eventsStr)
+	return fmt.Sprintf("%s%s%s%s%s%s", imports, types, singletons, globals, strings.Join(functions, "\n\n"), eventsStr)
 }
 
 func (self AnalyzedProgram) SupportsEvent(ident string) bool {
@@ -143,6 +151,7 @@ type AnalyzedFnParam struct {
 	Type                 Type
 	Span                 errors.Span
 	IsSingletonExtractor bool
+	SingletonIdent       string
 }
 
 func (self AnalyzedFnParam) String() string {

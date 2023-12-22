@@ -18,7 +18,7 @@ func (self *Analyzer) ConvertType(oldType pAst.HmsType, createErrors bool) ast.T
 	switch oldType.Kind() {
 	case pAst.SingletonReferenceParserTypeKind:
 		singletonType := oldType.(pAst.SingletonReferenceType)
-		typ, found := self.currentModule.Singletons[singletonType.Ident.Ident()]
+		singleton, found := self.currentModule.Singletons[singletonType.Ident.Ident()]
 
 		if !found {
 			if !createErrors {
@@ -33,7 +33,7 @@ func (self *Analyzer) ConvertType(oldType pAst.HmsType, createErrors bool) ast.T
 		}
 
 		// TODO: Is it ok to just resolve a singleton into its type?
-		return typ
+		return singleton.Type
 	case pAst.NameReferenceParserTypeKind:
 		nameType := oldType.(pAst.NameReferenceType)
 		switch nameType.Ident.Ident() {
@@ -131,7 +131,7 @@ func (self *Analyzer) ConvertType(oldType pAst.HmsType, createErrors bool) ast.T
 					return ast.NewUnknownType()
 				}
 
-				newParams = append(newParams, ast.NewFunctionTypeParam(param.Name, self.ConvertType(param.Type, createErrors), false))
+				newParams = append(newParams, ast.NewFunctionTypeParam(param.Name, self.ConvertType(param.Type, createErrors), nil))
 			}
 		}
 

@@ -139,7 +139,7 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 				node.Ident.Span(),
 			)
 		} else {
-			resultType = singleton.SetSpan(node.Span())
+			resultType = singleton.Type.SetSpan(node.Span())
 		}
 
 		return ast.AnalyzedIdentExpression{
@@ -189,10 +189,15 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 
 		params := make([]ast.FunctionTypeParam, 0)
 		for _, param := range fn.Parameters {
+			singletonIdent := new(string)
+			if param.IsSingletonExtractor {
+				*singletonIdent = param.SingletonIdent
+			}
+
 			params = append(params, ast.NewFunctionTypeParam(
 				param.Ident,
 				param.Type,
-				param.IsSingletonExtractor,
+				singletonIdent,
 			))
 		}
 

@@ -97,7 +97,8 @@ func ZeroValue(typ ast.Type) *Value {
 	case ast.OptionTypeKind:
 		return NewNoneOption()
 	case ast.FnTypeKind:
-		return NewValueFunction("__init__", ast.AnalyzedBlock{})
+		// TODO: why is this `__init__`
+		return NewValueFunction("__init__", ast.AnalyzedBlock{}, make([]SingletonExtraction, 0))
 	case ast.UnknownTypeKind:
 		fallthrough
 	case ast.NeverTypeKind:
