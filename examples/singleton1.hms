@@ -5,13 +5,16 @@ type Foo = {
 
 // ERROR: no template `Template` defined
 
-impl Template on @Singleton {
+// TODO: templates are currently not validated AT ALL
+
+impl Template for @Singleton {
     fn New(s: @Singleton) {
         s.foo = 42;
     }
 }
 
 impl @Singleton {
+    // TODO: there are currently no limitations regarding *what* belongs in an impl block.
     fn do_something(s: @Singleton) {
         println(s);
     }

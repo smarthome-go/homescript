@@ -69,30 +69,6 @@ func (self *Parser) statemtent() (ast.EitherStatementOrExpression, *errors.Error
 	return res, nil
 }
 
-//
-// Singleton (type definition)
-//
-
-func (self *Parser) singleton() (ast.SingletonTypeDefinition, *errors.Error) {
-	startLoc := self.CurrentToken.Span.Start
-
-	ident, err := self.singletonIdent()
-	if err != nil {
-		return ast.SingletonTypeDefinition{}, err
-	}
-
-	typedef, err := self.typeDefinition(false)
-	if err != nil {
-		return ast.SingletonTypeDefinition{}, err
-	}
-
-	return ast.SingletonTypeDefinition{
-		Ident:   ident,
-		TypeDef: typedef,
-		Range:   startLoc.Until(self.CurrentToken.Span.End, self.Filename),
-	}, nil
-}
-
 ///
 /// Type Definition
 ///

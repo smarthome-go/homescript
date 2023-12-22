@@ -11,7 +11,6 @@ func (self *Interpreter) addVar(ident string, val value.Value) {
 }
 
 func (self *Interpreter) getVar(ident string) *value.Value {
-
 	for i := len(self.currentModule.scopes) - 1; i >= 0; i-- {
 		val, found := self.currentModule.scopes[i][ident]
 		if found {
@@ -84,6 +83,11 @@ func (self *Interpreter) execModule(moduleName string, restorePrev bool) *value.
 	// visit all function definitions
 	for _, fn := range sourceModule.Functions {
 		self.functionDefinition(fn)
+	}
+
+	// visit all impl blocks
+	for _, impl := range sourceModule.ImplBlocks {
+		self.implBlock(impl)
 	}
 
 	// visit all event definitions

@@ -71,6 +71,13 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 			}
 
 			tree.Singletons = append(tree.Singletons, singleton)
+		case Impl:
+			implBlock, err := self.implBlockHead()
+			if err != nil {
+				return ast.Program{}, err
+			}
+
+			tree.ImplBlocks = append(tree.ImplBlocks, implBlock)
 		case Event, Pub, Type, Let, Fn:
 			isPub := self.CurrentToken.Kind == Pub
 			isEvent := self.CurrentToken.Kind == Event

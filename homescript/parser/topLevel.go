@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
@@ -242,4 +244,129 @@ func (self *Parser) parameter() (ast.FnParam, *errors.Error) {
 		Type:  paramType,
 		Span:  ident.Span().Start.Until(self.PreviousToken.Span.End, self.Filename),
 	}, nil
+}
+
+//
+// Singleton (type definition)
+//
+
+func (self *Parser) singleton() (ast.SingletonTypeDefinition, *errors.Error) {
+	startLoc := self.CurrentToken.Span.Start
+
+	ident, err := self.singletonIdent()
+	if err != nil {
+		return ast.SingletonTypeDefinition{}, err
+	}
+
+	typedef, err := self.typeDefinition(false)
+	if err != nil {
+		return ast.SingletonTypeDefinition{}, err
+	}
+
+	return ast.SingletonTypeDefinition{
+		Ident:   ident,
+		TypeDef: typedef,
+		Range:   startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+	}, nil
+}
+
+//
+// Impl blocks
+//
+
+func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
+	startLoc := self.CurrentToken.Span.Start
+	// Skip the `impl`
+	if err := self.next(); err != nil {
+		return ast.ImplBlock{}, err
+	}
+
+	// If there is an `@`, there is no template
+	if self.CurrentToken.Kind == AtSymbol {
+		singleton, err := self.singletonIdent()
+		if err != nil {
+			return ast.ImplBlock{}, err
+		}
+
+		// Handle impl block body
+		methods, err := self.implBlockBody()
+		if err != nil {
+			return ast.ImplBlock{}, err
+		}
+
+		return ast.ImplBlock{
+			SingletonIdent: singleton,
+			TemplateIdent:  nil,
+			Methods:        methods,
+			Span:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+		}, nil
+	}
+
+	// In this case, we except a template
+	templateIdent := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
+	if err := self.expect(Identifier); err != nil {
+		return ast.ImplBlock{}, err
+	}
+
+	// Expect a `for`
+	if err := self.expect(For); err != nil {
+		if self.CurrentToken.Kind == For {
+			self.Errors = append(self.Errors, *err)
+		} else {
+			return ast.ImplBlock{}, err
+		}
+	}
+
+	// Expect singleton identifier
+	singleton, err := self.singletonIdent()
+	if err != nil {
+		return ast.ImplBlock{}, err
+	}
+
+	// Handle impl block body
+	methods, err := self.implBlockBody()
+	if err != nil {
+		return ast.ImplBlock{}, err
+	}
+
+	return ast.ImplBlock{
+		SingletonIdent: singleton,
+		TemplateIdent:  &templateIdent,
+		Methods:        methods,
+		Span:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+	}, nil
+}
+
+func (self *Parser) implBlockBody() ([]ast.FunctionDefinition, *errors.Error) {
+	// Expect `{`
+	if err := self.expect(LCurly); err != nil {
+		return nil, err
+	}
+
+	// Loop over function definitions until the end (`}`) is reached
+	methods := make([]ast.FunctionDefinition, 0)
+	for self.CurrentToken.Kind != EOF && self.CurrentToken.Kind != RCurly {
+		if self.CurrentToken.Kind == Pub {
+			self.Errors = append(self.Errors, *errors.NewSyntaxError(
+				self.CurrentToken.Span,
+				fmt.Sprintf("Illegal token `%s` in impl block (public functions not allowed)", self, self.CurrentToken),
+			))
+			if err := self.next(); err != nil {
+				return nil, err
+			}
+		}
+
+		fn, err := self.functionDefinition(ast.FN_MODIFIER_NONE)
+		if err != nil {
+			return nil, err
+		}
+		methods = append(methods, fn)
+	}
+
+	// Expect closing `}`
+	if err := self.expectRecoverable(RCurly); err != nil {
+		return nil, err
+	}
+
+	return methods, nil
 }

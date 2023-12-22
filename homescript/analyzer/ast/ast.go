@@ -16,6 +16,7 @@ type AnalyzedProgram struct {
 	Imports    []AnalyzedImport
 	Types      []AnalyzedTypeDefinition
 	Singletons []AnalyzedSingletonTypeDefinition
+	ImplBlocks []AnalyzedImplBlock
 	Globals    []AnalyzedLetStatement
 	Functions  []AnalyzedFunctionDefinition
 	Events     []AnalyzedFunctionDefinition

@@ -121,6 +121,92 @@ func (self *Analyzer) expression(node pAst.Expression) ast.AnalyzedExpression {
 }
 
 //
+// Block structure
+//
+
+func (self *Analyzer) block(node pAst.Block, pushNewScope bool) ast.AnalyzedBlock {
+	// push a new scope if required
+	if pushNewScope {
+		self.currentModule.pushScope()
+	}
+
+	// analyze statements
+	statements := make([]ast.AnalyzedStatement, 0)
+	var unreachableSpan *errors.Span = nil
+	warnedUnreachable := false
+
+	for _, statement := range node.Statements {
+		newStatement := self.statement(statement)
+
+		// if the previous statement had the never type, warn that this statement is unreachable
+		if unreachableSpan != nil && !warnedUnreachable {
+			warnedUnreachable = true
+			self.warn(
+				"Unreachable statement",
+				nil,
+				newStatement.Span(),
+			)
+			self.hint(
+				"Any code following this statement is unreachable",
+				nil,
+				*unreachableSpan,
+			)
+		}
+
+		// detect if this statement renders all following unreachable
+		if unreachableSpan == nil && newStatement.Type().Kind() == ast.NeverTypeKind {
+			span := newStatement.Span()
+			unreachableSpan = &span
+		}
+
+		statements = append(statements, newStatement)
+	}
+
+	// analyze optional trailing expression
+	var trailingExpr ast.AnalyzedExpression = nil
+
+	if node.Expression != nil {
+		trailingExpr = self.expression(node.Expression)
+
+		if unreachableSpan != nil && !warnedUnreachable {
+			self.warn(
+				"Unreachable expression",
+				nil,
+				node.Expression.Span(),
+			)
+			self.hint(
+				"Any code following this statement is unreachable",
+				nil,
+				*unreachableSpan,
+			)
+		}
+	}
+
+	// if this block diverges, the entrire block has the never type
+	// otherwise, use the type of the trailing expression
+	var resultType ast.Type
+	if unreachableSpan != nil {
+		resultType = ast.NewNeverType()
+	} else if trailingExpr != nil {
+		resultType = trailingExpr.Type()
+	} else {
+		resultType = ast.NewNullType(node.Range)
+	}
+
+	// pop scope if one was pushed at the beginning
+	if pushNewScope {
+		self.dropScope(true)
+	}
+
+	return ast.AnalyzedBlock{
+		Statements: statements,
+		Expression: trailingExpr,
+		ResultType: resultType,
+		Range:      node.Range,
+	}
+}
+
+//
 // Ident expression
 //
 

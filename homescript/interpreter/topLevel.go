@@ -8,23 +8,25 @@ import (
 )
 
 func (self *Interpreter) instantiateSingleton(node ast.AnalyzedSingletonTypeDefinition) *value.Interrupt {
-	provided, usethisValue, err := self.Executor.LoadSingleton(node.Ident.Ident(), node.TypeDef.RhsType)
+	singletonValue, usethisValue, err := self.Executor.LoadSingleton(node.Ident.Ident(), node.TypeDef.RhsType)
 	if err != nil {
 		return err
 	}
 
-	// If there is no value to be provided by the host, create an exception.
+	// If there is no value to be provided by the host, create a default value.
 	if !usethisValue {
-		return value.NewRuntimeErr(
-			fmt.Sprintf("Could not instantiate singleton `%s` of type `%s`: host cannot provide this type", node.Ident, node.TypeDef.RhsType),
-			value.HostErrorKind,
-			node.Span(),
-		)
+		singletonValue = value.CreateDefault(node.TypeDef.RhsType)
 	}
 
 	// Use a global variable internally
-	self.addVar(node.Ident.Ident(), *provided)
+	self.addVar(node.Ident.Ident(), *singletonValue)
 	return nil
+}
+
+func (self *Interpreter) implBlock(node ast.AnalyzedImplBlock) {
+	for _, fn := range node.Methods {
+		self.functionDefinition(fn)
+	}
 }
 
 func (self *Interpreter) importItem(node ast.AnalyzedImport) *value.Interrupt {

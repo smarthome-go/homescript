@@ -59,6 +59,7 @@ type Program struct {
 	Imports    []ImportStatement
 	Types      []TypeDefinition
 	Singletons []SingletonTypeDefinition
+	ImplBlocks []ImplBlock
 	Globals    []LetStatement
 	Functions  []FunctionDefinition
 	Filename   string
