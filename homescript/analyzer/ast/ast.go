@@ -13,11 +13,12 @@ import (
 //
 
 type AnalyzedProgram struct {
-	Imports   []AnalyzedImport
-	Types     []AnalyzedTypeDefinition
-	Globals   []AnalyzedLetStatement
-	Functions []AnalyzedFunctionDefinition
-	Events    []AnalyzedFunctionDefinition
+	Imports    []AnalyzedImport
+	Types      []AnalyzedTypeDefinition
+	Singletons []AnalyzedSingletonTypeDefinition
+	Globals    []AnalyzedLetStatement
+	Functions  []AnalyzedFunctionDefinition
+	Events     []AnalyzedFunctionDefinition
 }
 
 func (self AnalyzedProgram) String() string {
@@ -138,9 +139,10 @@ func (self AnalyzedFunctionDefinition) String() string {
 func (self AnalyzedFunctionDefinition) Type() Type { return NewNullType(self.Range) }
 
 type AnalyzedFnParam struct {
-	Ident ast.SpannedIdent
-	Type  Type
-	Span  errors.Span
+	Ident                ast.SpannedIdent
+	Type                 Type
+	Span                 errors.Span
+	IsSingletonExtractor bool
 }
 
 func (self AnalyzedFnParam) String() string {

@@ -69,6 +69,30 @@ func (self *Parser) statemtent() (ast.EitherStatementOrExpression, *errors.Error
 	return res, nil
 }
 
+//
+// Singleton (type definition)
+//
+
+func (self *Parser) singleton() (ast.SingletonTypeDefinition, *errors.Error) {
+	startLoc := self.CurrentToken.Span.Start
+
+	ident, err := self.singletonIdent()
+	if err != nil {
+		return ast.SingletonTypeDefinition{}, err
+	}
+
+	typedef, err := self.typeDefinition(false)
+	if err != nil {
+		return ast.SingletonTypeDefinition{}, err
+	}
+
+	return ast.SingletonTypeDefinition{
+		Ident:   ident,
+		TypeDef: typedef,
+		Range:   startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+	}, nil
+}
+
 ///
 /// Type Definition
 ///
@@ -85,15 +109,21 @@ func (self *Parser) typeDefinition(isPub bool) (ast.TypeDefinition, *errors.Erro
 	}
 	newTypeIdent := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
 
-	// check that the lhs is not a builtin type
-	switch newTypeIdent.Ident() {
-	case "null", "int", "float", "range", "bool", "str":
+	// Check that the lhs is not a builtin type
+	isBuiltin := false
+	for _, typ := range ast.HMS_BUILTIN_TYPES {
+		if typ == newTypeIdent.Ident() {
+			isBuiltin = true
+			break
+		}
+	}
+
+	// Prevent redeclaration of builtin types
+	if isBuiltin {
 		return ast.TypeDefinition{}, errors.NewSyntaxError(
 			self.PreviousToken.Span,
 			fmt.Sprintf("Cannot redeclare builtin type '%s'", self.PreviousToken.Value),
 		)
-	default:
-		// do nothing, value is valid
 	}
 
 	if err := self.expect(Assign); err != nil {

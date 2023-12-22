@@ -18,7 +18,7 @@ func (self *Parser) expression(prec uint8) (expr ast.Expression, isWithBlock boo
 	var lhs ast.Expression
 
 	switch self.CurrentToken.Kind {
-	case Identifier, Underscore:
+	case AtSymbol, Identifier, Underscore:
 		ident, err := self.identExpression()
 		if err != nil {
 			return nil, false, err
@@ -228,17 +228,18 @@ func (self *Parser) intFloatLiteral() (ast.Expression, *errors.Error) {
 }
 
 //
-//	Ident expression
+// (Singleton) Ident expression
 //
 
 func (self *Parser) identExpression() (ast.IdentExpression, *errors.Error) {
-	ident := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
-	if err := self.next(); err != nil {
+	ident, isSingleton, err := self.singletonIdentOrNormal()
+	if err != nil {
 		return ast.IdentExpression{}, err
 	}
 
 	return ast.IdentExpression{
-		Ident: ident,
+		IsSingleton: isSingleton,
+		Ident:       ident,
 	}, nil
 }
 

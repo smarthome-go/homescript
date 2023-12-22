@@ -12,8 +12,28 @@ import (
 // Type conversion
 //
 
+// The parameter `createErrors` toggles error output as this method might be invoked on the same ast-node twice.
+// In that case, a unknown type error should only be displayed once.
 func (self *Analyzer) ConvertType(oldType pAst.HmsType, createErrors bool) ast.Type {
 	switch oldType.Kind() {
+	case pAst.SingletonReferenceParserTypeKind:
+		singletonType := oldType.(pAst.SingletonReferenceType)
+		typ, found := self.currentModule.Singletons[singletonType.Ident.Ident()]
+
+		if !found {
+			if !createErrors {
+				return ast.NewUnknownType()
+			}
+
+			self.error(
+				fmt.Sprintf("Illegal use of undeclared type '%s'", singletonType.Ident.Ident()),
+				[]string{fmt.Sprintf("Consider declaring the type like this: `type %s = ...`", singletonType.Ident.Ident())},
+				singletonType.Span(),
+			)
+		}
+
+		// TODO: Is it ok to just resolve a singleton into its type?
+		return typ
 	case pAst.NameReferenceParserTypeKind:
 		nameType := oldType.(pAst.NameReferenceType)
 		switch nameType.Ident.Ident() {
@@ -111,7 +131,7 @@ func (self *Analyzer) ConvertType(oldType pAst.HmsType, createErrors bool) ast.T
 					return ast.NewUnknownType()
 				}
 
-				newParams = append(newParams, ast.NewFunctionTypeParam(param.Name, self.ConvertType(param.Type, createErrors)))
+				newParams = append(newParams, ast.NewFunctionTypeParam(param.Name, self.ConvertType(param.Type, createErrors), false))
 			}
 		}
 

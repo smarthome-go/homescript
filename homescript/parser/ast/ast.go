@@ -56,11 +56,12 @@ func (self Block) String() string {
 //
 
 type Program struct {
-	Imports   []ImportStatement
-	Types     []TypeDefinition
-	Globals   []LetStatement
-	Functions []FunctionDefinition
-	Filename  string
+	Imports    []ImportStatement
+	Types      []TypeDefinition
+	Singletons []SingletonTypeDefinition
+	Globals    []LetStatement
+	Functions  []FunctionDefinition
+	Filename   string
 }
 
 func (self Program) String() string {

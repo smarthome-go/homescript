@@ -1,0 +1,48 @@
+import state from driver;
+import { DeviceDriver, DriverManager } from driver;
+
+type Node = {
+    url: str,
+    name: str,
+    token: str,
+}
+
+@Driver
+type NodeManagerDriver = {
+    config: {
+        nodes: [Node]
+    }
+};
+
+@Device
+type NodeSwitch = {
+    config: {
+        id: str, // filtered out by provider
+        targetNode: ?str,
+    }
+};
+
+impl DriverManager for @Driver {
+    fn init(driver) {
+        ...
+    }
+
+    fn report_health(driver) {
+
+    }
+}
+
+impl DeviceDriver with { onOff, dimmable, colorTemperature } for @Device {
+    // Missing methods: ....
+
+    fn set_power(dev: @Device, driver: @Driver, power: bool) {
+        for node in driver.nodes  {
+            send_node(node, device, power);
+        }
+    }
+}
+
+// Can access @Device, @Driver
+fn internal_stuff(dev: @Device, driver: @Driver) {
+    Driver.set_power(true)
+}

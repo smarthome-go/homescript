@@ -113,6 +113,8 @@ outer:
 			self.advance()
 		case '?':
 			return self.makeSingleChar(QuestionMark, '?'), nil
+		case '@':
+			return self.makeSingleChar(AtSymbol, '@'), nil
 		case '\'', '"':
 			return self.makeString()
 		case ';':
@@ -883,6 +885,10 @@ func (self *Lexer) makeName() Token {
 		tokenKind = Spawn
 	case "event":
 		tokenKind = Event
+	case "impl":
+		tokenKind = Impl
+	case "with":
+		tokenKind = With
 	case "_":
 		tokenKind = Underscore
 	default:

@@ -165,10 +165,11 @@ func (self AnalyzedStringLiteralExpression) Constant() bool { return true }
 //
 
 type AnalyzedIdentExpression struct {
-	Ident      ast.SpannedIdent
-	ResultType Type
-	IsGlobal   bool
-	IsFunction bool
+	Ident       ast.SpannedIdent
+	ResultType  Type
+	IsGlobal    bool
+	IsFunction  bool
+	IsSingleton bool
 }
 
 func (self AnalyzedIdentExpression) Kind() ExpressionKind { return IdentExpressionKind }
@@ -354,7 +355,7 @@ func (self AnalyzedFunctionLiteralExpression) String() string {
 func (self AnalyzedFunctionLiteralExpression) Type() Type {
 	params := make([]FunctionTypeParam, 0)
 	for _, param := range self.Parameters {
-		params = append(params, NewFunctionTypeParam(param.Ident, param.Type))
+		params = append(params, NewFunctionTypeParam(param.Ident, param.Type, false))
 	}
 	return NewFunctionType(NewNormalFunctionTypeParamKind(params), self.ParamSpan, self.ReturnType, self.Range)
 }

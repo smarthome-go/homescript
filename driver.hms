@@ -1,0 +1,134 @@
+// Questions:
+
+// When is a driver invoked?
+// - During bootup and is then suspended (quice nice)
+// - Everytime a device-request is made (quite easy)
+// => For the outside, it should seem like the driver is a singleton (only one instance of the driver per server)
+
+// How is persistent data saved?
+// - Homescript key-value store? (currently very ugly)
+// - The configuration is saved seperately.
+
+// During boot?
+fn init() {
+    // Initializes driver stuff here
+}
+
+// Interacts with the device?
+fn process_request() {
+
+}
+
+// How can external scripts interact with the driver?
+// Like a normal script (only use special public wrapper functions) (very nice actually)
+// => You normally know which device to `talk to`.
+// Problem: similar devices (smart outlets) with different drivers
+// Maybe create classes / hierachies for the different device types
+// - Device
+//      - Input
+//      - Output
+//          - Outlet
+//          - Power
+//          - Power
+
+// No: implement it like go: a driver can `provide` functionality.
+// Depending on how much of that functionality is implemented, general device-agnostic functions can be used to control the device.
+
+// General functions can be:
+// - set_power (on / off)               : switches, lamps
+// - Set_power_percent (0..100)         : dimmers
+// - set_brightness (0..100)            : lamps
+// - set_color (hex)                    : lamps
+// - set_color_temperature (0..100)     : lamps
+// - set_color_temperature (0..100)     : lamps
+// - report_power(): int
+
+
+@Device {
+    type: lamp // ident,
+    icon: "md-icon",
+
+    implements {
+        power, power_percent, color_temperature, // idents
+    }
+}
+
+// OR: implement classes or methods on objects
+// in this case: the type system must be redone: compatibility can also fail if there is a name mismatch
+
+type ShellyDuo = {
+}
+
+methods on ShellyDuo {
+    fn set_power() {
+
+    }
+}
+
+// The driver is automatically invoked using the device and all required params?
+
+
+// If this throws an error, the driver does not crash but an eror is reported.
+fn set_power(device: ShellyDuo, power: bool) {
+    http(device.url, ...)
+}
+
+
+
+
+
+
+
+
+
+
+
+//
+// EXAMPLE 0
+//
+
+// The `@foo` denots a singleton instance that is valid globally and managed / saved between runs of the script.
+// The homescript host must provice a single0
+
+import state from driver;
+import @Device, @Driver from driver;
+
+type Node = {
+    url: str,
+    name: str,
+    token: str,
+}
+
+@Driver // Singleton
+type NodeManagerDriver = {
+    nodes: [Node]
+};
+
+@Device // Singleton
+type NodeSwitch = {
+    id: str,
+    targetNode: ?str,
+};
+
+provide Driver {
+    fn init(driver) {
+        ...
+    }
+
+    fn report_health(driver) {
+
+    }
+}
+
+// The dependency chain here is required so that the extractors below work.
+impl Device : Driver {
+    fn set_power(@Device, @Driver, power: bool) {
+        for node in driver.nodes  {
+            send_node(node, device, power);
+        }
+    }
+}
+
+fn main() {
+    Driver.set_power(true)
+}

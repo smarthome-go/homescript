@@ -13,6 +13,8 @@ import (
 
 func (self *Parser) hmsType() (ast.HmsType, *errors.Error) {
 	switch self.CurrentToken.Kind {
+	case AtSymbol:
+		return self.singletonReferenceType()
 	case Null, Identifier, Underscore:
 		return self.nameReferenceType()
 	case LBracket:
@@ -29,6 +31,21 @@ func (self *Parser) hmsType() (ast.HmsType, *errors.Error) {
 			fmt.Sprintf("Expected type, found '%s'", self.CurrentToken.Kind),
 		)
 	}
+}
+
+//
+// Singleton reference type
+//
+
+func (self *Parser) singletonReferenceType() (ast.SingletonReferenceType, *errors.Error) {
+	ident, err := self.singletonIdent()
+	if err != nil {
+		return ast.SingletonReferenceType{}, err
+	}
+
+	return ast.SingletonReferenceType{
+		Ident: ident,
+	}, nil
 }
 
 //

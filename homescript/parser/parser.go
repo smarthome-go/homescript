@@ -63,6 +63,14 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 				return ast.Program{}, err
 			}
 			tree.Imports = append(tree.Imports, importStmt)
+		case AtSymbol:
+			// Handle singleton type definition
+			singleton, err := self.singleton()
+			if err != nil {
+				return ast.Program{}, err
+			}
+
+			tree.Singletons = append(tree.Singletons, singleton)
 		case Event, Pub, Type, Let, Fn:
 			isPub := self.CurrentToken.Kind == Pub
 			isEvent := self.CurrentToken.Kind == Event

@@ -22,6 +22,7 @@ type StatementKind uint8
 
 const (
 	ImportStatementKind StatementKind = iota
+	SingletonTypeDefinitionStatementKind
 	TypeDefinitionStatementKind
 	LetStatementKind
 	FnDefinitionStatementKind
@@ -87,6 +88,22 @@ func (self TypeDefinition) String() string {
 		pub = "pub "
 	}
 	return fmt.Sprintf("%stype %s = %s;", pub, self.LhsIdent, self.RhsType)
+}
+
+//
+// Singleton (type definition)
+//
+
+type SingletonTypeDefinition struct {
+	Ident   SpannedIdent
+	TypeDef TypeDefinition
+	Range   errors.Span
+}
+
+func (self SingletonTypeDefinition) Kind() StatementKind { return TypeDefinitionStatementKind }
+func (self SingletonTypeDefinition) Span() errors.Span   { return self.Range }
+func (self SingletonTypeDefinition) String() string {
+	return fmt.Sprintf("%s\n%s", self.Ident, self.TypeDef)
 }
 
 // Let statement

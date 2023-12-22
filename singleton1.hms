@@ -1,0 +1,28 @@
+@Foo
+type Bar = {
+    field1: str,
+    field2: int,
+    field3: bool,
+};
+
+// Must be invoked without parameters
+fn uses_bar(b: @Bar) {
+    println("Captured automatically:", b);
+}
+
+// Must be invoked with b
+fn use_bar(b: Bar) {
+    println("Provided manually:", b);
+}
+
+fn main() {
+    uses_bar();
+
+    let a: Bar = {
+        field1: "hi",
+        field2: 42,
+        field3: true,
+    };
+
+    use_bar(a);
+}

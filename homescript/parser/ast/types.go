@@ -8,10 +8,13 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/parser/util"
 )
 
+var HMS_BUILTIN_TYPES = []string{"null", "int", "float", "range", "bool", "str"}
+
 type ParserTypeKind uint8
 
 const (
-	NameReferenceParserTypeKind = iota
+	NameReferenceParserTypeKind ParserTypeKind = iota
+	SingletonReferenceParserTypeKind
 	OptionParserTypeKind
 	ObjectFieldsParserTypeKind
 	ListTypeKind
@@ -23,6 +26,18 @@ type HmsType interface {
 	Span() errors.Span
 	String() string
 }
+
+//
+// Singleton reference type
+//
+
+type SingletonReferenceType struct {
+	Ident SpannedIdent
+}
+
+func (self SingletonReferenceType) Span() errors.Span    { return self.Ident.span }
+func (self SingletonReferenceType) Kind() ParserTypeKind { return SingletonReferenceParserTypeKind }
+func (self SingletonReferenceType) String() string       { return self.Ident.String() }
 
 //
 // Name reference type

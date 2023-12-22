@@ -30,7 +30,7 @@ func NewAnalyzer(host HostDependencies, scopeAdditions map[string]Variable) Anal
 	scopeAdditions["throw"] = NewBuiltinVar(
 		ast.NewFunctionType(
 			ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-				ast.NewFunctionTypeParam(pAst.NewSpannedIdent("error", errors.Span{}), ast.NewUnknownType()),
+				ast.NewFunctionTypeParam(pAst.NewSpannedIdent("error", errors.Span{}), ast.NewUnknownType(), false),
 			}),
 			errors.Span{},
 			ast.NewNeverType(),
@@ -145,6 +145,7 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		ImportsModules:           make([]string, 0),
 		Functions:                make([]*function, 0),
 		Scopes:                   make([]scope, 0),
+		Singletons:               make(map[string]ast.Type),
 		LoopDepth:                0, // `break` and `continue` are legal if > 0
 		CurrentFunction:          nil,
 		CurrentLoopIsTerminated:  false,
@@ -164,7 +165,7 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 	// add the root scope
 	self.pushScope()
 
-	// populate root scope with function additions
+	// populate root scope with scope additions
 	for name, val := range self.scopeAdditions {
 		self.currentModule.addVar(name, val, false)
 	}
@@ -179,14 +180,20 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		output.Types = append(output.Types, self.typeDefStatement(item))
 	}
 
+	// analyze all singleton declarations
+	for _, item := range module.Singletons {
+		output.Singletons = append(output.Singletons, self.singletonDeclStatement(item))
+	}
+
 	// add all function signatures first (renders order of definition irrelevant)
 	for _, fn := range module.Functions {
 		newParams := make([]ast.AnalyzedFnParam, 0)
 		for _, param := range fn.Parameters {
 			newParams = append(newParams, ast.AnalyzedFnParam{
-				Ident: param.Ident,
-				Type:  self.ConvertType(param.Type, false), // errors are only reported in the `self.functionDefinition` method
-				Span:  param.Span,
+				Ident:                param.Ident,
+				Type:                 self.ConvertType(param.Type, false), // errors are only reported in the `self.functionDefinition` method
+				Span:                 param.Span,
+				IsSingletonExtractor: param.Type.Kind() == pAst.SingletonReferenceParserTypeKind,
 			})
 		}
 
@@ -531,6 +538,7 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 // Function definition
 //
 
+// TODO: handle singletons (sort of compile them out)
 func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.AnalyzedFunctionDefinition {
 	fnReturnType := self.ConvertType(node.ReturnType, true).SetSpan(node.ReturnType.Span())
 
@@ -540,20 +548,20 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 	self.currentModule.pushScope()
 
 	if node.Ident.Ident() == "main" || node.Modifier == pAst.FN_MODIFIER_EVENT {
-		modifier := ""
+		modifierErrMsg := ""
 		if node.Modifier != pAst.FN_MODIFIER_NONE {
-			modifier = node.Modifier.String() + " "
+			modifierErrMsg = node.Modifier.String() + " "
 		}
 
 		// for this function, only check thate there are NO params
 		if len(node.Parameters) > 0 {
-			verb := "are"
+			errMsgVerb := "are"
 			if len(node.Parameters) == 1 {
-				verb = "is"
+				errMsgVerb = "is"
 			}
 
 			self.error(
-				fmt.Sprintf("The '%s%s' function must have 0 parameters, however %d %s defined", modifier, node.Ident.Ident(), len(node.Parameters), verb),
+				fmt.Sprintf("The '%s%s' function must have 0 parameters, however %d %s defined", modifierErrMsg, node.Ident.Ident(), len(node.Parameters), errMsgVerb),
 				nil,
 				node.ParamSpan,
 			)
@@ -562,8 +570,8 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 		// the return type of the `main` function is always `null`
 		if fnReturnType.Kind() != ast.UnknownTypeKind && fnReturnType.Kind() != ast.NullTypeKind {
 			self.error(
-				fmt.Sprintf("The return type of the '%s%s' function must be '%s', but is declared as '%s'", modifier, node.Ident.Ident(), ast.NewNullType(errors.Span{}).Kind(), fnReturnType.Kind()),
-				[]string{fmt.Sprintf("Remove the return type: `fn %s%s() { ... }`", modifier, node.Ident.Ident())},
+				fmt.Sprintf("The return type of the '%s%s' function must be '%s', but is declared as '%s'", modifierErrMsg, node.Ident.Ident(), ast.NewNullType(errors.Span{}).Kind(), fnReturnType.Kind()),
+				[]string{fmt.Sprintf("Remove the return type: `fn %s%s() { ... }`", modifierErrMsg, node.Ident.Ident())},
 				fnReturnType.Span(),
 			)
 			fnReturnType = ast.NewUnknownType()
@@ -606,28 +614,81 @@ func (self *Analyzer) analyzeParams(params []pAst.FnParam) []ast.AnalyzedFnParam
 	newParams := make([]ast.AnalyzedFnParam, 0)
 
 	// analyze params (no doubles, valid types)
-	existentParams := make(map[string]struct{}) // to keep track of duplicates
+	existentParams := make(map[string]struct{}) // to keep track of duplicate param names
+
+	existentSingletons := make(map[pAst.SingletonReferenceType]struct{}) // keep track of duplicate singleton params
+
+	encounteredNonSingletonParam := false
 
 	for _, param := range params {
-		if _, duplicate := existentParams[param.Ident.Ident()]; duplicate {
-			self.error(
-				fmt.Sprintf("Duplicate declaration of parameter '%s'", param.Ident.Ident()),
-				nil,
-				param.Span,
-			)
-		}
+		isSingletonExtractor := false
 
-		// add this param to the set of existent params
-		existentParams[param.Ident.Ident()] = struct{}{}
+		if param.Type.Kind() == pAst.SingletonReferenceParserTypeKind {
+			isSingletonExtractor = true
+
+			if encounteredNonSingletonParam {
+				newParams = append(newParams,
+					ast.AnalyzedFnParam{
+						Ident:                param.Ident,
+						Type:                 ast.NewUnknownType(),
+						Span:                 param.Span,
+						IsSingletonExtractor: true,
+					},
+				)
+
+				// add this parameter to the new scope
+				self.currentModule.addVar(param.Ident.Ident(), NewVar(
+					ast.NewUnknownType(),
+					param.Ident.Span(),
+					ParameterVariableOriginKind,
+					false,
+				), false)
+
+				self.error(
+					fmt.Sprintf("Extraction of singleton '%s' follows normal parameter", param.Ident.Ident()),
+					[]string{"Singletons are to be extracted as the first parameters of a function."},
+					param.Span,
+				)
+
+				continue
+			}
+
+			singleton := param.Type.(pAst.SingletonReferenceType)
+
+			if _, duplicate := existentSingletons[singleton]; duplicate {
+				self.error(
+					fmt.Sprintf("Duplicate extraction of singleton '%s'", param.Ident.Ident()),
+					[]string{"Every unique singleton can only be extracted once per function"},
+					param.Span,
+				)
+			}
+
+			// add this singleton to the set of existent singletons
+			existentSingletons[singleton] = struct{}{}
+		} else {
+			encounteredNonSingletonParam = true
+
+			if _, duplicate := existentParams[param.Ident.Ident()]; duplicate {
+				self.error(
+					fmt.Sprintf("Duplicate declaration of parameter '%s'", param.Ident.Ident()),
+					nil,
+					param.Span,
+				)
+			}
+
+			// add this param to the set of existent params
+			existentParams[param.Ident.Ident()] = struct{}{}
+		}
 
 		newType := self.ConvertType(param.Type, true)
 
 		// add param to new params
 		newParams = append(newParams,
 			ast.AnalyzedFnParam{
-				Ident: param.Ident,
-				Type:  newType,
-				Span:  param.Span,
+				Ident:                param.Ident,
+				Type:                 newType,
+				Span:                 param.Span,
+				IsSingletonExtractor: isSingletonExtractor,
 			},
 		)
 

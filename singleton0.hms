@@ -1,0 +1,14 @@
+@Foo
+type Bar = {
+    field: int
+};
+
+fn test(f: @Foo) {
+    println("extracted: ", f);
+}
+
+fn main() {
+    println("direct: ", @Foo);
+
+    test();
+}

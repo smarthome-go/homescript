@@ -40,7 +40,7 @@ func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 						pAst.NewSpannedIdent("sleep", herrors.Span{}),
 						ast.NewFunctionType(
 							ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("seconds", herrors.Span{}), ast.NewIntType(herrors.Span{})),
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("seconds", herrors.Span{}), ast.NewIntType(herrors.Span{}), false),
 							}),
 							herrors.Span{},
 							ast.NewNullType(herrors.Span{}),
@@ -62,8 +62,8 @@ func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 						pAst.NewSpannedIdent("add_days", herrors.Span{}),
 						ast.NewFunctionType(
 							ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("time", herrors.Span{}), timeObjType(herrors.Span{})),
-								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("days", herrors.Span{}), ast.NewIntType(herrors.Span{})),
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("time", herrors.Span{}), timeObjType(herrors.Span{}), false),
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("days", herrors.Span{}), ast.NewIntType(herrors.Span{}), false),
 							}),
 							herrors.Span{},
 							timeObjType(herrors.Span{}),
@@ -139,8 +139,8 @@ func (self TestingAnalyzerHost) GetBuiltinImport(moduleName string, valueName st
 		case "assert_eq":
 			return ast.NewFunctionType(
 				ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-					ast.NewFunctionTypeParam(pAst.NewSpannedIdent("lhs", herrors.Span{}), ast.NewUnknownType()),
-					ast.NewFunctionTypeParam(pAst.NewSpannedIdent("rhs", herrors.Span{}), ast.NewUnknownType()),
+					ast.NewFunctionTypeParam(pAst.NewSpannedIdent("lhs", herrors.Span{}), ast.NewUnknownType(), false),
+					ast.NewFunctionTypeParam(pAst.NewSpannedIdent("rhs", herrors.Span{}), ast.NewUnknownType(), false),
 				}),
 				herrors.Span{},
 				ast.NewNullType(herrors.Span{}),

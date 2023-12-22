@@ -125,6 +125,32 @@ func (self *Analyzer) expression(node pAst.Expression) ast.AnalyzedExpression {
 //
 
 func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIdentExpression {
+	// If this ident refers to a singleton, handle it specially
+	if node.IsSingleton {
+		resultType := ast.NewUnknownType()
+
+		singleton, found := self.currentModule.Singletons[node.Ident.Ident()]
+		if !found {
+			self.error(
+				fmt.Sprintf("Reference of undeclared singleton type '%s'", node.Ident.Ident()),
+				[]string{
+					fmt.Sprintf("Singleton types can be declared like this: `@%s\n type %sFoo = ...;`", node.Ident.Ident(), node.Ident.Ident()),
+				},
+				node.Ident.Span(),
+			)
+		} else {
+			resultType = singleton.SetSpan(node.Span())
+		}
+
+		return ast.AnalyzedIdentExpression{
+			Ident:       node.Ident,
+			ResultType:  resultType,
+			IsGlobal:    false,
+			IsFunction:  false,
+			IsSingleton: true,
+		}
+	}
+
 	variable, scope, found := self.currentModule.getVar(node.Ident.Ident())
 
 	// show an error and use `unknown` if the variable does not exist
@@ -166,6 +192,7 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 			params = append(params, ast.NewFunctionTypeParam(
 				param.Ident,
 				param.Type,
+				param.IsSingletonExtractor,
 			))
 		}
 
@@ -686,9 +713,21 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 			// validate that all arguments match the declared parameter
 			baseParams := baseFn.Params.(ast.NormalFunctionTypeParamKindIdentifier)
 
-			if len(node.Arguments) != len(baseParams.Params) {
+			// Preprocess / skip singleton extractor params
+			// NOTE: this is valid since the extractions occur at the start
+
+			newParams := make([]ast.FunctionTypeParam, 0)
+			for _, param := range baseParams.Params {
+				if param.IsSingletonExtractor {
+					continue
+				}
+
+				newParams = append(newParams, param)
+			}
+
+			if len(node.Arguments) != len(newParams) {
 				pluralS := "s"
-				if len(baseParams.Params) == 1 {
+				if len(newParams) == 1 {
 					pluralS = ""
 				}
 
@@ -698,17 +737,17 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 				}
 
 				paramList := make([]string, 0)
-				for _, param := range baseParams.Params {
+				for _, param := range newParams {
 					paramList = append(paramList, param.Name.Ident())
 				}
 
 				self.error(
-					fmt.Sprintf("Function requires %d argument%s (%s), however %d %s supplied", len(baseParams.Params), pluralS, strings.Join(paramList, ", "), len(node.Arguments), verb),
+					fmt.Sprintf("Function requires %d argument%s (%s), however %d %s supplied", len(newParams), pluralS, strings.Join(paramList, ", "), len(node.Arguments), verb),
 					nil,
 					node.Range,
 				)
 			} else {
-				for idx := 0; idx < len(baseParams.Params); idx++ {
+				for idx := 0; idx < len(newParams); idx++ {
 					argExpr := self.expression(node.Arguments[idx])
 
 					if argExpr.Type().Kind() == ast.NullTypeKind {
@@ -732,11 +771,11 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 						continue
 					}
 
-					if err := self.TypeCheck(argExpr.Type(), baseParams.Params[idx].Type, true); err != nil {
+					if err := self.TypeCheck(argExpr.Type(), newParams[idx].Type, true); err != nil {
 						self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 					} else {
 						arguments = append(arguments, ast.AnalyzedCallArgument{
-							Name:       baseParams.Params[idx].Name.Ident(),
+							Name:       newParams[idx].Name.Ident(),
 							Expression: argExpr,
 						})
 					}

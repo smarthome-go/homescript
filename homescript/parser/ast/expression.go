@@ -109,7 +109,8 @@ func (self StringLiteralExpression) String() string       { return fmt.Sprintf("
 //
 
 type IdentExpression struct {
-	Ident SpannedIdent
+	IsSingleton bool
+	Ident       SpannedIdent
 }
 
 func (self IdentExpression) Kind() ExpressionKind { return IdentExpressionKind }

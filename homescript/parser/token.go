@@ -20,6 +20,7 @@ const (
 	EOF
 
 	QuestionMark // ?
+	AtSymbol     // @
 	Underscore   // _
 	Semicolon    // ;
 	Comma        // ,
@@ -93,6 +94,8 @@ const (
 	New      // new
 	Spawn    // spawn
 	Event    // event
+	Impl     // impl
+	With     // with
 
 	True  // true
 	False // false
@@ -254,6 +257,10 @@ func (self TokenKind) String() string {
 		display = "spawn"
 	case Event:
 		display = "event"
+	case Impl:
+		display = "impl"
+	case With:
+		display = "with"
 	case BitOr:
 		display = "|"
 	case BitXor:
@@ -274,6 +281,8 @@ func (self TokenKind) String() string {
 		display = "^="
 	case QuestionMark:
 		display = "?"
+	case AtSymbol:
+		display = "@"
 	case Underscore:
 		display = "_"
 	default:

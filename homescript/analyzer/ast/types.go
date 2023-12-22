@@ -266,8 +266,8 @@ func (self StringType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 		"replace": NewFunctionType(
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{
-				NewFunctionTypeParam(ast.NewSpannedIdent("old", fieldSpan), NewStringType(fieldSpan)),
-				NewFunctionTypeParam(ast.NewSpannedIdent("new", fieldSpan), NewStringType(fieldSpan)),
+				NewFunctionTypeParam(ast.NewSpannedIdent("old", fieldSpan), NewStringType(fieldSpan), false),
+				NewFunctionTypeParam(ast.NewSpannedIdent("new", fieldSpan), NewStringType(fieldSpan), false),
 			}),
 			fieldSpan,
 			NewStringType(fieldSpan),
@@ -275,20 +275,20 @@ func (self StringType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 		"repeat": NewFunctionType(
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{
-				NewFunctionTypeParam(ast.NewSpannedIdent("count", fieldSpan), NewIntType(fieldSpan)),
+				NewFunctionTypeParam(ast.NewSpannedIdent("count", fieldSpan), NewIntType(fieldSpan), false),
 			}),
 			fieldSpan,
 			NewStringType(fieldSpan),
 			fieldSpan,
 		),
 		"contains": NewFunctionType(
-			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("substring", fieldSpan), NewStringType(fieldSpan))}),
+			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("substring", fieldSpan), NewStringType(fieldSpan), false)}),
 			fieldSpan,
 			NewBoolType(fieldSpan),
 			fieldSpan,
 		),
 		"split": NewFunctionType(
-			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("separator", fieldSpan), NewStringType(fieldSpan))}),
+			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("separator", fieldSpan), NewStringType(fieldSpan), false)}),
 			fieldSpan,
 			NewListType(
 				NewStringType(fieldSpan),
@@ -400,7 +400,7 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 			fieldSpan,
 		),
 		"contains": NewFunctionType(
-			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("element", fieldSpan), self.Inner)}),
+			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("element", fieldSpan), self.Inner, false)}),
 			fieldSpan,
 			NewBoolType(fieldSpan),
 			fieldSpan,
@@ -409,6 +409,7 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(
 				ast.NewSpannedIdent("other", fieldSpan),
 				NewListType(self.Inner.SetSpan(fieldSpan), fieldSpan),
+				false,
 			)}),
 			fieldSpan,
 			NewNullType(fieldSpan),
@@ -418,13 +419,14 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(
 				ast.NewSpannedIdent("sep", fieldSpan),
 				NewStringType(fieldSpan),
+				false,
 			)}),
 			fieldSpan,
 			NewStringType(fieldSpan),
 			fieldSpan,
 		),
 		"push": NewFunctionType(
-			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("element", fieldSpan), self.Inner)}),
+			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("element", fieldSpan), self.Inner, false)}),
 			fieldSpan,
 			NewNullType(fieldSpan),
 			fieldSpan,
@@ -436,7 +438,7 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 			fieldSpan,
 		),
 		"push_front": NewFunctionType(
-			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("element", fieldSpan), self.Inner)}),
+			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("element", fieldSpan), self.Inner, false)}),
 			fieldSpan,
 			NewNullType(fieldSpan),
 			fieldSpan,
@@ -449,8 +451,8 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 		"insert": NewFunctionType(
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{
-				NewFunctionTypeParam(ast.NewSpannedIdent("index", fieldSpan), NewIntType(fieldSpan)),
-				NewFunctionTypeParam(ast.NewSpannedIdent("element", fieldSpan), self.Inner.SetSpan(fieldSpan)),
+				NewFunctionTypeParam(ast.NewSpannedIdent("index", fieldSpan), NewIntType(fieldSpan), false),
+				NewFunctionTypeParam(ast.NewSpannedIdent("element", fieldSpan), self.Inner.SetSpan(fieldSpan), false),
 			}),
 			fieldSpan,
 			NewNullType(fieldSpan),
@@ -458,7 +460,7 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 		"remove": NewFunctionType(
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{
-				NewFunctionTypeParam(ast.NewSpannedIdent("index", fieldSpan), NewIntType(fieldSpan)),
+				NewFunctionTypeParam(ast.NewSpannedIdent("index", fieldSpan), NewIntType(fieldSpan), false),
 			}),
 			fieldSpan,
 			NewNullType(fieldSpan),
@@ -509,8 +511,8 @@ func (self AnyObjectType) Fields(span errors.Span) map[string]Type {
 	return map[string]Type{
 		"set": NewFunctionType(NewNormalFunctionTypeParamKind(
 			[]FunctionTypeParam{
-				NewFunctionTypeParam(ast.NewSpannedIdent("key", span), NewStringType(span)),
-				NewFunctionTypeParam(ast.NewSpannedIdent("value", span), NewUnknownType()),
+				NewFunctionTypeParam(ast.NewSpannedIdent("key", span), NewStringType(span), false),
+				NewFunctionTypeParam(ast.NewSpannedIdent("value", span), NewUnknownType(), false),
 			}),
 			span,
 			NewNullType(span),
@@ -518,7 +520,7 @@ func (self AnyObjectType) Fields(span errors.Span) map[string]Type {
 		),
 		"get": NewFunctionType(NewNormalFunctionTypeParamKind(
 			[]FunctionTypeParam{
-				NewFunctionTypeParam(ast.NewSpannedIdent("key", span), NewStringType(span)),
+				NewFunctionTypeParam(ast.NewSpannedIdent("key", span), NewStringType(span), false),
 			}),
 			span,
 			NewOptionType(NewAnyType(span), span),
@@ -674,7 +676,7 @@ func (self OptionType) Fields(span errors.Span) map[string]Type {
 		),
 		"unwrap_or": NewFunctionType(
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{
-				NewFunctionTypeParam(ast.NewSpannedIdent("fallback", span), self.Inner),
+				NewFunctionTypeParam(ast.NewSpannedIdent("fallback", span), self.Inner, false),
 			}),
 			span,
 			self.Inner.SetSpan(span),
@@ -682,7 +684,7 @@ func (self OptionType) Fields(span errors.Span) map[string]Type {
 		),
 		"expect": NewFunctionType(
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{
-				NewFunctionTypeParam(ast.NewSpannedIdent("message", span), NewStringType(span)),
+				NewFunctionTypeParam(ast.NewSpannedIdent("message", span), NewStringType(span), false),
 			}),
 			span,
 			self.Inner.SetSpan(span),
@@ -806,14 +808,16 @@ func NewVarArgsFunctionTypeParamKind(paramTypes []Type, remainingType Type) Func
 }
 
 type FunctionTypeParam struct {
-	Name ast.SpannedIdent
-	Type Type
+	Name                 ast.SpannedIdent
+	Type                 Type
+	IsSingletonExtractor bool
 }
 
 func (self FunctionTypeParam) String() string { return fmt.Sprintf("%s:%s", self.Name, self.Type) }
-func NewFunctionTypeParam(name ast.SpannedIdent, typ Type) FunctionTypeParam {
+func NewFunctionTypeParam(name ast.SpannedIdent, typ Type, IsSingletonExtractor bool) FunctionTypeParam {
 	return FunctionTypeParam{
-		Name: name,
-		Type: typ,
+		Name:                 name,
+		Type:                 typ,
+		IsSingletonExtractor: IsSingletonExtractor,
 	}
 }

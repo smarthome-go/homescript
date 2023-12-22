@@ -78,6 +78,32 @@ func (self *Analyzer) typeDefStatement(node pAst.TypeDefinition) ast.AnalyzedTyp
 }
 
 //
+// Singleton declaration statement
+//
+
+func (self *Analyzer) singletonDeclStatement(node pAst.SingletonTypeDefinition) ast.AnalyzedSingletonTypeDefinition {
+	analyzed := self.typeDefStatement(node.TypeDef)
+
+	singleton, found := self.currentModule.Singletons[node.Ident.Ident()]
+	if found {
+		self.error(
+			fmt.Sprintf("Singleton type '%s' is already declared as '%s' in this module", node.Ident.Ident(), singleton),
+			[]string{"Consider altering this type's name"},
+			node.TypeDef.LhsIdent.Span(),
+		)
+	} else {
+		// Add this item to the map of singletons
+		self.currentModule.Singletons[node.Ident.Ident()] = analyzed.RhsType
+	}
+
+	return ast.AnalyzedSingletonTypeDefinition{
+		Ident:   node.Ident,
+		TypeDef: analyzed,
+		Range:   node.Range,
+	}
+}
+
+//
 // Let statement
 //
 

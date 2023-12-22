@@ -12,6 +12,7 @@ type Module struct {
 	ImportsModules           []string
 	Functions                []*function
 	Scopes                   []scope
+	Singletons               map[string]ast.Type // Contains a module's singletons
 	CurrentFunction          *function
 	LoopDepth                uint // continue and break are legal if > 0
 	CurrentLoopIsTerminated  bool // specifies whether there is at least one `break` statement inside the current loop
@@ -38,6 +39,7 @@ func (self function) Type(span errors.Span) ast.Type {
 		params = append(params, ast.NewFunctionTypeParam(
 			param.Ident,
 			param.Type,
+			param.IsSingletonExtractor,
 		))
 	}
 
@@ -231,6 +233,7 @@ func (self Module) getFunc(ident string) (fn *function, found bool) {
 			return fn, true
 		}
 	}
+
 	return nil, false
 }
 
