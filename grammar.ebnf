@@ -1,8 +1,10 @@
 Program = { Item } ;
 Item    = ImportItem
+        | SingletonDeclaration
         | [ 'pub' ] , TypeDefinition
         | [ 'pub' ] , LetStatement
-        | [ 'pub' ] , FunctionDefinition ;
+        | [ 'pub' , 'event' ] , FunctionDefinition
+        | ImplBlock ;
 
 (*
   Function
@@ -17,8 +19,11 @@ Block = '{' , { Statement } , [ Expression ] , '}' ;
 (*
   Types
 *)
+SingletonDeclaration = singletonIdent , TypeDefinition ;
+
 TypeDefinition = 'type' , ident , '=' , Type , ';' ;
-Type           = ident | listType | objectType | optionType ;
+Type           = ident | singletonIdent | listType | objectType
+               | optionType ;
 listType       = '[' , Type , ']' ;
 
 objectType          = '{' , [ objectTypeFieldList ] , '}' ;
@@ -62,12 +67,14 @@ ExpressionStatement = ExpressionWithoutBlock , ';'
                     | ExpressionWithBlock , [ ';' ] ;
 
 (* Import item *)
-ImportItem = 'import' , ( [ 'type' ] , identifier
-                        | '{' , [ 'type' ] , identifier , { ','
-                                                          , [ 'type' ]
-                                                          , identifier }
-                        , [ ',' ] , '}' ) , 'from' , identifier
-           , ';' ;
+ImportItem = 'import' , ( [ 'type' ] , ident
+                        | '{' , [ 'type' ] , ident , { ',' , [ 'type' ]
+                                                     , ident }
+                        , [ ',' ] , '}' ) , 'from' , ident , ';' ;
+
+(* Impl block *)
+ImplBlock = 'impl' , [ ident , 'for' ] , singletonIdent , '{'
+          , { FunctionDefinition } , '}' ;
 
 (*
   Expressions
@@ -93,7 +100,7 @@ matchLiteral    = LiteralExpression | ( PREFIX_OPERATOR , LiteralExpression )
 (* Try expression *)
 TryExpression = 'try' , Block , 'catch' , ident , block ;
 
-ExpressionWithoutBlock = ident
+ExpressionWithoutBlock = IdentExpr
                        | LiteralExpression
                        | '(' , Expression , ')'
                        | PrefixExpression
@@ -104,6 +111,8 @@ ExpressionWithoutBlock = ident
                        | MemberExpression
                        | CastExpression
                        | SpawnExpression ;
+
+IdentExpr = singletonIdent | ident ;
 
 LiteralExpression = number | boolean | string | 'null' | 'none'
                   | RangeLiteral | ListLiteral | ObjectLiteral
@@ -155,18 +164,21 @@ SpawnExpression = 'spawn' , ident , '(' , [ callArguments ] , ')' ;
 (*
   Tokens
 *)
-ident      = LETTER , { LETTER | DIGIT }- ? any keyword ? ;
-number     = DIGIT , { DIGIT | '_' } , [ 'f'
-                                       | '.' , DIGIT , { DIGIT
-                                                       | '_' } ] ;
-bool       = 'true' | 'false' | 'on' | 'off' ;
-string     = '"' , { CHAR - ( '"' | '\' ) | escape_seq } , '"'
-           | "'" , { CHAR - ( "'" | '\' ) | escape_seq } , "'" ;
-escape_seq = '\' , ( ESCAPE_CHAR
-                   | 3 * OCTAL
-                   | 'x' , 2 * HEX
-                   | 'u' , 4 * HEX
-                   | 'U' , 8 * HEX ) ;
+singletonIdent = '@' , ident ;
+ident          = LETTER , { LETTER | DIGIT }- ? any keyword ? ;
+number         = DIGIT , { DIGIT | '_' } , [ 'f'
+                                           | '.' , DIGIT , { DIGIT
+                                                           | '_' } ] ;
+bool           = 'true' | 'false' | 'on' | 'off' ;
+string         = '"' , { CHAR - ( '"' | '\' ) | escape_seq }
+               , '"'
+               | "'" , { CHAR - ( "'" | '\' ) | escape_seq }
+               , "'" ;
+escape_seq     = '\' , ( ESCAPE_CHAR
+                       | 3 * OCTAL
+                       | 'x' , 2 * HEX
+                       | 'u' , 4 * HEX
+                       | 'U' , 8 * HEX ) ;
 
 comment = '//' , { CHAR } , ? LF ?
         | '/*' , { CHAR } , '*/' ;
