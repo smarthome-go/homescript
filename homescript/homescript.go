@@ -28,7 +28,7 @@ type InputProgram struct {
 func Analyze(
 	input InputProgram,
 	scopeAdditions map[string]analyzer.Variable,
-	host analyzer.HostDependencies,
+	host analyzer.HostProvider,
 ) (modules map[string]ast.AnalyzedProgram, diagnostics []diagnostic.Diagnostic, syntaxErrors []errors.Error) {
 	lexer := parser.NewLexer(input.ProgramText, input.Filename)
 	parser := parser.NewParser(lexer, input.Filename)

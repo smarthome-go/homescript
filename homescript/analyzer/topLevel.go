@@ -446,19 +446,25 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 				self.error(fmt.Sprintf("Name '%s' already exists in current scope", item.Ident), nil, item.Span)
 			}
 		} else {
-			// type imports need special action: only add the type and filter out this import
-			if item.IsTypeImport {
-				if prev := self.currentModule.addType(item.Ident, newTypeWrapper(typ.SetSpan(item.Span), false, item.Span, false)); prev != nil {
+			// Type imports need special action: only add the type and filter out this import
+			if item.Kind == pAst.IMPORT_KIND_TYPE {
+				if prev := self.currentModule.addType(item.Ident, newTypeWrapper(typ.Type.SetSpan(item.Span), false, item.Span, false)); prev != nil {
 					self.error(fmt.Sprintf("Type '%s' already exists in current scope", item.Ident), nil, item.Span)
 				}
 				continue
 			}
 
+			// Template imports also need special attention: only add the template and filter out the import
+			if item.Kind == pAst.IMPORT_KIND_TEMPLATE {
+				// TODO: handle template import
+				panic("TODO: handle template import")
+			}
+
 			toImport = append(toImport, ast.AnalyzedImportValue{
 				Ident: pAst.NewSpannedIdent(item.Ident, item.Span),
-				Type:  typ.SetSpan(item.Span),
+				Type:  typ.Type.SetSpan(item.Span),
 			})
-			if prev := self.currentModule.addVar(item.Ident, NewVar(typ.SetSpan(item.Span), item.Span, ImportedVariableOriginKind, false), false); prev != nil {
+			if prev := self.currentModule.addVar(item.Ident, NewVar(typ.Type.SetSpan(item.Span), item.Span, ImportedVariableOriginKind, false), false); prev != nil {
 				self.error(fmt.Sprintf("Name '%s' already exists in current scope", item.Ident), nil, item.Span)
 			}
 		}
@@ -502,6 +508,24 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 		methods = append(methods, self.functionDefinition(fn))
 	}
 
+	// If this impl uses a template, analyze that it is valid
+	if node.TemplateIdent != nil {
+		// Check if the template exists and retrieve it
+		tmpl, templateFound := self.currentModule.Templates[node.TemplateIdent.Ident()]
+
+		if !templateFound {
+			self.error(
+				fmt.Sprintf("Template `%s` not found", node.TemplateIdent.Ident()),
+				[]string{fmt.Sprintf("Templates can be imported like this: `import templ %s;`", node.TemplateIdent.Ident())},
+				node.TemplateIdent.Span(),
+			)
+		} else {
+			// TODO: do template analysis
+			fmt.Printf("Would analyze template now: %v\n", tmpl)
+			self.validateTemplateConstraints(singletonType, tmpl, methods)
+		}
+	}
+
 	return ast.AnalyzedImplBlock{
 		SingletonIdent: node.SingletonIdent,
 		SingletonType:  singletonType,
@@ -509,4 +533,9 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 		Methods:        methods,
 		Span:           node.Span,
 	}
+}
+
+func (self *Analyzer) validateTemplateConstraints(singletonType ast.Type, template ast.TemplateSpec, methods []ast.AnalyzedFunctionDefinition) {
+	// TODO: implement this
+	panic("not implemented")
 }

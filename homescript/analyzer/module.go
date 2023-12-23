@@ -13,6 +13,7 @@ type Module struct {
 	Functions                []*function
 	Scopes                   []scope
 	Singletons               map[string]ast.AnalyzedSingleton
+	Templates                map[string]ast.TemplateSpec
 	CurrentFunction          *function
 	LoopDepth                uint // continue and break are legal if > 0
 	CurrentLoopIsTerminated  bool // specifies whether there is at least one `break` statement inside the current loop

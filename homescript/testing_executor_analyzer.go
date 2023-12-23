@@ -132,33 +132,84 @@ func (self TestingAnalyzerHost) ResolveCodeModule(moduleName string) (code strin
 	return string(file), true, nil
 }
 
-func (self TestingAnalyzerHost) GetBuiltinImport(moduleName string, valueName string, span herrors.Span) (valueType ast.Type, moduleFound bool, valueFound bool) {
+func (self TestingAnalyzerHost) GetBuiltinImport(
+	moduleName string,
+	valueName string,
+	span herrors.Span,
+	kind analyzer.BUILTIN_IMPORT_KIND,
+) (res analyzer.BuiltinImport, moduleFound bool, valueFound bool) {
 	switch moduleName {
 	case "testing":
+		if kind != analyzer.BUILTIN_IMPORT_KIND_VALUE {
+			return analyzer.BuiltinImport{}, true, false
+		}
+
 		switch valueName {
 		case "assert_eq":
-			return ast.NewFunctionType(
-				ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-					ast.NewFunctionTypeParam(pAst.NewSpannedIdent("lhs", herrors.Span{}), ast.NewUnknownType(), nil),
-					ast.NewFunctionTypeParam(pAst.NewSpannedIdent("rhs", herrors.Span{}), ast.NewUnknownType(), nil),
-				}),
-				herrors.Span{},
-				ast.NewNullType(herrors.Span{}),
-				herrors.Span{},
-			), true, true
+			return analyzer.BuiltinImport{
+					Type: ast.NewFunctionType(
+						ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+							ast.NewFunctionTypeParam(pAst.NewSpannedIdent("lhs", herrors.Span{}), ast.NewUnknownType(), nil),
+							ast.NewFunctionTypeParam(pAst.NewSpannedIdent("rhs", herrors.Span{}), ast.NewUnknownType(), nil),
+						}),
+						herrors.Span{},
+						ast.NewNullType(herrors.Span{}),
+						herrors.Span{},
+					),
+					Template: nil,
+				},
+				true, true
 		case "any_func":
-			return ast.NewFunctionType(
-				ast.NewNormalFunctionTypeParamKind(make([]ast.FunctionTypeParam, 0)),
-				span,
-				ast.NewAnyType(span),
-				span,
-			), true, true
+			return analyzer.BuiltinImport{
+					Type: ast.NewFunctionType(
+						ast.NewNormalFunctionTypeParamKind(make([]ast.FunctionTypeParam, 0)),
+						span,
+						ast.NewAnyType(span),
+						span,
+					),
+					Template: nil,
+				},
+				true, true
 		case "any_list":
-			return ast.NewListType(ast.NewAnyType(span), span), true, true
+			return analyzer.BuiltinImport{
+					Type:     ast.NewListType(ast.NewAnyType(span), span),
+					Template: nil,
+				},
+				true, true
 		}
-		return nil, false, false
+		return analyzer.BuiltinImport{}, false, false
+	case "templates":
+		if kind != analyzer.BUILTIN_IMPORT_KIND_TEMPLATE {
+			return analyzer.BuiltinImport{}, true, false
+		}
+
+		switch valueName {
+		case "FooFeature":
+			return analyzer.BuiltinImport{
+				Type: nil,
+				Template: &ast.TemplateSpec{
+					RequiredMethods: []ast.FunctionType{{
+						Params: ast.NewNormalFunctionTypeParamKind(
+							[]ast.FunctionTypeParam{
+								ast.NewFunctionTypeParam(
+									pAst.NewSpannedIdent("value", span),
+									ast.NewIntType(span),
+									nil,
+								),
+							},
+						),
+						ParamsSpan: span,
+						ReturnType: ast.NewNullType(span),
+						Range:      span,
+					},
+					},
+				},
+			}, true, true
+		default:
+			return analyzer.BuiltinImport{}, true, false
+		}
 	default:
-		return nil, false, false
+		return analyzer.BuiltinImport{}, false, false
 
 	}
 }

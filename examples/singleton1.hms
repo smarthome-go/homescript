@@ -7,6 +7,7 @@ type Foo = {
 
 // TODO: templates are currently not validated AT ALL
 
+// ERROR: no such template in current module???
 impl Template for @Singleton {
     fn New(s: @Singleton) {
         s.foo = 42;

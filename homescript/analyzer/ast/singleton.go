@@ -2,13 +2,13 @@ package ast
 
 type AnalyzedSingleton struct {
 	Type                Type
-	ImplementsTemplates []Template
+	ImplementsTemplates []TemplateSpec
 	// Methods are unlike methods in languages like Rust or Java.
 	// Here, a method is just a function that is implemented in a template block.
 	Methods []AnalyzedFunctionDefinition
 }
 
-func NewSingleton(typ Type, implementsTemplates []Template, methods []AnalyzedFunctionDefinition) AnalyzedSingleton {
+func NewSingleton(typ Type, implementsTemplates []TemplateSpec, methods []AnalyzedFunctionDefinition) AnalyzedSingleton {
 	return AnalyzedSingleton{
 		Type:                typ,
 		ImplementsTemplates: implementsTemplates,
@@ -18,5 +18,6 @@ func NewSingleton(typ Type, implementsTemplates []Template, methods []AnalyzedFu
 
 // A template is comparable to a trait in Rust.
 // It describes which methods (and their signatures) need to be implemented on a singleton.
-type Template struct {
+type TemplateSpec struct {
+	RequiredMethods []FunctionType
 }

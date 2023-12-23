@@ -24,19 +24,25 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 	switch self.CurrentToken.Kind {
 	case Type, Identifier, Underscore:
 		startLoc := self.CurrentToken.Span.Start
-		isTypeImport := false
+		importKind := ast.IMPORT_KIND_NORMAL
 
 		if self.CurrentToken.Kind == Type {
-			isTypeImport = true
+			importKind = ast.IMPORT_KIND_TYPE
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
 			}
 		}
 
+		if self.CurrentToken.Kind
+
+		if self.CurrentToken.Kind == Templ {
+
+		}
+
 		toImport = append(toImport, ast.ImportStatementCandidate{
-			Ident:        self.CurrentToken.Value,
-			IsTypeImport: isTypeImport,
-			Span:         startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+			Ident: self.CurrentToken.Value,
+			Kind:  importKind,
+			Span:  startLoc.Until(self.CurrentToken.Span.End, self.Filename),
 		})
 
 		if err := self.next(); err != nil {
@@ -49,12 +55,18 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 		}
 
 		// make initial import
-
-		isTypeImport := false
+		importKind := ast.IMPORT_KIND_NORMAL
 		startLoc := self.CurrentToken.Span.Start
 
 		if self.CurrentToken.Kind == Type {
-			isTypeImport = true
+			importKind = ast.IMPORT_KIND_TYPE
+			if err := self.next(); err != nil {
+				return ast.ImportStatement{}, err
+			}
+		}
+
+		if self.CurrentToken.Kind == Templ {
+			importKind = ast.IMPORT_KIND_TEMPLATE
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
 			}
@@ -65,9 +77,9 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 		}
 
 		toImport = append(toImport, ast.ImportStatementCandidate{
-			Ident:        self.PreviousToken.Value,
-			IsTypeImport: isTypeImport,
-			Span:         startLoc.Until(self.PreviousToken.Span.End, self.Filename),
+			Ident: self.PreviousToken.Value,
+			Kind:  importKind,
+			Span:  startLoc.Until(self.PreviousToken.Span.End, self.Filename),
 		})
 
 		// make remaining imports
@@ -82,9 +94,16 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 				break
 			}
 
-			isTypeImport = false
+			importKind = ast.IMPORT_KIND_NORMAL
 			if self.CurrentToken.Kind == Type {
-				isTypeImport = true
+				importKind = ast.IMPORT_KIND_TYPE
+				if err := self.next(); err != nil {
+					return ast.ImportStatement{}, err
+				}
+			}
+
+			if self.CurrentToken.Kind == Templ {
+				importKind = ast.IMPORT_KIND_TEMPLATE
 				if err := self.next(); err != nil {
 					return ast.ImportStatement{}, err
 				}
@@ -95,9 +114,9 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 			}
 
 			toImport = append(toImport, ast.ImportStatementCandidate{
-				Ident:        self.PreviousToken.Value,
-				IsTypeImport: isTypeImport,
-				Span:         startLoc.Until(self.PreviousToken.Span.End, self.Filename),
+				Ident: self.PreviousToken.Value,
+				Kind:  importKind,
+				Span:  startLoc.Until(self.PreviousToken.Span.End, self.Filename),
 			})
 		}
 

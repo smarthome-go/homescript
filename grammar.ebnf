@@ -67,7 +67,7 @@ ExpressionStatement = ExpressionWithoutBlock , ';'
                     | ExpressionWithBlock , [ ';' ] ;
 
 (* Import item *)
-ImportItem = 'import' , ( [ 'type' ] , ident
+ImportItem = 'import' , ( [ 'type', 'templ' ] , ident
                         | '{' , [ 'type' ] , ident , { ',' , [ 'type' ]
                                                      , ident }
                         , [ ',' ] , '}' ) , 'from' , ident , ';' ;

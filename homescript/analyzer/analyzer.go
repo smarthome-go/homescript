@@ -22,10 +22,10 @@ type Analyzer struct {
 	modules           map[string]*Module
 	currentModuleName string
 	currentModule     *Module
-	host              HostDependencies
+	host              HostProvider
 }
 
-func NewAnalyzer(host HostDependencies, scopeAdditions map[string]Variable) Analyzer {
+func NewAnalyzer(host HostProvider, scopeAdditions map[string]Variable) Analyzer {
 	scopeAdditions["throw"] = NewBuiltinVar(
 		ast.NewFunctionType(
 			ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
@@ -145,6 +145,7 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		Functions:                make([]*function, 0),
 		Scopes:                   make([]scope, 0),
 		Singletons:               make(map[string]ast.AnalyzedSingleton),
+		Templates:                make(map[string]ast.TemplateSpec),
 		LoopDepth:                0, // `break` and `continue` are legal if > 0
 		CurrentFunction:          nil,
 		CurrentLoopIsTerminated:  false,

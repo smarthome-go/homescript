@@ -32,6 +32,9 @@ impl DriverManager for @Driver {
     }
 }
 
+// TODO: implement this OR: add individual templates based on the device type:
+// One template for the base device
+// more templates for additional functionality
 impl DeviceDriver with { onOff, dimmable, colorTemperature } for @Device {
     // Missing methods: ....
 

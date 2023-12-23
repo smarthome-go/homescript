@@ -54,18 +54,33 @@ func (self ImportStatement) String() string {
 	return fmt.Sprintf("import { %s } from %s;", strings.Join(toImport, ", "), self.FromModule)
 }
 
+type IMPORT_KIND uint8
+
+const (
+	IMPORT_KIND_NORMAL IMPORT_KIND = iota
+	IMPORT_KIND_TYPE
+	IMPORT_KIND_TEMPLATE
+)
+
 type ImportStatementCandidate struct {
-	Ident        string
-	IsTypeImport bool
-	Span         errors.Span
+	Ident string
+	Kind  IMPORT_KIND
+	Span  errors.Span
 }
 
 func (self ImportStatementCandidate) String() string {
-	if self.IsTypeImport {
-		return fmt.Sprintf("type %s", self.Ident)
-	} else {
-		return self.Ident
+	modifierStr := ""
+
+	switch self.Kind {
+	case IMPORT_KIND_NORMAL:
+		break
+	case IMPORT_KIND_TYPE:
+		modifierStr = "type "
+	case IMPORT_KIND_TEMPLATE:
+		modifierStr = "templ "
 	}
+
+	return fmt.Sprintf("%s%s", modifierStr, self.Ident)
 }
 
 //

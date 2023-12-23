@@ -96,6 +96,7 @@ const (
 	Event    // event
 	Impl     // impl
 	With     // with
+	Templ    // templ
 
 	True  // true
 	False // false
@@ -261,6 +262,8 @@ func (self TokenKind) String() string {
 		display = "impl"
 	case With:
 		display = "with"
+	case Templ:
+		display = "templ"
 	case BitOr:
 		display = "|"
 	case BitXor:
