@@ -136,11 +136,11 @@ func (self TestingAnalyzerHost) GetBuiltinImport(
 	moduleName string,
 	valueName string,
 	span herrors.Span,
-	kind analyzer.BUILTIN_IMPORT_KIND,
+	kind pAst.IMPORT_KIND,
 ) (res analyzer.BuiltinImport, moduleFound bool, valueFound bool) {
 	switch moduleName {
 	case "testing":
-		if kind != analyzer.BUILTIN_IMPORT_KIND_VALUE {
+		if kind != pAst.IMPORT_KIND_NORMAL {
 			return analyzer.BuiltinImport{}, true, false
 		}
 
@@ -179,7 +179,7 @@ func (self TestingAnalyzerHost) GetBuiltinImport(
 		}
 		return analyzer.BuiltinImport{}, false, false
 	case "templates":
-		if kind != analyzer.BUILTIN_IMPORT_KIND_TEMPLATE {
+		if kind != pAst.IMPORT_KIND_TEMPLATE {
 			return analyzer.BuiltinImport{}, true, false
 		}
 

@@ -57,8 +57,11 @@ func (self ImportStatement) String() string {
 type IMPORT_KIND uint8
 
 const (
+	// Normal means that the value of this identifier is imported
 	IMPORT_KIND_NORMAL IMPORT_KIND = iota
+	// A name reference type is brought into the current module's scope
 	IMPORT_KIND_TYPE
+	// A template is brought into the current module's template-scope
 	IMPORT_KIND_TEMPLATE
 )
 

@@ -241,12 +241,15 @@ func (self *Analyzer) importDummyFields(node pAst.ImportStatement) ast.AnalyzedI
 	dummyFields := make([]ast.AnalyzedImportValue, 0)
 	for _, toImport := range node.ToImport {
 		// type imports are filtered out completely (the have no relevance during runtime)
-		if toImport.IsTypeImport {
+		if toImport.Kind == pAst.IMPORT_KIND_TYPE {
 			if prev := self.currentModule.addType(toImport.Ident, newTypeWrapper(ast.NewUnknownType(), false, toImport.Span, true)); prev != nil {
 				self.error(fmt.Sprintf("Type '%s' already exists in current scope", toImport.Ident), nil, toImport.Span)
 			}
 			continue
 		}
+
+		// TODO: also filter out template imports (no relevance during runtime)
+		panic("TODO")
 
 		dummyFields = append(dummyFields, ast.AnalyzedImportValue{
 			Ident: pAst.NewSpannedIdent(toImport.Ident, toImport.Span),
@@ -312,8 +315,11 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 
 		// add values to current scope
 		for _, item := range node.ToImport {
+			// TODO: template imports also need special action
+			panic("TODO: templates")
+
 			// type imports need special action: only add the type and filter out this import
-			if item.IsTypeImport {
+			if item.Kind == pAst.IMPORT_KIND_TYPE {
 				typ, found := module.getType(item.Ident)
 				if !found {
 					self.error(
@@ -424,7 +430,7 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 	}
 
 	for _, item := range node.ToImport {
-		typ, moduleFound, valueFound := self.host.GetBuiltinImport(node.FromModule.Ident(), item.Ident, item.Span)
+		typ, moduleFound, valueFound := self.host.GetBuiltinImport(node.FromModule.Ident(), item.Ident, item.Span, item.Kind)
 		if !moduleFound {
 			self.error(
 				fmt.Sprintf("Module '%s' not found", node.FromModule),

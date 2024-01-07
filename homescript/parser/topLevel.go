@@ -26,18 +26,29 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 		startLoc := self.CurrentToken.Span.Start
 		importKind := ast.IMPORT_KIND_NORMAL
 
-		if self.CurrentToken.Kind == Type {
+		switch self.CurrentToken.Kind {
+		case Type:
 			importKind = ast.IMPORT_KIND_TYPE
+			if err := self.next(); err != nil {
+				return ast.ImportStatement{}, err
+			}
+		case Templ:
+			importKind = ast.IMPORT_KIND_TEMPLATE
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
 			}
 		}
 
-		if self.CurrentToken.Kind
+		// if self.CurrentToken.Kind == Type {
+		// 	importKind = ast.IMPORT_KIND_TYPE
+		// 	if err := self.next(); err != nil {
+		// 		return ast.ImportStatement{}, err
+		// 	}
+		// }
 
-		if self.CurrentToken.Kind == Templ {
-
-		}
+		// if self.CurrentToken.Kind == Templ {
+		//
+		// }
 
 		toImport = append(toImport, ast.ImportStatementCandidate{
 			Ident: self.CurrentToken.Value,
