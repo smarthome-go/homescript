@@ -65,7 +65,7 @@ func (self *Interpreter) importItem(node ast.AnalyzedImport) *value.Interrupt {
 
 func (self *Interpreter) functionDefinition(node ast.AnalyzedFunctionDefinition) {
 	extractions := make([]value.SingletonExtraction, 0)
-	for _, param := range node.Parameters {
+	for _, param := range node.Parameters.List {
 		if !param.IsSingletonExtractor {
 			break
 		}

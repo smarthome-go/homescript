@@ -115,9 +115,22 @@ func (self AnalyzedImportValue) String() string { return self.Ident.Ident() }
 // Function definition
 //
 
+type AnalyzedFunctionParams struct {
+	List []AnalyzedFnParam
+	Span errors.Span
+}
+
+func (self AnalyzedFunctionParams) Type() FunctionTypeParamKind {
+	params := make([]FunctionTypeParam, 0)
+	for _, param := range self.List {
+		params = append(params, NewFunctionTypeParam(param.Ident, param.Type, &param.SingletonIdent))
+	}
+	return NewNormalFunctionTypeParamKind(params)
+}
+
 type AnalyzedFunctionDefinition struct {
 	Ident      ast.SpannedIdent
-	Parameters []AnalyzedFnParam
+	Parameters AnalyzedFunctionParams
 	ReturnType Type
 	Body       AnalyzedBlock
 	Modifier   ast.FunctionModifier
@@ -127,7 +140,7 @@ type AnalyzedFunctionDefinition struct {
 func (self AnalyzedFunctionDefinition) Span() errors.Span { return self.Range }
 func (self AnalyzedFunctionDefinition) String() string {
 	params := make([]string, 0)
-	for _, param := range self.Parameters {
+	for _, param := range self.Parameters.List {
 		params = append(params, param.String())
 	}
 
@@ -145,7 +158,9 @@ func (self AnalyzedFunctionDefinition) String() string {
 
 	return fmt.Sprintf("%sfn %s(%s) -> %s %s", modifier, self.Ident, strings.Join(params, ", "), self.ReturnType, self.Body)
 }
-func (self AnalyzedFunctionDefinition) Type() Type { return NewNullType(self.Range) }
+func (self AnalyzedFunctionDefinition) Type() Type {
+	return NewFunctionType(self.Parameters.Type(), self.Parameters.Span, self.ReturnType, self.Range)
+}
 
 type AnalyzedFnParam struct {
 	Ident                ast.SpannedIdent

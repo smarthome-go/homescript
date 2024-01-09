@@ -192,6 +192,24 @@ func (self *Module) addType(ident string, typ typeWrapper) (previous *typeWrappe
 }
 
 //
+// Utility methods for templates
+//
+
+func (self *Module) addTemplate(ident string, template ast.TemplateSpec) (previous ast.TemplateSpec, prevFound bool) {
+	prev, exists := self.Templates[ident]
+	if exists {
+		return prev, true
+	}
+	self.Templates[ident] = template
+	return ast.TemplateSpec{}, false
+}
+
+func (self *Module) getTemplate(ident string) (ast.TemplateSpec, bool) {
+	templ, found := self.Templates[ident]
+	return templ, found
+}
+
+//
 // Utility methods for scoping
 //
 

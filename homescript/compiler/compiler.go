@@ -399,7 +399,7 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 	mpIdx := self.insert(newOneIntInstruction(Opcode_AddMempointer, 0), node.Range)
 
 	// Parameters are pushed in reverse-order, so they can be popped them in the correct order.
-	for _, param := range node.Parameters {
+	for _, param := range node.Parameters.List {
 		name := self.mangleVar(param.Ident.Ident())
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
 	}
@@ -802,8 +802,11 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		oldCurrFn := self.currFn
 
 		self.compileFn(ast.AnalyzedFunctionDefinition{
-			Ident:      pAst.NewSpannedIdent(fnName, node.Range),
-			Parameters: node.Parameters,
+			Ident: pAst.NewSpannedIdent(fnName, node.Range),
+			Parameters: ast.AnalyzedFunctionParams{
+				List: node.Parameters,
+				Span: node.ParamSpan,
+			},
 			ReturnType: node.ReturnType,
 			Body:       node.Body,
 			Modifier:   pAst.FN_MODIFIER_NONE,

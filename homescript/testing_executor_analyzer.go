@@ -188,20 +188,21 @@ func (self TestingAnalyzerHost) GetBuiltinImport(
 			return analyzer.BuiltinImport{
 				Type: nil,
 				Template: &ast.TemplateSpec{
-					RequiredMethods: []ast.FunctionType{{
-						Params: ast.NewNormalFunctionTypeParamKind(
-							[]ast.FunctionTypeParam{
-								ast.NewFunctionTypeParam(
-									pAst.NewSpannedIdent("value", span),
-									ast.NewIntType(span),
-									nil,
-								),
-							},
-						),
-						ParamsSpan: span,
-						ReturnType: ast.NewNullType(span),
-						Range:      span,
-					},
+					RequiredMethods: map[string]ast.FunctionType{
+						"bar": {
+							Params: ast.NewNormalFunctionTypeParamKind(
+								[]ast.FunctionTypeParam{
+									ast.NewFunctionTypeParam(
+										pAst.NewSpannedIdent("value", span),
+										ast.NewIntType(span),
+										nil,
+									),
+								},
+							),
+							ParamsSpan: span,
+							ReturnType: ast.NewIntType(span),
+							Range:      span,
+						},
 					},
 				},
 			}, true, true

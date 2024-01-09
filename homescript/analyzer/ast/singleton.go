@@ -1,5 +1,7 @@
 package ast
 
+import "github.com/smarthome-go/homescript/v3/homescript/errors"
+
 type AnalyzedSingleton struct {
 	Type                Type
 	ImplementsTemplates []TemplateSpec
@@ -19,5 +21,6 @@ func NewSingleton(typ Type, implementsTemplates []TemplateSpec, methods []Analyz
 // A template is comparable to a trait in Rust.
 // It describes which methods (and their signatures) need to be implemented on a singleton.
 type TemplateSpec struct {
-	RequiredMethods []FunctionType
+	RequiredMethods map[string]FunctionType
+	Span            errors.Span
 }

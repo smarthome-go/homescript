@@ -22,7 +22,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 	toImport := make([]ast.ImportStatementCandidate, 0)
 
 	switch self.CurrentToken.Kind {
-	case Type, Identifier, Underscore:
+	case Type, Templ, Identifier, Underscore:
 		startLoc := self.CurrentToken.Span.Start
 		importKind := ast.IMPORT_KIND_NORMAL
 
@@ -83,7 +83,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 			}
 		}
 
-		if err := self.expectMultiple(Identifier, Underscore); err != nil {
+		if err := self.expectMultiple(Type, Templ, Identifier, Underscore); err != nil {
 			return ast.ImportStatement{}, err
 		}
 
@@ -379,7 +379,7 @@ func (self *Parser) implBlockBody() ([]ast.FunctionDefinition, *errors.Error) {
 		if self.CurrentToken.Kind == Pub {
 			self.Errors = append(self.Errors, *errors.NewSyntaxError(
 				self.CurrentToken.Span,
-				fmt.Sprintf("Illegal token `%s` in impl block (public functions not allowed)", self, self.CurrentToken),
+				fmt.Sprintf("Illegal token `%s` in impl block (public functions not allowed)", self.CurrentToken.Value),
 			))
 			if err := self.next(); err != nil {
 				return nil, err

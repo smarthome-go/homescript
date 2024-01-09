@@ -125,8 +125,11 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 	self.currentModule.CurrentFunction = nil
 
 	return ast.AnalyzedFunctionDefinition{
-		Ident:      node.Ident,
-		Parameters: newParams,
+		Ident: node.Ident,
+		Parameters: ast.AnalyzedFunctionParams{
+			List: newParams,
+			Span: node.ParamSpan,
+		},
 		ReturnType: fnReturnType,
 		Body:       analyzedBlock,
 		Modifier:   node.Modifier,
@@ -430,7 +433,7 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 	}
 
 	for _, item := range node.ToImport {
-		typ, moduleFound, valueFound := self.host.GetBuiltinImport(node.FromModule.Ident(), item.Ident, item.Span, item.Kind)
+		imported, moduleFound, valueFound := self.host.GetBuiltinImport(node.FromModule.Ident(), item.Ident, item.Span, item.Kind)
 		if !moduleFound {
 			self.error(
 				fmt.Sprintf("Module '%s' not found", node.FromModule),
@@ -452,25 +455,29 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 				self.error(fmt.Sprintf("Name '%s' already exists in current scope", item.Ident), nil, item.Span)
 			}
 		} else {
-			// Type imports need special action: only add the type and filter out this import
-			if item.Kind == pAst.IMPORT_KIND_TYPE {
-				if prev := self.currentModule.addType(item.Ident, newTypeWrapper(typ.Type.SetSpan(item.Span), false, item.Span, false)); prev != nil {
+			// Type and templ imports need special action: only add the type and filter out this import
+			switch item.Kind {
+			case pAst.IMPORT_KIND_TYPE:
+				if prev := self.currentModule.addType(item.Ident, newTypeWrapper(imported.Type.SetSpan(item.Span), false, item.Span, false)); prev != nil {
 					self.error(fmt.Sprintf("Type '%s' already exists in current scope", item.Ident), nil, item.Span)
 				}
 				continue
-			}
+			case pAst.IMPORT_KIND_TEMPLATE:
+				// TODO: where to get the template spec?
+				prev, prevFound := self.currentModule.addTemplate(item.Ident, *imported.Template)
+				if prevFound {
+					self.error(fmt.Sprintf("Template '%s' already exists in current module", item.Ident), nil, item.Span)
+					self.hint(fmt.Sprintf("Template `%s` previously imported here", item.Ident), make([]string, 0), prev.Span)
+				}
 
-			// Template imports also need special attention: only add the template and filter out the import
-			if item.Kind == pAst.IMPORT_KIND_TEMPLATE {
-				// TODO: handle template import
-				panic("TODO: handle template import")
+				continue
 			}
 
 			toImport = append(toImport, ast.AnalyzedImportValue{
 				Ident: pAst.NewSpannedIdent(item.Ident, item.Span),
-				Type:  typ.Type.SetSpan(item.Span),
+				Type:  imported.Type.SetSpan(item.Span),
 			})
-			if prev := self.currentModule.addVar(item.Ident, NewVar(typ.Type.SetSpan(item.Span), item.Span, ImportedVariableOriginKind, false), false); prev != nil {
+			if prev := self.currentModule.addVar(item.Ident, NewVar(imported.Type.SetSpan(item.Span), item.Span, ImportedVariableOriginKind, false), false); prev != nil {
 				self.error(fmt.Sprintf("Name '%s' already exists in current scope", item.Ident), nil, item.Span)
 			}
 		}
@@ -517,7 +524,7 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 	// If this impl uses a template, analyze that it is valid
 	if node.TemplateIdent != nil {
 		// Check if the template exists and retrieve it
-		tmpl, templateFound := self.currentModule.Templates[node.TemplateIdent.Ident()]
+		tmpl, templateFound := self.currentModule.getTemplate(node.TemplateIdent.Ident())
 
 		if !templateFound {
 			self.error(
@@ -528,7 +535,14 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 		} else {
 			// TODO: do template analysis
 			fmt.Printf("Would analyze template now: %v\n", tmpl)
-			self.validateTemplateConstraints(singletonType, tmpl, methods)
+			self.validateTemplateConstraints(
+				singletonType,
+				node.SingletonIdent,
+				tmpl,
+				*node.TemplateIdent,
+				methods,
+				node.Span,
+			)
 		}
 	}
 
@@ -541,7 +555,95 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 	}
 }
 
-func (self *Analyzer) validateTemplateConstraints(singletonType ast.Type, template ast.TemplateSpec, methods []ast.AnalyzedFunctionDefinition) {
-	// TODO: implement this
-	panic("not implemented")
+// This method must validate the following constraints:
+// - Validate that all required methods (and no more) exist with the correct signatures
+// - Ignore any singleton extractions, just make sure that the singleton on which the template is implemented is also extracted
+func (self *Analyzer) validateTemplateConstraints(
+	singletonType ast.Type,
+	singletonIdent pAst.SpannedIdent,
+	template ast.TemplateSpec,
+	templateIdent pAst.SpannedIdent,
+	methods []ast.AnalyzedFunctionDefinition,
+	span errors.Span,
+) {
+	// Validate that all required methods exist with their correct signatures
+	for reqName, reqSignature := range template.RequiredMethods {
+		isImplemented := false
+
+		for _, method := range methods {
+			if method.Ident.Ident() == reqName {
+				isImplemented = true
+
+				fmt.Printf("got: %v | expected: %v\n", method.Type(), reqSignature)
+
+				// TODO: validate correct implementation
+				if err := self.TypeCheck(method.Type(), reqSignature.SetSpan(span), true); err != nil {
+					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+					if err.ExpectedDiagnostic != nil {
+						self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+					}
+				} else {
+					// Validate that this method also extracts the singleton.
+					// If not, it is not really useful
+					extractsSingleton := false
+
+					for _, param := range method.Parameters.List {
+						if param.IsSingletonExtractor && param.SingletonIdent == singletonIdent.Ident() {
+							extractsSingleton = true
+							break
+						}
+					}
+
+					if !extractsSingleton {
+						self.error(
+							fmt.Sprintf("Method does not extract singleton `%s`", singletonIdent.Ident()),
+							[]string{
+								fmt.Sprintf("Since the method is implemented for `%s`, it should also extract it", singletonIdent.Ident()),
+								fmt.Sprintf("Singletons can be extracted like this: fn %s(ident: %s, ...)", method.Ident.Ident(), singletonIdent.Ident()),
+							},
+							method.Range,
+						)
+					}
+				}
+
+				break
+			}
+		}
+
+		if !isImplemented {
+			returnType := ""
+			if reqSignature.ReturnType.Kind() != ast.NullTypeKind {
+				returnType = fmt.Sprintf(" -> %s", reqSignature.ReturnType.String())
+			}
+
+			self.error(
+				fmt.Sprintf("Not all methods implemented: implementation `%s` is is missing", reqName),
+				[]string{
+					"Template is not satisfied",
+					fmt.Sprintf("It can be implemented like this: `fn %s(%s)%s { ... }", reqName, reqSignature.Params.String(), returnType),
+				},
+				span,
+			)
+		}
+	}
+
+	// Validate that there are no excess methods
+	for _, method := range methods {
+		isRequired := false
+
+		for reqName := range template.RequiredMethods {
+			if reqName == method.Ident.Ident() {
+				isRequired = true
+				break
+			}
+		}
+
+		if !isRequired {
+			self.error(
+				fmt.Sprintf("Additional method `%s` implemented: this method is not part of the template `%s`", method.Ident, templateIdent.Ident()),
+				[]string{"Remove this function definition"},
+				method.Range,
+			)
+		}
+	}
 }
