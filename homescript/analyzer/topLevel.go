@@ -541,15 +541,15 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 	}
 
 	// If this impl uses a template, analyze that it is valid
-	if node.TemplateIdent != nil {
+	if node.UsingTemplate != nil {
 		// Check if the template exists and retrieve it
-		tmpl, templateFound := self.currentModule.getTemplate(node.TemplateIdent.Ident())
+		tmpl, templateFound := self.currentModule.getTemplate(node.UsingTemplate.Template.Ident())
 
 		if !templateFound {
 			self.error(
-				fmt.Sprintf("Template `%s` not found", node.TemplateIdent.Ident()),
-				[]string{fmt.Sprintf("Templates can be imported like this: `import templ %s;`", node.TemplateIdent.Ident())},
-				node.TemplateIdent.Span(),
+				fmt.Sprintf("Template `%s` not found", node.UsingTemplate.Template.Ident()),
+				[]string{fmt.Sprintf("Templates can be imported like this: `import templ %s;`", node.UsingTemplate.Template.Ident())},
+				node.UsingTemplate.Template.Span(),
 			)
 		} else {
 			// TODO: do template analysis
@@ -558,7 +558,7 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 				singletonType,
 				node.SingletonIdent,
 				tmpl,
-				*node.TemplateIdent,
+				*node.UsingTemplate,
 				methods,
 				node.Span,
 			)
@@ -568,7 +568,7 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 	return ast.AnalyzedImplBlock{
 		SingletonIdent: node.SingletonIdent,
 		SingletonType:  singletonType,
-		TemplateIdent:  node.TemplateIdent,
+		UsingTemplate:  node.UsingTemplate,
 		Methods:        methods,
 		Span:           node.Span,
 	}
@@ -580,20 +580,20 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 func (self *Analyzer) validateTemplateConstraints(
 	singletonType ast.Type,
 	singletonIdent pAst.SpannedIdent,
-	template ast.TemplateSpec,
-	templateIdent pAst.SpannedIdent,
+	templateSpec ast.TemplateSpec,
+	implementedTemplateWithCapabilities pAst.ImplBlockTemplate,
 	methods []ast.AnalyzedFunctionDefinition,
 	span errors.Span,
 ) {
+	// BUG: also account for capabilities + add a capability system
+
 	// Validate that all required methods exist with their correct signatures
-	for reqName, reqSignature := range template.RequiredMethods {
+	for reqName, reqSignature := range templateSpec.RequiredMethods {
 		isImplemented := false
 
 		for _, method := range methods {
 			if method.Ident.Ident() == reqName {
 				isImplemented = true
-
-				fmt.Printf("got: %v | expected: %v\n", method.Type(), reqSignature)
 
 				// TODO: validate correct implementation
 				if err := self.TypeCheck(method.Type(), reqSignature.SetSpan(span), true); err != nil {
@@ -650,7 +650,7 @@ func (self *Analyzer) validateTemplateConstraints(
 	for _, method := range methods {
 		isRequired := false
 
-		for reqName := range template.RequiredMethods {
+		for reqName := range templateSpec.RequiredMethods {
 			if reqName == method.Ident.Ident() {
 				isRequired = true
 				break
@@ -659,7 +659,7 @@ func (self *Analyzer) validateTemplateConstraints(
 
 		if !isRequired {
 			self.error(
-				fmt.Sprintf("Additional method `%s` implemented: this method is not part of the template `%s`", method.Ident, templateIdent.Ident()),
+				fmt.Sprintf("Additional method `%s` implemented: this method is not part of the template `%s`", method.Ident, implementedTemplateWithCapabilities.Template.Ident()),
 				[]string{"Remove this function definition"},
 				method.Range,
 			)

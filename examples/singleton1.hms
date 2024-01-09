@@ -1,27 +1,35 @@
+import templ FooFeature from templates;
+
 @Singleton
 type Foo = {
     foo: int,
 };
 
-// ERROR: no template `Template` defined
+@Singleton2
+type Bar = {
+    bar: str,
+};
 
 // TODO: templates are currently not validated AT ALL
 
-// ERROR: no such template in current module???
-impl Template for @Singleton {
-    fn New(s: @Singleton) {
-        s.foo = 42;
+impl FooFeature with { ext1, ext2 } for @Singleton {
+    //fn New(s: @Singleton) {
+    //    s.foo = 42;
+    //}
+
+    fn bar(self: @Singleton, bar: @Singleton2, value: int) -> int {
+        42
     }
 }
 
-impl @Singleton {
     // TODO: there are currently no limitations regarding *what* belongs in an impl block.
-    fn do_something(s: @Singleton) {
-        println(s);
-    }
-}
+//impl @Singleton {
+    //fn do_something(s: @Singleton) {
+        //println(s);
+    //}
+//}
 
 fn main() {
     // Automatically captures the singleton as there is only one instance.
-    do_something();
+    //do_something();
 }

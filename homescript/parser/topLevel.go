@@ -326,7 +326,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 
 		return ast.ImplBlock{
 			SingletonIdent: singleton,
-			TemplateIdent:  nil,
+			UsingTemplate:  nil,
 			Methods:        methods,
 			Span:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
 		}, nil
@@ -336,6 +336,76 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 	templateIdent := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
 	if err := self.expect(Identifier); err != nil {
 		return ast.ImplBlock{}, err
+	}
+
+	usingTemplate := ast.ImplBlockTemplate{
+		Template: templateIdent,
+		Capabilities: ast.ImplBlockCapabilities{
+			Defined: false,
+			List:    make([]ast.SpannedIdent, 0),
+			Span:    errors.Span{},
+		},
+	}
+
+	capabilitiesStartLoc := self.CurrentToken.Span.Start
+
+	// If there is the `with` token, there are optional capabilities for this implementation
+	if self.CurrentToken.Kind == With {
+		if err := self.next(); err != nil {
+			return ast.ImplBlock{}, err
+		}
+
+		// Save start location
+		capabilitiesStartLoc = self.CurrentToken.Span.Start
+		usingTemplate.Capabilities.Defined = true
+
+		if err := self.expect(LCurly); err != nil {
+			return ast.ImplBlock{}, err
+		}
+
+		// Make initial capability
+		usingTemplate.Capabilities.List = append(usingTemplate.Capabilities.List, ast.NewSpannedIdent(
+			self.CurrentToken.Value,
+			self.CurrentToken.Span,
+		))
+
+		if err := self.expect(Identifier); err != nil {
+			return ast.ImplBlock{}, err
+		}
+
+		// As long as there is an `,` make additional capabilities
+		for self.CurrentToken.Kind == Comma {
+			// Skip the `,`
+			if err := self.next(); err != nil {
+				return ast.ImplBlock{}, err
+			}
+
+			// If there is a `}`, this was a trailing comma
+			if self.CurrentToken.Kind == RCurly {
+				if err := self.next(); err != nil {
+					return ast.ImplBlock{}, err
+				}
+
+				break
+			}
+
+			// Make current capability
+			usingTemplate.Capabilities.List = append(usingTemplate.Capabilities.List, ast.NewSpannedIdent(
+				self.CurrentToken.Value,
+				self.CurrentToken.Span,
+			))
+
+			if err := self.expect(Identifier); err != nil {
+				return ast.ImplBlock{}, err
+			}
+		}
+
+		// Expect a closing `}`
+		if err := self.expectRecoverable(RCurly); err != nil {
+			return ast.ImplBlock{}, err
+		}
+
+		usingTemplate.Capabilities.Span = capabilitiesStartLoc.Until(self.PreviousToken.Span.End, self.Filename)
 	}
 
 	// Expect a `for`
@@ -361,7 +431,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 
 	return ast.ImplBlock{
 		SingletonIdent: singleton,
-		TemplateIdent:  &templateIdent,
+		UsingTemplate:  &usingTemplate,
 		Methods:        methods,
 		Span:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
 	}, nil

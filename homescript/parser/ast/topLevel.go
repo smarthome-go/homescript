@@ -21,12 +21,25 @@ func (self SingletonTypeDefinition) String() string {
 	return fmt.Sprintf("%s\n%s", self.Ident, self.TypeDef)
 }
 
+// Impl block capabilities
+type ImplBlockCapabilities struct {
+	// Capabilities are optional: if this is `false`, there was no `with` token.
+	Defined bool
+	List    []SpannedIdent
+	Span    errors.Span
+}
+
+// Impl block template
+type ImplBlockTemplate struct {
+	Template     SpannedIdent
+	Capabilities ImplBlockCapabilities
+}
+
 // Impl block
 type ImplBlock struct {
 	SingletonIdent SpannedIdent
 	// Template is optional
-	TemplateIdent *SpannedIdent
+	UsingTemplate *ImplBlockTemplate
 	Methods       []FunctionDefinition
-
-	Span errors.Span
+	Span          errors.Span
 }

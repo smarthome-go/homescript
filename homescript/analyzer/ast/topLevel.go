@@ -34,8 +34,8 @@ func (self AnalyzedSingletonTypeDefinition) Type() Type { return NewNullType(sel
 type AnalyzedImplBlock struct {
 	SingletonIdent ast.SpannedIdent
 	SingletonType  Type
-	// Template is optional
-	TemplateIdent *ast.SpannedIdent
+	// Template implementation is optional
+	UsingTemplate *ast.ImplBlockTemplate
 	Methods       []AnalyzedFunctionDefinition
 	Span          errors.Span
 }
