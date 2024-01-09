@@ -718,26 +718,7 @@ type FunctionType struct {
 
 func (self FunctionType) Kind() TypeKind { return FnTypeKind }
 func (self FunctionType) String() string {
-	paramStr := ""
-	switch self.Params.Kind() {
-	case NormalFunctionTypeParamKindIdentifierKind:
-		paramKind := self.Params.(NormalFunctionTypeParamKindIdentifier)
-
-		params := make([]string, 0)
-		for _, param := range paramKind.Params {
-			params = append(params, param.String())
-		}
-		paramStr = strings.Join(params, ", ")
-	case VarArgsFunctionTypeParamKindIdentifierKind:
-		paramKind := self.Params.(VarArgsFunctionTypeParamKindIdentifier)
-		initial := make([]string, 0)
-		for _, typ := range paramKind.ParamTypes {
-			initial = append(initial, typ.String())
-		}
-		paramStr = fmt.Sprintf("%s...%s", strings.Join(initial, ", "), paramKind.RemainingType)
-	default:
-		panic("A new function param type kind was added without updating this code")
-	}
+	paramStr := self.Params.String()
 	return fmt.Sprintf("fn(%s) -> %s", paramStr, self.ReturnType)
 }
 func (self FunctionType) Span() errors.Span { return self.Range }
@@ -782,6 +763,7 @@ func (self FunctionTypeParamKindIdentifier) String() string {
 
 type FunctionTypeParamKind interface {
 	Kind() FunctionTypeParamKindIdentifier
+	String() string
 }
 
 type NormalFunctionTypeParamKindIdentifier struct {
@@ -790,6 +772,16 @@ type NormalFunctionTypeParamKindIdentifier struct {
 
 func (self NormalFunctionTypeParamKindIdentifier) Kind() FunctionTypeParamKindIdentifier {
 	return NormalFunctionTypeParamKindIdentifierKind
+}
+func (self NormalFunctionTypeParamKindIdentifier) String() string {
+	paramStr := ""
+
+	params := make([]string, 0)
+	for _, param := range self.Params {
+		params = append(params, param.String())
+	}
+	paramStr = strings.Join(params, ", ")
+	return paramStr
 }
 func NewNormalFunctionTypeParamKind(params []FunctionTypeParam) FunctionTypeParamKind {
 	return FunctionTypeParamKind(NormalFunctionTypeParamKindIdentifier{Params: params})
@@ -803,6 +795,15 @@ type VarArgsFunctionTypeParamKindIdentifier struct {
 func (self VarArgsFunctionTypeParamKindIdentifier) Kind() FunctionTypeParamKindIdentifier {
 	return VarArgsFunctionTypeParamKindIdentifierKind
 }
+func (self VarArgsFunctionTypeParamKindIdentifier) String() string {
+	paramStr := ""
+	initial := make([]string, 0)
+	for _, typ := range self.ParamTypes {
+		initial = append(initial, typ.String())
+	}
+	paramStr = fmt.Sprintf("%s...%s", strings.Join(initial, ", "), self.RemainingType)
+	return paramStr
+}
 func NewVarArgsFunctionTypeParamKind(paramTypes []Type, remainingType Type) FunctionTypeParamKind {
 	return FunctionTypeParamKind(VarArgsFunctionTypeParamKindIdentifier{ParamTypes: paramTypes, RemainingType: remainingType})
 }
@@ -814,7 +815,7 @@ type FunctionTypeParam struct {
 	SingletonIdent       string
 }
 
-func (self FunctionTypeParam) String() string { return fmt.Sprintf("%s:%s", self.Name, self.Type) }
+func (self FunctionTypeParam) String() string { return fmt.Sprintf("%s: %s", self.Name, self.Type) }
 func NewFunctionTypeParam(name ast.SpannedIdent, typ Type, singletonIdent *string) FunctionTypeParam {
 	singletonIdentNormal := ""
 	hasSingletonExtractor := false
