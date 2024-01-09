@@ -16,12 +16,31 @@ import (
 
 func (self *Analyzer) functionSignature(node pAst.FunctionDefinition) {
 	newParams := make([]ast.AnalyzedFnParam, 0)
+
+	// This set is used to prevent singletons from being extracted multiple times
+	extractedSet := make(map[string]struct{})
+
 	for _, param := range node.Parameters {
 		singletonIdent := ""
 		isSingletonExtractor := false
 		if param.Type.Kind() == pAst.SingletonReferenceParserTypeKind {
 			isSingletonExtractor = true
 			singletonIdent = param.Type.(pAst.SingletonReferenceType).Ident.Ident()
+
+			_, alreadyExtracted := extractedSet[singletonIdent]
+			if alreadyExtracted {
+				self.error(
+					fmt.Sprintf("Singleton `%s` is already being extracted", singletonIdent),
+					[]string{
+						"Singletons can only be extracted once at the start of the parameter list",
+						fmt.Sprintf("Remove this parameter `%s`", param.String()),
+					},
+					param.Span,
+				)
+				continue
+			}
+
+			extractedSet[singletonIdent] = struct{}{}
 		}
 
 		newParams = append(newParams, ast.AnalyzedFnParam{
