@@ -87,7 +87,7 @@ func (self *Analyzer) singletonDeclStatement(node pAst.SingletonTypeDefinition) 
 	singleton, found := self.currentModule.Singletons[node.Ident.Ident()]
 	if found {
 		self.error(
-			fmt.Sprintf("Singleton type '%s' is already declared as '%s' in this module", node.Ident.Ident(), singleton),
+			fmt.Sprintf("Singleton type '%s' is already declared as '%s' in this module", node.Ident.Ident(), singleton.Type),
 			[]string{"Consider altering this type's name"},
 			node.TypeDef.LhsIdent.Span(),
 		)

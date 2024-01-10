@@ -195,7 +195,9 @@ func (self *Generator) Pass(
 
 			hashset[sum] = struct{}{}
 
-			self.onOutput(newTree, newTreeStr, sum)
+			if err := self.onOutput(newTree, newTreeStr, sum); err != nil {
+				panic(err.Error())
+			}
 		}
 	}
 }

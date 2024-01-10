@@ -585,10 +585,19 @@ func (self *Analyzer) validateTemplateConstraints(
 	methods []ast.AnalyzedFunctionDefinition,
 	span errors.Span,
 ) {
-	// BUG: also account for capabilities + add a capability system
+	requiredMethods, err := self.WithCapabilities(
+		implementedTemplateWithCapabilities.Template.Ident(),
+		templateSpec,
+		implementedTemplateWithCapabilities.Capabilities,
+	)
+
+	// If there are serious errors with the capability config, skip checking other details
+	if err {
+		return
+	}
 
 	// Validate that all required methods exist with their correct signatures
-	for reqName, reqSignature := range templateSpec.RequiredMethods {
+	for reqName, reqSignature := range requiredMethods {
 		isImplemented := false
 
 		for _, method := range methods {
@@ -636,7 +645,7 @@ func (self *Analyzer) validateTemplateConstraints(
 			}
 
 			self.error(
-				fmt.Sprintf("Not all methods implemented: implementation `%s` is is missing", reqName),
+				fmt.Sprintf("Not all methods implemented: implementation of method `%s` is is missing", reqName),
 				[]string{
 					"Template is not satisfied",
 					fmt.Sprintf("It can be implemented like this: `fn %s(%s)%s { ... }", reqName, reqSignature.Params.String(), returnType),
@@ -650,7 +659,7 @@ func (self *Analyzer) validateTemplateConstraints(
 	for _, method := range methods {
 		isRequired := false
 
-		for reqName := range templateSpec.RequiredMethods {
+		for reqName := range requiredMethods {
 			if reqName == method.Ident.Ident() {
 				isRequired = true
 				break

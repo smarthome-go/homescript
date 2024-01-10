@@ -12,13 +12,17 @@ type Bar = {
 
 // TODO: templates are currently not validated AT ALL
 
-impl FooFeature with { ext1, ext2 } for @Singleton {
+impl FooFeature with { light } for @Singleton {
     //fn New(s: @Singleton) {
     //    s.foo = 42;
     //}
 
-    fn bar(self: @Singleton, bar: @Singleton2, value: int) -> int {
-        42
+    //fn bar(self: @Singleton, bar: @Singleton2, value: int) -> int {
+        //42
+    //}
+
+    fn dim(_: @Singleton, percent: int) -> bool {
+        false
     }
 }
 

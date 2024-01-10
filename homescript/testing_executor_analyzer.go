@@ -188,22 +188,56 @@ func (self TestingAnalyzerHost) GetBuiltinImport(
 			return analyzer.BuiltinImport{
 				Type: nil,
 				Template: &ast.TemplateSpec{
-					RequiredMethods: map[string]ast.FunctionType{
-						"bar": {
-							Params: ast.NewNormalFunctionTypeParamKind(
-								[]ast.FunctionTypeParam{
-									ast.NewFunctionTypeParam(
-										pAst.NewSpannedIdent("value", span),
-										ast.NewIntType(span),
-										nil,
-									),
+					BaseMethods: map[string]ast.FunctionType{
+						"dim": {
+							Params: ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+								{
+									Name:                 pAst.NewSpannedIdent("percent", span),
+									Type:                 ast.NewIntType(span),
+									IsSingletonExtractor: false,
+									SingletonIdent:       "",
 								},
-							),
+							}),
 							ParamsSpan: span,
-							ReturnType: ast.NewIntType(span),
+							ReturnType: ast.NewBoolType(span),
+							Range:      span,
+						},
+						"set_temp": {
+							Params: ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+								{
+									Name:                 pAst.NewSpannedIdent("celsius", span),
+									Type:                 ast.NewFloatType(span),
+									IsSingletonExtractor: false,
+									SingletonIdent:       "",
+								},
+							}),
+							ParamsSpan: span,
+							ReturnType: ast.NewNullType(span),
 							Range:      span,
 						},
 					},
+					Capabilities: map[string]ast.TemplateCapability{
+						"light": {
+							RequiresMethods: []string{"dim"},
+							ConflictsWithCapabilities: []ast.TemplateConflict{
+								{
+									ConflictingCapability: "temperature",
+									ConflictReason:        "",
+								},
+							},
+						},
+						"temperature": {
+							RequiresMethods: []string{"set_temp"},
+							ConflictsWithCapabilities: []ast.TemplateConflict{
+								{
+									ConflictingCapability: "light",
+									ConflictReason:        "",
+								},
+							},
+						},
+					},
+					DefaultCapabilities: []string{},
+					Span:                span,
 				},
 			}, true, true
 		default:

@@ -1,6 +1,11 @@
 package ast
 
-import "github.com/smarthome-go/homescript/v3/homescript/errors"
+import (
+	"fmt"
+
+	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
+	"github.com/smarthome-go/homescript/v3/homescript/errors"
+)
 
 type AnalyzedSingleton struct {
 	Type                Type
@@ -20,7 +25,65 @@ func NewSingleton(typ Type, implementsTemplates []TemplateSpec, methods []Analyz
 
 // A template is comparable to a trait in Rust.
 // It describes which methods (and their signatures) need to be implemented on a singleton.
+type TemplateCapability struct {
+	RequiresMethods           []string
+	ConflictsWithCapabilities []TemplateConflict
+}
+
+type TemplateConflict struct {
+	ConflictingCapability string
+	ConflictReason        string
+}
+
+type TemplateCapabilityWithSpan struct {
+	Capability TemplateCapability
+	Span       errors.Span
+}
+
 type TemplateSpec struct {
-	RequiredMethods map[string]FunctionType
-	Span            errors.Span
+	// These methods are not always required.
+	// Depending on the capabilities, some of them will be required.
+	BaseMethods  map[string]FunctionType
+	Capabilities map[string]TemplateCapability
+	// These capabilities are automaticallty added if the user does not add any explicitly
+	DefaultCapabilities []string
+	Span                errors.Span
+}
+
+func DetermineCapabilityConflicts(
+	capabilityName string,
+	capability TemplateCapability,
+	selectedCapabilities map[string]TemplateCapabilityWithSpan,
+	span errors.Span,
+) (containsErr bool, conflictFound string, err diagnostic.Diagnostic) {
+	// BUG: this method currently does not work
+
+	for _, conflict := range capability.ConflictsWithCapabilities {
+		_, containsConflict := selectedCapabilities[conflict.ConflictingCapability]
+
+		remainingText := ""
+		remainingConflicts := len(capability.ConflictsWithCapabilities) - 1
+		if remainingConflicts > 0 {
+			remainingText = fmt.Sprintf(" and %d others", remainingConflicts)
+		}
+
+		if containsConflict {
+			notes := []string{
+				fmt.Sprintf("The capability `%s` cannot be implemented alongside `%s`%s", capabilityName, conflict.ConflictingCapability, remainingText),
+			}
+
+			if conflict.ConflictReason != "" {
+				notes = append(notes, conflict.ConflictReason)
+			}
+
+			return true, conflict.ConflictingCapability, diagnostic.Diagnostic{
+				Level:   diagnostic.DiagnosticLevelError,
+				Message: fmt.Sprintf("Template capability `%s` conflicts with other capability `%s`", capabilityName, conflict.ConflictingCapability),
+				Notes:   notes,
+				Span:    span,
+			}
+		}
+	}
+
+	return false, "", diagnostic.Diagnostic{}
 }
