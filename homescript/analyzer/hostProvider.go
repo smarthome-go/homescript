@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
@@ -29,4 +30,8 @@ type HostProvider interface {
 		kind pAst.IMPORT_KIND,
 	) (result BuiltinImport, moduleFound bool, valueFound bool)
 	ResolveCodeModule(moduleName string) (code string, moduleFound bool, err error)
+	// This method is invoked if the analyzer analyzes a module without errors
+	// Then, this logical next stage is triggered to analyze the meta-semantics of the program.
+	// This refers to any meaning of the program that is Homescript-agnostic and specific to that program.
+	PostValidationHook(analyzedModules map[string]ast.AnalyzedProgram, mainModule string) []diagnostic.Diagnostic
 }

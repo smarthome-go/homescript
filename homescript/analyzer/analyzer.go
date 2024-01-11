@@ -273,5 +273,22 @@ func (self *Analyzer) Analyze(
 	syntaxErrors []errors.Error,
 ) {
 	self.analyzeModule(parsedEntryModule.Filename, parsedEntryModule)
+
+	// If there are no serious errors found, call the post-validation hook
+	containsErrs := false
+	for _, d := range diagnostics {
+		if d.Level == diagnostic.DiagnosticLevelError {
+			containsErrs = true
+		}
+	}
+	if !containsErrs {
+		diagnostics := self.host.PostValidationHook(
+			self.analyzedModules,
+			parsedEntryModule.Filename,
+		)
+
+		self.diagnostics = append(self.diagnostics, diagnostics...)
+	}
+
 	return self.analyzedModules, self.diagnostics, self.syntaxErrors
 }

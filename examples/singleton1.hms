@@ -8,6 +8,13 @@ type Foo = {
 @Singleton2
 type Bar = {
     bar: str,
+    is_online: bool,
+};
+
+$Driver = {
+    bar: str,
+    is_online: bool,
+    @setting is_online: bool,
 };
 
 // TODO: templates are currently not validated AT ALL
@@ -21,8 +28,8 @@ impl FooFeature with { light } for @Singleton {
         //42
     //}
 
-    fn dim(_: @Singleton, percent: int) -> bool {
-        false
+    fn dim(self: @Singleton, percent: int) -> bool {
+        self
     }
 }
 
@@ -36,4 +43,6 @@ impl FooFeature with { light } for @Singleton {
 fn main() {
     // Automatically captures the singleton as there is only one instance.
     //do_something();
+
+    dim(42);
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	herrors "github.com/smarthome-go/homescript/v3/homescript/errors"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
@@ -117,6 +118,10 @@ func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 }
 
 type TestingAnalyzerHost struct{}
+
+func (self TestingAnalyzerHost) PostValidationHook(analyzedModules map[string]ast.AnalyzedProgram, mainModule string) []diagnostic.Diagnostic {
+	return nil
+}
 
 func (self TestingAnalyzerHost) ResolveCodeModule(moduleName string) (code string, moduleFound bool, err error) {
 	path := fmt.Sprintf("../tests/%s.hms", moduleName)
