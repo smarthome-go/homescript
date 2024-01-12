@@ -95,7 +95,7 @@ func (self *Analyzer) singletonDeclStatement(node pAst.SingletonTypeDefinition) 
 		// Add this item to the map of singletons
 		self.currentModule.Singletons[node.Ident.Ident()] = ast.NewSingleton(
 			analyzed.RhsType,
-			make([]ast.TemplateSpec, 0),
+			make([]pAst.ImplBlockTemplate, 0),
 			make([]ast.AnalyzedFunctionDefinition, 0),
 		)
 

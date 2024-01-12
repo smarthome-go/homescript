@@ -565,6 +565,11 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 		}
 	}
 
+	// Update the singleton so that the post-validation hook is aware of this impl
+	old := self.currentModule.Singletons[node.SingletonIdent.Ident()]
+	old.ImplementsTemplates = append(old.ImplementsTemplates, *node.UsingTemplate)
+	self.currentModule.Singletons[node.SingletonIdent.Ident()] = old
+
 	return ast.AnalyzedImplBlock{
 		SingletonIdent: node.SingletonIdent,
 		SingletonType:  singletonType,

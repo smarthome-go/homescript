@@ -5,17 +5,18 @@ import (
 
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
 type AnalyzedSingleton struct {
 	Type                Type
-	ImplementsTemplates []TemplateSpec
+	ImplementsTemplates []ast.ImplBlockTemplate
 	// Methods are unlike methods in languages like Rust or Java.
 	// Here, a method is just a function that is implemented in a template block.
 	Methods []AnalyzedFunctionDefinition
 }
 
-func NewSingleton(typ Type, implementsTemplates []TemplateSpec, methods []AnalyzedFunctionDefinition) AnalyzedSingleton {
+func NewSingleton(typ Type, implementsTemplates []ast.ImplBlockTemplate, methods []AnalyzedFunctionDefinition) AnalyzedSingleton {
 	return AnalyzedSingleton{
 		Type:                typ,
 		ImplementsTemplates: implementsTemplates,
