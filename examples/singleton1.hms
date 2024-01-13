@@ -11,13 +11,12 @@ type Bar = {
     is_online: bool,
 };
 
+// TODO: change singleton syntax
 $Driver = {
     bar: str,
     is_online: bool,
-    @setting is_online: bool,
+    @setting is_online: bool, // TODO: add field annotations to types
 };
-
-// TODO: templates are currently not validated AT ALL
 
 impl FooFeature with { light } for @Singleton {
     //fn New(s: @Singleton) {
@@ -39,6 +38,11 @@ impl FooFeature with { light } for @Singleton {
         //println(s);
     //}
 //}
+
+// TODO: remove this
+impl Bar {
+
+}
 
 fn main() {
     // Automatically captures the singleton as there is only one instance.
