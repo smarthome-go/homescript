@@ -12,7 +12,7 @@ type Module struct {
 	ImportsModules           []string
 	Functions                []*function
 	Scopes                   []scope
-	Singletons               map[string]ast.AnalyzedSingleton
+	Singletons               map[string]*ast.AnalyzedSingleton
 	Templates                map[string]ast.TemplateSpec
 	CurrentFunction          *function
 	LoopDepth                uint // continue and break are legal if > 0

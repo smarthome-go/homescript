@@ -262,24 +262,32 @@ func (self *Analyzer) analyzeParams(params []pAst.FnParam) []ast.AnalyzedFnParam
 func (self *Analyzer) importDummyFields(node pAst.ImportStatement) ast.AnalyzedImport {
 	dummyFields := make([]ast.AnalyzedImportValue, 0)
 	for _, toImport := range node.ToImport {
-		// type imports are filtered out completely (the have no relevance during runtime)
-		if toImport.Kind == pAst.IMPORT_KIND_TYPE {
+		// type and template imports are filtered out completely (the have no relevance during runtime)
+		switch toImport.Kind {
+		case pAst.IMPORT_KIND_TYPE:
 			if prev := self.currentModule.addType(toImport.Ident, newTypeWrapper(ast.NewUnknownType(), false, toImport.Span, true)); prev != nil {
 				self.error(fmt.Sprintf("Type '%s' already exists in current scope", toImport.Ident), nil, toImport.Span)
 			}
-			continue
-		}
+		case pAst.IMPORT_KIND_TEMPLATE:
+			templ := ast.TemplateSpec{
+				BaseMethods:         make(map[string]ast.TemplateMethod),
+				Capabilities:        make(map[string]ast.TemplateCapability),
+				DefaultCapabilities: make([]string, 0),
+				Span:                toImport.Span,
+			}
+			if prev, prevFound := self.currentModule.addTemplate(toImport.Ident, templ); prevFound {
+				self.error(fmt.Sprintf("Template '%s' already exists in current module", toImport.Ident), nil, toImport.Span)
+				self.hint(fmt.Sprintf("Template `%s` previously imported here", toImport.Ident), make([]string, 0), prev.Span)
+			}
+		case pAst.IMPORT_KIND_NORMAL:
+			dummyFields = append(dummyFields, ast.AnalyzedImportValue{
+				Ident: pAst.NewSpannedIdent(toImport.Ident, toImport.Span),
+				Type:  ast.NewUnknownType(),
+			})
 
-		// TODO: also filter out template imports (no relevance during runtime)
-		panic("TODO")
-
-		dummyFields = append(dummyFields, ast.AnalyzedImportValue{
-			Ident: pAst.NewSpannedIdent(toImport.Ident, toImport.Span),
-			Type:  ast.NewUnknownType(),
-		})
-
-		if prev := self.currentModule.addVar(toImport.Ident, NewVar(ast.NewUnknownType(), toImport.Span, ImportedVariableOriginKind, false), false); prev != nil {
-			self.error(fmt.Sprintf("Name '%s' already exists in current scope", toImport.Ident), nil, toImport.Span)
+			if prev := self.currentModule.addVar(toImport.Ident, NewVar(ast.NewUnknownType(), toImport.Span, ImportedVariableOriginKind, false), false); prev != nil {
+				self.error(fmt.Sprintf("Name '%s' already exists in current scope", toImport.Ident), nil, toImport.Span)
+			}
 		}
 	}
 
@@ -482,7 +490,6 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 				}
 				continue
 			case pAst.IMPORT_KIND_TEMPLATE:
-				// TODO: where to get the template spec?
 				prev, prevFound := self.currentModule.addTemplate(item.Ident, *imported.Template)
 				if prevFound {
 					self.error(fmt.Sprintf("Template '%s' already exists in current module", item.Ident), nil, item.Span)
@@ -602,7 +609,7 @@ func (self *Analyzer) validateTemplateConstraints(
 	}
 
 	// Validate that all required methods exist with their correct signatures
-	for reqName, reqSignature := range requiredMethods {
+	for reqName, reqMethod := range requiredMethods {
 		isImplemented := false
 
 		for _, method := range methods {
@@ -610,7 +617,7 @@ func (self *Analyzer) validateTemplateConstraints(
 				isImplemented = true
 
 				// TODO: validate correct implementation
-				if err := self.TypeCheck(method.Type(), reqSignature.SetSpan(span), true); err != nil {
+				if err := self.TypeCheck(method.Type(), reqMethod.Signature.SetSpan(span), true); err != nil {
 					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 					if err.ExpectedDiagnostic != nil {
 						self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -639,21 +646,56 @@ func (self *Analyzer) validateTemplateConstraints(
 					}
 				}
 
+				// Validate that the modifier is identical to the one that is needed
+				if method.Modifier != reqMethod.Modifier {
+					returnTypeString := ""
+					if reqMethod.Signature.ReturnType.Kind() != ast.NullTypeKind {
+						returnTypeString = fmt.Sprintf(" -> %s", reqMethod.Signature.ReturnType.String())
+					}
+
+					if reqMethod.Modifier == pAst.FN_MODIFIER_NONE {
+						self.error(
+							fmt.Sprintf("Template method has redundant modifier `%s`", method.Modifier.String()),
+							[]string{
+								fmt.Sprintf("Remove the modifier like this: `fn %s(...)%s {...}`", reqName, returnTypeString),
+							},
+							method.Range,
+						)
+					} else if method.Modifier == pAst.FN_MODIFIER_NONE {
+						self.error(
+							fmt.Sprintf("Template method lacks required modifier `%s`", reqMethod.Modifier.String()),
+							[]string{
+								fmt.Sprintf("Add the modifier like this: `%s fn %s(...)%s {...}`", reqMethod.Modifier.String(), reqName, returnTypeString),
+							},
+							method.Range,
+						)
+					} else {
+						self.error(
+							fmt.Sprintf("Expected modifier `%s`, but found `%s`", reqMethod.Modifier.String(), method.Modifier.String()),
+							[]string{
+								fmt.Sprintf("Change the `%s` modifier to `%s`", method.Modifier.String(), reqMethod.Modifier.String()),
+							},
+							method.Range,
+						)
+					}
+
+				}
+
 				break
 			}
 		}
 
 		if !isImplemented {
 			returnType := ""
-			if reqSignature.ReturnType.Kind() != ast.NullTypeKind {
-				returnType = fmt.Sprintf(" -> %s", reqSignature.ReturnType.String())
+			if reqMethod.Signature.ReturnType.Kind() != ast.NullTypeKind {
+				returnType = fmt.Sprintf(" -> %s", reqMethod.Signature.ReturnType.String())
 			}
 
 			self.error(
 				fmt.Sprintf("Not all methods implemented: implementation of method `%s` is is missing", reqName),
 				[]string{
 					"Template is not satisfied",
-					fmt.Sprintf("It can be implemented like this: `fn %s(%s)%s { ... }", reqName, reqSignature.Params.String(), returnType),
+					fmt.Sprintf("It can be implemented like this: `fn %s(%s)%s { ... }", reqName, reqMethod.Signature.Params.String(), returnType),
 				},
 				span,
 			)

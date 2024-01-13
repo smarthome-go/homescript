@@ -26,13 +26,16 @@ func (self *Analyzer) ConvertType(oldType pAst.HmsType, createErrors bool) ast.T
 			}
 
 			self.error(
-				fmt.Sprintf("Illegal use of undeclared type '%s'", singletonType.Ident.Ident()),
-				[]string{fmt.Sprintf("Consider declaring the type like this: `type %s = ...`", singletonType.Ident.Ident())},
+				fmt.Sprintf("Illegal use of undeclared singleton type '%s'", singletonType.Ident.Ident()),
+				[]string{fmt.Sprintf("Consider declaring the type like this: `TODO: type %s = ...`", singletonType.Ident.Ident())},
 				singletonType.Span(),
 			)
+
+			return ast.NewUnknownType()
 		}
 
 		// TODO: Is it ok to just resolve a singleton into its type?
+		singleton.Used = true
 		return singleton.Type
 	case pAst.NameReferenceParserTypeKind:
 		nameType := oldType.(pAst.NameReferenceType)

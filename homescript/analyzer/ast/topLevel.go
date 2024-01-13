@@ -17,6 +17,7 @@ type AnalyzedSingletonTypeDefinition struct {
 	Range   errors.Span
 	// This is mainly used for the post-validation hook so that it can analyze these easily.
 	ImplementsTemplates []ast.ImplBlockTemplate
+	Used                bool
 }
 
 func (self AnalyzedSingletonTypeDefinition) Kind() AnalyzedStatementKind {

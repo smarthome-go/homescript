@@ -14,7 +14,7 @@ func (self *Analyzer) WithCapabilities(
 	templateSpecName string,
 	templateSpec ast.TemplateSpec,
 	implementedCapabilities pAst.ImplBlockCapabilities,
-) (methods map[string]ast.FunctionType, err bool) {
+) (methods map[string]ast.TemplateMethod, err bool) {
 	capabilities := make(map[string]ast.TemplateCapabilityWithSpan)
 
 	// Use the default capabilities
@@ -55,7 +55,7 @@ func (self *Analyzer) WithCapabilities(
 
 	// Compute the set of required methods based on the capabilities
 	// Also check that this capability does not conflict with other capabilities.
-	methods = make(map[string]ast.FunctionType)
+	methods = make(map[string]ast.TemplateMethod)
 
 	err = false
 

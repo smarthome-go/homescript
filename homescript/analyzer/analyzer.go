@@ -144,7 +144,7 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		ImportsModules:           make([]string, 0),
 		Functions:                make([]*function, 0),
 		Scopes:                   make([]scope, 0),
-		Singletons:               make(map[string]ast.AnalyzedSingleton),
+		Singletons:               make(map[string]*ast.AnalyzedSingleton),
 		Templates:                make(map[string]ast.TemplateSpec),
 		LoopDepth:                0, // `break` and `continue` are legal if > 0
 		CurrentFunction:          nil,
@@ -156,10 +156,11 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 	self.setCurrentModule(moduleName)
 
 	output := ast.AnalyzedProgram{
-		Imports:   make([]ast.AnalyzedImport, 0),
-		Types:     make([]ast.AnalyzedTypeDefinition, 0),
-		Globals:   make([]ast.AnalyzedLetStatement, 0),
-		Functions: make([]ast.AnalyzedFunctionDefinition, 0),
+		Imports:    make([]ast.AnalyzedImport, 0),
+		Types:      make([]ast.AnalyzedTypeDefinition, 0),
+		Globals:    make([]ast.AnalyzedLetStatement, 0),
+		Functions:  make([]ast.AnalyzedFunctionDefinition, 0),
+		Singletons: make([]ast.AnalyzedSingletonTypeDefinition, 0),
 	}
 
 	// add the root scope
@@ -220,6 +221,17 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		output.ImplBlocks = append(output.ImplBlocks, self.implBlock(impl))
 	}
 
+	for singletonName, singleton := range self.currentModule.Singletons {
+		for idx, otherSingleton := range output.Singletons {
+			// Match found, copy implemented templates
+			if singletonName == otherSingleton.Ident.Ident() {
+				output.Singletons[idx].ImplementsTemplates = append(output.Singletons[idx].ImplementsTemplates, singleton.ImplementsTemplates...)
+				output.Singletons[idx].Used = singleton.Used
+				break
+			}
+		}
+	}
+
 	// check if the `main` function exists
 	mainExists := false
 	for _, fn := range output.Functions {
@@ -251,6 +263,17 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 			[]string{fmt.Sprintf("If this is intentional, change the name to '_%s' to hide this message", fnType.Ident.Ident())},
 			fnType.Ident.Span(),
 		)
+	}
+
+	// Detect any unused singletons
+	for singletonName, singleton := range self.currentModule.Singletons {
+		if !singleton.Used {
+			self.warn(
+				fmt.Sprintf("Singleton '%s' is never used", singletonName),
+				[]string{fmt.Sprintf("If this is intentional, change the name to '_%s' to hide this message", singletonName)},
+				singleton.Type.Span(),
+			)
+		}
 	}
 
 	// drop the root scope so that all unused globals are displayed

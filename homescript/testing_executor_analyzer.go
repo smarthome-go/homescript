@@ -193,32 +193,38 @@ func (self TestingAnalyzerHost) GetBuiltinImport(
 			return analyzer.BuiltinImport{
 				Type: nil,
 				Template: &ast.TemplateSpec{
-					BaseMethods: map[string]ast.FunctionType{
+					BaseMethods: map[string]ast.TemplateMethod{
 						"dim": {
-							Params: ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-								{
-									Name:                 pAst.NewSpannedIdent("percent", span),
-									Type:                 ast.NewIntType(span),
-									IsSingletonExtractor: false,
-									SingletonIdent:       "",
-								},
-							}),
-							ParamsSpan: span,
-							ReturnType: ast.NewBoolType(span),
-							Range:      span,
+							Signature: ast.FunctionType{
+								Params: ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+									{
+										Name:                 pAst.NewSpannedIdent("percent", span),
+										Type:                 ast.NewIntType(span),
+										IsSingletonExtractor: false,
+										SingletonIdent:       "",
+									},
+								}),
+								ParamsSpan: span,
+								ReturnType: ast.NewBoolType(span),
+								Range:      span,
+							},
+							Modifier: pAst.FN_MODIFIER_NONE,
 						},
 						"set_temp": {
-							Params: ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-								{
-									Name:                 pAst.NewSpannedIdent("celsius", span),
-									Type:                 ast.NewFloatType(span),
-									IsSingletonExtractor: false,
-									SingletonIdent:       "",
-								},
-							}),
-							ParamsSpan: span,
-							ReturnType: ast.NewNullType(span),
-							Range:      span,
+							Signature: ast.FunctionType{
+								Params: ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+									{
+										Name:                 pAst.NewSpannedIdent("celsius", span),
+										Type:                 ast.NewFloatType(span),
+										IsSingletonExtractor: false,
+										SingletonIdent:       "",
+									},
+								}),
+								ParamsSpan: span,
+								ReturnType: ast.NewNullType(span),
+								Range:      span,
+							},
+							Modifier: pAst.FN_MODIFIER_NONE,
 						},
 					},
 					Capabilities: map[string]ast.TemplateCapability{

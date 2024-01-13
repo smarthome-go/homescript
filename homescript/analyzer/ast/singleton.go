@@ -14,6 +14,7 @@ type AnalyzedSingleton struct {
 	// Methods are unlike methods in languages like Rust or Java.
 	// Here, a method is just a function that is implemented in a template block.
 	Methods []AnalyzedFunctionDefinition
+	Used    bool
 }
 
 func NewSingleton(typ Type, implementsTemplates []ast.ImplBlockTemplate, methods []AnalyzedFunctionDefinition) AnalyzedSingleton {
@@ -41,10 +42,15 @@ type TemplateCapabilityWithSpan struct {
 	Span       errors.Span
 }
 
+type TemplateMethod struct {
+	Signature FunctionType
+	Modifier  ast.FunctionModifier
+}
+
 type TemplateSpec struct {
 	// These methods are not always required.
 	// Depending on the capabilities, some of them will be required.
-	BaseMethods  map[string]FunctionType
+	BaseMethods  map[string]TemplateMethod
 	Capabilities map[string]TemplateCapability
 	// These capabilities are automaticallty added if the user does not add any explicitly
 	DefaultCapabilities []string

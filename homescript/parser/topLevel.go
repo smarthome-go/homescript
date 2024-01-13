@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
@@ -446,17 +444,21 @@ func (self *Parser) implBlockBody() ([]ast.FunctionDefinition, *errors.Error) {
 	// Loop over function definitions until the end (`}`) is reached
 	methods := make([]ast.FunctionDefinition, 0)
 	for self.CurrentToken.Kind != EOF && self.CurrentToken.Kind != RCurly {
+		modifier := ast.FN_MODIFIER_NONE
+
 		if self.CurrentToken.Kind == Pub {
-			self.Errors = append(self.Errors, *errors.NewSyntaxError(
-				self.CurrentToken.Span,
-				fmt.Sprintf("Illegal token `%s` in impl block (public functions not allowed)", self.CurrentToken.Value),
-			))
 			if err := self.next(); err != nil {
 				return nil, err
 			}
+			modifier = ast.FN_MODIFIER_PUB
+		} else if self.CurrentToken.Kind == Event {
+			if err := self.next(); err != nil {
+				return nil, err
+			}
+			modifier = ast.FN_MODIFIER_EVENT
 		}
 
-		fn, err := self.functionDefinition(ast.FN_MODIFIER_NONE)
+		fn, err := self.functionDefinition(modifier)
 		if err != nil {
 			return nil, err
 		}
