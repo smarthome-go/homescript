@@ -41,7 +41,7 @@ func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 						pAst.NewSpannedIdent("sleep", herrors.Span{}),
 						ast.NewFunctionType(
 							ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("seconds", herrors.Span{}), ast.NewIntType(herrors.Span{}), nil),
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("seconds", herrors.Span{}), ast.NewFloatType(herrors.Span{}), nil),
 							}),
 							herrors.Span{},
 							ast.NewNullType(herrors.Span{}),

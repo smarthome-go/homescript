@@ -111,7 +111,7 @@ func (self *Interpreter) rangeLiteral(node ast.AnalyzedRangeLiteralExpression) (
 		return nil, i
 	}
 
-	return value.NewValueRange(*rangeStart, *rangeEnd), nil
+	return value.NewValueRange(*rangeStart, *rangeEnd, node.EndIsInclusive), nil
 }
 
 //

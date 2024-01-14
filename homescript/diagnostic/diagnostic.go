@@ -36,10 +36,10 @@ func (self DiagnosticLevel) String() string {
 //
 
 type Diagnostic struct {
-	Level   DiagnosticLevel
-	Message string
-	Notes   []string
-	Span    errors.Span
+	Level   DiagnosticLevel `json:"level"`
+	Message string          `json:"message"`
+	Notes   []string        `json:"notes"`
+	Span    errors.Span     `json:"span"`
 }
 
 func (self Diagnostic) Display(program string) string {

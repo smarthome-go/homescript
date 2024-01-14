@@ -713,7 +713,7 @@ func (self *Parser) castExpression(start errors.Location, base ast.Expression) (
 		return ast.CastExpression{}, err
 	}
 
-	asType, err := self.hmsType()
+	asType, err := self.hmsType(false)
 	if err != nil {
 		return ast.CastExpression{}, err
 	}

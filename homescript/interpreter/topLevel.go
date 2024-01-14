@@ -8,14 +8,14 @@ import (
 )
 
 func (self *Interpreter) instantiateSingleton(node ast.AnalyzedSingletonTypeDefinition) *value.Interrupt {
-	singletonValue, usethisValue, err := self.Executor.LoadSingleton(node.Ident.Ident(), node.TypeDef.RhsType)
+	singletonValue, usethisValue, err := self.Executor.LoadSingleton(node.Ident.Ident(), node.SingletonType)
 	if err != nil {
 		return err
 	}
 
 	// If there is no value to be provided by the host, create a default value.
 	if !usethisValue {
-		singletonValue = value.CreateDefault(node.TypeDef.RhsType)
+		singletonValue = value.CreateDefault(node.SingletonType)
 	}
 
 	// Use a global variable internally

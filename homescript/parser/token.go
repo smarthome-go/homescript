@@ -15,12 +15,15 @@ type Token struct {
 
 type TokenKind uint8
 
+const SINGLETON_TOKEN = DollarSymbol
+
 const (
 	Unknown TokenKind = iota
 	EOF
 
 	QuestionMark // ?
 	AtSymbol     // @
+	DollarSymbol // $
 	Underscore   // _
 	Semicolon    // ;
 	Comma        // ,
@@ -286,6 +289,8 @@ func (self TokenKind) String() string {
 		display = "?"
 	case AtSymbol:
 		display = "@"
+	case DollarSymbol:
+		display = "$"
 	case Underscore:
 		display = "_"
 	default:

@@ -103,9 +103,10 @@ func (self ObjectTypeFieldTypeFields) Kind() ObjectTypeFieldTypeKind {
 }
 
 type ObjectTypeField struct {
-	Range     errors.Span
-	FieldName SpannedIdent
-	Type      HmsType
+	Range      errors.Span
+	FieldName  SpannedIdent
+	Type       HmsType
+	Annotation *SpannedIdent
 }
 
 func (self ObjectTypeField) String() string {

@@ -189,7 +189,7 @@ func (self *Parser) functionDefinition(fnModifier ast.FunctionModifier) (ast.Fun
 			return ast.FunctionDefinition{}, err
 		}
 
-		resType, err := self.hmsType()
+		resType, err := self.hmsType(false)
 		if err != nil {
 			return ast.FunctionDefinition{}, err
 		}
@@ -253,6 +253,7 @@ func (self *Parser) parameterList() ([]ast.FnParam, *errors.Error) {
 }
 
 func (self *Parser) parameter() (ast.FnParam, *errors.Error) {
+	// TODO: does this also work with singletons?
 	ident := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
 	if err := self.next(); err != nil {
 		return ast.FnParam{}, err
@@ -262,7 +263,7 @@ func (self *Parser) parameter() (ast.FnParam, *errors.Error) {
 		return ast.FnParam{}, err
 	}
 
-	paramType, err := self.hmsType()
+	paramType, err := self.hmsType(false)
 	if err != nil {
 		return ast.FnParam{}, err
 	}
@@ -286,15 +287,25 @@ func (self *Parser) singleton() (ast.SingletonTypeDefinition, *errors.Error) {
 		return ast.SingletonTypeDefinition{}, err
 	}
 
-	typedef, err := self.typeDefinition(false)
+	if err := self.expect(Assign); err != nil {
+		return ast.SingletonTypeDefinition{}, err
+	}
+
+	// For singleton types, additional information in the object fields
+	// will be useful for some host applications
+	rhsType, err := self.hmsType(true)
 	if err != nil {
 		return ast.SingletonTypeDefinition{}, err
 	}
 
+	if err := self.expectRecoverable(Semicolon); err != nil {
+		return ast.SingletonTypeDefinition{}, err
+	}
+
 	return ast.SingletonTypeDefinition{
-		Ident:   ident,
-		TypeDef: typedef,
-		Range:   startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+		Ident: ident,
+		Type:  rhsType,
+		Range: startLoc.Until(self.CurrentToken.Span.End, self.Filename),
 	}, nil
 }
 
@@ -310,25 +321,27 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 	}
 
 	// If there is an `@`, there is no template
-	if self.CurrentToken.Kind == AtSymbol {
-		singleton, err := self.singletonIdent()
-		if err != nil {
-			return ast.ImplBlock{}, err
-		}
-
-		// Handle impl block body
-		methods, err := self.implBlockBody()
-		if err != nil {
-			return ast.ImplBlock{}, err
-		}
-
-		return ast.ImplBlock{
-			SingletonIdent: singleton,
-			UsingTemplate:  nil,
-			Methods:        methods,
-			Span:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
-		}, nil
-	}
+	// if self.CurrentToken.Kind == AtSymbol {
+	// 	singleton, err := self.singletonIdent()
+	// 	if err != nil {
+	// 		return ast.ImplBlock{}, err
+	// 	}
+	//
+	// 	// Handle impl block body
+	// 	methods, err := self.implBlockBody()
+	// 	if err != nil {
+	// 		return ast.ImplBlock{}, err
+	// 	}
+	//
+	// 	return ast.ImplBlock{
+	// 		SingletonIdent: singleton,
+	// 		UsingTemplate:  nil,
+	// 		Methods:        methods,
+	// 		Span:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+	// 	}, nil
+	// }
+	// NOTE: this is depreacted as an impl without a template does not make a lot of sense
+	// considering that you can just extract values directly in `normal` functions.
 
 	// In this case, we except a template
 	templateIdent := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
@@ -429,7 +442,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 
 	return ast.ImplBlock{
 		SingletonIdent: singleton,
-		UsingTemplate:  &usingTemplate,
+		UsingTemplate:  usingTemplate,
 		Methods:        methods,
 		Span:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
 	}, nil

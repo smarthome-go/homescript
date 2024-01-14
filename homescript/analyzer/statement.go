@@ -82,19 +82,19 @@ func (self *Analyzer) typeDefStatement(node pAst.TypeDefinition) ast.AnalyzedTyp
 //
 
 func (self *Analyzer) singletonDeclStatement(node pAst.SingletonTypeDefinition) ast.AnalyzedSingletonTypeDefinition {
-	analyzed := self.typeDefStatement(node.TypeDef)
+	converted := self.ConvertType(node.Type, true)
 
 	singleton, found := self.currentModule.Singletons[node.Ident.Ident()]
 	if found {
 		self.error(
 			fmt.Sprintf("Singleton type '%s' is already declared as '%s' in this module", node.Ident.Ident(), singleton.Type),
 			[]string{"Consider altering this type's name"},
-			node.TypeDef.LhsIdent.Span(),
+			node.Ident.Span(),
 		)
 	} else {
 		// Add this item to the map of singletons
 		s := ast.NewSingleton(
-			analyzed.RhsType,
+			converted,
 			make([]pAst.ImplBlockTemplate, 0),
 			make([]ast.AnalyzedFunctionDefinition, 0),
 		)
@@ -103,9 +103,11 @@ func (self *Analyzer) singletonDeclStatement(node pAst.SingletonTypeDefinition) 
 	}
 
 	return ast.AnalyzedSingletonTypeDefinition{
-		Ident:   node.Ident,
-		TypeDef: analyzed,
-		Range:   node.Range,
+		Ident:               node.Ident,
+		SingletonType:       converted,
+		Range:               node.Range,
+		ImplementsTemplates: make([]pAst.ImplBlockTemplate, 0),
+		Used:                false,
 	}
 }
 

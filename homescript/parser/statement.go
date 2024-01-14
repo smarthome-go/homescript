@@ -106,7 +106,8 @@ func (self *Parser) typeDefinition(isPub bool) (ast.TypeDefinition, *errors.Erro
 		return ast.TypeDefinition{}, err
 	}
 
-	rhsType, err := self.hmsType()
+	// TODO: should object field annotations be allowed here?
+	rhsType, err := self.hmsType(false)
 	if err != nil {
 		return ast.TypeDefinition{}, err
 	}
@@ -151,7 +152,7 @@ func (self *Parser) letStatement(isPub bool) (ast.LetStatement, *errors.Error) {
 			return ast.LetStatement{}, err
 		}
 
-		typ, err := self.hmsType()
+		typ, err := self.hmsType(false)
 		if err != nil {
 			return ast.LetStatement{}, err
 		}

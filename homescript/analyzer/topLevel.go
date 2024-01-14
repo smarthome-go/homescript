@@ -98,17 +98,21 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 
 		// Create a slice that does not contain singleton extractions
 		filteredWithoutExtractions := make([]pAst.FnParam, 0)
+		filteredExtractions := make([]pAst.FnParam, 0)
 		for _, param := range node.Parameters {
 			if param.Type.Kind() == pAst.SingletonReferenceParserTypeKind {
+				filteredExtractions = append(filteredExtractions, param)
 				continue
 			}
 
 			filteredWithoutExtractions = append(filteredWithoutExtractions, param)
 		}
 
-		_ = self.analyzeParams(node.Parameters)
+		// Analyze all singleton parameters
+		// other parameters are errors anyways
+		newParams = self.analyzeParams(filteredExtractions)
 
-		// for this function, only check thate there are NO params
+		// for this function, only check that there are NO params
 		if len(filteredWithoutExtractions) > 0 {
 			errMsgVerb := "are"
 			if len(filteredWithoutExtractions) == 1 {
@@ -179,13 +183,12 @@ func (self *Analyzer) analyzeParams(params []pAst.FnParam) []ast.AnalyzedFnParam
 	encounteredNonSingletonParam := false
 
 	for _, param := range params {
-		isSingletonExtractor := false
+		isSingletonExtractor := param.Type.Kind() == pAst.SingletonReferenceParserTypeKind
 		singletonIdent := ""
 
-		if param.Type.Kind() == pAst.SingletonReferenceParserTypeKind {
+		if isSingletonExtractor {
 			typ := param.Type.(pAst.SingletonReferenceType)
 			singletonIdent = typ.Ident.Ident()
-			isSingletonExtractor = true
 
 			if encounteredNonSingletonParam {
 				newParams = append(newParams,
@@ -244,7 +247,7 @@ func (self *Analyzer) analyzeParams(params []pAst.FnParam) []ast.AnalyzedFnParam
 
 		newType := self.ConvertType(param.Type, true)
 
-		// add param to new params
+		// Add param to new list of params
 		newParams = append(newParams,
 			ast.AnalyzedFnParam{
 				Ident:                param.Ident,
@@ -552,9 +555,9 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 
 	singletonType := ast.NewUnknownType()
 
-	// Check that this singleton exists
-	singleton, exists := self.currentModule.Singletons[node.SingletonIdent.Ident()]
-	if !exists {
+	// Check that this singleton singletonExists
+	singleton, singletonExists := self.currentModule.Singletons[node.SingletonIdent.Ident()]
+	if !singletonExists {
 		self.error(
 			fmt.Sprintf("Undeclared singleton `%s`", node.SingletonIdent.Ident()),
 			[]string{
@@ -570,38 +573,37 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 	// Analyze each method
 	methods := make([]ast.AnalyzedFunctionDefinition, 0)
 	for _, fn := range node.Methods {
-		methods = append(methods, self.functionDefinition(fn))
+		method := self.functionDefinition(fn)
+		methods = append(methods, method)
 	}
 
-	// If this impl uses a template, analyze that it is valid
-	if node.UsingTemplate != nil {
-		// Check if the template exists and retrieve it
-		tmpl, templateFound := self.currentModule.getTemplate(node.UsingTemplate.Template.Ident())
-
-		if !templateFound {
-			self.error(
-				fmt.Sprintf("Template `%s` not found", node.UsingTemplate.Template.Ident()),
-				[]string{fmt.Sprintf("Templates can be imported like this: `import templ %s;`", node.UsingTemplate.Template.Ident())},
-				node.UsingTemplate.Template.Span(),
-			)
-		} else {
-			// TODO: do template analysis
-			fmt.Printf("Would analyze template now: %v\n", tmpl)
-			self.validateTemplateConstraints(
-				singletonType,
-				node.SingletonIdent,
-				tmpl,
-				*node.UsingTemplate,
-				methods,
-				node.Span,
-			)
-		}
+	// Check if the template exists and retrieve it
+	tmpl, templateFound := self.currentModule.getTemplate(node.UsingTemplate.Template.Ident())
+	if !templateFound {
+		self.error(
+			fmt.Sprintf("Template `%s` not found", node.UsingTemplate.Template.Ident()),
+			[]string{fmt.Sprintf("Templates can be imported like this: `import templ %s;`", node.UsingTemplate.Template.Ident())},
+			node.UsingTemplate.Template.Span(),
+		)
+	} else {
+		self.validateTemplateConstraints(
+			singletonType,
+			node.SingletonIdent,
+			tmpl,
+			node.UsingTemplate,
+			methods,
+			node.Span,
+		)
 	}
 
 	// Update the singleton so that the post-validation hook is aware of this impl
-	old := self.currentModule.Singletons[node.SingletonIdent.Ident()]
-	old.ImplementsTemplates = append(old.ImplementsTemplates, *node.UsingTemplate)
-	self.currentModule.Singletons[node.SingletonIdent.Ident()] = old
+	// NOTE: this must only be done if the singleton exists, otherwise, this is not even required
+	// as the post-validation hook will never be called.
+	if singletonExists {
+		old := self.currentModule.Singletons[node.SingletonIdent.Ident()]
+		old.ImplementsTemplates = append(old.ImplementsTemplates, node.UsingTemplate)
+		self.currentModule.Singletons[node.SingletonIdent.Ident()] = old
+	}
 
 	return ast.AnalyzedImplBlock{
 		SingletonIdent: node.SingletonIdent,

@@ -74,6 +74,8 @@ type Value interface {
 	IntoIter() func() (Value, bool)
 }
 
+// TODO: is this duplicated??
+// CHECK if this is the same as `default.go` in this GO module
 func ZeroValue(typ ast.Type) *Value {
 	switch typ.Kind() {
 	case ast.NullTypeKind:

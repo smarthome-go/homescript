@@ -38,8 +38,7 @@ type ImplBlockTemplate struct {
 // Impl block
 type ImplBlock struct {
 	SingletonIdent SpannedIdent
-	// Template is optional
-	UsingTemplate *ImplBlockTemplate
-	Methods       []FunctionDefinition
-	Span          errors.Span
+	UsingTemplate  ImplBlockTemplate
+	Methods        []FunctionDefinition
+	Span           errors.Span
 }

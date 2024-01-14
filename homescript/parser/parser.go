@@ -63,7 +63,7 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 				return ast.Program{}, err
 			}
 			tree.Imports = append(tree.Imports, importStmt)
-		case AtSymbol:
+		case SINGLETON_TOKEN:
 			// Handle singleton type definition
 			singleton, err := self.singleton()
 			if err != nil {
@@ -119,7 +119,7 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 				return ast.Program{}, self.expectedOneOfErr([]TokenKind{Let, Fn})
 			}
 		default:
-			return ast.Program{}, self.expectedOneOfErr([]TokenKind{Import, Type, Pub, Event, Let, Fn})
+			return ast.Program{}, self.expectedOneOfErr([]TokenKind{Import, Type, Pub, Event, Let, Fn, SINGLETON_TOKEN})
 		}
 	}
 

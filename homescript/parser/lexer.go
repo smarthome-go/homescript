@@ -115,6 +115,8 @@ outer:
 			return self.makeSingleChar(QuestionMark, '?'), nil
 		case '@':
 			return self.makeSingleChar(AtSymbol, '@'), nil
+		case '$':
+			return self.makeSingleChar(DollarSymbol, '$'), nil
 		case '\'', '"':
 			return self.makeString()
 		case ';':

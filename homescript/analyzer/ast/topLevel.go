@@ -12,9 +12,9 @@ import (
 //
 
 type AnalyzedSingletonTypeDefinition struct {
-	Ident   ast.SpannedIdent
-	TypeDef AnalyzedTypeDefinition
-	Range   errors.Span
+	Ident         ast.SpannedIdent
+	SingletonType Type
+	Range         errors.Span
 	// This is mainly used for the post-validation hook so that it can analyze these easily.
 	ImplementsTemplates []ast.ImplBlockTemplate
 	Used                bool
@@ -25,9 +25,10 @@ func (self AnalyzedSingletonTypeDefinition) Kind() AnalyzedStatementKind {
 }
 func (self AnalyzedSingletonTypeDefinition) Span() errors.Span { return self.Range }
 func (self AnalyzedSingletonTypeDefinition) String() string {
-	return fmt.Sprintf("%s\n%s", self.Ident.Ident(), self.TypeDef)
+	return fmt.Sprintf("%s\n%s", self.Ident.Ident(), self.SingletonType)
 }
-func (self AnalyzedSingletonTypeDefinition) Type() Type { return NewNullType(self.Range) }
+
+func (self AnalyzedSingletonTypeDefinition) Type() Type { return self.SingletonType }
 
 //
 // Impl block
@@ -37,8 +38,7 @@ func (self AnalyzedSingletonTypeDefinition) Type() Type { return NewNullType(sel
 type AnalyzedImplBlock struct {
 	SingletonIdent ast.SpannedIdent
 	SingletonType  Type
-	// Template implementation is optional
-	UsingTemplate *ast.ImplBlockTemplate
-	Methods       []AnalyzedFunctionDefinition
-	Span          errors.Span
+	UsingTemplate  ast.ImplBlockTemplate
+	Methods        []AnalyzedFunctionDefinition
+	Span           errors.Span
 }

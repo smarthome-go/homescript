@@ -32,10 +32,20 @@ func (self *Parser) expect(expected TokenKind) *errors.Error {
 
 func (self *Parser) expectRecoverable(expected TokenKind) *errors.Error {
 	if self.CurrentToken.Kind != expected {
-		self.nonCriticalErr(
-			self.CurrentToken.Span,
-			fmt.Sprintf("Expected '%s', found '%s'", expected, self.CurrentToken.Kind),
-		)
+		// If the expected token kind is a semicolon,
+		// display a special error message where the last token location is used as the span, not the current one.
+		// Furthermore, the error message is a bit more precise.
+		if expected == Semicolon {
+			self.nonCriticalErr(
+				self.PreviousToken.Span,
+				fmt.Sprintf("Missing semicolon ('%s') after this entity", expected),
+			)
+		} else {
+			self.nonCriticalErr(
+				self.CurrentToken.Span,
+				fmt.Sprintf("Expected '%s', found '%s'", expected, self.CurrentToken.Kind),
+			)
+		}
 		return nil
 	}
 
@@ -84,7 +94,7 @@ func (self Parser) expectedOneOfErr(expected []TokenKind) *errors.Error {
 func (self *Parser) singletonIdent() (ast.SpannedIdent, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
-	if err := self.expectRecoverable(AtSymbol); err != nil {
+	if err := self.expectRecoverable(SINGLETON_TOKEN); err != nil {
 		self.Errors = append(self.Errors, *err)
 	}
 
@@ -94,14 +104,14 @@ func (self *Parser) singletonIdent() (ast.SpannedIdent, *errors.Error) {
 	}
 
 	return ast.NewSpannedIdent(
-		fmt.Sprintf("@%s", identValue),
+		fmt.Sprintf("$%s", identValue),
 		startLoc.Until(self.CurrentToken.Span.End, self.Filename),
 	), nil
 }
 
 func (self *Parser) singletonIdentOrNormal() (ident ast.SpannedIdent, isSingleton bool, err *errors.Error) {
 	// is singleton ident
-	if self.CurrentToken.Kind == AtSymbol {
+	if self.CurrentToken.Kind == SINGLETON_TOKEN {
 		ident, err := self.singletonIdent()
 		return ident, true, err
 	}

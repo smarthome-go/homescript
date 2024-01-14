@@ -11,19 +11,20 @@ import (
 // Typing
 //
 
-func (self *Parser) hmsType() (ast.HmsType, *errors.Error) {
+func (self *Parser) hmsType(allowAnnotations bool) (ast.HmsType, *errors.Error) {
 	switch self.CurrentToken.Kind {
-	case AtSymbol:
+	case SINGLETON_TOKEN:
 		return self.singletonReferenceType()
 	case Null, Identifier, Underscore:
 		return self.nameReferenceType()
 	case LBracket:
-		return self.listType()
+		return self.listType(allowAnnotations)
 	case LCurly:
-		return self.objectType()
+		return self.objectType(allowAnnotations)
 	case QuestionMark:
-		return self.optionType()
+		return self.optionType(allowAnnotations)
 	case Fn:
+		// Here, annotations are always illegal
 		return self.functionType()
 	default:
 		return nil, errors.NewSyntaxError(
@@ -68,14 +69,14 @@ func (self *Parser) nameReferenceType() (ast.NameReferenceType, *errors.Error) {
 // List type
 //
 
-func (self *Parser) listType() (ast.ListType, *errors.Error) {
+func (self *Parser) listType(allowInnerAnnotations bool) (ast.ListType, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
 	if err := self.next(); err != nil {
 		return ast.ListType{}, err
 	}
 
-	innerType, err := self.hmsType()
+	innerType, err := self.hmsType(allowInnerAnnotations)
 	if err != nil {
 		return ast.ListType{}, err
 	}
@@ -94,7 +95,7 @@ func (self *Parser) listType() (ast.ListType, *errors.Error) {
 // Object type
 //
 
-func (self *Parser) objectType() (ast.ObjectType, *errors.Error) {
+func (self *Parser) objectType(allowAnnotations bool) (ast.ObjectType, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
 	if err := self.next(); err != nil {
@@ -132,7 +133,7 @@ func (self *Parser) objectType() (ast.ObjectType, *errors.Error) {
 	}
 
 	// Make initial field
-	field, err := self.objectTypeFieldComponent()
+	field, err := self.objectTypeFieldComponent(allowAnnotations)
 	if err != nil {
 		return ast.ObjectType{}, err
 	}
@@ -149,7 +150,7 @@ func (self *Parser) objectType() (ast.ObjectType, *errors.Error) {
 			break
 		}
 
-		field, err := self.objectTypeFieldComponent()
+		field, err := self.objectTypeFieldComponent(allowAnnotations)
 		if err != nil {
 			return ast.ObjectType{}, err
 		}
@@ -170,8 +171,30 @@ func (self *Parser) objectType() (ast.ObjectType, *errors.Error) {
 	}, nil
 }
 
-func (self *Parser) objectTypeFieldComponent() (ast.ObjectTypeField, *errors.Error) {
+func (self *Parser) objectTypeFieldComponent(allowAnnotations bool) (ast.ObjectTypeField, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
+
+	// If there is a `@` token, add a annotation
+	var annotation *ast.SpannedIdent = nil
+	if self.CurrentToken.Kind == AtSymbol {
+		// If annotations are not allowed, create an error
+		if !allowAnnotations {
+			return ast.ObjectTypeField{}, errors.NewSyntaxError(
+				self.CurrentToken.Span,
+				"Object field annotations are not legal here",
+			)
+		}
+
+		if err := self.next(); err != nil {
+			return ast.ObjectTypeField{}, err
+		}
+
+		ident := ast.NewSpannedIdent(fmt.Sprintf("@%s", self.CurrentToken.Value), self.CurrentToken.Span)
+		annotation = &ident
+		if err := self.expect(Identifier); err != nil {
+			return ast.ObjectTypeField{}, err
+		}
+	}
 
 	if err := self.expectMultiple(Identifier, Underscore, String); err != nil {
 		return ast.ObjectTypeField{}, err
@@ -183,15 +206,16 @@ func (self *Parser) objectTypeFieldComponent() (ast.ObjectTypeField, *errors.Err
 		return ast.ObjectTypeField{}, err
 	}
 
-	rhsType, err := self.hmsType()
+	rhsType, err := self.hmsType(allowAnnotations)
 	if err != nil {
 		return ast.ObjectTypeField{}, err
 	}
 
 	return ast.ObjectTypeField{
-		FieldName: ident,
-		Type:      rhsType,
-		Range:     startLoc.Until(self.PreviousToken.Span.End, self.Filename),
+		FieldName:  ident,
+		Type:       rhsType,
+		Range:      startLoc.Until(self.PreviousToken.Span.End, self.Filename),
+		Annotation: annotation,
 	}, nil
 }
 
@@ -199,13 +223,13 @@ func (self *Parser) objectTypeFieldComponent() (ast.ObjectTypeField, *errors.Err
 // Option type
 //
 
-func (self *Parser) optionType() (ast.OptionType, *errors.Error) {
+func (self *Parser) optionType(allowInnerAnnotations bool) (ast.OptionType, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 	if err := self.next(); err != nil {
 		return ast.OptionType{}, err
 	}
 
-	inner, err := self.hmsType()
+	inner, err := self.hmsType(allowInnerAnnotations)
 	if err != nil {
 		return ast.OptionType{}, err
 	}
@@ -243,7 +267,7 @@ func (self *Parser) functionType() (ast.FunctionType, *errors.Error) {
 			return ast.FunctionType{}, err
 		}
 
-		returnTypeTemp, err := self.hmsType()
+		returnTypeTemp, err := self.hmsType(false)
 		if err != nil {
 			return ast.FunctionType{}, err
 		}
@@ -307,7 +331,7 @@ func (self *Parser) functionTypeParameter() (ast.FunctionTypeParam, *errors.Erro
 		return ast.FunctionTypeParam{}, err
 	}
 
-	paramType, err := self.hmsType()
+	paramType, err := self.hmsType(false)
 	if err != nil {
 		return ast.FunctionTypeParam{}, err
 	}

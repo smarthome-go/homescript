@@ -274,9 +274,11 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 
 		params := make([]ast.FunctionTypeParam, 0)
 		for _, param := range fn.Parameters {
-			singletonIdent := new(string)
+			// NOTE: at the intial state, `singletonIdent` MUST be `nil`.
+			// Otherwise, later analysis steps will falsely report this parameter as a singleton.
+			var singletonIdent *string = nil
 			if param.IsSingletonExtractor {
-				*singletonIdent = param.SingletonIdent
+				singletonIdent = &param.SingletonIdent
 			}
 
 			params = append(params, ast.NewFunctionTypeParam(
@@ -779,10 +781,10 @@ func (self *Analyzer) assignErr(operator pAst.AssignOperator, typ ast.Type, span
 // TODO: also forbid invoking a spawn fn which returns a closure.
 // TODO: also completely rewrite this function, it is very obfuscated.
 func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallExpression {
+	var thisExpressionResultsIn ast.Type = nil
+
 	// check that the base is a value that can be called
 	base := self.expression(node.Base)
-
-	returnType := base.Type()
 
 	isNormalFunction := false
 	if base.Kind() == ast.IdentExpressionKind {
@@ -935,7 +937,7 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 		}
 
 		// lookup the result type of the function
-		returnType = baseFn.ReturnType
+		thisExpressionResultsIn = baseFn.ReturnType
 	default:
 		notes := make([]string, 0)
 		if base.Type().Kind() == ast.AnyTypeKind {
@@ -949,12 +951,14 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 		)
 	}
 
+	// If this is a thread spawn, create a thread handle as the result
+	// TODO: migrate this to the `core-lib` and reference the type from here
 	if node.IsSpawn {
-		returnType = ast.NewObjectType([]ast.ObjectTypeField{
+		thisExpressionResultsIn = ast.NewObjectType([]ast.ObjectTypeField{
 			ast.NewObjectTypeField(pAst.NewSpannedIdent("join", node.Span()), ast.NewFunctionType(
 				ast.NewNormalFunctionTypeParamKind(make([]ast.FunctionTypeParam, 0)),
 				node.Span(),
-				returnType.SetSpan(node.Range),
+				thisExpressionResultsIn.SetSpan(node.Range),
 				node.Span(),
 			), node.Span()),
 		}, node.Span())
@@ -963,7 +967,7 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 	return ast.AnalyzedCallExpression{
 		Base:             base,
 		Arguments:        arguments,
-		ResultType:       returnType.SetSpan(node.Range),
+		ResultType:       thisExpressionResultsIn.SetSpan(node.Range),
 		Range:            node.Range,
 		IsSpawn:          node.IsSpawn,
 		IsNormalFunction: isNormalFunction,

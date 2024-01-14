@@ -18,38 +18,36 @@ func (self *Analyzer) WithCapabilities(
 	capabilities := make(map[string]ast.TemplateCapabilityWithSpan)
 
 	// Use the default capabilities
-	if len(implementedCapabilities.List) == 0 {
-		for _, defaultCapability := range templateSpec.DefaultCapabilities {
-			cap, found := templateSpec.Capabilities[defaultCapability]
-			if !found {
-				panic(fmt.Sprintf("Encountered default capability `%s` that is not in capabilities", defaultCapability))
-			}
-
-			capabilities[defaultCapability] = ast.TemplateCapabilityWithSpan{
-				Capability: cap,
-				Span:       errors.Span{}, // TODO: does this break things? -> It should not
-			}
+	for _, defaultCapability := range templateSpec.DefaultCapabilities {
+		cap, found := templateSpec.Capabilities[defaultCapability]
+		if !found {
+			panic(fmt.Sprintf("Encountered default capability `%s` that is not in capabilities", defaultCapability))
 		}
-	} else {
-		// Otherwise, use the implemented capabilities
-		for _, implementedCap := range implementedCapabilities.List {
-			capability, exists := templateSpec.Capabilities[implementedCap.Ident()]
-			if !exists {
-				self.error(
-					fmt.Sprintf("Capability `%s` not found on template `%s`", implementedCap.Ident(), templateSpecName),
-					[]string{"Remove this capability from the `impl` block"},
-					implementedCap.Span(),
-				)
 
-				// Ignore this erronous capability
-				continue
-			}
+		capabilities[defaultCapability] = ast.TemplateCapabilityWithSpan{
+			Capability: cap,
+			Span:       errors.Span{}, // TODO: does this break things? -> It should not
+		}
+	}
 
-			// If everything went well, use this capability
-			capabilities[implementedCap.Ident()] = ast.TemplateCapabilityWithSpan{
-				Capability: capability,
-				Span:       implementedCap.Span(),
-			}
+	// Furthermore, use the implemented capabilities
+	for _, implementedCap := range implementedCapabilities.List {
+		capability, exists := templateSpec.Capabilities[implementedCap.Ident()]
+		if !exists {
+			self.error(
+				fmt.Sprintf("Capability `%s` not found on template `%s`", implementedCap.Ident(), templateSpecName),
+				[]string{"Remove this capability from the `impl` block"},
+				implementedCap.Span(),
+			)
+
+			// Ignore this erronous capability
+			continue
+		}
+
+		// If everything went well, use this capability
+		capabilities[implementedCap.Ident()] = ast.TemplateCapabilityWithSpan{
+			Capability: capability,
+			Span:       implementedCap.Span(),
 		}
 	}
 
@@ -66,7 +64,13 @@ func (self *Analyzer) WithCapabilities(
 
 	for capName, capability := range capabilities {
 		// Check that there are no capability conflicts
-		containsErr, conflictFound, diagnotsics := ast.DetermineCapabilityConflicts(capName, capability.Capability, capabilities, capability.Span)
+		containsErr, conflictFound, diagnotsics := ast.DetermineCapabilityConflicts(
+			templateSpec,
+			capName,
+			capability.Capability,
+			capabilities,
+			capability.Span,
+		)
 		if containsErr {
 			// Prevent redundant compatability errors
 			if _, found := conflictsReverse[capName]; found {
