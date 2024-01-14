@@ -1,52 +1,40 @@
+// version 0.1.1: could this be a language feature
 import templ FooFeature from templates;
 
-@Singleton
-type Foo = {
-    foo: int,
-};
-
-@Singleton2
-type Bar = {
-    bar: str,
-    is_online: bool,
-};
-
-// TODO: change singleton syntax
+// VLamp driver instance
 $Driver = {
-    bar: str,
-    is_online: bool,
-    @setting is_online: bool, // TODO: add field annotations to types
 };
 
-impl FooFeature with { light } for @Singleton {
-    //fn New(s: @Singleton) {
-    //    s.foo = 42;
-    //}
+// VLamp lamp instance
+$Device = {
+    is_online: bool,
+    current_brightness: int,
+    @setting url: str,
+    @setting token: str,
+};
 
-    //fn bar(self: @Singleton, bar: @Singleton2, value: int) -> int {
-        //42
-    //}
+impl FooFeature with { light } for $Device {
+    fn dim(self: $Device, percent: int) -> bool {
+        if self.current_brightness == percent {
+            return false;
+        }
 
-    fn dim(self: @Singleton, percent: int) -> bool {
-        self
+        for i in self.current_brightness..=percent {
+            println("Dimming to", i.to_string() + "%...");
+            time.sleep(0.01);
+        }
+
+        self.current_brightness = percent;
+        true
     }
-}
-
-    // TODO: there are currently no limitations regarding *what* belongs in an impl block.
-//impl @Singleton {
-    //fn do_something(s: @Singleton) {
-        //println(s);
-    //}
-//}
-
-// TODO: remove this
-impl Bar {
-
 }
 
 fn main() {
     // Automatically captures the singleton as there is only one instance.
     //do_something();
 
+    println("=== Dim up ===");
     dim(42);
+    println("=== Dim down ===");
+    dim(10);
 }

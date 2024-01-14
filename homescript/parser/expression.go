@@ -275,15 +275,25 @@ func (self *Parser) rangeLiteral(start errors.Location, rangeStart ast.Expressio
 		return ast.RangeLiteralExpression{}, err
 	}
 
+	// if there is an `=`, include the upper bound
+	endIsInclusive := false
+	if self.CurrentToken.Kind == Assign {
+		endIsInclusive = true
+		if err := self.next(); err != nil {
+			return ast.RangeLiteralExpression{}, err
+		}
+	}
+
 	rangeEnd, _, err := self.expression(0)
 	if err != nil {
 		return ast.RangeLiteralExpression{}, err
 	}
 
 	return ast.RangeLiteralExpression{
-		Start: rangeStart,
-		End:   rangeEnd,
-		Range: start.Until(self.PreviousToken.Span.End, self.Filename),
+		Start:          rangeStart,
+		End:            rangeEnd,
+		EndIsInclusive: endIsInclusive,
+		Range:          start.Until(self.PreviousToken.Span.End, self.Filename),
 	}, err
 }
 
@@ -429,7 +439,7 @@ func (self *Parser) functionLiteral() (ast.FunctionLiteralExpression, *errors.Er
 			return ast.FunctionLiteralExpression{}, err
 		}
 
-		resType, err := self.hmsType()
+		resType, err := self.hmsType(false)
 		if err != nil {
 			return ast.FunctionLiteralExpression{}, err
 		}

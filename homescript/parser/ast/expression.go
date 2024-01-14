@@ -142,15 +142,20 @@ func (self NoneLiteralExpression) String() string       { return "none" }
 //
 
 type RangeLiteralExpression struct {
-	Start Expression
-	End   Expression
-	Range errors.Span
+	Start          Expression
+	End            Expression
+	EndIsInclusive bool
+	Range          errors.Span
 }
 
 func (self RangeLiteralExpression) Kind() ExpressionKind { return RangeLiteralExpressionKind }
 func (self RangeLiteralExpression) Span() errors.Span    { return self.Range }
 func (self RangeLiteralExpression) String() string {
-	return fmt.Sprintf("%s..%s", self.Start, self.End)
+	inclusiveStr := ""
+	if self.EndIsInclusive {
+		inclusiveStr = "="
+	}
+	return fmt.Sprintf("%s..%s%s", self.Start, inclusiveStr, self.End)
 }
 
 //

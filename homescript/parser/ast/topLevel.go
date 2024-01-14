@@ -11,14 +11,14 @@ import (
 //
 
 type SingletonTypeDefinition struct {
-	Ident   SpannedIdent
-	TypeDef TypeDefinition
-	Range   errors.Span
+	Ident SpannedIdent
+	Type  HmsType
+	Range errors.Span
 }
 
 func (self SingletonTypeDefinition) Span() errors.Span { return self.Range }
 func (self SingletonTypeDefinition) String() string {
-	return fmt.Sprintf("%s\n%s", self.Ident, self.TypeDef)
+	return fmt.Sprintf("%s\n%s", self.Ident, self.Type)
 }
 
 // Impl block capabilities

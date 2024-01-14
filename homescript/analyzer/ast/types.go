@@ -358,6 +358,12 @@ func (self RangeType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 		"start": NewIntType(fieldSpan),
 		"end":   NewIntType(fieldSpan),
+		"rev": NewFunctionType(
+			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
+			fieldSpan,
+			NewRangeType(fieldSpan),
+			fieldSpan,
+		),
 		"diff": NewFunctionType(
 			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
 			fieldSpan,

@@ -258,7 +258,6 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 				IsGlobal:   false,
 				IsFunction: true,
 			}
-
 		}
 
 		// only mark the function as `used` if the usage originates from another function
@@ -336,9 +335,10 @@ func (self *Analyzer) rangeLiteralExpression(node pAst.RangeLiteralExpression) a
 	}
 
 	return ast.AnalyzedRangeLiteralExpression{
-		Start: start,
-		End:   end,
-		Range: node.Range,
+		Start:          start,
+		End:            end,
+		EndIsInclusive: node.EndIsInclusive,
+		Range:          node.Range,
 	}
 }
 

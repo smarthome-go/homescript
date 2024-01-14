@@ -17,7 +17,7 @@ func CreateDefault(typ ast.Type) *Value {
 	case ast.StringTypeKind:
 		return NewValueString("")
 	case ast.RangeTypeKind:
-		return NewValueRange(*NewValueInt(0), *NewValueInt(1))
+		return NewValueRange(*NewValueInt(0), *NewValueInt(1), false)
 	case ast.ListTypeKind:
 		return NewValueList(make([]*Value, 0))
 	case ast.AnyObjectTypeKind:

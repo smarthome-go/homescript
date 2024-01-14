@@ -213,15 +213,20 @@ func (self AnalyzedNoneLiteralExpression) Constant() bool { return true }
 //
 
 type AnalyzedRangeLiteralExpression struct {
-	Start AnalyzedExpression
-	End   AnalyzedExpression
-	Range errors.Span
+	Start          AnalyzedExpression
+	End            AnalyzedExpression
+	EndIsInclusive bool
+	Range          errors.Span
 }
 
 func (self AnalyzedRangeLiteralExpression) Kind() ExpressionKind { return RangeLiteralExpressionKind }
 func (self AnalyzedRangeLiteralExpression) Span() errors.Span    { return self.Range }
 func (self AnalyzedRangeLiteralExpression) String() string {
-	return fmt.Sprintf("%s..%s", self.Start, self.End)
+	endIsInclusiveStr := ""
+	if self.EndIsInclusive {
+		endIsInclusiveStr = "="
+	}
+	return fmt.Sprintf("%s..%s%s", self.Start, endIsInclusiveStr, self.End)
 }
 func (self AnalyzedRangeLiteralExpression) Type() Type     { return NewRangeType(self.Range) }
 func (self AnalyzedRangeLiteralExpression) Constant() bool { return true }
