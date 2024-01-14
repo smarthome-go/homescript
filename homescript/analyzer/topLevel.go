@@ -259,6 +259,20 @@ func (self *Analyzer) analyzeParams(params []pAst.FnParam) []ast.AnalyzedFnParam
 // Import
 //
 
+func entityErrNameFromImportKind(from pAst.IMPORT_KIND) string {
+	// Customize *what* has not been found based on the import kind
+	switch from {
+	case pAst.IMPORT_KIND_NORMAL:
+		return "variable or function"
+	case pAst.IMPORT_KIND_TYPE:
+		return "type"
+	case pAst.IMPORT_KIND_TEMPLATE:
+		return "template"
+	default:
+		panic("BUG warning: a new import kind was added without updating this code")
+	}
+}
+
 func (self *Analyzer) importDummyFields(node pAst.ImportStatement) ast.AnalyzedImport {
 	dummyFields := make([]ast.AnalyzedImportValue, 0)
 	for _, toImport := range node.ToImport {
@@ -414,7 +428,7 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 			val, found := module.Scopes[0].Values[item.Ident]
 			if !found {
 				self.error(
-					fmt.Sprintf("No variable or function named '%s' found in module '%s'", item.Ident, node.FromModule),
+					fmt.Sprintf("No %s named '%s' found in module '%s'", entityErrNameFromImportKind(item.Kind), item.Ident, node.FromModule),
 					nil,
 					item.Span,
 				)
@@ -470,7 +484,7 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 			return self.importDummyFields(node)
 		} else if !valueFound {
 			self.error(
-				fmt.Sprintf("No variable or function named '%s' found in module '%s'", item.Ident, node.FromModule),
+				fmt.Sprintf("No %s named '%s' found in module '%s'", entityErrNameFromImportKind(item.Kind), item.Ident, node.FromModule),
 				nil,
 				item.Span,
 			)
