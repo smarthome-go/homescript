@@ -58,6 +58,7 @@ type TemplateSpec struct {
 }
 
 func DetermineCapabilityConflicts(
+	spec TemplateSpec,
 	capabilityName string,
 	capability TemplateCapability,
 	selectedCapabilities map[string]TemplateCapabilityWithSpan,
@@ -75,6 +76,18 @@ func DetermineCapabilityConflicts(
 		}
 
 		if containsConflict {
+			thisCapabilityIsDefault := false
+			for _, cap := range spec.DefaultCapabilities {
+				if cap == capabilityName {
+					thisCapabilityIsDefault = true
+					break
+				}
+			}
+
+			if thisCapabilityIsDefault {
+				panic(fmt.Sprintf("BUG warning: defautl capability `%s` conflicts with `%s`", capabilityName, conflict.ConflictingCapability))
+			}
+
 			notes := []string{
 				fmt.Sprintf("The capability `%s` cannot be implemented alongside `%s`%s", capabilityName, conflict.ConflictingCapability, remainingText),
 			}
