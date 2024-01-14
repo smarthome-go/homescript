@@ -96,15 +96,27 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 			modifierErrMsg = node.Modifier.String() + " "
 		}
 
+		// Create a slice that does not contain singleton extractions
+		filteredWithoutExtractions := make([]pAst.FnParam, 0)
+		for _, param := range node.Parameters {
+			if param.Type.Kind() == pAst.SingletonReferenceParserTypeKind {
+				continue
+			}
+
+			filteredWithoutExtractions = append(filteredWithoutExtractions, param)
+		}
+
+		_ = self.analyzeParams(node.Parameters)
+
 		// for this function, only check thate there are NO params
-		if len(node.Parameters) > 0 {
+		if len(filteredWithoutExtractions) > 0 {
 			errMsgVerb := "are"
-			if len(node.Parameters) == 1 {
+			if len(filteredWithoutExtractions) == 1 {
 				errMsgVerb = "is"
 			}
 
 			self.error(
-				fmt.Sprintf("The '%s%s' function must have 0 parameters, however %d %s defined", modifierErrMsg, node.Ident.Ident(), len(node.Parameters), errMsgVerb),
+				fmt.Sprintf("The '%s%s' function must have 0 parameters, however %d %s defined", modifierErrMsg, node.Ident.Ident(), len(filteredWithoutExtractions), errMsgVerb),
 				nil,
 				node.ParamSpan,
 			)
