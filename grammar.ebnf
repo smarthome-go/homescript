@@ -19,7 +19,18 @@ Block = '{' , { Statement } , [ Expression ] , '}' ;
 (*
   Types
 *)
-SingletonDeclaration = singletonIdent , TypeDefinition ;
+SingletonDeclaration               = singletonIdent , '=' , SingletonType
+                                   , ';' ;
+SingletonType                      = ident | listType | singletonObjectType
+                                   | optionType ;
+singletonObjectType                = '{' , [ singletonObjectTypeFieldList ]
+                                   , '}' ;
+singletonObjectTypeFieldList       = singletonObjectTypeField
+                                   , { ',' , singletonObjectTypeField }
+                                   , [ ',' ] ;
+singletonObjectTypeField           = [ singletonObjectTypeFieldAnnotation ]
+                                   , objectTypeField ;
+singletonObjectTypeFieldAnnotation = '@' , ident ;
 
 TypeDefinition = 'type' , ident , '=' , Type , ';' ;
 Type           = ident | singletonIdent | listType | objectType
@@ -67,14 +78,15 @@ ExpressionStatement = ExpressionWithoutBlock , ';'
                     | ExpressionWithBlock , [ ';' ] ;
 
 (* Import item *)
-ImportItem = 'import' , ( [ 'type', 'templ' ] , ident
-                        | '{' , [ 'type' ] , ident , { ',' , [ 'type' ]
+ImportItem = 'import' , ( [ 'type' , 'templ' ] , ident
+                        | '{' , [ 'type', 'templ' ] , ident , { ',' , [ 'type', 'templ' ]
                                                      , ident }
                         , [ ',' ] , '}' ) , 'from' , ident , ';' ;
 
 (* Impl block *)
-ImplBlock = 'impl' , [ ident , 'for' ] , singletonIdent , '{'
-          , { FunctionDefinition } , '}' ;
+ImplBlock = 'impl' , ident , [ 'with' , '{' , ident , { ',' , ident }
+                             , [ ',' ] , '}' ] , 'for' , singletonIdent
+          , '{' , { FunctionDefinition } , '}' ;
 
 (*
   Expressions
@@ -112,7 +124,7 @@ ExpressionWithoutBlock = IdentExpr
                        | CastExpression
                        | SpawnExpression ;
 
-IdentExpr = singletonIdent | ident ;
+IdentExpr = ident ;
 
 LiteralExpression = number | boolean | string | 'null' | 'none'
                   | RangeLiteral | ListLiteral | ObjectLiteral
@@ -164,7 +176,7 @@ SpawnExpression = 'spawn' , ident , '(' , [ callArguments ] , ')' ;
 (*
   Tokens
 *)
-singletonIdent = '@' , ident ;
+singletonIdent = '$' , ident ;
 ident          = LETTER , { LETTER | DIGIT }- ? any keyword ? ;
 number         = DIGIT , { DIGIT | '_' } , [ 'f'
                                            | '.' , DIGIT , { DIGIT
