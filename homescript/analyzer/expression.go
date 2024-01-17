@@ -955,12 +955,14 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 	// TODO: migrate this to the `core-lib` and reference the type from here
 	if node.IsSpawn {
 		thisExpressionResultsIn = ast.NewObjectType([]ast.ObjectTypeField{
-			ast.NewObjectTypeField(pAst.NewSpannedIdent("join", node.Span()), ast.NewFunctionType(
-				ast.NewNormalFunctionTypeParamKind(make([]ast.FunctionTypeParam, 0)),
-				node.Span(),
-				thisExpressionResultsIn.SetSpan(node.Range),
-				node.Span(),
-			), node.Span()),
+			ast.NewObjectTypeField(
+				pAst.NewSpannedIdent("join", node.Span()), ast.NewFunctionType(
+					ast.NewNormalFunctionTypeParamKind(make([]ast.FunctionTypeParam, 0)),
+					node.Span(),
+					thisExpressionResultsIn.SetSpan(node.Range),
+					node.Span(),
+				), node.Span(),
+			),
 		}, node.Span())
 	}
 

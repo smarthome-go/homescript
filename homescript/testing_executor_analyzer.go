@@ -119,7 +119,11 @@ func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 
 type TestingAnalyzerHost struct{}
 
-func (self TestingAnalyzerHost) PostValidationHook(analyzedModules map[string]ast.AnalyzedProgram, mainModule string) []diagnostic.Diagnostic {
+func (TestingAnalyzerHost) GetKnownObjectTypeFieldAnnotations() []string {
+	return []string{}
+}
+
+func (self TestingAnalyzerHost) PostValidationHook(analyzedModules map[string]ast.AnalyzedProgram, mainModule string, _ *analyzer.Analyzer) []diagnostic.Diagnostic {
 	return nil
 }
 

@@ -228,6 +228,7 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 			Filename:    test.Path,
 			ProgramText: string(code),
 		}, TestingAnalyzerScopeAdditions(), TestingAnalyzerHost{})
+
 	hasErr := false
 	if len(syntax) > 0 {
 		for _, s := range syntax {

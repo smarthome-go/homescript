@@ -7,6 +7,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/parser"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
@@ -15,14 +16,15 @@ import (
 //
 
 type Analyzer struct {
-	analyzedModules   map[string]ast.AnalyzedProgram
-	scopeAdditions    map[string]Variable
-	diagnostics       []diagnostic.Diagnostic
-	syntaxErrors      []errors.Error
-	modules           map[string]*Module
-	currentModuleName string
-	currentModule     *Module
-	host              HostProvider
+	analyzedModules                 map[string]ast.AnalyzedProgram
+	scopeAdditions                  map[string]Variable
+	diagnostics                     []diagnostic.Diagnostic
+	syntaxErrors                    []errors.Error
+	modules                         map[string]*Module
+	currentModuleName               string
+	currentModule                   *Module
+	host                            HostProvider
+	knownObjectTypeFieldAnnotations []string
 }
 
 func NewAnalyzer(host HostProvider, scopeAdditions map[string]Variable) Analyzer {
@@ -47,6 +49,15 @@ func NewAnalyzer(host HostProvider, scopeAdditions map[string]Variable) Analyzer
 		currentModule:     nil,
 		host:              host,
 	}
+
+	// Precompute this list as this could be expensive (depens on the host)
+	knownAnnotationsWithoutPrefix := analyzer.host.GetKnownObjectTypeFieldAnnotations()
+	analyzer.knownObjectTypeFieldAnnotations = make([]string, len(knownAnnotationsWithoutPrefix))
+
+	for idx, annotation := range knownAnnotationsWithoutPrefix {
+		analyzer.knownObjectTypeFieldAnnotations[idx] = fmt.Sprintf("%s%s", parser.TYPE_ANNOTATION_TOKEN, annotation)
+	}
+
 	return analyzer
 }
 
@@ -308,6 +319,7 @@ func (self *Analyzer) Analyze(
 		diagnostics := self.host.PostValidationHook(
 			self.analyzedModules,
 			parsedEntryModule.Filename,
+			self,
 		)
 
 		self.diagnostics = append(self.diagnostics, diagnostics...)

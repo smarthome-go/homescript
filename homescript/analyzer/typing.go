@@ -3,10 +3,66 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/agnivade/levenshtein"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
+
+// If a annotation is not known, a known annotation which is `this` or closer to the unknown one
+// will be suggested to the user "unknown annotation: (did you mean ... ?)"
+const ANNOTATIONS_MAX_LEVENSHTEIN_DISTANCE = 3
+
+// Checks if the given annotation exists / is known.
+// If this is not the case, the user might get a suggestion (for usability) which annotation was meant to be used.
+func (self *Analyzer) analyzeAnnotation(annotation pAst.SpannedIdent) {
+	isKnown, suggestion := self.analyzeAnnotationInternal(annotation.Ident())
+	if isKnown {
+		return
+	}
+
+	notes := []string{}
+
+	if suggestion != nil {
+		notes = append(notes, fmt.Sprintf("Maybe you intended to use `%s`", *suggestion))
+	}
+
+	self.error(
+		fmt.Sprintf("Unknown type field annotation `%s`", annotation.Ident()),
+		notes,
+		annotation.Span(),
+	)
+}
+
+func (self Analyzer) analyzeAnnotationInternal(annotation string) (isKnown bool, closestMatch *string) {
+	for _, item := range self.knownObjectTypeFieldAnnotations {
+		if item == annotation {
+			return true, nil
+		}
+	}
+
+	// Cannot search for closest match, give up
+	if len(self.knownObjectTypeFieldAnnotations) == 0 {
+		return false, nil
+	}
+
+	// Search for closest match
+	closestDist, closestIdx := -1, -1
+
+	for idx, known := range self.knownObjectTypeFieldAnnotations {
+		distance := levenshtein.ComputeDistance(annotation, known)
+		if (distance <= ANNOTATIONS_MAX_LEVENSHTEIN_DISTANCE) && (closestDist < 0 || distance < closestDist) {
+			closestDist = distance
+			closestIdx = idx
+		}
+	}
+
+	if closestIdx >= 0 {
+		return false, &self.knownObjectTypeFieldAnnotations[closestIdx]
+	}
+
+	return false, nil
+}
 
 //
 // Type conversion
@@ -99,7 +155,13 @@ func (self *Analyzer) ConvertType(oldType pAst.HmsType, createErrors bool) ast.T
 					}
 				}
 
-				newFields = append(newFields, ast.NewObjectTypeField(
+				// Sanity check the usage of this annotation:
+				if field.Annotation != nil {
+					self.analyzeAnnotation(*field.Annotation)
+				}
+
+				newFields = append(newFields, ast.NewObjectTypeFieldWithAnnotation(
+					field.Annotation,
 					field.FieldName,
 					self.ConvertType(field.Type, createErrors),
 					field.Range,

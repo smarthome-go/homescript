@@ -586,7 +586,12 @@ func (self ObjectType) Span() errors.Span { return self.Range }
 func (self ObjectType) SetSpan(span errors.Span) Type {
 	newFields := make([]ObjectTypeField, 0)
 	for _, field := range self.ObjFields {
-		newFields = append(newFields, NewObjectTypeField(ast.NewSpannedIdent(field.FieldName.Ident(), span), field.Type.SetSpan(span), span))
+		newFields = append(newFields, NewObjectTypeFieldWithAnnotation(
+			field.Annotation,
+			ast.NewSpannedIdent(field.FieldName.Ident(), span),
+			field.Type.SetSpan(span),
+			span,
+		))
 	}
 	return NewObjectType(newFields, span)
 }
@@ -625,9 +630,10 @@ func NewObjectType(fields []ObjectTypeField, span errors.Span) Type {
 }
 
 type ObjectTypeField struct {
-	FieldName ast.SpannedIdent
-	Type      Type
-	Span      errors.Span
+	Annotation *ast.SpannedIdent
+	FieldName  ast.SpannedIdent
+	Type       Type
+	Span       errors.Span
 }
 
 func (self ObjectTypeField) String() string {
@@ -637,13 +643,32 @@ func (self ObjectTypeField) String() string {
 	} else {
 		key = self.FieldName.Ident()
 	}
-	return fmt.Sprintf("%s: %s", key, self.Type)
+
+	annotationStr := ""
+	if self.Annotation != nil {
+		annotationStr = self.Annotation.Ident()
+	}
+
+	return fmt.Sprintf("%s%s: %s", annotationStr, key, self.Type)
 }
+
+// For external use only: this function does not allow the caller to specify an annotation.
+// If an annotation is used, the internal function should be used
 func NewObjectTypeField(name ast.SpannedIdent, typ Type, span errors.Span) ObjectTypeField {
 	return ObjectTypeField{
-		FieldName: name,
-		Type:      typ,
-		Span:      span,
+		Annotation: nil,
+		FieldName:  name,
+		Type:       typ,
+		Span:       span,
+	}
+}
+
+func NewObjectTypeFieldWithAnnotation(annotation *ast.SpannedIdent, name ast.SpannedIdent, typ Type, span errors.Span) ObjectTypeField {
+	return ObjectTypeField{
+		Annotation: annotation,
+		FieldName:  name,
+		Type:       typ,
+		Span:       span,
 	}
 }
 

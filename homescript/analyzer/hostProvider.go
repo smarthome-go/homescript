@@ -33,5 +33,14 @@ type HostProvider interface {
 	// This method is invoked if the analyzer analyzes a module without errors
 	// Then, this logical next stage is triggered to analyze the meta-semantics of the program.
 	// This refers to any meaning of the program that is Homescript-agnostic and specific to that program.
-	PostValidationHook(analyzedModules map[string]ast.AnalyzedProgram, mainModule string) []diagnostic.Diagnostic
+	PostValidationHook(
+		analyzedModules map[string]ast.AnalyzedProgram,
+		mainModule string,
+		// NOTE: this can be quite dangerous: the callee can mess up the analyzer and potentially cause crashes
+		analyzer *Analyzer,
+	) []diagnostic.Diagnostic
+	// Returns a list of `known` object type annotations
+	// The analyzer uses these in order to sanity-check every annotation
+	// NOTE: these must not include the prefix token for annotations
+	GetKnownObjectTypeFieldAnnotations() []string
 }
