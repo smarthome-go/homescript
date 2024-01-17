@@ -18,11 +18,11 @@ func (self *Parser) hmsType(allowAnnotations bool) (ast.HmsType, *errors.Error) 
 	case Null, Identifier, Underscore:
 		return self.nameReferenceType()
 	case LBracket:
-		return self.listType(allowAnnotations)
+		return self.listType()
 	case LCurly:
 		return self.objectType(allowAnnotations)
 	case QuestionMark:
-		return self.optionType(allowAnnotations)
+		return self.optionType()
 	case Fn:
 		// Here, annotations are always illegal
 		return self.functionType()
@@ -69,14 +69,14 @@ func (self *Parser) nameReferenceType() (ast.NameReferenceType, *errors.Error) {
 // List type
 //
 
-func (self *Parser) listType(allowInnerAnnotations bool) (ast.ListType, *errors.Error) {
+func (self *Parser) listType() (ast.ListType, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
 	if err := self.next(); err != nil {
 		return ast.ListType{}, err
 	}
 
-	innerType, err := self.hmsType(allowInnerAnnotations)
+	innerType, err := self.hmsType(false)
 	if err != nil {
 		return ast.ListType{}, err
 	}
@@ -176,7 +176,7 @@ func (self *Parser) objectTypeFieldComponent(allowAnnotations bool) (ast.ObjectT
 
 	// If there is a `@` token, add a annotation
 	var annotation *ast.SpannedIdent = nil
-	if self.CurrentToken.Kind == AtSymbol {
+	if self.CurrentToken.Kind == TYPE_ANNOTATION_TOKEN {
 		// If annotations are not allowed, create an error
 		if !allowAnnotations {
 			return ast.ObjectTypeField{}, errors.NewSyntaxError(
@@ -206,7 +206,7 @@ func (self *Parser) objectTypeFieldComponent(allowAnnotations bool) (ast.ObjectT
 		return ast.ObjectTypeField{}, err
 	}
 
-	rhsType, err := self.hmsType(allowAnnotations)
+	rhsType, err := self.hmsType(false)
 	if err != nil {
 		return ast.ObjectTypeField{}, err
 	}
@@ -223,13 +223,13 @@ func (self *Parser) objectTypeFieldComponent(allowAnnotations bool) (ast.ObjectT
 // Option type
 //
 
-func (self *Parser) optionType(allowInnerAnnotations bool) (ast.OptionType, *errors.Error) {
+func (self *Parser) optionType() (ast.OptionType, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 	if err := self.next(); err != nil {
 		return ast.OptionType{}, err
 	}
 
-	inner, err := self.hmsType(allowInnerAnnotations)
+	inner, err := self.hmsType(false)
 	if err != nil {
 		return ast.OptionType{}, err
 	}

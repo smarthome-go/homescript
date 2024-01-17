@@ -16,6 +16,7 @@ type Token struct {
 type TokenKind uint8
 
 const SINGLETON_TOKEN = DollarSymbol
+const TYPE_ANNOTATION_TOKEN = AtSymbol
 
 const (
 	Unknown TokenKind = iota
