@@ -84,7 +84,7 @@ func (self ValueString) Fields() (map[string]*Value, *VmInterrupt) {
 			if err := json.Unmarshal([]byte(self.Inner), &raw); err != nil {
 				return nil, NewVMThrowInterrupt(span, fmt.Sprintf("JSON parse error: %s", err.Error()))
 			}
-			value, i := unmarshalValue(span, raw)
+			value, i := UnmarshalValue(span, raw)
 			if i != nil {
 				return nil, i
 			}

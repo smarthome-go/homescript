@@ -79,8 +79,8 @@ func (self ValueAnyObject) Fields() (map[string]*Value, *VmInterrupt) {
 			}
 			return NewValueString(disp), nil
 		}),
-		"to_json":        marshalHelper(self),
-		"to_json_indent": marshalIndentHelper(self),
+		"to_json":        MarshalToString(self),
+		"to_json_indent": MarshalIndentToString(self),
 	}, nil
 }
 

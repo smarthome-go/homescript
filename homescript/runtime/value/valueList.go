@@ -196,8 +196,8 @@ func (self ValueList) Fields() (map[string]*Value, *VmInterrupt) {
 
 			panic("Unreachable, this inner type is not supported")
 		}),
-		"to_json":        marshalHelper(self),
-		"to_json_indent": marshalIndentHelper(self),
+		"to_json":        MarshalToString(self),
+		"to_json_indent": MarshalIndentToString(self),
 	}, nil
 }
 

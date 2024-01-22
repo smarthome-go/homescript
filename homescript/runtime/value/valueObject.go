@@ -72,8 +72,8 @@ func (self ValueObject) Fields() (map[string]*Value, *VmInterrupt) {
 
 			return NewValueList(keys), nil
 		}),
-		"to_json":        marshalHelper(self),
-		"to_json_indent": marshalIndentHelper(self),
+		"to_json":        MarshalToString(self),
+		"to_json_indent": MarshalIndentToString(self),
 	}
 
 	for key, val := range self.FieldsInternal {

@@ -8,7 +8,8 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 )
 
-func marshalValue(self Value, span errors.Span, isInner bool, executor Executor) (interface{}, bool, *VmInterrupt) {
+// NOTE: `skipNull` is required so that builtin functions do not show up as `null` in the marshaled output.
+func MarshalValue(self Value, span errors.Span, isInner bool) (out interface{}, skipNull bool, interrupt *VmInterrupt) {
 	switch self := self.(type) {
 	case ValueString:
 		return self.Inner, false, nil
@@ -25,7 +26,7 @@ func marshalValue(self Value, span errors.Span, isInner bool, executor Executor)
 			if value == nil {
 				return nil, false, nil
 			}
-			marshaled, skipNull, err := marshalValue(*value, span, true, executor)
+			marshaled, skipNull, err := MarshalValue(*value, span, true)
 			if err != nil {
 				return nil, false, err
 			}
@@ -42,7 +43,7 @@ func marshalValue(self Value, span errors.Span, isInner bool, executor Executor)
 			if value == nil {
 				return nil, false, nil
 			}
-			marshaled, skipNull, err := marshalValue(*value, span, true, executor)
+			marshaled, skipNull, err := MarshalValue(*value, span, true)
 			if err != nil {
 				return nil, false, err
 			}
@@ -55,7 +56,7 @@ func marshalValue(self Value, span errors.Span, isInner bool, executor Executor)
 	case ValueList:
 		output := make([]interface{}, 0)
 		for _, value := range *self.Values {
-			marshaled, _, err := marshalValue(*value, span, true, executor)
+			marshaled, _, err := MarshalValue(*value, span, true)
 			if err != nil {
 				return nil, false, err
 			}
@@ -69,7 +70,7 @@ func marshalValue(self Value, span errors.Span, isInner bool, executor Executor)
 		return nil, false, nil
 	case ValueOption:
 		if self.IsSome() {
-			return marshalValue(*self.Inner, span, true, executor)
+			return MarshalValue(*self.Inner, span, true)
 		} else {
 			return nil, false, nil
 		}
@@ -82,7 +83,9 @@ func marshalValue(self Value, span errors.Span, isInner bool, executor Executor)
 	}
 }
 
-func unmarshalValue(span errors.Span, self interface{}) (*Value, *VmInterrupt) {
+// TODO: write docs why this is public
+
+func UnmarshalValue(span errors.Span, self interface{}) (*Value, *VmInterrupt) {
 	// TODO: do this
 	switch self := self.(type) {
 	case string:
@@ -101,7 +104,7 @@ func unmarshalValue(span errors.Span, self interface{}) (*Value, *VmInterrupt) {
 	case map[string]interface{}:
 		fields := make(map[string]*Value)
 		for key, field := range self {
-			value, err := unmarshalValue(span, field)
+			value, err := UnmarshalValue(span, field)
 			if err != nil {
 				return nil, err
 			}
@@ -111,7 +114,7 @@ func unmarshalValue(span errors.Span, self interface{}) (*Value, *VmInterrupt) {
 	case []interface{}:
 		values := make([]*Value, 0)
 		for _, item := range self {
-			value, err := unmarshalValue(span, item)
+			value, err := UnmarshalValue(span, item)
 			if err != nil {
 				return nil, err
 			}
@@ -125,9 +128,9 @@ func unmarshalValue(span errors.Span, self interface{}) (*Value, *VmInterrupt) {
 	}
 }
 
-func marshalHelper(self Value) *Value {
+func MarshalToString(self Value) *Value {
 	return NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
-		marshaled, _, err := marshalValue(self, span, false, executor)
+		marshaled, _, err := MarshalValue(self, span, false)
 		if err != nil {
 			return nil, err
 		}
@@ -139,9 +142,9 @@ func marshalHelper(self Value) *Value {
 	})
 }
 
-func marshalIndentHelper(self Value) *Value {
-	return NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
-		marshaled, _, i := marshalValue(self, span, false, executor)
+func MarshalIndentToString(self Value) *Value {
+	return NewValueBuiltinFunction(func(_ Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
+		marshaled, _, i := MarshalValue(self, span, false)
 		if i != nil {
 			return nil, i
 		}
