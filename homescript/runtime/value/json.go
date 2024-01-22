@@ -9,82 +9,70 @@ import (
 )
 
 // NOTE: `skipNull` is required so that builtin functions do not show up as `null` in the marshaled output.
-func MarshalValue(self Value, span errors.Span, isInner bool) (out interface{}, skipNull bool, interrupt *VmInterrupt) {
+func MarshalValue(self Value, span errors.Span, isInner bool) (out interface{}, skipNull bool) {
 	switch self := self.(type) {
 	case ValueString:
-		return self.Inner, false, nil
+		return self.Inner, false
 	case ValueInt:
-		return self.Inner, false, nil
+		return self.Inner, false
 	case ValueFloat:
-		return self.Inner, false, nil
+		return self.Inner, false
 	case ValueBool:
-		return self.Inner, false, nil
+		return self.Inner, false
 	case ValueAnyObject:
 		output := make(map[string]interface{}, 0)
-
 		for key, value := range self.FieldsInternal {
 			if value == nil {
-				return nil, false, nil
+				return nil, false
 			}
-			marshaled, skipNull, err := MarshalValue(*value, span, true)
-			if err != nil {
-				return nil, false, err
-			}
+			marshaled, skipNull := MarshalValue(*value, span, true)
 			// skip builtin functions
 			if marshaled != nil && !skipNull {
 				output[key] = marshaled
 			}
 		}
-		return output, false, nil
+		return output, false
 	case ValueObject:
 		output := make(map[string]interface{}, 0)
-
 		for key, value := range self.FieldsInternal {
 			if value == nil {
-				return nil, false, nil
+				return nil, false
 			}
-			marshaled, skipNull, err := MarshalValue(*value, span, true)
-			if err != nil {
-				return nil, false, err
-			}
+			marshaled, skipNull := MarshalValue(*value, span, true)
 			// skip builtin functions
 			if marshaled != nil && !skipNull {
 				output[key] = marshaled
 			}
 		}
-		return output, false, nil
+		return output, false
 	case ValueList:
 		output := make([]interface{}, 0)
 		for _, value := range *self.Values {
-			marshaled, _, err := MarshalValue(*value, span, true)
-			if err != nil {
-				return nil, false, err
+			marshaled, skipNull := MarshalValue(*value, span, true)
+
+			// skip builtin functions
+			if marshaled != nil && !skipNull {
+				output = append(output, marshaled)
 			}
-			output = append(output, marshaled)
 		}
-		return output, false, nil
+		return output, false
 	case ValueBuiltinFunction:
 		// skip builtin functions
-		return nil, true, nil
+		return nil, true
 	case ValueNull, nil:
-		return nil, false, nil
+		return nil, false
 	case ValueOption:
 		if self.IsSome() {
 			return MarshalValue(*self.Inner, span, true)
 		} else {
-			return nil, false, nil
+			return nil, false
 		}
 	default:
-		inner := ""
-		if isInner {
-			inner = "inner"
-		}
-		return nil, false, NewVMFatalException(fmt.Sprintf("Cannot encode %s value of type '%v' to JSON", inner, self.Kind()), Vm_JsonErrorKind, span)
+		panic(fmt.Sprintf("Cannot encode value of type '%v' to JSON", self.Kind()))
 	}
 }
 
 // TODO: write docs why this is public
-
 func UnmarshalValue(span errors.Span, self interface{}) (*Value, *VmInterrupt) {
 	// TODO: do this
 	switch self := self.(type) {
@@ -130,10 +118,8 @@ func UnmarshalValue(span errors.Span, self interface{}) (*Value, *VmInterrupt) {
 
 func MarshalToString(self Value) *Value {
 	return NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
-		marshaled, _, err := MarshalValue(self, span, false)
-		if err != nil {
-			return nil, err
-		}
+		// TODO: fail if skipNull is true?
+		marshaled, _ := MarshalValue(self, span, false)
 		output, jsonErr := json.Marshal(marshaled)
 		if jsonErr != nil {
 			return nil, NewVMFatalException(jsonErr.Error(), Vm_JsonErrorKind, span)
@@ -144,10 +130,8 @@ func MarshalToString(self Value) *Value {
 
 func MarshalIndentToString(self Value) *Value {
 	return NewValueBuiltinFunction(func(_ Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
-		marshaled, _, i := MarshalValue(self, span, false)
-		if i != nil {
-			return nil, i
-		}
+		// TODO: fail if skipNull is true?
+		marshaled, _ := MarshalValue(self, span, false)
 		output, jsonErr := json.MarshalIndent(marshaled, "", "    ")
 		if jsonErr != nil {
 			return nil, NewVMFatalException(jsonErr.Error(), Vm_JsonErrorKind, span)
