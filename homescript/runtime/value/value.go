@@ -93,11 +93,12 @@ func ZeroValue(typ ast.Type) *Value {
 	case ast.AnyObjectTypeKind:
 		return NewValueAnyObject(make(map[string]*Value))
 	case ast.ObjectTypeKind:
-		return NewValueObject(make(map[string]*Value))
+		v := Value(ObjectZeroValue(typ.(ast.ObjectType)))
+		return &v
 	case ast.OptionTypeKind:
 		return NewNoneOption()
 	case ast.FnTypeKind:
-		return NewValueFunction("__init__", ast.AnalyzedBlock{})
+		fallthrough
 	case ast.UnknownTypeKind:
 		fallthrough
 	case ast.NeverTypeKind:
@@ -109,4 +110,16 @@ func ZeroValue(typ ast.Type) *Value {
 	default:
 	}
 	panic(fmt.Sprintf("Invalid type: %s", typ))
+}
+
+func ObjectZeroValue(typ ast.ObjectType) ValueObject {
+	fields := make(map[string]*Value)
+
+	for _, field := range typ.ObjFields {
+		fields[field.FieldName.Ident()] = ZeroValue(field.Type)
+	}
+
+	return ValueObject{
+		FieldsInternal: fields,
+	}
 }
