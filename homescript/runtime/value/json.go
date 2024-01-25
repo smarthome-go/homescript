@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 )
 
 // NOTE: `skipNull` is required so that builtin functions do not show up as `null` in the marshaled output.
-func MarshalValue(self Value, span errors.Span, isInner bool) (out interface{}, skipNull bool) {
+func MarshalValue(self Value, isInner bool) (out interface{}, skipNull bool) {
 	switch self := self.(type) {
 	case ValueString:
 		return self.Inner, false
@@ -25,7 +26,7 @@ func MarshalValue(self Value, span errors.Span, isInner bool) (out interface{}, 
 			if value == nil {
 				return nil, false
 			}
-			marshaled, skipNull := MarshalValue(*value, span, true)
+			marshaled, skipNull := MarshalValue(*value, true)
 			// skip builtin functions
 			if marshaled != nil && !skipNull {
 				output[key] = marshaled
@@ -38,7 +39,7 @@ func MarshalValue(self Value, span errors.Span, isInner bool) (out interface{}, 
 			if value == nil {
 				return nil, false
 			}
-			marshaled, skipNull := MarshalValue(*value, span, true)
+			marshaled, skipNull := MarshalValue(*value, true)
 			// skip builtin functions
 			if marshaled != nil && !skipNull {
 				output[key] = marshaled
@@ -48,7 +49,7 @@ func MarshalValue(self Value, span errors.Span, isInner bool) (out interface{}, 
 	case ValueList:
 		output := make([]interface{}, 0)
 		for _, value := range *self.Values {
-			marshaled, skipNull := MarshalValue(*value, span, true)
+			marshaled, skipNull := MarshalValue(*value, true)
 
 			// skip builtin functions
 			if marshaled != nil && !skipNull {
@@ -63,7 +64,7 @@ func MarshalValue(self Value, span errors.Span, isInner bool) (out interface{}, 
 		return nil, false
 	case ValueOption:
 		if self.IsSome() {
-			return MarshalValue(*self.Inner, span, true)
+			return MarshalValue(*self.Inner, true)
 		} else {
 			return nil, false
 		}
@@ -112,14 +113,14 @@ func UnmarshalValue(span errors.Span, self interface{}) (*Value, *VmInterrupt) {
 	case nil:
 		return NewNoneOption(), nil
 	default:
-		return nil, NewVMFatalException(fmt.Sprintf("Cannot parse unknown JSON value: `%v` to HMS value", self), Vm_JsonErrorKind, span)
+		return nil, NewVMFatalException(fmt.Sprintf("Cannot parse unknown JSON value: `%v` (%v) to HMS value", self, reflect.TypeOf(self)), Vm_JsonErrorKind, span)
 	}
 }
 
 func MarshalToString(self Value) *Value {
 	return NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 		// TODO: fail if skipNull is true?
-		marshaled, _ := MarshalValue(self, span, false)
+		marshaled, _ := MarshalValue(self, false)
 		output, jsonErr := json.Marshal(marshaled)
 		if jsonErr != nil {
 			return nil, NewVMFatalException(jsonErr.Error(), Vm_JsonErrorKind, span)
@@ -131,7 +132,7 @@ func MarshalToString(self Value) *Value {
 func MarshalIndentToString(self Value) *Value {
 	return NewValueBuiltinFunction(func(_ Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 		// TODO: fail if skipNull is true?
-		marshaled, _ := MarshalValue(self, span, false)
+		marshaled, _ := MarshalValue(self, false)
 		output, jsonErr := json.MarshalIndent(marshaled, "", "    ")
 		if jsonErr != nil {
 			return nil, NewVMFatalException(jsonErr.Error(), Vm_JsonErrorKind, span)
