@@ -85,7 +85,7 @@ func DetermineCapabilityConflicts(
 			}
 
 			if thisCapabilityIsDefault {
-				panic(fmt.Sprintf("BUG warning: defautl capability `%s` conflicts with `%s`", capabilityName, conflict.ConflictingCapability))
+				panic(fmt.Sprintf("BUG warning: default capability `%s` conflicts with `%s`", capabilityName, conflict.ConflictingCapability))
 			}
 
 			notes := []string{

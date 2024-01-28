@@ -366,7 +366,7 @@ func (self AnalyzedFunctionLiteralExpression) Type() Type {
 }
 
 // If this was constant, it would open up a whole new category of bugs.
-// Therefore, using a function literal as a global ist just forbidden.
+// Therefore, using a function literal as a global is just forbidden.
 func (self AnalyzedFunctionLiteralExpression) Constant() bool { return false }
 
 //

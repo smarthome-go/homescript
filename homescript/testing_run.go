@@ -15,7 +15,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
 )
 
-const PRINT_COMPILED = false
+const PRINT_COMPILED = true
 
 func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, printToStdout bool) string {
 	fmt.Println("=== COMPILED ===")

@@ -17,9 +17,9 @@ import (
 const NUM_INSTRUCTIONS_EXECUTE_PER_VCYCLE = 50
 
 // Whether the VM should print its current state for each cycle.
-const VM_VERBOSE = false
+const VM_VERBOSE = true
 
-const VM_DEBUGGER = false
+const VM_DEBUGGER = true
 const VM_DEBUGGER_SLEEP = 1 * time.Millisecond
 
 type CallFrame struct {

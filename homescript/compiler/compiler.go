@@ -51,6 +51,7 @@ func NewCompiler() Compiler {
 		varScopes:       scopes,
 		currScope:       currScope,
 		currModule:      "",
+		currFn:          "",
 	}
 }
 
@@ -93,6 +94,7 @@ func (self *Compiler) addFn(srcIdent string, mangledName string) {
 		Instructions: make([]Instruction, 0),
 		SourceMap:    make([]errors.Span, 0),
 		CntVariables: 0,
+		CleanupLabel: "",
 	}
 	self.modules[self.currModule][srcIdent] = &fn
 }
@@ -305,6 +307,8 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 			mangled := self.mangleFn(fn.Ident.Ident())
 			self.addFn(fn.Ident.Ident(), mangled)
 		}
+
+		// TODO: handle impl blocks
 	}
 
 	for moduleName, module := range program {
@@ -398,9 +402,17 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 	// Value / stack  depth is replaced later
 	mpIdx := self.insert(newOneIntInstruction(Opcode_AddMempointer, 0), node.Range)
 
-	// Parameters are pushed in reverse-order, so they can be popped them in the correct order.
+	// Parameters are pushed in reverse-order, so they can be popped in the correct order.
 	for _, param := range node.Parameters.List {
 		name := self.mangleVar(param.Ident.Ident())
+
+		// TODO: If the current parameter is a singleton extraction, do extra work.
+		// Add a name-alias for the singleton so that each time the extracted name is used, the singleton is accessed instead.
+
+		if param.IsSingletonExtractor {
+			panic("TODO")
+		}
+
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
 	}
 
@@ -714,27 +726,27 @@ func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 }
 
 func (self *Compiler) compileIdentExpression(node ast.AnalyzedIdentExpression) {
-	name, found := self.getMangled(node.Ident.Ident())
+	name, varFound := self.getMangled(node.Ident.Ident())
 
 	opCode := Opcode_GetVarImm
 	if node.IsGlobal {
 		opCode = Opcode_GetGlobImm
 	}
 
-	if found {
+	if varFound {
 		self.insert(newOneStringInstruction(opCode, name), node.Span())
-	} else {
-		name, found := self.getMangledFn(node.Ident.Ident())
+		return
+	}
 
-		if found {
-			// This value is a function, it should also be wrapped like one
-			self.insert(newValueInstruction(Opcode_Push, *value.NewValueVMFunction(
-				name,
-			)), node.Span())
-		} else {
-			// This value is not a function. Instead, it is a global variable.
-			self.insert(newOneStringInstruction(opCode, node.Ident.Ident()), node.Span())
-		}
+	name, fnFound := self.getMangledFn(node.Ident.Ident())
+	if fnFound {
+		// This value is a function, it should also be wrapped like one
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueVMFunction(
+			name,
+		)), node.Span())
+	} else {
+		// This value is not a function. Instead, it is a global variable.
+		self.insert(newOneStringInstruction(opCode, node.Ident.Ident()), node.Span())
 	}
 }
 

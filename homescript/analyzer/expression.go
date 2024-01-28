@@ -907,7 +907,7 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 						continue
 					}
 
-					// Sending closures accros threads is UB, prevent this.
+					// Sending closures across threads is UB, prevent this.
 					// When sending a closure which captures values to a new thread, the old captured values are not deepcopie'd.
 					// Therefore, sending these closures accross threads will cause weird memory bugs which must not occur in a Smarthome system.
 					if node.IsSpawn && argExpr.Type().Kind() == ast.FnTypeKind {
