@@ -34,6 +34,14 @@ func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 				herrors.Span{},
 			),
 		),
+		"fmt": analyzer.NewBuiltinVar(
+			ast.NewFunctionType(
+				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{ast.NewStringType(herrors.Span{})}, ast.NewUnknownType()),
+				herrors.Span{},
+				ast.NewStringType(herrors.Span{}),
+				herrors.Span{},
+			),
+		),
 		"time": analyzer.NewBuiltinVar(
 			ast.NewObjectType(
 				[]ast.ObjectTypeField{

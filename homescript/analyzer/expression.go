@@ -966,10 +966,16 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 		}, node.Span())
 	}
 
+	// TODO: this is just a hack
+	resultType := ast.NewUnknownType()
+	if thisExpressionResultsIn != nil {
+		resultType = thisExpressionResultsIn.SetSpan(node.Range)
+	}
+
 	return ast.AnalyzedCallExpression{
 		Base:             base,
 		Arguments:        arguments,
-		ResultType:       thisExpressionResultsIn.SetSpan(node.Range),
+		ResultType:       resultType,
 		Range:            node.Range,
 		IsSpawn:          node.IsSpawn,
 		IsNormalFunction: isNormalFunction,

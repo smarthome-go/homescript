@@ -54,12 +54,12 @@ func NewVM(
 	executor value.Executor,
 	ctx *context.Context,
 	cancelFunc *context.CancelFunc,
-	scopeAdditions map[string]value.Value,
+	globalScopeAdditions map[string]value.Value,
 	limits CoreLimits,
 ) VM {
 	return VM{
 		Program:       program,
-		Globals:       newGlobals(scopeAdditions),
+		Globals:       newGlobals(globalScopeAdditions),
 		Cores:         newCores(),
 		Executor:      executor,
 		Lock:          sync.RWMutex{},
@@ -76,8 +76,7 @@ func hostcall(self *VM, function string, args []*value.Value) (*value.Value, *va
 	self.Lock.Lock()
 	defer self.Lock.Unlock()
 
-	switch function {
-	case "__internal_list_push":
+	if function == "__internal_list_push" {
 		elem := args[0]
 		list := (*args[1]).(value.ValueList)
 
@@ -93,7 +92,16 @@ func (self *VM) spawnCore() *Core {
 	defer self.Lock.Unlock()
 
 	ch := make(chan *value.VmInterrupt)
-	core := NewCore(&self.Program.Functions, hostcall, self.Executor, self, self.coreCnt, ch, self.CancelCtx, self.LimitsPerCore)
+	core := NewCore(
+		&self.Program.Functions,
+		hostcall,
+		self.Executor,
+		self,
+		self.coreCnt,
+		ch,
+		self.CancelCtx,
+		self.LimitsPerCore,
+	)
 
 	self.Cores.Lock.Lock()
 	defer self.Cores.Lock.Unlock()
@@ -160,7 +168,6 @@ func (self *VM) Wait() (uint, *value.VmInterrupt) {
 
 					self.Cores.Lock.RLock()
 				} else {
-
 					self.Cores.Lock.RUnlock()
 
 					// TODO: is this OK?

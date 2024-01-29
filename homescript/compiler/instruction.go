@@ -10,8 +10,9 @@ import (
 )
 
 type Program struct {
-	Functions  map[string][]Instruction
-	SourceMap  map[string][]errors.Span
+	Functions map[string][]Instruction
+	SourceMap map[string][]errors.Span
+	// Identifier of the `init` function
 	EntryPoint string
 }
 
@@ -25,6 +26,7 @@ const (
 	Opcode_Call_Val
 	Opcode_Call_Imm
 	Opcode_Return
+	Opcode_Load_Singleton
 	Opcode_HostCall
 	Opcode_Jump
 	Opcode_JumpIfFalse
@@ -84,6 +86,8 @@ func (self Opcode) String() string {
 		return "Call_Val"
 	case Opcode_Return:
 		return "Return"
+	case Opcode_Load_Singleton:
+		return "LoadSingleton"
 	case Opcode_HostCall:
 		return "HostCall"
 	case Opcode_Jump:

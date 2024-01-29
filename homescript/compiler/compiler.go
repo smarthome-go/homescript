@@ -275,7 +275,7 @@ func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
 
 const initFnName = "@init"
 
-func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, entryPointModule string) string {
+func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, entryPointModule string) (entryPoint string) {
 	initFns := make(map[string]string)
 
 	for moduleName, module := range program {
@@ -286,6 +286,10 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 		self.addFn(initFnName, initFn)
 		initFns[moduleName] = initFn
 		self.currFn = initFnName
+
+		for _, singleton := range module.Singletons {
+			self.compileSingletonInit(singleton)
+		}
 
 		for _, glob := range module.Globals {
 			self.compileLetStmt(glob, true)
@@ -302,7 +306,7 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 			}
 		}
 
-		// Mangle all functions so that later stages know about them
+		// Mangle all functions so that later stages know about them.
 		for _, fn := range module.Functions {
 			mangled := self.mangleFn(fn.Ident.Ident())
 			self.addFn(fn.Ident.Ident(), mangled)
@@ -404,15 +408,21 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 
 	// Parameters are pushed in reverse-order, so they can be popped in the correct order.
 	for _, param := range node.Parameters.List {
-		name := self.mangleVar(param.Ident.Ident())
 
 		// TODO: If the current parameter is a singleton extraction, do extra work.
 		// Add a name-alias for the singleton so that each time the extracted name is used, the singleton is accessed instead.
 
 		if param.IsSingletonExtractor {
-			panic("TODO")
+			// Load singleton first
+			name, found := self.getMangled(param.SingletonIdent)
+			if !found {
+				panic("Existing singleton not found")
+			}
+			self.insert(newOneStringInstruction(Opcode_GetGlobImm, name), node.Range)
+			self.insert(newOneStringInstruction(Opcode_GetGlobImm, name), node.Range)
 		}
 
+		name := self.mangleVar(param.Ident.Ident())
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
 	}
 
@@ -449,6 +459,20 @@ func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal boo
 	// Bind value to identifier
 	name := self.mangleVar(node.Ident.Ident())
 	self.insert(newOneStringInstruction(opcode, name), node.Range)
+	self.CurrFn().CntVariables++ // FIXME: have reference
+}
+
+func (self *Compiler) compileSingletonInit(node ast.AnalyzedSingletonTypeDefinition) {
+	// Push default value onto the stack
+	def := value.ZeroValue(node.SingletonType)
+	self.insert(newValueInstruction(Opcode_Push, *def), node.Range)
+
+	// Load singleton, either pop default and use other or use default.
+	self.insert(newTwoStringInstruction(Opcode_Load_Singleton, node.Ident.Ident(), node.Ident.Span().Filename), node.Range)
+
+	// Bind value to identifier
+	name := self.mangleVar(node.Ident.Ident())
+	self.insert(newOneStringInstruction(Opcode_SetGlobImm, name), node.Range)
 	self.CurrFn().CntVariables++ // FIXME: have reference
 }
 

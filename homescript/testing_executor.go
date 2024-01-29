@@ -19,6 +19,42 @@ import (
 
 func TestingInterpeterScopeAdditions() map[string]value.Value {
 	return map[string]value.Value{
+		"fmt": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+			displays := make([]any, 0)
+
+			for idx, arg := range args {
+				if idx == 0 {
+					continue
+				}
+
+				var out any
+
+				switch arg.Kind() {
+				case value.NullValueKind:
+					out = "null"
+				case value.IntValueKind:
+					out = arg.(value.ValueInt).Inner
+				case value.FloatValueKind:
+					out = arg.(value.ValueFloat).Inner
+				case value.BoolValueKind:
+					out = arg.(value.ValueBool).Inner
+				case value.StringValueKind:
+					out = arg.(value.ValueString).Inner
+				default:
+					display, i := arg.Display()
+					if i != nil {
+						return nil, i
+					}
+					out = display
+				}
+
+				displays = append(displays, out)
+			}
+
+			out := fmt.Sprintf(args[0].(value.ValueString).Inner, displays...)
+
+			return value.NewValueString(out), nil
+		}),
 		"print": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
 			output := make([]string, 0)
 			for _, arg := range args {

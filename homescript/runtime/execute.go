@@ -99,6 +99,32 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		self.popCallStack()
 		// Need to return, otherwise, the callstack would have been popped, instantly skipping the next instruction
 		return nil
+	case compiler.Opcode_Load_Singleton:
+		i := instruction.(compiler.TwoStringInstruction)
+
+		singletonIdent := i.Values[0]
+		moduleName := i.Values[1]
+
+		// Load singleton from host
+		singletonValue, found, err := self.parent.Executor.LoadSingleton(singletonIdent, moduleName)
+		if err != nil {
+			return value.NewVMFatalException(
+				fmt.Sprintf(
+					"Could not load singleton `%s` from module `%s`: %s",
+					singletonIdent,
+					moduleName,
+					err.Error(),
+				),
+				value.Vm_HostErrorKind,
+				self.parent.SourceMap(*self.callFrame()),
+			)
+		}
+
+		if found {
+			// Pop the default value off the stack and use loaded value instead.
+			self.pop()
+			self.push(&singletonValue)
+		}
 	case compiler.Opcode_HostCall:
 		i := instruction.(compiler.OneStringInstruction)
 
@@ -534,7 +560,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		self.push(value.NewValueBool(shallContinue))
 		self.push(&val)
 	default:
-		panic(fmt.Sprintf("Illegal instruction erorr: %v", instruction))
+		panic(fmt.Sprintf("Illegal instruction error: %v", instruction))
 	}
 
 	self.callFrame().InstructionPointer++

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	herrors "github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
@@ -19,6 +20,42 @@ import (
 
 func TestingVmScopeAdditions() map[string]vmValue.Value {
 	return map[string]vmValue.Value{
+		"fmt": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			displays := make([]any, 0)
+
+			for idx, arg := range args {
+				if idx == 0 {
+					continue
+				}
+
+				var out any
+
+				switch arg.Kind() {
+				case vmValue.NullValueKind:
+					out = "null"
+				case vmValue.IntValueKind:
+					out = arg.(value.ValueInt).Inner
+				case vmValue.FloatValueKind:
+					out = arg.(value.ValueFloat).Inner
+				case vmValue.BoolValueKind:
+					out = arg.(value.ValueBool).Inner
+				case vmValue.StringValueKind:
+					out = arg.(value.ValueString).Inner
+				default:
+					display, i := arg.Display()
+					if i != nil {
+						return nil, i
+					}
+					out = display
+				}
+
+				displays = append(displays, out)
+			}
+
+			out := fmt.Sprintf(args[0].(value.ValueString).Inner, displays...)
+
+			return vmValue.NewValueString(out), nil
+		}),
 		"print": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
 			output := make([]string, 0)
 			for _, arg := range args {
@@ -174,6 +211,11 @@ type TestingVmExecutor struct {
 	PrintToStdout bool
 	PrintBuf      *string
 	PintBufMutex  *sync.Mutex
+}
+
+func (self TestingVmExecutor) LoadSingleton(singletonIdent, moduleName string) (value.Value, bool, error) {
+	// Rely on the default values inserted by the compiler.
+	return nil, false, nil
 }
 
 func (self TestingVmExecutor) GetUser() string { return "<unknown>" }
