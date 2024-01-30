@@ -706,7 +706,6 @@ func (self *Analyzer) validateTemplateConstraints(
 							method.Range,
 						)
 					}
-
 				}
 
 				break
@@ -719,11 +718,30 @@ func (self *Analyzer) validateTemplateConstraints(
 				returnType = fmt.Sprintf(" -> %s", reqMethod.Signature.ReturnType.String())
 			}
 
+			modifier := ""
+			switch reqMethod.Modifier {
+			case pAst.FN_MODIFIER_NONE:
+				break
+			case pAst.FN_MODIFIER_PUB:
+				modifier = "pub "
+			case pAst.FN_MODIFIER_EVENT:
+				modifier = "event "
+			default:
+				panic(fmt.Sprintf("A new modifier kind was added without updating this code: `%s`", reqMethod.Modifier))
+			}
+
 			self.error(
-				fmt.Sprintf("Not all methods implemented: implementation of method `%s` is is missing", reqName),
+				fmt.Sprintf("Not all methods implemented: method `%s` is is missing", reqName),
 				[]string{
 					"Template is not satisfied",
-					fmt.Sprintf("It can be implemented like this: `fn %s(%s)%s { ... }", reqName, reqMethod.Signature.Params.String(), returnType),
+					fmt.Sprintf(
+						"It can be implemented like this: `%sfn %s(self: %s, %s)%s { ... }",
+						modifier,
+						reqName,
+						singletonIdent,
+						reqMethod.Signature.Params.String(),
+						returnType,
+					),
 				},
 				span,
 			)
