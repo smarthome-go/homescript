@@ -433,24 +433,37 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 	// Value / stack  depth is replaced later
 	mpIdx := self.insert(newOneIntInstruction(Opcode_AddMempointer, 0), node.Range)
 
+	singletonExtractors := make([]ast.AnalyzedFnParam, 0)
+
 	// Parameters are pushed in reverse-order, so they can be popped in the correct order.
 	for _, param := range node.Parameters.List {
-
 		// TODO: If the current parameter is a singleton extraction, do extra work.
 		// Add a name-alias for the singleton so that each time the extracted name is used, the singleton is accessed instead.
 
 		if param.IsSingletonExtractor {
-			// Load singleton first
-			name, found := self.getMangled(param.SingletonIdent)
-			if !found {
-				panic("Existing singleton not found")
-			}
-			self.insert(newOneStringInstruction(Opcode_GetGlobImm, name), node.Range)
-			self.insert(newOneStringInstruction(Opcode_GetGlobImm, name), node.Range)
+			singletonExtractors = append(singletonExtractors, param)
+			continue
 		}
 
 		name := self.mangleVar(param.Ident.Ident())
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, name), node.Range)
+	}
+
+	// NOTE: this is required because the `vm.Spawn` method allows for inserting custom values onto the stack.
+	// These values should then be used to construct function parameter variables.
+	// However, if singletons are being extracted at the beginning, this might interfere with the normal stack layout,
+	// causing runtime panics.
+	for _, singletonParam := range singletonExtractors {
+		// Load singleton first
+		name, found := self.getMangled(singletonParam.SingletonIdent)
+		if !found {
+			panic("Existing singleton not found")
+		}
+		self.insert(newOneStringInstruction(Opcode_GetGlobImm, name), node.Range)
+		self.insert(newOneStringInstruction(Opcode_GetGlobImm, name), node.Range)
+
+		localName := self.mangleVar(singletonParam.Ident.Ident())
+		self.insert(newOneStringInstruction(Opcode_SetVarImm, localName), node.Range)
 	}
 
 	// When `return` is encountered, the compiler inserts a jump to this label.
