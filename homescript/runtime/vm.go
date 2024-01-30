@@ -151,19 +151,20 @@ func (self *VM) spawnCoreInternal(function string, addToStack []value.Value, deb
 func (self *VM) WaitNonConsuming() {
 	for {
 		self.Cores.Lock.RLock()
+		defer self.Cores.Lock.RUnlock()
 
 		if len(self.Cores.Cores) == 0 {
-			fmt.Printf("breakout..")
+			// TODO: remove this once this message has been spotted.
+			fmt.Printf("NOTE: Breakout..")
 			break
 		}
-
-		self.Cores.Lock.RUnlock()
 	}
 }
 
-func (self *VM) Wait() (uint, *value.VmInterrupt) {
+func (self *VM) Wait() (coreNum uint, i *value.VmInterrupt) {
 	for {
 		self.Cores.Lock.RLock()
+
 		for _, core := range self.Cores.Cores {
 			// fmt.Printf("checking core: %d | %v\n", core.Corenum, time.Now())
 
@@ -207,6 +208,7 @@ func (self *VM) Wait() (uint, *value.VmInterrupt) {
 		}
 
 		if len(self.Cores.Cores) == 0 {
+			self.Cores.Lock.RUnlock()
 			break
 		}
 
