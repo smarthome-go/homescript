@@ -18,6 +18,23 @@ import (
 
 func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 	return map[string]analyzer.Variable{
+		"log": analyzer.NewBuiltinVar(
+			ast.NewFunctionType(
+				ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+					ast.NewFunctionTypeParam(
+						pAst.NewSpannedIdent("base", herrors.Span{}),
+						ast.NewFloatType(herrors.Span{}), nil,
+					),
+					ast.NewFunctionTypeParam(
+						pAst.NewSpannedIdent("value", herrors.Span{}),
+						ast.NewFloatType(herrors.Span{}), nil,
+					),
+				}),
+				herrors.Span{},
+				ast.NewFloatType(herrors.Span{}),
+				herrors.Span{},
+			),
+		),
 		"print": analyzer.NewBuiltinVar(
 			ast.NewFunctionType(
 				ast.NewVarArgsFunctionTypeParamKind([]ast.Type{}, ast.NewUnknownType()),

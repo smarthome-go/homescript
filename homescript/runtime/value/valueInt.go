@@ -37,6 +37,7 @@ func (self ValueInt) Fields() (map[string]*Value, *VmInterrupt) {
 			return NewValueRange(
 				*NewValueInt(0),
 				*NewValueInt(self.Inner),
+				false,
 			), nil
 		}),
 	}, nil

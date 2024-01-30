@@ -87,7 +87,7 @@ func ZeroValue(typ ast.Type) *Value {
 	case ast.StringTypeKind:
 		return NewValueString("")
 	case ast.RangeTypeKind:
-		return NewValueRange(*NewValueInt(0), *NewValueInt(0))
+		return NewValueRange(*NewValueInt(0), *NewValueInt(0), false)
 	case ast.ListTypeKind:
 		return NewValueList(make([]*Value, 0))
 	case ast.AnyObjectTypeKind:

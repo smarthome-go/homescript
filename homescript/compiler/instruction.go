@@ -196,6 +196,25 @@ func newPrimitiveInstruction(opCode Opcode) Instruction {
 	return PrimitiveInstruction{opCode: opCode}
 }
 
+// OneBool Instruction
+
+type OneBoolInstruction struct {
+	opCode    Opcode
+	ValueBool bool
+}
+
+func (self OneBoolInstruction) Opcode() Opcode { return self.opCode }
+func (self OneBoolInstruction) String() string {
+	return fmt.Sprintf("%s(%v)", self.opCode, self.ValueBool)
+}
+
+func newOneBoolInstruction(opCode Opcode, valueBool bool) OneBoolInstruction {
+	return OneBoolInstruction{
+		opCode:    opCode,
+		ValueBool: valueBool,
+	}
+}
+
 // OneInt OneString Instruction
 
 type OneIntOneStringInstruction struct {

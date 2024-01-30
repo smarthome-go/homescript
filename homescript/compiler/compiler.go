@@ -840,7 +840,8 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		node := node.(ast.AnalyzedRangeLiteralExpression)
 		self.compileExpr(node.Start)
 		self.compileExpr(node.End)
-		self.insert(newPrimitiveInstruction(Opcode_Into_Range), node.Range)
+		// Boolean instruction is used to mark that the end of this range can be inclusive.
+		self.insert(newOneBoolInstruction(Opcode_Into_Range, node.EndIsInclusive), node.Range)
 	case ast.ListLiteralExpressionKind:
 		node := node.(ast.AnalyzedListLiteralExpression)
 		self.insert(newValueInstruction(Opcode_Push, *value.NewValueList(make([]*value.Value, 0))), node.Range)

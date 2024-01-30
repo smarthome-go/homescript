@@ -54,7 +54,7 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 
 	debuggerOut := make(chan runtime.DebugOutput)
 	core := vm.SpawnAsync(runtime.FunctionInvocation{
-		Function: compiled.EntryPoint,
+		Function: "@init",
 		Args:     make([]vmValue.Value, 0),
 	}, &debuggerOut)
 

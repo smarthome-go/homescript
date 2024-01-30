@@ -547,9 +547,11 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		i := instruction.(compiler.TwoStringInstruction)
 		self.importItem(i.Values[0], i.Values[1])
 	case compiler.Opcode_Into_Range:
+		// Used in order to determine whether the end is inclusive.
+		i := instruction.(compiler.OneBoolInstruction)
 		end := *self.pop()
 		start := *self.pop()
-		self.push(value.NewValueRange(start, end))
+		self.push(value.NewValueRange(start, end, i.ValueBool))
 	case compiler.Opcode_IntoIter:
 		v := *self.pop()
 		self.push(value.NewValueIter(v))

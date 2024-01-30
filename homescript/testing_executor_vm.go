@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"sync"
@@ -20,6 +21,14 @@ import (
 
 func TestingVmScopeAdditions() map[string]vmValue.Value {
 	return map[string]vmValue.Value{
+		"log": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+			base := args[0].(value.ValueFloat).Inner
+			x := args[1].(value.ValueFloat).Inner
+
+			// Change of base: https://stackoverflow.com/questions/52917461/how-to-calculate-log16-of-a-256-bit-integer-in-golang
+			res := math.Log(x) / math.Log(base)
+			return value.NewValueFloat(res), nil
+		}),
 		"fmt": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
 			displays := make([]any, 0)
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -19,6 +20,14 @@ import (
 
 func TestingInterpeterScopeAdditions() map[string]value.Value {
 	return map[string]value.Value{
+		"log": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
+			base := args[0].(value.ValueFloat).Inner
+			x := args[1].(value.ValueFloat).Inner
+
+			// Change of base: https://stackoverflow.com/questions/52917461/how-to-calculate-log16-of-a-256-bit-integer-in-golang
+			res := math.Log(x) / math.Log(base)
+			return value.NewValueFloat(res), nil
+		}),
 		"fmt": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
 			displays := make([]any, 0)
 
