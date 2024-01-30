@@ -164,10 +164,10 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		self.push(self.Memory[abs])
 	case compiler.Opcode_GetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
-		self.parent.Globals.Mutex.RLock()
-		defer self.parent.Globals.Mutex.RUnlock()
+		self.parent.globals.Mutex.RLock()
+		defer self.parent.globals.Mutex.RUnlock()
 
-		v := self.parent.Globals.Data[i.Value]
+		v := self.parent.globals.Data[i.Value]
 		self.push(&v)
 	case compiler.Opcode_SetVarImm:
 		i := instruction.(compiler.OneIntInstruction)
@@ -182,11 +182,11 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		self.Memory[abs] = v
 	case compiler.Opcode_SetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
-		self.parent.Globals.Mutex.Lock()
-		defer self.parent.Globals.Mutex.Unlock()
+		self.parent.globals.Mutex.Lock()
+		defer self.parent.globals.Mutex.Unlock()
 
 		v := self.pop()
-		self.parent.Globals.Data[i.Value] = *v
+		self.parent.globals.Data[i.Value] = *v
 	case compiler.Opcode_Assign: // TODO: Assigns pointers on the stack???
 		src := self.pop()
 		dest := self.pop()

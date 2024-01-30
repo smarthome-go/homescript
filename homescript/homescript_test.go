@@ -269,8 +269,8 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 		return
 	}
 
-	compiler := compiler.NewCompiler()
-	compiled := compiler.Compile(modules, test.Path)
+	compilerStruct := compiler.NewCompiler()
+	compiled := compilerStruct.Compile(modules, test.Path)
 
 	if test.Debug {
 		i := 0
@@ -308,7 +308,7 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 
 	// TODO: how to handle the debugger at this point?
 	vm.SpawnAsync(runtime.FunctionInvocation{
-		Function: compiled.EntryPoint,
+		Function: compiler.EntryPointFunctionIdent,
 		Args:     make([]vmValue.Value, 0),
 	}, nil)
 

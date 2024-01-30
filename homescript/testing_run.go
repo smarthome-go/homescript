@@ -16,15 +16,18 @@ import (
 	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
-const PRINT_COMPILED = true
+const printCompiled = true
+const callStackMaxSize = 100
+const stackMaxSize = 500
+const MaxMemorySize = 100 * 1000
 
 func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, printToStdout bool) string {
 	fmt.Println("=== COMPILED ===")
 
-	compiler := compiler.NewCompiler()
-	compiled := compiler.Compile(analyzed, filename)
+	compilerStruct := compiler.NewCompiler()
+	compiled := compilerStruct.Compile(analyzed, filename)
 
-	if PRINT_COMPILED {
+	if printCompiled {
 		i := 0
 		for name, function := range compiled.Functions {
 			fmt.Printf("%03d ===> func: %s\n", i, name)
@@ -37,7 +40,7 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	executor := TestingVmExecutor{
 		PrintToStdout: printToStdout,
@@ -47,14 +50,14 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 
 	start := time.Now()
 	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, TestingVmScopeAdditions(), runtime.CoreLimits{
-		CallStackMaxSize: 100,
-		StackMaxSize:     500,
-		MaxMemorySize:    100000,
+		CallStackMaxSize: callStackMaxSize,
+		StackMaxSize:     stackMaxSize,
+		MaxMemorySize:    MaxMemorySize,
 	})
 
 	debuggerOut := make(chan runtime.DebugOutput)
 	core := vm.SpawnAsync(runtime.FunctionInvocation{
-		Function: "@init",
+		Function: compiler.EntryPointFunctionIdent,
 		Args:     make([]vmValue.Value, 0),
 	}, &debuggerOut)
 

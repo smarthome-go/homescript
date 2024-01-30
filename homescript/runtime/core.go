@@ -239,7 +239,7 @@ outer:
 				}
 
 				globals := make([]string, 0)
-				for key, elem := range self.parent.Globals.Data {
+				for key, elem := range self.parent.globals.Data {
 					if elem == nil {
 						continue
 					}

@@ -39,8 +39,8 @@ func (self *Core) importItem(module string, toImport string) {
 	// 	self.addVar(toImport.Ident.Ident(), val)
 	// }
 
-	self.parent.Globals.Mutex.Lock()
+	self.parent.globals.Mutex.Lock()
 	// TODO: is this really legal
-	self.parent.Globals.Data[toImport] = val
-	defer self.parent.Globals.Mutex.Unlock()
+	self.parent.globals.Data[toImport] = val
+	defer self.parent.globals.Mutex.Unlock()
 }

@@ -21,7 +21,6 @@ func newGlobals(scopeAdditions map[string]value.Value) Globals {
 		Data:  scopeAdditions,
 		Mutex: sync.RWMutex{},
 	}
-
 }
 
 type Cores struct {
@@ -38,7 +37,7 @@ func newCores() Cores {
 
 type VM struct {
 	Program       compiler.Program
-	Globals       Globals
+	globals       Globals
 	Cores         Cores
 	Executor      value.Executor
 	Lock          sync.RWMutex
@@ -59,7 +58,7 @@ func NewVM(
 ) VM {
 	return VM{
 		Program:       program,
-		Globals:       newGlobals(globalScopeAdditions),
+		globals:       newGlobals(globalScopeAdditions),
 		Cores:         newCores(),
 		Executor:      executor,
 		Lock:          sync.RWMutex{},
@@ -71,6 +70,7 @@ func NewVM(
 	}
 }
 
+// TODO: why is this not a real method?
 func hostcall(self *VM, function string, args []*value.Value) (*value.Value, *value.VmInterrupt) {
 	// TODO: this is extremely bad!!!
 	self.Lock.Lock()
@@ -85,6 +85,11 @@ func hostcall(self *VM, function string, args []*value.Value) (*value.Value, *va
 	}
 
 	panic("Invalid hostcall: " + function)
+}
+
+func (self *VM) GetGlobals() map[string]value.Value {
+	// WARNING: this is unsafe before all cores have terminated.
+	return self.globals.Data
 }
 
 func (self *VM) spawnCore() *Core {
@@ -116,7 +121,7 @@ type FunctionInvocation struct {
 // Returns the core of the newly spawned process.
 func (self *VM) SpawnAsync(invocation FunctionInvocation, debuggerOut *chan DebugOutput) *Core {
 	// Lookup the function to be invoked.
-	toBeInvoked, found := self.Program.MangledFunctions[invocation.Function]
+	toBeInvoked, found := self.Program.Mappings.Functions[invocation.Function]
 	if !found {
 		panic(fmt.Sprintf("Requested function `%s` does not exist", invocation.Function))
 	}
@@ -127,7 +132,7 @@ func (self *VM) SpawnAsync(invocation FunctionInvocation, debuggerOut *chan Debu
 // Spawns a new core but also calls `vm.Wait` internally.
 func (self *VM) SpawnSync(invocation FunctionInvocation, debuggerOut *chan DebugOutput) (coreNum uint, i *value.VmInterrupt) {
 	// Lookup the function to be invoked.
-	toBeInvoked, found := self.Program.MangledFunctions[invocation.Function]
+	toBeInvoked, found := self.Program.Mappings.Functions[invocation.Function]
 	if !found {
 		panic(fmt.Sprintf("Requested function `%s` does not exist", invocation.Function))
 	}

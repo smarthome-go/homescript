@@ -9,14 +9,20 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
+// This maps the source module's identifiers to their mangled versions.
+type MangleMappings struct {
+	Functions  map[string]string
+	Globals    map[string]string
+	Singletons map[string]string
+}
+
 type Program struct {
 	Functions map[string][]Instruction
-	// Associates a mangled function with its instruction-spans
+	// Associates a mangled function with its instruction-spans.
 	SourceMap map[string][]errors.Span
-	// Identifier of the `init` function
-	EntryPoint string
-	// Maps original function names of the main module to mangled ones.
-	MangledFunctions map[string]string
+	// NOTE: this type is returned by the compiler so that the execution environment
+	// is still able to interact with the runtime through function calls and global variable access.
+	Mappings MangleMappings
 }
 
 type Opcode uint8

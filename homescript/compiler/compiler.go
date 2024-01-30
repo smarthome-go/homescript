@@ -9,6 +9,9 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
+const MainFunctionIdent = "main"
+const EntryPointFunctionIdent = "@init"
+
 type Loop struct {
 	labelStart    string
 	labelBreak    string
@@ -244,8 +247,8 @@ func (self *Compiler) renameVariables() {
 
 func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram, entryPointModule string) Program {
 	// BUG: cross-module calls do not work
-	// BUG: furthermore, cross-module pub-let definitions also do not work
-	entryPoint, mangledFunctions := self.compileProgram(program, entryPointModule)
+	// BUG: furthermore, cross-module pub-let definitions also do not work.
+	mappings := self.compileProgram(program, entryPointModule)
 
 	self.relocateLabels()
 	self.renameVariables()
@@ -261,10 +264,9 @@ func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram, entryPoint
 	}
 
 	return Program{
-		Functions:        functions,
-		SourceMap:        sourceMap,
-		EntryPoint:       entryPoint,
-		MangledFunctions: mangledFunctions,
+		Functions: functions,
+		SourceMap: sourceMap,
+		Mappings:  mappings,
 	}
 }
 
@@ -274,30 +276,37 @@ func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
 	return len(self.CurrFn().Instructions) - 1
 }
 
-const initFnName = "@init"
-
 func (self *Compiler) compileProgram(
 	program map[string]ast.AnalyzedProgram,
 	entryPointModule string,
-) (entryPoint string, mangledMainModuleFunctions map[string]string) {
+) MangleMappings {
 	initFns := make(map[string]string)
-	mangledMainModuleFunctions = make(map[string]string)
+
+	mappings := MangleMappings{
+		Functions:  make(map[string]string),
+		Globals:    make(map[string]string),
+		Singletons: make(map[string]string),
+	}
 
 	for moduleName, module := range program {
 		self.currModule = moduleName
 		self.modules[self.currModule] = make(map[string]*Function)
 
-		initFn := self.mangleFn(initFnName)
-		self.addFn(initFnName, initFn)
+		initFn := self.mangleFn(EntryPointFunctionIdent)
+		self.addFn(EntryPointFunctionIdent, initFn)
 		initFns[moduleName] = initFn
-		self.currFn = initFnName
+		self.currFn = EntryPointFunctionIdent
 
 		for _, singleton := range module.Singletons {
-			self.compileSingletonInit(singleton)
+			// Save mangled name for external mapping.
+			mappings.Singletons[singleton.Ident.Ident()] = self.compileSingletonInit(singleton)
 		}
 
 		for _, glob := range module.Globals {
-			self.compileLetStmt(glob, true)
+			if moduleName == entryPointModule {
+				// Save mangled name for external mapping.
+				mappings.Globals[glob.Ident.Ident()] = self.compileLetStmt(glob, true)
+			}
 		}
 
 		for _, item := range module.Imports {
@@ -329,7 +338,7 @@ func (self *Compiler) compileProgram(
 		// add all mangled functions to the `mangledEntryFunctions` map.
 		if moduleName == entryPointModule {
 			for srcIdent, fn := range self.modules[self.currModule] {
-				mangledMainModuleFunctions[srcIdent] = fn.MangledName
+				mappings.Functions[srcIdent] = fn.MangledName
 			}
 		}
 	}
@@ -340,7 +349,7 @@ func (self *Compiler) compileProgram(
 		// Compile all functions
 		var mainFnSpan errors.Span
 		for _, fn := range module.Functions {
-			if fn.Ident.Ident() == "main" { // TODO: do not hardcode this value.
+			if fn.Ident.Ident() == MainFunctionIdent {
 				mainFnSpan = fn.Range
 			}
 			self.compileFn(fn)
@@ -353,7 +362,8 @@ func (self *Compiler) compileProgram(
 			}
 		}
 
-		// Compile all events
+		// Compile all events.
+		// TODO: allow customizing this `@event` prefix
 		for _, fn := range module.Events {
 			fn.Ident = pAst.NewSpannedIdent(fmt.Sprintf("@event_%s", fn.Ident.Ident()), fn.Ident.Span())
 			mangled := self.mangleFn(fn.Ident.Ident())
@@ -363,8 +373,8 @@ func (self *Compiler) compileProgram(
 
 		if moduleName == entryPointModule {
 			// If the current module is the entry module,
-			// Go back to the init function and insert the main function call
-			self.currFn = initFnName
+			// Go back to the init function and insert the main function call.
+			self.currFn = EntryPointFunctionIdent
 			self.currModule = entryPointModule
 
 			for moduleName, otherInit := range initFns {
@@ -375,18 +385,17 @@ func (self *Compiler) compileProgram(
 				self.insert(newOneStringInstruction(Opcode_Call_Imm, otherInit), mainFnSpan)
 			}
 
-			mangledMain, found := self.getMangledFn("main")
+			mangledMain, found := self.getMangledFn(MainFunctionIdent)
 			if !found {
-				panic("`main` function not found in current module")
+				panic(fmt.Sprintf("`%s` function not found in current module", MainFunctionIdent))
 			}
-			// TODO: remove this comment
-			// fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
+
 			self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
 			self.insert(newPrimitiveInstruction(Opcode_Return), mainFnSpan)
 		}
 	}
 
-	return initFns[entryPointModule], mangledMainModuleFunctions
+	return mappings
 }
 
 func (self *Compiler) compileBlock(node ast.AnalyzedBlock, pushScope bool) {
@@ -481,7 +490,7 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) {
 	self.insert(newPrimitiveInstruction(Opcode_Return), node.Span())
 }
 
-func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal bool) {
+func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal bool) (mangled string) {
 	// Push value onto the stack
 	self.compileExpr(node.Expression)
 
@@ -497,12 +506,14 @@ func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal boo
 	}
 
 	// Bind value to identifier
-	name := self.mangleVar(node.Ident.Ident())
-	self.insert(newOneStringInstruction(opcode, name), node.Range)
+	mangledName := self.mangleVar(node.Ident.Ident())
+	self.insert(newOneStringInstruction(opcode, mangledName), node.Range)
 	self.CurrFn().CntVariables++ // FIXME: have reference
+
+	return mangledName
 }
 
-func (self *Compiler) compileSingletonInit(node ast.AnalyzedSingletonTypeDefinition) {
+func (self *Compiler) compileSingletonInit(node ast.AnalyzedSingletonTypeDefinition) (mangledName string) {
 	// Push default value onto the stack
 	def := value.ZeroValue(node.SingletonType)
 	self.insert(newValueInstruction(Opcode_Push, *def), node.Range)
@@ -514,6 +525,8 @@ func (self *Compiler) compileSingletonInit(node ast.AnalyzedSingletonTypeDefinit
 	name := self.mangleVar(node.Ident.Ident())
 	self.insert(newOneStringInstruction(Opcode_SetGlobImm, name), node.Range)
 	self.CurrFn().CntVariables++ // FIXME: have reference
+
+	return name
 }
 
 func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
