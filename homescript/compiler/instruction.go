@@ -11,9 +11,12 @@ import (
 
 type Program struct {
 	Functions map[string][]Instruction
+	// Associates a mangled function with its instruction-spans
 	SourceMap map[string][]errors.Span
 	// Identifier of the `init` function
 	EntryPoint string
+	// Maps original function names of the main module to mangled ones.
+	MangledFunctions map[string]string
 }
 
 type Opcode uint8

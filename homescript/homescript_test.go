@@ -12,6 +12,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
+	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -306,7 +307,11 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 	})
 
 	// TODO: how to handle the debugger at this point?
-	vm.Spawn(compiled.EntryPoint, nil)
+	vm.SpawnAsync(runtime.FunctionInvocation{
+		Function: compiled.EntryPoint,
+		Args:     make([]vmValue.Value, 0),
+	}, nil)
+
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i
 

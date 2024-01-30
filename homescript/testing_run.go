@@ -13,6 +13,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
+	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
 const PRINT_COMPILED = true
@@ -52,7 +53,11 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 	})
 
 	debuggerOut := make(chan runtime.DebugOutput)
-	core := vm.Spawn(compiled.EntryPoint, &debuggerOut)
+	core := vm.SpawnAsync(runtime.FunctionInvocation{
+		Function: compiled.EntryPoint,
+		Args:     make([]vmValue.Value, 0),
+	}, &debuggerOut)
+
 	go TestingDebugConsumer(&debuggerOut, core)
 
 	if coreNum, i := vm.Wait(); i != nil {

@@ -245,7 +245,7 @@ func (self *Compiler) renameVariables() {
 func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram, entryPointModule string) Program {
 	// BUG: cross-module calls do not work
 	// BUG: furthermore, cross-module pub-let definitions also do not work
-	entryPoint := self.compileProgram(program, entryPointModule)
+	entryPoint, mangledFunctions := self.compileProgram(program, entryPointModule)
 
 	self.relocateLabels()
 	self.renameVariables()
@@ -261,9 +261,10 @@ func (self *Compiler) Compile(program map[string]ast.AnalyzedProgram, entryPoint
 	}
 
 	return Program{
-		Functions:  functions,
-		SourceMap:  sourceMap,
-		EntryPoint: entryPoint,
+		Functions:        functions,
+		SourceMap:        sourceMap,
+		EntryPoint:       entryPoint,
+		MangledFunctions: mangledFunctions,
 	}
 }
 
@@ -275,8 +276,12 @@ func (self *Compiler) insert(instruction Instruction, span errors.Span) int {
 
 const initFnName = "@init"
 
-func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, entryPointModule string) (entryPoint string) {
+func (self *Compiler) compileProgram(
+	program map[string]ast.AnalyzedProgram,
+	entryPointModule string,
+) (entryPoint string, mangledMainModuleFunctions map[string]string) {
 	initFns := make(map[string]string)
+	mangledMainModuleFunctions = make(map[string]string)
 
 	for moduleName, module := range program {
 		self.currModule = moduleName
@@ -312,7 +317,21 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 			self.addFn(fn.Ident.Ident(), mangled)
 		}
 
-		// TODO: handle impl blocks
+		// Mangle all impl block functions due to the same reason.
+		for _, impl := range module.ImplBlocks {
+			for _, fn := range impl.Methods {
+				mangled := self.mangleFn(fn.Ident.Ident())
+				self.addFn(fn.Ident.Ident(), mangled)
+			}
+		}
+
+		// If the current module is the entry module,
+		// add all mangled functions to the `mangledEntryFunctions` map.
+		if moduleName == entryPointModule {
+			for srcIdent, fn := range self.modules[self.currModule] {
+				mangledMainModuleFunctions[srcIdent] = fn.MangledName
+			}
+		}
 	}
 
 	for moduleName, module := range program {
@@ -321,10 +340,17 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 		// Compile all functions
 		var mainFnSpan errors.Span
 		for _, fn := range module.Functions {
-			if fn.Ident.Ident() == "main" {
+			if fn.Ident.Ident() == "main" { // TODO: do not hardcode this value.
 				mainFnSpan = fn.Range
 			}
 			self.compileFn(fn)
+		}
+
+		// Compile all impl block methods.
+		for _, impl := range module.ImplBlocks {
+			for _, fn := range impl.Methods {
+				self.compileFn(fn)
+			}
 		}
 
 		// Compile all events
@@ -356,10 +382,11 @@ func (self *Compiler) compileProgram(program map[string]ast.AnalyzedProgram, ent
 			// TODO: remove this comment
 			// fmt.Printf("inserting into module %s: %s\n", self.currModule, mangledMain)
 			self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
+			self.insert(newPrimitiveInstruction(Opcode_Return), mainFnSpan)
 		}
 	}
 
-	return initFns[entryPointModule]
+	return initFns[entryPointModule], mangledMainModuleFunctions
 }
 
 func (self *Compiler) compileBlock(node ast.AnalyzedBlock, pushScope bool) {

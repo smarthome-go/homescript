@@ -103,17 +103,37 @@ func (self *VM) spawnCore() *Core {
 		self.LimitsPerCore,
 	)
 
-	self.Cores.Lock.Lock()
-	defer self.Cores.Lock.Unlock()
-
 	self.Cores.Cores = append(self.Cores.Cores, core)
 	self.coreCnt++
 	return &core
 }
 
-// Returns the corenum of the newly spawned process
-func (self *VM) Spawn(function string, debuggerOut *chan DebugOutput) *Core {
-	return self.spawnCoreInternal(function, make([]value.Value, 0), debuggerOut)
+type FunctionInvocation struct {
+	Function string
+	Args     []value.Value
+}
+
+// Returns the core of the newly spawned process.
+func (self *VM) SpawnAsync(invocation FunctionInvocation, debuggerOut *chan DebugOutput) *Core {
+	// Lookup the function to be invoked.
+	toBeInvoked, found := self.Program.MangledFunctions[invocation.Function]
+	if !found {
+		panic(fmt.Sprintf("Requested function `%s` does not exist", invocation.Function))
+	}
+
+	return self.spawnCoreInternal(toBeInvoked, invocation.Args, debuggerOut)
+}
+
+// Spawns a new core but also calls `vm.Wait` internally.
+func (self *VM) SpawnSync(invocation FunctionInvocation, debuggerOut *chan DebugOutput) (coreNum uint, i *value.VmInterrupt) {
+	// Lookup the function to be invoked.
+	toBeInvoked, found := self.Program.MangledFunctions[invocation.Function]
+	if !found {
+		panic(fmt.Sprintf("Requested function `%s` does not exist", invocation.Function))
+	}
+
+	self.spawnCoreInternal(toBeInvoked, invocation.Args, debuggerOut)
+	return self.Wait()
 }
 
 // Returns the corenum of the newly spawned process

@@ -184,14 +184,19 @@ outer:
 		}
 
 		for c := 0; c < NUM_INSTRUCTIONS_EXECUTE_PER_VCYCLE; c++ {
-			callFrame := *self.callFrame()
+			// TODO: this can be implemented nicer.
+			if len(self.CallStack) == 0 {
+				break outer
+			}
+
+			callFrame := self.callFrame()
 			fn, found := (*self.Program)[callFrame.Function]
 			if !found {
 				panic(fmt.Sprintf("Cannot execute instructions of non-existent routine: %s", callFrame.Function))
 			}
 
 			if callFrame.InstructionPointer >= uint(len(fn)) { // TODO: len can be shortened
-				self.popCallStack()
+				self.popCallStack() // TODO: is this really required?
 				continue outer
 			}
 
