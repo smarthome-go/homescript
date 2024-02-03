@@ -27,6 +27,43 @@ const (
 	IteratorValueKind
 )
 
+func (self ValueKind) TypeKind() ast.TypeKind {
+	switch self {
+	case NullValueKind:
+		return ast.NullTypeKind
+	case IntValueKind:
+		return ast.IntTypeKind
+	case FloatValueKind:
+		return ast.FloatTypeKind
+	case BoolValueKind:
+		return ast.BoolTypeKind
+	case StringValueKind:
+		return ast.StringTypeKind
+	case AnyObjectValueKind:
+		return ast.AnyObjectTypeKind
+	case ObjectValueKind:
+		return ast.ObjectTypeKind
+	case OptionValueKind:
+		return ast.OptionTypeKind
+	case ListValueKind:
+		return ast.ListTypeKind
+	case RangeValueKind:
+		return ast.RangeTypeKind
+	case FunctionValueKind:
+		return ast.FnTypeKind
+	case ClosureValueKind:
+		return ast.FnTypeKind
+	case VmFunctionValueKind:
+		return ast.FnTypeKind
+	case BuiltinFunctionValueKind:
+		return ast.FnTypeKind
+	case PointerValueKind, IteratorValueKind:
+		panic(fmt.Sprintf("Unsupported type: `%s`", self.String()))
+	default:
+		panic("A new ValueKind was introduced without updating this code")
+	}
+}
+
 func (self ValueKind) String() string {
 	switch self {
 	case NullValueKind:
