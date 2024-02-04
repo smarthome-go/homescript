@@ -1134,9 +1134,28 @@ func (self *Analyzer) memberExpression(node pAst.MemberExpression) ast.AnalyzedE
 		resultType = res
 
 		if !found {
+			notes := make([]string, 0)
+
+			// If the type is an option and the inner type has this field, suggest that it can be unwrapped.
+			if base.Type().Kind() == ast.OptionTypeKind {
+				baseInnerType := base.Type().(ast.OptionType).Inner
+
+				baseFields := baseInnerType.Fields(node.Member.Span())
+				if _, found := baseFields[node.Member.Ident()]; found {
+					notes = append(
+						notes,
+						fmt.Sprintf(
+							"Consider accessing the wrapped element like this: `%s.unwrap().%s`",
+							node.Base,
+							node.Member,
+						),
+					)
+				}
+			}
+
 			self.error(
 				fmt.Sprintf("Type '%s' has no member named '%s'", base.Type(), node.Member.Ident()),
-				nil,
+				notes,
 				node.Member.Span(),
 			)
 
