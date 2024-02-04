@@ -440,7 +440,7 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 		"pop": NewFunctionType(
 			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
 			fieldSpan,
-			self.Inner.SetSpan(fieldSpan),
+			NewOptionType(self.Inner.SetSpan(fieldSpan), fieldSpan),
 			fieldSpan,
 		),
 		"push_front": NewFunctionType(
@@ -452,7 +452,7 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 		"pop_front": NewFunctionType(
 			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
 			fieldSpan,
-			self.Inner.SetSpan(fieldSpan),
+			NewOptionType(self.Inner.SetSpan(fieldSpan), fieldSpan),
 			fieldSpan,
 		),
 		"insert": NewFunctionType(
@@ -470,6 +470,12 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 			}),
 			fieldSpan,
 			NewNullType(fieldSpan),
+			fieldSpan,
+		),
+		"last": NewFunctionType(
+			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
+			fieldSpan,
+			NewOptionType(self.Inner.SetSpan(fieldSpan), fieldSpan),
 			fieldSpan,
 		),
 		"to_json": NewFunctionType(

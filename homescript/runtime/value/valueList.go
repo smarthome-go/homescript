@@ -196,6 +196,13 @@ func (self ValueList) Fields() (map[string]*Value, *VmInterrupt) {
 
 			panic("Unreachable, this inner type is not supported")
 		}),
+		"last": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
+			length := len(*self.Values)
+			if length == 0 {
+				return NewNoneOption(), nil
+			}
+			return NewValueOption((*self.Values)[length-1]), nil
+		}),
 		"to_json":        MarshalToString(self),
 		"to_json_indent": MarshalIndentToString(self),
 	}, nil
