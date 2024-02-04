@@ -147,6 +147,22 @@ func TestScripts(t *testing.T) {
 			ValidateOutput:    OUTPUT_VALIDATION_RAW,
 			Skip:              false,
 		},
+		{
+			Name:           "Linear Gradient",
+			Path:           "../linear_gradient_fuzz/*.hms",
+			IsGlob:         true,
+			Debug:          false,
+			ValidateOutput: OUTPUT_VALIDATION_NONE,
+			Skip:           false,
+		},
+		{
+			Name:           "Linear Gradient 2D",
+			Path:           "../linear_gradient_2d_fuzz/*.hms",
+			IsGlob:         true,
+			Debug:          false,
+			ValidateOutput: OUTPUT_VALIDATION_NONE,
+			Skip:           false,
+		},
 	}
 
 	outputTests := make([]Test, 0)

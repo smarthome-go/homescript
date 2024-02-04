@@ -1,0 +1,65 @@
+let ALPHA = 1f/20f;
+let X0: Vec = new {
+    a: 1f,
+    b: 1f,
+};
+
+type Vec = {
+    a: float,
+    b: float,
+};
+
+fn mul_vec(vec: Vec, scalar: float) -> Vec {
+    new {
+        a: vec.a * scalar,
+        b: vec.b * scalar,
+    }
+}
+
+fn sub_vec(vec0: Vec, vec1: Vec) -> Vec {
+    new {
+        a: vec0.a - vec1.a,
+        b: vec0.b - vec1.b,
+    }
+}
+
+fn f_a(a: float) -> float {
+    2f*a
+}
+
+fn f_b(b: float) -> float {
+    20f*b
+}
+
+fn calc_iter(xi: Vec) -> Vec {
+    let res = new {
+        a: f_a(xi.a),
+        b: f_b(xi.b),
+    };
+    sub_vec(xi, mul_vec(res, ALPHA))
+}
+
+fn main() {
+    let results = [ X0 ];
+
+    for i in 1..=10 {
+        let xi = results[i - 1];
+        println(fmt("Using x%d = (%f, %f)", i - 1, xi.a, xi.b));
+
+        let xi_p1 = calc_iter(results[i - 1]);
+        results.push(xi_p1);
+        println(fmt("x%d = (%f, %f)", i, xi_p1.a, xi_p1.b))
+    }
+
+    let expected = new {
+        a: 348,
+        b: 0,
+    };
+
+    let last = new {
+        a: (results.last().unwrap().a * 1000f) as int,
+        b: (results.last().unwrap().b * 1000f) as int,
+    };
+
+    assert_eq(expected, last);
+}

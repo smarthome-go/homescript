@@ -8,4 +8,6 @@
 ./fuzz.sh ./examples/e.hms e_fuzz &
 ./fuzz.sh ./examples/apery.hms apery_fuzz &
 ./fuzz.sh ./examples/matrix.hms matrix_fuzz &
+./fuzz.sh ./examples/linear_gradient.hms linear_gradient_fuzz &
+./fuzz.sh ./examples/linear_gradient_2d.hms linear_gradient_2d_fuzz &
 wait

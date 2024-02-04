@@ -1,0 +1,28 @@
+let ALPHA = 1f/3f;
+
+let e = 2.718281828459045;
+let X0 = 1f;
+
+fn f(a: float) -> float {
+    1f + log(e, a)
+}
+
+fn calc_iter(xi: float) -> float {
+    xi - ALPHA * f(xi)
+}
+
+fn main() {
+    let results = [ X0 ];
+
+    for i in 1..=6 {
+        let xi = results[i - 1];
+        println(fmt("Using x%d = %f", i - 1, xi));
+
+        let xi_p1 = calc_iter(results[i - 1]);
+        results.push(xi_p1);
+        println(fmt("x%d = (%f)", i, xi_p1))
+    }
+
+    let last = (results.last().unwrap() * 1000f) as int;
+    assert_eq(last, 367)
+}

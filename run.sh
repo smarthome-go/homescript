@@ -1,8 +1,8 @@
 go build -o a .
 
-for file in ./a_fuzz/*.hms; do
+for file in ./pi_fuzz/*.hms; do
     echo "Running $file..."
-    ./a "$file" both || exit 1
+    ./a "$file" both &
 done
 
 wait
