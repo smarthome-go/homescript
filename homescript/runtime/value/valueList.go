@@ -110,15 +110,16 @@ func (self ValueList) Fields() (map[string]*Value, *VmInterrupt) {
 		}),
 		"pop": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 			length := len(*self.Values)
-			// if the list is already empty, do not pop any values
+			// If the list is already empty, do not pop any values
 			if length == 0 {
-				return NewValueNull(), nil
+				return NewNoneOption(), nil
 			}
-			// remove the last slice element
-			var last Value
-			last, *self.Values = *(*self.Values)[length-1], (*self.Values)[:length-1]
-			// return the recently popped value
-			return &last, nil
+
+			// Remove the last slice element.
+			last := (*self.Values)[length-1]
+			*self.Values = (*self.Values)[:length-1]
+
+			return NewValueOption(last), nil
 		}),
 		"push_front": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 			*self.Values = append([]*Value{&args[0]}, *self.Values...)
@@ -126,15 +127,16 @@ func (self ValueList) Fields() (map[string]*Value, *VmInterrupt) {
 		}),
 		"pop_front": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 			length := len(*self.Values)
-			// if the list is already empty, do not pop any values
+			// If the list is already empty, do not pop any values.
 			if length == 0 {
-				return NewValueNull(), nil
+				return NewNoneOption(), nil
 			}
-			// remove the first slice element
-			var first Value
-			first, *self.Values = *(*self.Values)[0], (*self.Values)[1:]
-			// return the recently popped value
-			return &first, nil
+
+			// Remove the first slice element.
+			first := (*self.Values)[0]
+			*self.Values = (*self.Values)[1:]
+
+			return NewValueOption(first), nil
 		}),
 		"insert": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 			// check the index bounds
