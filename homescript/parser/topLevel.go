@@ -351,7 +351,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 
 	usingTemplate := ast.ImplBlockTemplate{
 		Template: templateIdent,
-		Capabilities: ast.ImplBlockCapabilities{
+		UserDefinedCapabilities: ast.ImplBlockCapabilities{
 			Defined: false,
 			List:    make([]ast.SpannedIdent, 0),
 			Span:    errors.Span{},
@@ -368,14 +368,14 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 
 		// Save start location
 		capabilitiesStartLoc = self.CurrentToken.Span.Start
-		usingTemplate.Capabilities.Defined = true
+		usingTemplate.UserDefinedCapabilities.Defined = true
 
 		if err := self.expect(LCurly); err != nil {
 			return ast.ImplBlock{}, err
 		}
 
 		// Make initial capability
-		usingTemplate.Capabilities.List = append(usingTemplate.Capabilities.List, ast.NewSpannedIdent(
+		usingTemplate.UserDefinedCapabilities.List = append(usingTemplate.UserDefinedCapabilities.List, ast.NewSpannedIdent(
 			self.CurrentToken.Value,
 			self.CurrentToken.Span,
 		))
@@ -401,7 +401,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 			}
 
 			// Make current capability
-			usingTemplate.Capabilities.List = append(usingTemplate.Capabilities.List, ast.NewSpannedIdent(
+			usingTemplate.UserDefinedCapabilities.List = append(usingTemplate.UserDefinedCapabilities.List, ast.NewSpannedIdent(
 				self.CurrentToken.Value,
 				self.CurrentToken.Span,
 			))
@@ -416,7 +416,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 			return ast.ImplBlock{}, err
 		}
 
-		usingTemplate.Capabilities.Span = capabilitiesStartLoc.Until(self.PreviousToken.Span.End, self.Filename)
+		usingTemplate.UserDefinedCapabilities.Span = capabilitiesStartLoc.Until(self.PreviousToken.Span.End, self.Filename)
 	}
 
 	// Expect a `for`

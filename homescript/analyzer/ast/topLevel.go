@@ -41,4 +41,6 @@ type AnalyzedImplBlock struct {
 	UsingTemplate  ast.ImplBlockTemplate
 	Methods        []AnalyzedFunctionDefinition
 	Span           errors.Span
+	// Capabilities which exist on the singleton after consideration of default capabilities.
+	FinalCapabilities map[string]TemplateCapabilityWithSpan
 }

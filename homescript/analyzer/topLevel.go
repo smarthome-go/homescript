@@ -585,16 +585,50 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 			[]string{fmt.Sprintf("Templates can be imported like this: `import templ %s;`", node.UsingTemplate.Template.Ident())},
 			node.UsingTemplate.Template.Span(),
 		)
-	} else {
-		self.validateTemplateConstraints(
-			singletonType,
-			node.SingletonIdent,
-			tmpl,
-			node.UsingTemplate,
-			methods,
-			node.Span,
-		)
+
+		return ast.AnalyzedImplBlock{
+			SingletonIdent:    node.SingletonIdent,
+			SingletonType:     singletonType,
+			UsingTemplate:     node.UsingTemplate,
+			Methods:           methods,
+			Span:              node.Span,
+			FinalCapabilities: nil,
+		}
 	}
+
+	finalCapabilities := self.templateCapabilitiesWithDefault(
+		node.UsingTemplate.Template.Ident(),
+		tmpl,
+		node.UsingTemplate.UserDefinedCapabilities,
+	)
+
+	requiredMethods, err := self.WithCapabilities(
+		tmpl,
+		finalCapabilities,
+	)
+
+	// If there are serious errors with the capability config, skip checking other details
+	if err {
+		return ast.AnalyzedImplBlock{
+			SingletonIdent:    node.SingletonIdent,
+			SingletonType:     singletonType,
+			UsingTemplate:     node.UsingTemplate,
+			Methods:           methods,
+			Span:              node.Span,
+			FinalCapabilities: nil,
+		}
+	}
+
+	self.validateTemplateConstraints(
+		singletonType,
+		node.SingletonIdent,
+		tmpl,
+		node.UsingTemplate,
+		methods,
+		// Computes span of template header
+		node.Span.Start.Until(node.SingletonIdent.Span().End, node.Span.Filename),
+		requiredMethods,
+	)
 
 	// Update the singleton so that the post-validation hook is aware of this impl
 	// NOTE: this must only be done if the singleton exists, otherwise, this is not even required
@@ -606,11 +640,12 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 	}
 
 	return ast.AnalyzedImplBlock{
-		SingletonIdent: node.SingletonIdent,
-		SingletonType:  singletonType,
-		UsingTemplate:  node.UsingTemplate,
-		Methods:        methods,
-		Span:           node.Span,
+		SingletonIdent:    node.SingletonIdent,
+		SingletonType:     singletonType,
+		UsingTemplate:     node.UsingTemplate,
+		Methods:           methods,
+		Span:              node.Span,
+		FinalCapabilities: finalCapabilities,
 	}
 }
 
@@ -623,19 +658,9 @@ func (self *Analyzer) validateTemplateConstraints(
 	templateSpec ast.TemplateSpec,
 	implementedTemplateWithCapabilities pAst.ImplBlockTemplate,
 	methods []ast.AnalyzedFunctionDefinition,
-	span errors.Span,
+	implHeaderSpan errors.Span,
+	requiredMethods map[string]ast.TemplateMethod,
 ) {
-	requiredMethods, err := self.WithCapabilities(
-		implementedTemplateWithCapabilities.Template.Ident(),
-		templateSpec,
-		implementedTemplateWithCapabilities.Capabilities,
-	)
-
-	// If there are serious errors with the capability config, skip checking other details
-	if err {
-		return
-	}
-
 	// Validate that all required methods exist with their correct signatures
 	for reqName, reqMethod := range requiredMethods {
 		isImplemented := false
@@ -645,7 +670,7 @@ func (self *Analyzer) validateTemplateConstraints(
 				isImplemented = true
 
 				// TODO: validate correct implementation
-				if err := self.TypeCheck(method.Type(), reqMethod.Signature.SetSpan(span), true); err != nil {
+				if err := self.TypeCheck(method.Type(), reqMethod.Signature.SetSpan(implHeaderSpan), true); err != nil {
 					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 					if err.ExpectedDiagnostic != nil {
 						self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -743,7 +768,7 @@ func (self *Analyzer) validateTemplateConstraints(
 						returnType,
 					),
 				},
-				span,
+				implHeaderSpan,
 			)
 		}
 	}

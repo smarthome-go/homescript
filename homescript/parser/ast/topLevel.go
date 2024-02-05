@@ -31,8 +31,8 @@ type ImplBlockCapabilities struct {
 
 // Impl block template
 type ImplBlockTemplate struct {
-	Template     SpannedIdent
-	Capabilities ImplBlockCapabilities
+	Template                SpannedIdent
+	UserDefinedCapabilities ImplBlockCapabilities
 }
 
 // Impl block

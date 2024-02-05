@@ -8,13 +8,11 @@ import (
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
-// Maps a selected capability to its span in the source code (`impl Foo with { CAP } for`),
-// Here, the span corresponds to the position to CAP
-func (self *Analyzer) WithCapabilities(
+func (self *Analyzer) templateCapabilitiesWithDefault(
 	templateSpecName string,
 	templateSpec ast.TemplateSpec,
-	implementedCapabilities pAst.ImplBlockCapabilities,
-) (methods map[string]ast.TemplateMethod, err bool) {
+	userImplementsCapabilities pAst.ImplBlockCapabilities,
+) map[string]ast.TemplateCapabilityWithSpan {
 	capabilities := make(map[string]ast.TemplateCapabilityWithSpan)
 
 	// Use the default capabilities
@@ -31,7 +29,7 @@ func (self *Analyzer) WithCapabilities(
 	}
 
 	// Furthermore, use the implemented capabilities
-	for _, implementedCap := range implementedCapabilities.List {
+	for _, implementedCap := range userImplementsCapabilities.List {
 		capability, exists := templateSpec.Capabilities[implementedCap.Ident()]
 		if !exists {
 			self.error(
@@ -51,6 +49,15 @@ func (self *Analyzer) WithCapabilities(
 		}
 	}
 
+	return capabilities
+}
+
+// Maps a selected capability to its span in the source code (`impl Foo with { CAP } for`),
+// Here, the span corresponds to the position to CAP
+func (self *Analyzer) WithCapabilities(
+	templateSpec ast.TemplateSpec,
+	capabilitiesOfImplementation map[string]ast.TemplateCapabilityWithSpan,
+) (methods map[string]ast.TemplateMethod, err bool) {
 	// Compute the set of required methods based on the capabilities
 	// Also check that this capability does not conflict with other capabilities.
 	methods = make(map[string]ast.TemplateMethod)
@@ -62,13 +69,13 @@ func (self *Analyzer) WithCapabilities(
 	// This way, redundant compatability errors are not shown
 	conflictsReverse := make(map[string]string)
 
-	for capName, capability := range capabilities {
+	for capName, capability := range capabilitiesOfImplementation {
 		// Check that there are no capability conflicts
 		containsErr, conflictFound, diagnotsics := ast.DetermineCapabilityConflicts(
 			templateSpec,
 			capName,
 			capability.Capability,
-			capabilities,
+			capabilitiesOfImplementation,
 			capability.Span,
 		)
 		if containsErr {
