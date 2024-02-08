@@ -273,8 +273,6 @@ func (self *VM) WaitNonConsuming() {
 		defer self.Cores.Lock.RUnlock()
 
 		if len(self.Cores.Cores) == 0 {
-			// TODO: remove this once this message has been spotted.
-			fmt.Printf("NOTE: Breakout..")
 			break
 		}
 	}
