@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
@@ -115,8 +116,14 @@ func (self *VM) spawnCore() *Core {
 	return &core
 }
 
+type FunctionInvocationSignatureParam struct {
+	Ident string
+	Type  ast.Type
+}
+
 type FunctionInvocationSignature struct {
-	Params     map[string]ast.Type
+	// This needs to be a list so that ordering is respected.
+	Params     []FunctionInvocationSignatureParam
 	ReturnType ast.Type
 }
 
@@ -126,10 +133,13 @@ func FunctionInvocationSignatureFromType(input ast.FunctionType) FunctionInvocat
 	}
 
 	fromParams := input.Params.(ast.NormalFunctionTypeParamKindIdentifier).Params
-	params := make(map[string]ast.Type)
+	params := make([]FunctionInvocationSignatureParam, len(fromParams))
 
-	for _, param := range fromParams {
-		params[param.Name.Ident()] = param.Type
+	for idx, param := range fromParams {
+		params[idx] = FunctionInvocationSignatureParam{
+			Ident: param.Name.Ident(),
+			Type:  param.Type,
+		}
 	}
 
 	return FunctionInvocationSignature{
@@ -174,21 +184,38 @@ func (self *VM) SpawnSync(invocation FunctionInvocation, debuggerOut *chan Debug
 	gotArgLen := len(invocation.Args)
 
 	if gotArgLen != expectedParamLen {
-		panic(fmt.Sprintf("Illegal call: expected %d arguments due to function signature, got %d", expectedParamLen, gotArgLen))
+		panic(fmt.Sprintf(
+			"Illegal call: expected %d arguments due to function signature, got %d",
+			expectedParamLen,
+			gotArgLen,
+		))
 	}
 
 	index := 0
-	for name, param := range invocation.FunctionSignature.Params {
+	for _, param := range invocation.FunctionSignature.Params {
 		arg := invocation.Args[index]
-		_, interrupt := value.DeepCast(arg, param, errors.Span{}, false)
+		_, interrupt := value.DeepCast(arg, param.Type, errors.Span{}, false)
 		if interrupt != nil {
-			panic(fmt.Sprintf("Argument %d for param `%s` type mismatch: %s", index, name, (*interrupt).Message()))
+			panic(fmt.Sprintf(
+				"ARGS=%s | Argument %d for param `%s` type mismatch: `%s`",
+				spew.Sdump(invocation.Args),
+				index,
+				param.Ident,
+				(*interrupt).Message(),
+			))
 		}
 
 		index++
 	}
 
-	coreHandle := self.spawnCoreInternal(invocation.Function, invocation.Args, debuggerOut)
+	// Invert arguments so that they match the order in which they would be pushed onto the stack.
+	argCIdx := len(invocation.Args) - 1
+	invertedArgs := make([]value.Value, argCIdx+1)
+	for idx := argCIdx; idx >= 0; idx-- {
+		invertedArgs[argCIdx-idx] = invocation.Args[idx]
+	}
+
+	coreHandle := self.spawnCoreInternal(invocation.Function, invertedArgs, debuggerOut)
 	exceptionCore, interrupt := self.Wait()
 
 	return self.HandleTermination(

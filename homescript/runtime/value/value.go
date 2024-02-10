@@ -160,3 +160,7 @@ func ObjectZeroValue(typ ast.ObjectType) ValueObject {
 		FieldsInternal: fields,
 	}
 }
+
+func AsPtr(input Value) *Value {
+	return &input
+}
