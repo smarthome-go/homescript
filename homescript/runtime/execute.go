@@ -157,7 +157,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 
 		abs := self.absolute(i.Value)
 
-		if VM_VERBOSE {
+		if VM_VERBOSE != VmNotVerbose {
 			fmt.Printf("Memory read access at %x\n", abs)
 		}
 
@@ -175,7 +175,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 
 		abs := self.absolute(i.Value)
 
-		if VM_VERBOSE {
+		if VM_VERBOSE != VmNotVerbose {
 			fmt.Printf("Memory write access `%v` at %x\n", *v, abs)
 		}
 

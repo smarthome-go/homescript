@@ -17,7 +17,15 @@ import (
 const NUM_INSTRUCTIONS_EXECUTE_PER_VCYCLE = 50
 
 // Whether the VM should print its current state for each cycle.
-const VM_VERBOSE = false
+type VMVerboseMode uint8
+
+const (
+	VmNotVerbose VMVerboseMode = iota
+	VmVerbose
+	VmVeryVerbose
+)
+
+const VM_VERBOSE = VmNotVerbose
 
 const VM_DEBUGGER = false
 const VM_DEBUGGER_SLEEP = 1 * time.Millisecond
@@ -203,7 +211,7 @@ outer:
 			i := fn[callFrame.InstructionPointer]
 
 			// Because this condition is constant, it should be optimized away
-			if VM_VERBOSE {
+			if VM_VERBOSE != VmNotVerbose {
 				stack := make([]string, 0)
 				for _, elem := range self.Stack {
 					if elem == nil || *elem == nil {
@@ -262,8 +270,15 @@ outer:
 					globals = append(globals, fmt.Sprintf("%s=%s", key, strings.ReplaceAll(disp, "\n", " ")))
 				}
 
-				// fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function)
-				fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s MP=%d | CLSTCK: %v | STCKSS=%d | STCK: [%s] | MEM: [%s] | GLOB:  [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.MemoryPointer, self.CallStack, len(self.Stack), strings.Join(stack, ", "), strings.Join(mem, ", "), strings.Join(globals, ", "))
+				switch VM_VERBOSE {
+				case VmVerbose:
+					fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function)
+				case VmVeryVerbose:
+					fmt.Printf("Corenum %d | I: %v | IP: %d | FP: %s MP=%d | CLSTCK: %v | STCKSS=%d | STCK: [%s] | MEM: [%s] | GLOB:  [%s]\n", self.Corenum, i, self.callFrame().InstructionPointer, self.callFrame().Function, self.MemoryPointer, self.CallStack, len(self.Stack), strings.Join(stack, ", "), strings.Join(mem, ", "), strings.Join(globals, ", "))
+				default:
+					panic("New VM verbose mode added without updating this code.")
+				}
+
 				time.Sleep(10 * time.Millisecond)
 			}
 
