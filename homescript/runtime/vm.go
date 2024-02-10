@@ -287,7 +287,7 @@ func (self *VM) spawnCoreInternal(
 	for _, elem := range addToStack {
 		// TODO: However, the VM should not do this implicitly,
 		// Smarter would be to insert clones manually?
-		core.push(&elem) // Implement a deep copy? Or clone?
+		core.push(value.AsPtr(elem)) // Implement a deep copy? Or clone?
 	}
 	go (*core).Run(toBeInvoked, debuggerOutput)
 
