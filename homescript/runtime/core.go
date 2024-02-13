@@ -79,60 +79,62 @@ func NewCore(
 	limits CoreLimits,
 ) Core {
 	return Core{
-		CallStack:    make([]CallFrame, 0),
-		Memory:       make([]*value.Value, limits.MaxMemorySize),
-		Stack:        make([]*value.Value, 0),
-		Program:      program,
-		hostCall:     hostCall,
-		parent:       vm,
-		Labels:       make(map[string]uint),
-		Executor:     executor,
-		Corenum:      coreNum,
-		SignalHandle: handle,
-		CancelCtx:    ctx,
-		Limits:       limits,
+		CallStack:            make([]CallFrame, 0),
+		Memory:               make([]*value.Value, limits.MaxMemorySize),
+		Stack:                make([]*value.Value, 0),
+		Program:              program,
+		Labels:               make(map[string]uint),
+		hostCall:             hostCall,
+		parent:               vm,
+		Executor:             executor,
+		Corenum:              coreNum,
+		SignalHandle:         handle,
+		ExceptionCatchLabels: []CallFrame{},
+		MemoryPointer:        0,
+		CancelCtx:            ctx,
+		Limits:               limits,
 	}
 }
 
-func (self *Core) push(v *value.Value) {
-	self.Stack = append(self.Stack, v)
+func (core *Core) push(v *value.Value) {
+	core.Stack = append(core.Stack, v)
 }
 
-func (self *Core) pop() *value.Value {
-	v := self.Stack[len(self.Stack)-1]
-	self.Stack = self.Stack[:len(self.Stack)-1]
+func (core *Core) pop() *value.Value {
+	v := core.Stack[len(core.Stack)-1]
+	core.Stack = core.Stack[:len(core.Stack)-1]
 	return v
 }
 
-func (self *Core) getStackTop() *value.Value {
-	v := self.Stack[len(self.Stack)-1]
+func (core *Core) getStackTop() *value.Value {
+	v := core.Stack[len(core.Stack)-1]
 	return v
 }
 
-func (self *Core) pushCallStack(function string) {
-	self.CallStack = append(self.CallStack, CallFrame{
+func (core *Core) pushCallStack(function string) {
+	core.CallStack = append(core.CallStack, CallFrame{
 		Function:           function,
 		InstructionPointer: 0,
 	})
 }
 
-func (self *Core) popCallStack() {
-	self.CallStack = self.CallStack[:len(self.CallStack)-1]
+func (core *Core) popCallStack() {
+	core.CallStack = core.CallStack[:len(core.CallStack)-1]
 }
 
-func (self *Core) callFrame() *CallFrame {
-	return &self.CallStack[len(self.CallStack)-1]
+func (core *Core) callFrame() *CallFrame {
+	return &core.CallStack[len(core.CallStack)-1]
 }
 
-func (self *Core) absolute(rel int64) int {
-	return int(self.MemoryPointer - rel)
+func (core *Core) absolute(rel int64) int {
+	return int(core.MemoryPointer - rel)
 }
 
-func (self *Core) checkCancelation() *value.VmInterrupt {
+func (core *Core) checkCancelation() *value.VmInterrupt {
 	select {
-	case <-(*self.CancelCtx).Done():
-		span := self.parent.SourceMap(*self.callFrame())
-		return value.NewVMTerminationInterrupt(context.Cause((*self.CancelCtx)).Error(), span)
+	case <-(*core.CancelCtx).Done():
+		span := core.parent.SourceMap(*core.callFrame())
+		return value.NewVMTerminationInterrupt(context.Cause((*core.CancelCtx)).Error(), span)
 	default:
 		// Do nothing, this should not block the entire VM
 		return nil
