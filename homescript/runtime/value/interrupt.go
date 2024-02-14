@@ -1,6 +1,8 @@
 package value
 
 import (
+	"fmt"
+
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 )
 
@@ -33,6 +35,7 @@ type VmInterrupt interface {
 	Message() string
 	// This function may panic if the target value has no span
 	GetSpan() errors.Span
+	KindString() string
 }
 
 //
@@ -46,6 +49,7 @@ type Vm_ExitInterrupt struct {
 
 func (self Vm_ExitInterrupt) Kind() VmInterruptKind { return Vm_ExitInterruptKind }
 func (self Vm_ExitInterrupt) Message() string       { return "<exit-interrupt>" }
+func (self Vm_ExitInterrupt) KindString() string    { return self.Kind().String() }
 func (self Vm_ExitInterrupt) GetSpan() errors.Span  { return self.Span }
 func NewVMExitInterrupt(code int64, span errors.Span) *VmInterrupt {
 	i := VmInterrupt(Vm_ExitInterrupt{Code: code, Span: span})
@@ -63,6 +67,9 @@ type VmTerminationInterrupt struct {
 
 func (self VmTerminationInterrupt) Kind() VmInterruptKind { return Vm_TerminateInterruptKind }
 func (self VmTerminationInterrupt) Message() string       { return self.Reason }
+func (self VmTerminationInterrupt) KindString() string {
+	return self.Kind().String()
+}
 func (self VmTerminationInterrupt) GetSpan() errors.Span {
 	return self.Span
 }
@@ -83,6 +90,7 @@ type Vm_NormalException struct {
 
 func (self Vm_NormalException) Kind() VmInterruptKind { return Vm_NormalExceptionInterruptKind }
 func (self Vm_NormalException) Message() string       { return self.MessageInternal }
+func (self Vm_NormalException) KindString() string    { return self.Kind().String() }
 func (self Vm_NormalException) GetSpan() errors.Span {
 	return self.Span
 }
@@ -141,6 +149,10 @@ func (self VmFatalException) Kind() VmInterruptKind { return Vm_FatalExceptionIn
 
 func (self VmFatalException) Message() string {
 	return self.MessageInternal
+}
+
+func (self VmFatalException) KindString() string {
+	return fmt.Sprintf("%s: %s", self.Kind().String(), self.ErrKind.String())
 }
 
 func (self VmFatalException) GetSpan() errors.Span {
