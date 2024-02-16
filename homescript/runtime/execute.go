@@ -84,7 +84,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 
 			// TODO: do we need to handle `nil` values?
 			// TODO: this is bad: fix it
-			if (*res).Kind() != value.NullValueKind {
+			if res != nil && (*res).Kind() != value.NullValueKind {
 				self.push(res)
 			}
 		default:

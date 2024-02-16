@@ -3,6 +3,7 @@ package fuzzer
 import (
 	"crypto/md5"
 	"fmt"
+	"log"
 	"runtime"
 	"sync"
 	"time"
@@ -10,24 +11,24 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 )
 
-const GEN_VERBOSE = true
-
 type Generator struct {
 	onOutput             func(tree ast.AnalyzedProgram, treeStr string, hashSum string) error
 	seed                 int64
 	input                ast.AnalyzedProgram
-	passes               int
-	terminateAfterNTries int
-	outputLimitPerPass   int
+	passes               uint
+	terminateAfterNTries uint
+	outputLimitPerPass   uint
+	verbose              bool
 }
 
 func NewGenerator(
 	input ast.AnalyzedProgram,
 	onOutput func(ast.AnalyzedProgram, string, string) error,
 	seed int64,
-	passes int,
-	terminateAfterNTries int,
-	outputSizeLimit int,
+	passes uint,
+	terminateAfterNTries uint,
+	outputSizeLimit uint,
+	verbose bool,
 ) Generator {
 	return Generator{
 		onOutput:             onOutput,
@@ -36,19 +37,20 @@ func NewGenerator(
 		passes:               passes,
 		terminateAfterNTries: terminateAfterNTries,
 		outputLimitPerPass:   outputSizeLimit,
+		verbose:              verbose,
 	}
 }
 
-func chunkInput(input []ast.AnalyzedProgram, chunkSize int) [][]ast.AnalyzedProgram {
-	var chunks [][]ast.AnalyzedProgram
+func ChunkInput[T any](input []T, chunkSize uint) [][]T {
+	var chunks [][]T
 	for {
 		if len(input) == 0 {
 			break
 		}
 
 		// Necessary check to avoid slicing beyond slice capacity
-		if len(input) < chunkSize {
-			chunkSize = len(input)
+		if uint(len(input)) < chunkSize {
+			chunkSize = uint(len(input))
 		}
 
 		chunks = append(chunks, input[0:chunkSize])
@@ -64,11 +66,11 @@ func (self *Generator) Gen() {
 	passResults := make([][]ast.AnalyzedProgram, self.passes+1)
 	passResults[0] = []ast.AnalyzedProgram{self.input}
 
-	for passIndex := 0; passIndex < self.passes; passIndex++ {
+	for passIndex := 0; passIndex < int(self.passes); passIndex++ {
 		start := time.Now()
 
 		if len(passResults[passIndex]) < 100 {
-			fmt.Printf("Executing pass %d single threaded.\n", passIndex)
+			log.Printf("Executing pass %d single threaded.\n", passIndex)
 			wg := sync.WaitGroup{}
 			wg.Add(1)
 			self.Pass(
@@ -78,16 +80,16 @@ func (self *Generator) Gen() {
 				self.outputLimitPerPass,
 			)
 
-			fmt.Printf("\n=== Pass %d duration: %v for input size %d\n", passIndex, time.Since(start), len(passResults[passIndex]))
+			log.Printf("\n=== Pass %d duration: %v for input size %d\n", passIndex, time.Since(start), len(passResults[passIndex]))
 			continue
 		}
 
-		inputSize := len(passResults[passIndex])
-		numCpu := runtime.NumCPU()
+		inputSize := uint(len(passResults[passIndex]))
+		numCpu := uint(runtime.NumCPU())
 		chunkSize := (inputSize + numCpu - 1) / numCpu
 
-		inputChunks := chunkInput(passResults[passIndex], chunkSize)
-		numChunks := len(inputChunks)
+		inputChunks := ChunkInput[ast.AnalyzedProgram](passResults[passIndex], chunkSize)
+		numChunks := uint(len(inputChunks))
 		outputChunks := make([][]ast.AnalyzedProgram, numChunks)
 
 		if numChunks > numCpu {
@@ -96,8 +98,8 @@ func (self *Generator) Gen() {
 
 		wg := sync.WaitGroup{}
 
-		for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
-			fmt.Printf("Spawning worker %d for pass %d...\n", chunkIndex, passIndex)
+		for chunkIndex := 0; uint(chunkIndex) < numChunks; chunkIndex++ {
+			log.Printf("Spawning worker %d for pass %d...\n", chunkIndex, passIndex)
 
 			wg.Add(1)
 			go self.Pass(
@@ -108,19 +110,19 @@ func (self *Generator) Gen() {
 			)
 		}
 
-		fmt.Println("Waiting...")
+		log.Println("Waiting...")
 		wg.Wait()
-		fmt.Println("Wait finished")
+		log.Println("Wait finished")
 
 		// Slice the output chunks together again
-		for chunkIndex := 0; chunkIndex < numChunks; chunkIndex++ {
+		for chunkIndex := 0; uint(chunkIndex) < numChunks; chunkIndex++ {
 			passResults[passIndex+1] = append(passResults[passIndex+1], outputChunks[chunkIndex]...)
 		}
 
-		fmt.Printf("\n=== Pass %d duration: %v for input size %d\n", passIndex, time.Since(start), len(passResults[passIndex]))
+		log.Printf("\n=== Pass %d duration: %v for input size %d\n", passIndex, time.Since(start), len(passResults[passIndex]))
 	}
 
-	if GEN_VERBOSE {
+	if self.verbose {
 		generated := 0
 
 		hashset := make(map[string]struct{})
@@ -139,7 +141,7 @@ func (self *Generator) Gen() {
 			}
 		}
 
-		fmt.Printf("\nFuzz: %v, generated: %d\n", time.Since(startAll), generated)
+		log.Printf("\nFuzz: %v, generated: %d\n", time.Since(startAll), generated)
 	}
 }
 
@@ -147,23 +149,23 @@ func (self *Generator) Pass(
 	wg *sync.WaitGroup,
 	inputTrees *[]ast.AnalyzedProgram,
 	outputTrees *[]ast.AnalyzedProgram,
-	outputSizeLimit int,
+	outputSizeLimit uint,
 ) {
 	defer wg.Done()
 
 	hashset := make(map[string]struct{})
-	countNoNew := 0
+	var countNoNew uint = 0
 
-	trans := NewTransformer(100, self.seed)
+	trans := NewTransformer(self.seed)
 
 	lastLen := len(*inputTrees)
 
-	for (countNoNew < self.terminateAfterNTries || self.terminateAfterNTries <= 0) && len(hashset) <= outputSizeLimit {
-		if GEN_VERBOSE {
+	for (countNoNew < self.terminateAfterNTries || self.terminateAfterNTries <= 0) && uint(len(hashset)) <= outputSizeLimit {
+		if self.verbose {
 			if countNoNew > 11 {
-				fmt.Printf("%d (%d remaining) ", countNoNew, self.terminateAfterNTries-countNoNew)
+				log.Printf("%d (%d remaining) ", countNoNew, self.terminateAfterNTries-countNoNew)
 			} else if countNoNew > 10 {
-				fmt.Printf("No new outputs since %d iterations (%d remaining).\n", countNoNew, self.terminateAfterNTries-countNoNew)
+				log.Printf("No new outputs since %d iterations (%d remaining).\n", countNoNew, self.terminateAfterNTries-countNoNew)
 			}
 		}
 

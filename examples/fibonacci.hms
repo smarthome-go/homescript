@@ -7,7 +7,7 @@ fn fib(n: int) -> int {
 }
 
 fn main() {
-    for n in 2..40 {
+    for n in 2..25 {
         println(n.to_string(), "->", fib(n))
     }
 }

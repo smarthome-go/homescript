@@ -21,20 +21,15 @@ type Transformer struct {
 	// Keeps track of how many ast nodes the transformewr already changed.
 	modifications uint
 
-	// Used to implement a maximum limit of transformations.
-	// If `modifications` reaches this count, no further transformations are applied and the resulting tree is returned.
-	maxModifications uint
-
 	Out string
 }
 
-func NewTransformer(maxModifications uint, seed int64) Transformer {
+func NewTransformer(seed int64) Transformer {
 	source := rand.NewSource(seed)
 
 	return Transformer{
-		randSource:       source,
-		modifications:    0,
-		maxModifications: maxModifications,
+		randSource:    source,
+		modifications: 0,
 	}
 }
 

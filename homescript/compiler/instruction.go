@@ -25,6 +25,23 @@ type Program struct {
 	Mappings MangleMappings
 }
 
+func (self Program) AsmString() string {
+	functionsStr := make([]string, 0)
+
+	for fnName, instructions := range self.Functions {
+		fnHeaderStr := fmt.Sprintf("FUNCTION %s (%s)", fnName, self.Mappings.Functions[fnName])
+		fnInstructions := make([]string, 0)
+
+		for idx, instruction := range instructions {
+			fnInstructions = append(fnInstructions, fmt.Sprintf("\t%04d | %s\n", idx, instruction))
+		}
+
+		functionsStr = append(functionsStr, fmt.Sprintf("%s\n%s", fnHeaderStr, strings.Join(fnInstructions, "")))
+	}
+
+	return strings.Join(functionsStr, "END FUNCTION\n")
+}
+
 type Opcode uint8
 
 const (
