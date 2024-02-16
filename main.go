@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript"
@@ -66,12 +67,13 @@ func main() {
 	}
 
 	if os.Args[2] == "fuzz" {
-		const passes = 4
+		const passes = 6
 		const seed = 42
-		const passLimit = 1000
-		const terminateAfterMinFound = 200 // 0 is unlimited
+		const passLimit = 20
+		const terminateAfterMinFound = 300 // 0 is unlimited
 
-		outputDir := os.Args[3]
+		path := path.Base(os.Args[2])
+		outputDir := fmt.Sprintf("fuzz/%s", path)
 		if err := os.MkdirAll(outputDir, 0755); err != nil {
 			panic(err.Error())
 		}
