@@ -783,15 +783,19 @@ func (self *Analyzer) validateTemplateConstraints(
 					self.templateTypeFail(method, singletonIdent.Ident())
 				}
 
-				// Check that the method signature matches the required signature.
-				// if err := self.TypeCheck(method.Type(), reqMethod.Signature.SetSpan(implHeaderSpan), true); err != nil {
-				// 	self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
-				// 	if err.ExpectedDiagnostic != nil {
-				// 		self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
-				// 	}
-				// } else {
-				// 	self.templateTypeFail(method, singletonIdent.Ident())
-				// }
+				// Check that the method return type matches the required signature.
+				if err := self.TypeCheck(
+					method.ReturnType,
+					reqMethod.Signature.ReturnType.SetSpan(implHeaderSpan),
+					true,
+				); err != nil {
+					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+					if err.ExpectedDiagnostic != nil {
+						self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+					}
+				} else {
+					self.templateTypeFail(method, singletonIdent.Ident())
+				}
 
 				// Validate that the modifier is identical to the one that is needed
 				if method.Modifier != reqMethod.Modifier {
