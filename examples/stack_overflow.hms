@@ -1,7 +1,0 @@
-fn rec() {
-    rec();
-}
-
-fn main() {
-    rec();
-}
