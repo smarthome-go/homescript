@@ -649,6 +649,30 @@ func (self *Analyzer) implBlock(node pAst.ImplBlock) ast.AnalyzedImplBlock {
 	}
 }
 
+func (self *Analyzer) templateTypeFail(method ast.AnalyzedFunctionDefinition, singletonIdent string) {
+	// Validate that this method also extracts the singleton.
+	// If not, it is not really useful
+	extractsSingleton := false
+
+	for _, param := range method.Parameters.List {
+		if param.IsSingletonExtractor && param.SingletonIdent == singletonIdent {
+			extractsSingleton = true
+			break
+		}
+	}
+
+	if !extractsSingleton {
+		self.error(
+			fmt.Sprintf("Method does not extract singleton `%s`", singletonIdent),
+			[]string{
+				fmt.Sprintf("Since the method is implemented for `%s`, it should also extract it", singletonIdent),
+				fmt.Sprintf("Singletons can be extracted like this: fn %s(ident: %s, ...)", method.Ident.Ident(), singletonIdent),
+			},
+			method.Range,
+		)
+	}
+}
+
 // This method must validate the following constraints:
 // - Validate that all required methods (and no more) exist with the correct signatures
 // - Ignore any singleton extractions, just make sure that the singleton on which the template is implemented is also extracted
@@ -669,34 +693,108 @@ func (self *Analyzer) validateTemplateConstraints(
 			if method.Ident.Ident() == reqName {
 				isImplemented = true
 
-				// TODO: validate correct implementation
-				if err := self.TypeCheck(method.Type(), reqMethod.Signature.SetSpan(implHeaderSpan), true); err != nil {
+				reqMethodParams := reqMethod.Signature.Params.(ast.NormalFunctionTypeParamKindIdentifier)
+
+				hasParamErrs := false
+
+				filteredReq := make([]ast.FunctionTypeParam, 0)
+				for _, reqParam := range reqMethodParams.Params {
+					if reqParam.IsSingletonExtractor {
+						continue
+					}
+					filteredReq = append(filteredReq, reqParam)
+				}
+
+				filteredMethod := make([]ast.AnalyzedFnParam, 0)
+				for _, methParam := range method.Parameters.List {
+					if methParam.IsSingletonExtractor {
+						continue
+					}
+					filteredMethod = append(filteredMethod, methParam)
+				}
+
+				// Check that the count of params is the same.
+				if len(filteredReq) != len(filteredMethod) {
+					trailingS := ""
+					if len(reqMethodParams.Params) > 1 || len(reqMethodParams.Params) == 0 {
+						trailingS = "s"
+					}
+
+					// If a singleton is extracted, mention that it is not counted in the parameter list.
+					notes := []string{}
+					if len(filteredMethod) != len(method.Parameters.List) {
+						// TODO: dedicated syntax!
+						notes = append(notes, "Singleton extractions do count as a parameter defintion.")
+					}
+
+					for _, param := range filteredReq {
+						notes = append(
+							notes,
+							fmt.Sprintf("Parameter `%s: %s` is missing but required",
+								param.Name,
+								param.Type,
+							))
+					}
+
+					self.error(
+						fmt.Sprintf(
+							"Expected %d parameter%s, got %d",
+							len(filteredReq),
+							trailingS,
+							len(filteredMethod),
+						),
+						notes,
+						method.Parameters.Span,
+					)
+					break
+				}
+
+				// Iterate over params and check that name and type match.
+				for idx, reqParam := range filteredReq {
+					gotParam := filteredMethod[idx]
+
+					if reqParam.Name.Ident() != gotParam.Ident.Ident() {
+						// TODO: break now or later?
+						hasParamErrs = true
+						self.error(
+							fmt.Sprintf("Expected parameter with name `%s`, got `%s`",
+								reqParam.Name,
+								gotParam.Ident.Ident(),
+							),
+							[]string{},
+							gotParam.Ident.Span(),
+						)
+						break
+					}
+
+					if err := self.TypeCheck(gotParam.Type, reqParam.Type.SetSpan(implHeaderSpan), true); err != nil {
+						self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+						if err.ExpectedDiagnostic != nil {
+							self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+						}
+
+						// TODO: BREAK as usual
+						hasParamErrs = true
+						break
+					}
+				}
+
+				if !hasParamErrs {
+					self.templateTypeFail(method, singletonIdent.Ident())
+				}
+
+				// Check that the method return type matches the required signature.
+				if err := self.TypeCheck(
+					method.ReturnType,
+					reqMethod.Signature.ReturnType.SetSpan(implHeaderSpan),
+					true,
+				); err != nil {
 					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 					if err.ExpectedDiagnostic != nil {
 						self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
 					}
 				} else {
-					// Validate that this method also extracts the singleton.
-					// If not, it is not really useful
-					extractsSingleton := false
-
-					for _, param := range method.Parameters.List {
-						if param.IsSingletonExtractor && param.SingletonIdent == singletonIdent.Ident() {
-							extractsSingleton = true
-							break
-						}
-					}
-
-					if !extractsSingleton {
-						self.error(
-							fmt.Sprintf("Method does not extract singleton `%s`", singletonIdent.Ident()),
-							[]string{
-								fmt.Sprintf("Since the method is implemented for `%s`, it should also extract it", singletonIdent.Ident()),
-								fmt.Sprintf("Singletons can be extracted like this: fn %s(ident: %s, ...)", method.Ident.Ident(), singletonIdent.Ident()),
-							},
-							method.Range,
-						)
-					}
+					self.templateTypeFail(method, singletonIdent.Ident())
 				}
 
 				// Validate that the modifier is identical to the one that is needed
