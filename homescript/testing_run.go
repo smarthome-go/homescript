@@ -82,7 +82,7 @@ func TestingRunInterpreter(analyzed map[string]ast.AnalyzedProgram, filename str
 			analyzed,
 			filename,
 			executor,
-			TestingInterpeterScopeAdditions(),
+			TestingInterpreterScopeAdditions(),
 			&ctx,
 		); i != nil {
 			switch (*i).Kind() {

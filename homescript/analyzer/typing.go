@@ -221,13 +221,13 @@ func (self *Analyzer) ConvertType(oldType pAst.HmsType, createErrors bool) ast.T
 // Type compatibility
 //
 
-type CompabilityError struct {
+type CompatibilityError struct {
 	GotDiagnostic      diagnostic.Diagnostic
 	ExpectedDiagnostic *diagnostic.Diagnostic
 }
 
-func newCompabilityErr(lhs diagnostic.Diagnostic, rhs *diagnostic.Diagnostic) *CompabilityError {
-	return &CompabilityError{
+func newCompatibilityErr(lhs diagnostic.Diagnostic, rhs *diagnostic.Diagnostic) *CompatibilityError {
+	return &CompatibilityError{
 		GotDiagnostic:      lhs,
 		ExpectedDiagnostic: rhs,
 	}
@@ -286,7 +286,7 @@ func (self *Analyzer) CheckAny(typ ast.Type) bool {
 	}
 }
 
-func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTypes bool) *CompabilityError {
+func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTypes bool) *CompatibilityError {
 	// allow the `any` type if it is expected
 	switch expected.Kind() {
 	case ast.AnyTypeKind, ast.UnknownTypeKind, ast.NeverTypeKind:
@@ -354,7 +354,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 					span = gotObj.ObjFields[len(gotObj.ObjFields)-1].Span
 				}
 
-				return newCompabilityErr(
+				return newCompatibilityErr(
 					diagnostic.Diagnostic{
 						Level:   diagnostic.DiagnosticLevelError,
 						Message: fmt.Sprintf("Field '%s' is missing", expectedField.FieldName.Ident()),
@@ -389,7 +389,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 
 			// this field does not exist on the `expected` object
 			if !found {
-				return newCompabilityErr(
+				return newCompatibilityErr(
 					diagnostic.Diagnostic{
 						Level:   diagnostic.DiagnosticLevelError,
 						Message: fmt.Sprintf("Found unexpected field '%s'", gotField.FieldName.Ident()),
@@ -420,7 +420,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 		return nil
 	case ast.FnTypeKind:
 		if !allowFunctionTypes {
-			return newCompabilityErr(
+			return newCompatibilityErr(
 				diagnostic.Diagnostic{
 					Level:   diagnostic.DiagnosticLevelError,
 					Message: "Cannot cast a function value at runtime",
@@ -448,7 +448,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 			return err
 		}
 		if expectedFn.Params.Kind() != gotFn.Params.Kind() {
-			return newCompabilityErr(
+			return newCompatibilityErr(
 				diagnostic.Diagnostic{
 					Level:   diagnostic.DiagnosticLevelError,
 					Message: fmt.Sprintf("Expected parameter kind '%s', found '%s'", expectedFn.Params.Kind(), gotFn.Params.Kind()),
@@ -472,7 +472,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 					}
 				}
 				if foundParam == nil {
-					return newCompabilityErr(
+					return newCompatibilityErr(
 						diagnostic.Diagnostic{
 							Level:   diagnostic.DiagnosticLevelError,
 							Message: fmt.Sprintf("Parameter '%s' is missing", expectedParam.Name.Ident()),
@@ -502,14 +502,14 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 	return nil
 }
 
-func (self *Analyzer) checkTypeKindEquality(got ast.Type, expected ast.Type) (err *CompabilityError, proceed bool) {
+func (self *Analyzer) checkTypeKindEquality(got ast.Type, expected ast.Type) (err *CompatibilityError, proceed bool) {
 	if got.Kind() == ast.UnknownTypeKind || got.Kind() == ast.NeverTypeKind ||
 		expected.Kind() == ast.UnknownTypeKind || expected.Kind() == ast.NeverTypeKind {
 		return nil, false
 	}
 
 	if expected.Kind() != got.Kind() {
-		return newCompabilityErr(
+		return newCompatibilityErr(
 			diagnostic.Diagnostic{
 				Level:   diagnostic.DiagnosticLevelError,
 				Message: fmt.Sprintf("Mismatched types: expected '%s', got '%s'", expected.Kind(), got.Kind()),

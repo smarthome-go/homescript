@@ -274,7 +274,7 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 
 		params := make([]ast.FunctionTypeParam, 0)
 		for _, param := range fn.Parameters {
-			// NOTE: at the intial state, `singletonIdent` MUST be `nil`.
+			// NOTE: at the initial state, `singletonIdent` MUST be `nil`.
 			// Otherwise, later analysis steps will falsely report this parameter as a singleton.
 			var singletonIdent *string = nil
 			if param.IsSingletonExtractor {
@@ -349,7 +349,7 @@ func (self *Analyzer) rangeLiteralExpression(node pAst.RangeLiteralExpression) a
 //
 
 func (self *Analyzer) listLiteralExpression(node pAst.ListLiteralExpression) ast.AnalyzedListLiteralExpression {
-	// ensure type equality accross all values
+	// ensure type equality across all values
 	listType := ast.NewAnyType(node.Range) // any is the default: the analyzer will enforce type annotations
 	newValues := make([]ast.AnalyzedExpression, 0)
 
@@ -685,7 +685,7 @@ func (self *Analyzer) assignExpression(node pAst.AssignExpression) ast.AnalyzedA
 	resultType := ast.NewNullType(node.Range)
 	prevErr := false
 
-	// if either the lhs or ths is `never`, use `never`
+	// if either the lhs or rhs is `never`, use `never`
 	if lhs.Type().Kind() == ast.NeverTypeKind || rhs.Type().Kind() == ast.NeverTypeKind {
 		resultType = ast.NewNeverType()
 	}
@@ -852,9 +852,9 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 						continue
 					}
 
-					// Sending closures accros threads is UB, prevent this.
+					// Sending closures across threads is UB, prevent this.
 					// When sending a closure which captures values to a new thread, the old captured values are not deepcopie'd.
-					// Therefore, sending these closures accross threads will cause weird memory bugs which must not occur in a Smarthome system.
+					// Therefore, sending these closures across threads will cause weird memory bugs which must not occur in a Smarthome system.
 					if node.IsSpawn && argExpr.Type().Kind() == ast.FnTypeKind {
 						self.error(
 							"Sending closures across threads is undefined behaviour.",
@@ -909,7 +909,7 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 
 					// Sending closures across threads is UB, prevent this.
 					// When sending a closure which captures values to a new thread, the old captured values are not deepcopie'd.
-					// Therefore, sending these closures accross threads will cause weird memory bugs which must not occur in a Smarthome system.
+					// Therefore, sending these closures across threads will cause weird memory bugs which must not occur in a Smarthome system.
 					if node.IsSpawn && argExpr.Type().Kind() == ast.FnTypeKind {
 						self.error(
 							"Sending closures across threads is undefined behaviour.",

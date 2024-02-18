@@ -340,7 +340,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 	// 		Span:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
 	// 	}, nil
 	// }
-	// NOTE: this is depreacted as an impl without a template does not make a lot of sense
+	// NOTE: this is deprecated as an impl without a template does not make a lot of sense
 	// considering that you can just extract values directly in `normal` functions.
 
 	// In this case, we except a template

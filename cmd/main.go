@@ -392,7 +392,7 @@ func main() {
 											success[m.idx]++
 										} else {
 											errs[m.idx]++
-											brokenMap[m.mismatchID] = m.misMatchOutput
+											brokenMap[m.mismatchID] = m.mismatchOutput
 										}
 
 										// Only print if there is enough (minRefresh) time elapsed.
@@ -494,7 +494,7 @@ type workerProgress struct {
 	done           bool
 	success        bool
 	mismatchID     string
-	misMatchOutput string
+	mismatchOutput string
 	chunkSize      int
 	idx            int
 }
@@ -536,7 +536,7 @@ func worker(chunk []*zip.File, workerIndex int, expectedFileContents string, res
 				done:           false,
 				success:        false,
 				mismatchID:     file.Name,
-				misMatchOutput: output,
+				mismatchOutput: output,
 				chunkSize:      len(chunk),
 				idx:            workerIndex,
 			}
@@ -550,7 +550,7 @@ func worker(chunk []*zip.File, workerIndex int, expectedFileContents string, res
 			done:           false,
 			success:        true,
 			mismatchID:     "",
-			misMatchOutput: "",
+			mismatchOutput: "",
 			chunkSize:      len(chunk),
 			idx:            workerIndex,
 		}
@@ -560,7 +560,7 @@ func worker(chunk []*zip.File, workerIndex int, expectedFileContents string, res
 		done:           true,
 		success:        false,
 		mismatchID:     "",
-		misMatchOutput: "",
+		mismatchOutput: "",
 		chunkSize:      len(chunk),
 		idx:            workerIndex,
 	}

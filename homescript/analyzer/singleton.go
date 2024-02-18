@@ -38,7 +38,7 @@ func (self *Analyzer) templateCapabilitiesWithDefault(
 				implementedCap.Span(),
 			)
 
-			// Ignore this erronous capability
+			// Ignore this erroneous capability
 			continue
 		}
 
@@ -64,9 +64,9 @@ func (self *Analyzer) WithCapabilities(
 
 	err = false
 
-	// Reverse tupel of the conflicts found so far
+	// Reverse tuple of the conflicts found so far
 	// If `foo` finds `bar` as a conflict, (`bar`, `foo`) is added to the map for later lookup.
-	// This way, redundant compatability errors are not shown
+	// This way, redundant compatibility errors are not shown
 	conflictsReverse := make(map[string]string)
 
 	for capName, capability := range capabilitiesOfImplementation {
@@ -79,7 +79,7 @@ func (self *Analyzer) WithCapabilities(
 			capability.Span,
 		)
 		if containsErr {
-			// Prevent redundant compatability errors
+			// Prevent redundant compatibility errors
 			if _, found := conflictsReverse[capName]; found {
 				continue
 			}

@@ -6,4 +6,4 @@
 - Remove all functions and address using instruction pointer instead
 - Compile on demand (on boot / load from disk)
 - Implement optimizations
-- Unhandled Exceptions accross function calls? (Use GOTO)
+- Unhandled Exceptions across function calls? (Use GOTO)

@@ -57,7 +57,7 @@ func (self *Analyzer) statement(node pAst.Statement) ast.AnalyzedStatement {
 //
 
 func (self *Analyzer) typeDefStatement(node pAst.TypeDefinition) ast.AnalyzedTypeDefinition {
-	// if the conversion fails, use uknown
+	// if the conversion fails, use unknown
 	// NOTE: `SetSpan` is not used so that object fields can be shown as `expected`
 	converted := self.ConvertType(node.RhsType, true)
 
@@ -283,7 +283,7 @@ func (self *Analyzer) breakStatement(node pAst.BreakStatement) ast.AnalyzedBreak
 	// check that this statement is only called inside of a loop
 	if self.currentModule.LoopDepth == 0 {
 		self.error(
-			"Illegal use of 'break' ouside of a loop",
+			"Illegal use of 'break' outside of a loop",
 			[]string{"This statement can only be used in loop bodies"},
 			node.Range,
 		)

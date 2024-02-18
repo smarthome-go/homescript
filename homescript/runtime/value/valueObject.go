@@ -52,11 +52,11 @@ func (self ValueObject) IsEqual(other Value) (bool, *VmInterrupt) {
 func (self ValueObject) Fields() (map[string]*Value, *VmInterrupt) {
 	fields := map[string]*Value{
 		"to_string": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
-			dispay, i := self.Display()
+			display, i := self.Display()
 			if i != nil {
 				return nil, i
 			}
-			return NewValueString(dispay), nil
+			return NewValueString(display), nil
 		}),
 		"keys": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 			rawKeys := make([]string, 0)

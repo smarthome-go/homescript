@@ -625,7 +625,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, headIdentName), node.Range)
 
-		// On top of the stack, there will now be a bool describing whether or not to contiue.
+		// On top of the stack, there will now be a bool describing whether or not to continue.
 		// Check if there are still values left: if not, break.
 		self.insert(newOneStringInstruction(Opcode_JumpIfFalse, after_label), node.Range)
 

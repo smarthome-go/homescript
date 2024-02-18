@@ -511,7 +511,7 @@ func (self *Interpreter) castExpression(node ast.AnalyzedCastExpression) (*value
 	}
 
 	// TODO: remove this
-	// Equal types, or cast from `any` to other -> check internal compatibilty
+	// Equal types, or cast from `any` to other -> check internal compatibility
 	// if node.Base.Type().Kind() == ast.AnyTypeKind || node.Base.Type().Kind() == node.AsType.Kind() {
 	// 	if i := self.valueIsCompatibleToType(*base, node.AsType, node.Range); i != nil {
 	// 		return nil, i

@@ -59,7 +59,7 @@ func (self *Interpreter) letStatement(node ast.AnalyzedLetStatement) *value.Inte
 		return i
 	}
 
-	// runtime validation: equal types, or cast from `any` to other -> check internal compatibilty
+	// runtime validation: equal types, or cast from `any` to other -> check internal compatibility
 	if !node.NeedsRuntimeTypeValidation {
 		self.addVar(node.Ident.Ident(), *rhsVal)
 		return nil

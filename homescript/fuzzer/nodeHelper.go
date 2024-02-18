@@ -7,7 +7,7 @@ import (
 )
 
 // This method is used for determining whether a tree node contains the `break` or `continue` keyword.
-// If this is the case, loop obfuscations are not apllied on this node.
+// If this is the case, loop obfuscations are not applied on this node.
 func (self *Transformer) stmtCanControlLoop(node ast.AnalyzedStatement) bool {
 	switch node.Kind() {
 	case ast.TypeDefinitionStatementKind:
@@ -46,7 +46,7 @@ func (self *Transformer) stmtCanControlLoop(node ast.AnalyzedStatement) bool {
 }
 
 // This method is used for determining whether a tree node contains the `break` or `continue` keyword.
-// If this is the case, loop obfuscations are not apllied on this node.
+// If this is the case, loop obfuscations are not applied on this node.
 func (self *Transformer) exprCanControlLoop(node ast.AnalyzedExpression) bool {
 	switch node.Kind() {
 	case ast.UnknownExpressionKind:

@@ -155,7 +155,7 @@ func (self *Core) Run(function string, debuggerOut *chan DebugOutput) {
 	catchPanic := func() {
 		if err := recover(); err != nil {
 			span := self.parent.SourceMap(*self.callFrame())
-			fmt.Printf("Panic occured in core %d at (%s:%d => l.%d): `%s`\n", self.Corenum, self.callFrame().Function, self.callFrame().InstructionPointer, span.Start.Line, err)
+			fmt.Printf("Panic occurred in core %d at (%s:%d => l.%d): `%s`\n", self.Corenum, self.callFrame().Function, self.callFrame().InstructionPointer, span.Start.Line, err)
 		}
 	}
 
@@ -309,7 +309,7 @@ outer:
 						return
 					}
 
-					// If the exception occured in another function, also pop the call frame of this function
+					// If the exception occurred in another function, also pop the call frame of this function
 					// If this was not the case, a function would basically "return twice",
 					// as the jump to the error-handling code would not pop the most current call frame.
 					catchLocation := self.ExceptionCatchLabels[len(self.ExceptionCatchLabels)-1]

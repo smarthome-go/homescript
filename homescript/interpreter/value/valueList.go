@@ -57,11 +57,11 @@ func (self ValueList) IsEqual(other Value) (bool, *Interrupt) {
 func (self ValueList) Fields() (map[string]*Value, *Interrupt) {
 	return map[string]*Value{
 		"to_string": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *Interrupt) {
-			dispay, i := self.Display()
+			display, i := self.Display()
 			if i != nil {
 				return nil, i
 			}
-			return NewValueString(dispay), nil
+			return NewValueString(display), nil
 		}),
 		"len": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *Interrupt) {
 			return NewValueInt(int64(len(*self.Values))), nil

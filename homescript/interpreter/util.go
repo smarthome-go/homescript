@@ -130,7 +130,7 @@ func (self *Interpreter) callFunc(span errors.Span, val value.Value, args []ast.
 
 			newArgs = append(newArgs, *argVal)
 		}
-		// the cancel context of the interpreter is temporarely handed over
+		// the cancel context of the interpreter is temporarily handed over
 		// so that expensive / long-running builtin functions (like sleep) can terminate themselves
 		return fn.Callback(self.Executor, self.cancelCtx, span, newArgs...)
 	default:

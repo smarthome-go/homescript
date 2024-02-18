@@ -22,11 +22,11 @@ func (self ValueBool) IsEqual(other Value) (bool, *VmInterrupt) {
 func (self ValueBool) Fields() (map[string]*Value, *VmInterrupt) {
 	return map[string]*Value{
 		"to_string": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
-			dispay, i := self.Display()
+			display, i := self.Display()
 			if i != nil {
 				return nil, i
 			}
-			return NewValueString(dispay), nil
+			return NewValueString(display), nil
 		}),
 	}, nil
 }

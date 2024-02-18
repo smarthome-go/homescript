@@ -93,7 +93,7 @@ func TestingRunInterpreter(analyzed map[string]ast.AnalyzedProgram, filename str
 			analyzed,
 			filename,
 			executor,
-			homescript.TestingInterpeterScopeAdditions(),
+			homescript.TestingInterpreterScopeAdditions(),
 			&ctx,
 		); i != nil {
 			switch (*i).Kind() {
@@ -145,7 +145,7 @@ func TestingDebugConsumer(debuggerOutput *chan runtime.DebugOutput, core *runtim
 			lineIdx := msg.CurrentSpan.Start.Line - 1
 			hits[lineIdx]++
 
-			// Hightlight active line
+			// Highlight active line
 			for idx := range lines {
 				lineHit := hits[uint(idx)]
 				sumHits := 0

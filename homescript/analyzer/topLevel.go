@@ -724,7 +724,7 @@ func (self *Analyzer) validateTemplateConstraints(
 					notes := []string{}
 					if len(filteredMethod) != len(method.Parameters.List) {
 						// TODO: dedicated syntax!
-						notes = append(notes, "Singleton extractions do count as a parameter defintion.")
+						notes = append(notes, "Singleton extractions do count as a parameter definition.")
 					}
 
 					for _, param := range filteredReq {

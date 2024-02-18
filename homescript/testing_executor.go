@@ -18,7 +18,7 @@ import (
 // Tree-walking interpreter scope additions
 //
 
-func TestingInterpeterScopeAdditions() map[string]value.Value {
+func TestingInterpreterScopeAdditions() map[string]value.Value {
 	return map[string]value.Value{
 		"log": *value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.Interrupt) {
 			base := args[0].(value.ValueFloat).Inner

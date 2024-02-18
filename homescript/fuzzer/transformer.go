@@ -863,10 +863,10 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 	// 	return output
 	// }
 
-	// Detect whether the current statment is able to control a parent loop
+	// Detect whether the current statement is able to control a parent loop
 	// If so, do not apply loop obfuscations on top of this node.
 	if self.stmtCanControlLoop(node) {
-		self.Out += "Statement contains loop control code, not apllying loop obfuscations"
+		self.Out += "Statement contains loop control code, not applying loop obfuscations"
 		return output
 	}
 
