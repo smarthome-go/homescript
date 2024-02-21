@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path"
 	"runtime"
 	"time"
 
@@ -33,17 +32,17 @@ func fileValidator(ctx *cli.Context) error {
 }
 
 func analyzeFile(program string, pathS string, printAnalyzed bool) (analyzed map[string]ast.AnalyzedProgram, entryModule string, err error) {
-	hmsFilename := path.Base(pathS)
+	// hmsFilename := path.Base(pathS)
 
 	analyzed, diagnostics, syntaxErrors := homescript.Analyze(homescript.InputProgram{
 		ProgramText: program,
-		Filename:    hmsFilename,
+		Filename:    pathS,
 	}, homescript.TestingAnalyzerScopeAdditions(), homescript.TestingAnalyzerHost{})
 
 	if len(syntaxErrors) != 0 {
 		for _, syntaxErr := range syntaxErrors {
 			log.Printf("Reading: %s...\n", syntaxErr.Span.Filename)
-			file, err := os.ReadFile(fmt.Sprintf("%s.hms", syntaxErr.Span.Filename))
+			file, err := os.ReadFile(syntaxErr.Span.Filename)
 			if err != nil {
 				return nil, "", err
 			}
@@ -76,7 +75,7 @@ func analyzeFile(program string, pathS string, printAnalyzed bool) (analyzed map
 	}
 
 	if !printAnalyzed {
-		return analyzed, hmsFilename, nil
+		return analyzed, pathS, nil
 	}
 
 	log.Println("=== ANALYZED ===")
@@ -85,7 +84,7 @@ func analyzeFile(program string, pathS string, printAnalyzed bool) (analyzed map
 		log.Println(module)
 	}
 
-	return analyzed, hmsFilename, nil
+	return analyzed, pathS, nil
 }
 
 func main() {
