@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/smarthome-go/homescript/v3/homescript"
@@ -424,9 +425,14 @@ func main() {
 								start,
 							)
 
-							log.Printf("Found %d broken program(s)\n", len(brokenMap))
+							errMsg := fmt.Sprintf("Found %d broken program(s)\n", len(brokenMap))
+							log.Println(errMsg)
 							for key, output := range brokenMap {
 								log.Printf("- `%s` created output `%s`\n", key, output)
+							}
+
+							if len(brokenMap) > 0 {
+								return errors.New(errMsg)
 							}
 
 							return nil
@@ -461,11 +467,13 @@ func printProgress(numChunks int, chunkSize int, success *[]uint, errs *[]uint, 
 
 	accAll := 0
 
+	padding := strings.Repeat(" ", 30)
+
 	// Print state.
 	for i := 0; i < numChunks; i++ {
 		thisAcc := (*success)[i] + (*errs)[i]
 		accAll += int(thisAcc)
-		fmt.Printf("Worker %2d: (%5d / %d) \x1b[1;32mworking\x1b[1;0m:%5d; \x1b[1;31mfailed\x1b[1;0m:%5d\n", i, thisAcc, chunkSize, (*success)[i], (*errs)[i])
+		fmt.Printf("Worker %2d: (%5d / %d) \x1b[1;32mworking\x1b[1;0m:%5d; \x1b[1;31mfailed\x1b[1;0m:%5d%s\n", i, thisAcc, chunkSize, (*success)[i], (*errs)[i], padding)
 	}
 
 	// Percentage of work left to do multiplied by the time it took to do one percent.
