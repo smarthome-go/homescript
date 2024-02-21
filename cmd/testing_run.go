@@ -29,7 +29,18 @@ func CompileVm(analyzed map[string]ast.AnalyzedProgram, filename string) compile
 	return compiled
 }
 
-func TestingRunVm(compiled compiler.Program, printToStdout bool) string {
+func DefaultReadFileProvider(path string) (string, error) {
+	fmt.Printf("Reading: %s...\n", path)
+
+	file, err := os.ReadFile(path)
+	if err != nil {
+		panic(fmt.Sprintf("Could not read file `%s`: %s | %s\n", path, err.Error()))
+	}
+
+	return string(file), nil
+}
+
+func TestingRunVm(compiled compiler.Program, printToStdout bool, readFile func(path string) (string, error)) string {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	executor := homescript.TestingVmExecutor{
@@ -59,11 +70,9 @@ func TestingRunVm(compiled compiler.Program, printToStdout bool) string {
 			Span:    i.GetSpan(), // this call might panic
 		}
 
-		fmt.Printf("Reading: %s...\n", i.GetSpan().Filename)
-
-		file, err := os.ReadFile(i.GetSpan().Filename)
+		file, err := readFile(i.GetSpan().Filename)
 		if err != nil {
-			panic(fmt.Sprintf("Could not read file `%s`: %s | %s\n", i.GetSpan().Filename, err.Error(), i.Message()))
+			panic(err.Error())
 		}
 
 		fmt.Printf("%s\n", d.Display(string(file)))

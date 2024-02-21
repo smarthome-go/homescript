@@ -32,7 +32,12 @@ func fileValidator(ctx *cli.Context) error {
 	return nil
 }
 
-func analyzeFile(program string, pathS string, printAnalyzed bool) (analyzed map[string]ast.AnalyzedProgram, entryModule string, err error) {
+func analyzeFile(
+	program string,
+	pathS string,
+	printAnalyzed bool,
+	fileReader func(path string) (string, error),
+) (analyzed map[string]ast.AnalyzedProgram, entryModule string, err error) {
 	// hmsFilename := path.Base(pathS)
 
 	analyzed, diagnostics, syntaxErrors := homescript.Analyze(homescript.InputProgram{
@@ -42,8 +47,7 @@ func analyzeFile(program string, pathS string, printAnalyzed bool) (analyzed map
 
 	if len(syntaxErrors) != 0 {
 		for _, syntaxErr := range syntaxErrors {
-			log.Printf("Reading: %s...\n", syntaxErr.Span.Filename)
-			file, err := os.ReadFile(syntaxErr.Span.Filename)
+			file, err := fileReader(syntaxErr.Span.Filename)
 			if err != nil {
 				return nil, "", err
 			}
@@ -61,9 +65,7 @@ func analyzeFile(program string, pathS string, printAnalyzed bool) (analyzed map
 			abort = true
 		}
 
-		log.Printf("Reading: %s...\n", item.Span.Filename)
-
-		file, err := os.ReadFile(item.Span.Filename)
+		file, err := fileReader(item.Span.Filename)
 		if err != nil {
 			return nil, "", fmt.Errorf("Could not read file `%s`: %s\n%s | %v", item.Span.Filename, err.Error(), item.Message, item.Span)
 		}
@@ -132,7 +134,7 @@ func main() {
 						return err
 					}
 
-					analyzed, entryModule, err := analyzeFile(string(file), filename, true)
+					analyzed, entryModule, err := analyzeFile(string(file), filename, true, DefaultReadFileProvider)
 					if err != nil {
 						return err
 					}
@@ -164,7 +166,7 @@ func main() {
 						return err
 					}
 
-					analyzed, entryModule, err := analyzeFile(string(file), filename, true)
+					analyzed, entryModule, err := analyzeFile(string(file), filename, true, DefaultReadFileProvider)
 					if err != nil {
 						return err
 					}
@@ -175,7 +177,7 @@ func main() {
 						fmt.Println(code.AsmString())
 					}
 
-					TestingRunVm(code, true)
+					TestingRunVm(code, true, DefaultReadFileProvider)
 
 					return nil
 				},
@@ -248,14 +250,14 @@ func main() {
 								return err
 							}
 
-							analyzed, entryModule, err := analyzeFile(string(file), filename, true)
+							analyzed, entryModule, err := analyzeFile(string(file), filename, true, DefaultReadFileProvider)
 							if err != nil {
 								return err
 							}
 
 							// Generate reference output.
 							code := CompileVm(analyzed, entryModule)
-							referenceOutput := TestingRunVm(code, true)
+							referenceOutput := TestingRunVm(code, true, DefaultReadFileProvider)
 
 							// Create output zip file.
 							outputFile := ctx.Args().Get(1)
@@ -479,6 +481,11 @@ func printProgress(numChunks int, chunkSize int, success *[]uint, errs *[]uint, 
 	// Percentage of work left to do multiplied by the time it took to do one percent.
 	timeUntilNow := time.Since(start)
 	percentNow := (float64(accAll) / float64(numFiles)) * 100.0
+
+	if percentNow > 100 {
+		percentNow = 100
+	}
+
 	timeOncepercent := time.Duration(float64(timeUntilNow) / percentNow)
 	remainingPercent := 100.0 - percentNow
 	remainingTime := timeOncepercent * time.Duration(int(remainingPercent))
@@ -514,6 +521,20 @@ func worker(chunk []*zip.File, workerIndex int, expectedFileContents string, res
 
 		// log.Printf("\x1b[2m\x1b[1;30mRUNNING:\x1b[1;0m (5%d / %d) testing file `%s`...\n", idx, chunkSize, file.Name)
 
+		zipFileReader := func(path string) (string, error) {
+			for _, file := range chunk {
+				if file.Name == path {
+					buf := bytes.NewBuffer(make([]byte, 0))
+					file, err := file.Open()
+					_, err = io.Copy(buf, file)
+
+					return buf.String(), err
+				}
+			}
+
+			return "", fmt.Errorf("File not found in chunk")
+		}
+
 		contents, err := file.Open()
 		if err != nil {
 			log.Panic(err.Error())
@@ -525,13 +546,13 @@ func worker(chunk []*zip.File, workerIndex int, expectedFileContents string, res
 			log.Panic(err.Error())
 		}
 
-		analyzed, entryModule, err := analyzeFile(buf.String(), file.Name, false)
+		analyzed, entryModule, err := analyzeFile(buf.String(), file.Name, false, zipFileReader)
 		if err != nil {
 			log.Panic(err.Error())
 		}
 
 		code := CompileVm(analyzed, entryModule)
-		output := TestingRunVm(code, false)
+		output := TestingRunVm(code, false, zipFileReader)
 
 		// Erase previous line.
 		// fmt.Printf("\x1b[1A")
