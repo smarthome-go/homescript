@@ -1,3 +1,4 @@
+#!/bin/bash
 cmd="go run -v . fuzz validate"
 fuzz_out="fuzz_out"
 

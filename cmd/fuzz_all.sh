@@ -1,3 +1,4 @@
+#!/bin/bash
 seed=1234
 stages=10
 stage_limit=2000
