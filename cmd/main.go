@@ -374,8 +374,13 @@ func main() {
 							errs := make([]uint, len(chunks))
 							start := time.Now()
 
-							const minRenderDelay = time.Millisecond * 100
+							const minRenderDelay = time.Millisecond * 50
 							lastRender := time.Time{}
+
+							// Allocate screen space for the progress buffer.
+							for i := 0; i < numChunks+2; i++ {
+								fmt.Println(strings.Repeat(" ", 100))
+							}
 
 							for {
 								for idx, ch := range progressChans {
@@ -489,11 +494,16 @@ func printProgress(numChunks int, chunkSize int, success *[]uint, errs *[]uint, 
 	timeOncepercent := time.Duration(float64(timeUntilNow) / percentNow)
 	remainingPercent := 100.0 - percentNow
 	remainingTime := timeOncepercent * time.Duration(int(remainingPercent))
+	remaining := numFiles - accAll
+	if remaining < 0 {
+		remaining = 0
+	}
+
 	fmt.Printf(
 		"\x1b[1;35m%3d%% completed\x1b[1;0m | processed: %5d; remaining: %5d\n=> \x1b[1;30mElapsed: %s\x1b[1;0m, ETA %s\n",
 		int(percentNow),
 		accAll,
-		numFiles-accAll,
+		remaining,
 		fmtDuration(time.Since(start)),
 		fmtDuration(remainingTime),
 	)
