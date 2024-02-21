@@ -61,7 +61,7 @@ func TestingRunVm(compiled compiler.Program, printToStdout bool) string {
 
 		fmt.Printf("Reading: %s...\n", i.GetSpan().Filename)
 
-		file, err := os.ReadFile(fmt.Sprintf("%s.hms", i.GetSpan().Filename))
+		file, err := os.ReadFile(i.GetSpan().Filename)
 		if err != nil {
 			panic(fmt.Sprintf("Could not read file `%s`: %s | %s\n", i.GetSpan().Filename, err.Error(), i.Message()))
 		}
@@ -99,7 +99,7 @@ func TestingRunInterpreter(analyzed map[string]ast.AnalyzedProgram, filename str
 			switch (*i).Kind() {
 			case value.FatalExceptionInterruptKind:
 				runtimErr := (*i).(value.RuntimeErr)
-				program, err := os.ReadFile(fmt.Sprintf("%s.hms", runtimErr.Span.Filename))
+				program, err := os.ReadFile(runtimErr.Span.Filename)
 				if err != nil {
 					panic(err.Error())
 				}
@@ -133,7 +133,7 @@ func TestingDebugConsumer(debuggerOutput *chan runtime.DebugOutput, core *runtim
 			}
 
 			// Read input file
-			program, err := os.ReadFile(fmt.Sprintf("%s.hms", msg.CurrentSpan.Filename))
+			program, err := os.ReadFile(msg.CurrentSpan.Filename)
 			if err != nil {
 				fmt.Printf("Debugger: cannot open input file `%s.hms`: %s\n", msg.CurrentSpan.Filename, err.Error())
 				return

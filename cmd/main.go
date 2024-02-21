@@ -62,7 +62,7 @@ func analyzeFile(program string, pathS string, printAnalyzed bool) (analyzed map
 
 		log.Printf("Reading: %s...\n", item.Span.Filename)
 
-		file, err := os.ReadFile(fmt.Sprintf("%s.hms", item.Span.Filename))
+		file, err := os.ReadFile(item.Span.Filename)
 		if err != nil {
 			return nil, "", fmt.Errorf("Could not read file `%s`: %s\n%s | %v", item.Span.Filename, err.Error(), item.Message, item.Span)
 		}
