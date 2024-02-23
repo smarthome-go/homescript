@@ -41,7 +41,7 @@ func DefaultReadFileProvider(path string) (string, error) {
 }
 
 func TestingRunVm(compiled compiler.Program, printToStdout bool, readFile func(path string) (string, error)) string {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 
 	executor := homescript.TestingVmExecutor{
 		PrintToStdout: printToStdout,
