@@ -9,6 +9,11 @@ import (
 
 // TODO: set maximum recursion here
 func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Value, *VmInterrupt) {
+	// This does nothing as casting to an `any` does not validate anything.
+	if typ.Kind() == ast.AnyTypeKind {
+		return &val, nil
+	}
+
 	// TODO: is this OK?
 	if typ.Kind() == ast.OptionTypeKind {
 		if val.Kind() == OptionValueKind {
