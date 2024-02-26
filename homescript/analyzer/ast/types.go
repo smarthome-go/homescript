@@ -69,12 +69,28 @@ func (self TypeKind) String() string {
 	}
 }
 
+func (self TypeKind) IsPrimitive() bool {
+	switch self {
+	case IntTypeKind, FloatTypeKind, BoolTypeKind, StringTypeKind:
+		return true
+	case UnknownTypeKind, NeverTypeKind, AnyTypeKind, NullTypeKind,
+		RangeTypeKind, ListTypeKind, AnyObjectTypeKind,
+		ObjectTypeKind, OptionTypeKind, FnTypeKind:
+		return false
+	case IdentTypeKind:
+		panic("Cannot display ident type")
+	default:
+		panic("A new type kind was introduced without updating this code")
+	}
+}
+
 type Type interface {
 	Kind() TypeKind
 	String() string
 	Span() errors.Span
 	SetSpan(span errors.Span) Type
 	Fields(fieldSpan errors.Span) map[string]Type
+	IsPrimitive() bool
 }
 
 //
@@ -88,6 +104,7 @@ func (self UnknownType) String() string                       { return "unknown"
 func (self UnknownType) Span() errors.Span                    { return errors.Span{} }
 func (self UnknownType) SetSpan(_ errors.Span) Type           { return NewUnknownType() }
 func (self UnknownType) Fields(_ errors.Span) map[string]Type { return make(map[string]Type) }
+func (self UnknownType) IsPrimitive() bool                    { return self.Kind().IsPrimitive() }
 func NewUnknownType() Type                                    { return Type(UnknownType{}) }
 
 //
@@ -101,6 +118,7 @@ func (self NeverType) String() string                       { return "never" }
 func (self NeverType) Span() errors.Span                    { return errors.Span{} }
 func (self NeverType) SetSpan(_ errors.Span) Type           { return self }
 func (self NeverType) Fields(_ errors.Span) map[string]Type { return make(map[string]Type) }
+func (self NeverType) IsPrimitive() bool                    { return self.Kind().IsPrimitive() }
 func NewNeverType() Type                                    { return Type(NeverType{}) }
 
 //
@@ -116,6 +134,7 @@ func (self AnyType) String() string                       { return "any" }
 func (self AnyType) Span() errors.Span                    { return self.Range }
 func (self AnyType) SetSpan(span errors.Span) Type        { return Type(NewAnyType(span)) }
 func (self AnyType) Fields(_ errors.Span) map[string]Type { return make(map[string]Type) }
+func (self AnyType) IsPrimitive() bool                    { return self.Kind().IsPrimitive() }
 func NewAnyType(span errors.Span) Type                    { return Type(AnyType{Range: span}) }
 
 //
@@ -146,6 +165,7 @@ func (self NullType) String() string                       { return "null" }
 func (self NullType) Span() errors.Span                    { return self.Range }
 func (self NullType) SetSpan(span errors.Span) Type        { return NewNullType(span) }
 func (self NullType) Fields(_ errors.Span) map[string]Type { return make(map[string]Type) }
+func (self NullType) IsPrimitive() bool                    { return self.Kind().IsPrimitive() }
 func NewNullType(span errors.Span) Type                    { return Type(NullType{Range: span}) }
 
 //
@@ -176,6 +196,7 @@ func (self IntType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 	}
 }
+func (self IntType) IsPrimitive() bool { return self.Kind().IsPrimitive() }
 func NewIntType(span errors.Span) Type { return Type(IntType{Range: span}) }
 
 //
@@ -218,6 +239,7 @@ func (self FloatType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 	}
 }
+func (self FloatType) IsPrimitive() bool { return self.Kind().IsPrimitive() }
 func NewFloatType(span errors.Span) Type { return Type(FloatType{Range: span}) }
 
 //
@@ -242,6 +264,7 @@ func (self BoolType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 	}
 }
+func (self BoolType) IsPrimitive() bool { return self.Kind().IsPrimitive() }
 func NewBoolType(span errors.Span) Type { return Type(BoolType{Range: span}) }
 
 //
@@ -334,6 +357,7 @@ func (self StringType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 	}
 }
+func (self StringType) IsPrimitive() bool { return self.Kind().IsPrimitive() }
 func NewStringType(span errors.Span) Type { return Type(StringType{Range: span}) }
 
 //
@@ -372,6 +396,7 @@ func (self RangeType) Fields(fieldSpan errors.Span) map[string]Type {
 		),
 	}
 }
+func (self RangeType) IsPrimitive() bool { return self.Kind().IsPrimitive() }
 func NewRangeType(span errors.Span) Type { return Type(RangeType{SpanRange: span}) }
 
 //
@@ -505,6 +530,7 @@ func (self ListType) Fields(fieldSpan errors.Span) map[string]Type {
 
 	return fields
 }
+func (self ListType) IsPrimitive() bool             { return self.Kind().IsPrimitive() }
 func NewListType(inner Type, span errors.Span) Type { return Type(ListType{Inner: inner, Range: span}) }
 
 //
@@ -566,7 +592,7 @@ func (self AnyObjectType) Fields(span errors.Span) map[string]Type {
 		),
 	}
 }
-
+func (self AnyObjectType) IsPrimitive() bool { return self.Kind().IsPrimitive() }
 func NewAnyObjectType(span errors.Span) Type {
 	return Type(AnyObjectType{Range: span})
 }
@@ -631,6 +657,7 @@ func (self ObjectType) Fields(fieldSpan errors.Span) map[string]Type {
 
 	return fields
 }
+func (self ObjectType) IsPrimitive() bool { return self.Kind().IsPrimitive() }
 func NewObjectType(fields []ObjectTypeField, span errors.Span) Type {
 	return Type(ObjectType{ObjFields: fields, Range: span})
 }
@@ -735,6 +762,7 @@ func (self OptionType) Fields(span errors.Span) map[string]Type {
 		),
 	}
 }
+func (self OptionType) IsPrimitive() bool { return self.Kind().IsPrimitive() }
 func NewOptionType(inner Type, span errors.Span) Type {
 	return Type(OptionType{
 		Inner: inner,
@@ -763,6 +791,7 @@ func (self FunctionType) SetSpan(span errors.Span) Type {
 	return NewFunctionType(self.Params, span, self.ReturnType.SetSpan(span), span)
 }
 func (self FunctionType) Fields(_ errors.Span) map[string]Type { return make(map[string]Type) }
+func (self FunctionType) IsPrimitive() bool                    { return self.Kind().IsPrimitive() }
 func NewFunctionType(
 	params FunctionTypeParamKind,
 	paramsSpan errors.Span,
