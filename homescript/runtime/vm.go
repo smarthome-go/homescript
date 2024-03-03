@@ -150,7 +150,10 @@ func FunctionInvocationSignatureFromType(input ast.FunctionType) FunctionInvocat
 
 type FunctionInvocation struct {
 	Function string
-	Args     []value.Value
+	// If set, the `Function` attribute will describe the internal name of the function, not the name of the function
+	// before compilation
+	LiteralName bool
+	Args        []value.Value
 	// Required so that the VM can automatically pop the function's return value if it materializes into a value.
 	// Furthermore, recursive type assertion is performed on the return value so that the caller does not have to
 	// worry about safety.
@@ -170,7 +173,7 @@ type VMException struct {
 
 // Returns the core of the newly spawned process.
 func (self *VM) SpawnAsync(invocation FunctionInvocation, debuggerOut *chan DebugOutput) *Core {
-	return self.spawnCoreInternal(invocation.Function, invocation.Args, debuggerOut)
+	return self.spawnCoreInternal(invocation.Function, invocation.Args, debuggerOut, invocation.LiteralName)
 }
 
 // Spawns a new core but also calls `vm.Wait` internally.
@@ -215,7 +218,7 @@ func (self *VM) SpawnSync(invocation FunctionInvocation, debuggerOut *chan Debug
 		invertedArgs[argCIdx-idx] = invocation.Args[idx]
 	}
 
-	coreHandle := self.spawnCoreInternal(invocation.Function, invertedArgs, debuggerOut)
+	coreHandle := self.spawnCoreInternal(invocation.Function, invertedArgs, debuggerOut, invocation.LiteralName)
 	exceptionCore, interrupt := self.Wait()
 
 	return self.HandleTermination(
@@ -276,11 +279,19 @@ func (self *VM) spawnCoreInternal(
 	function string,
 	addToStack []value.Value,
 	debuggerOutput *chan DebugOutput,
+	// If this flag is set, the caller knows what they are doing and want to bypass the function validity check.
+	literalName bool,
 ) *Core {
-	// Lookup the function to be invoked.
-	toBeInvoked, found := self.Program.Mappings.Functions[function]
-	if !found {
-		panic(fmt.Sprintf("Requested function `%s` does not exist", function))
+	toBeInvoked := function
+
+	if !literalName {
+		// Lookup the function to be invoked.
+		toBeInvokedTemp, found := self.Program.Mappings.Functions[function]
+		if !found {
+			panic(fmt.Sprintf("Requested function `%s` does not exist", function))
+		}
+
+		toBeInvoked = toBeInvokedTemp
 	}
 
 	core := self.spawnCore()

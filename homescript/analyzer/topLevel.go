@@ -90,7 +90,8 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 
 	self.currentModule.pushScope()
 
-	if node.Ident.Ident() == "main" || node.Modifier == pAst.FN_MODIFIER_EVENT {
+	// TODO: handle event functions somewhere else
+	if node.Ident.Ident() == "main" {
 		modifierErrMsg := ""
 		if node.Modifier != pAst.FN_MODIFIER_NONE {
 			modifierErrMsg = node.Modifier.String() + " "

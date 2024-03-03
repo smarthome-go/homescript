@@ -26,11 +26,13 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 	compiled := compilerStruct.Compile(analyzed, filename)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
-	executor := TestingVmExecutor{
+	rawExecutor := TestingVmExecutor{
 		PrintToStdout: printToStdout,
 		PrintBuf:      new(string),
 		PintBufMutex:  &sync.Mutex{},
 	}
+
+	executor := vmValue.Executor(rawExecutor)
 
 	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, TestingVmScopeAdditions(), testingLimits)
 
@@ -63,7 +65,7 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 		panic(fmt.Sprintf("Core %d crashed", coreNum))
 	}
 
-	return *executor.PrintBuf
+	return *rawExecutor.PrintBuf
 }
 
 func TestingRunInterpreter(analyzed map[string]ast.AnalyzedProgram, filename string) {

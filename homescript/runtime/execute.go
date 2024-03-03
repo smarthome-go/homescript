@@ -47,7 +47,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		}
 
 		// TODO: how to handle the debugger
-		self.parent.spawnCoreInternal(i.Value, args, nil)
+		self.parent.spawnCoreInternal(i.Value, args, nil, false)
 		// TODO: implement a wrapper around the threading model and add it to a std-lib
 		// TODO: get thread handle and push it onto the stack
 		self.push(value.NewValueNull())
@@ -106,7 +106,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		moduleName := i.Values[1]
 
 		// Load singleton from host
-		singletonValue, found, err := self.parent.Executor.LoadSingleton(singletonIdent, moduleName)
+		singletonValue, found, err := (self.parent.Executor).LoadSingleton(singletonIdent, moduleName)
 		if err != nil {
 			return value.NewVMFatalException(
 				fmt.Sprintf(

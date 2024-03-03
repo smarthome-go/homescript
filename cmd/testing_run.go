@@ -43,11 +43,12 @@ func DefaultReadFileProvider(path string) (string, error) {
 func TestingRunVm(compiled compiler.Program, printToStdout bool, readFile func(path string) (string, error)) string {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 
-	executor := homescript.TestingVmExecutor{
+	rawExecutor := homescript.TestingVmExecutor{
 		PrintToStdout: printToStdout,
 		PrintBuf:      new(string),
 		PintBufMutex:  &sync.Mutex{},
 	}
+	executor := vmValue.Executor(rawExecutor)
 
 	start := time.Now()
 	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, homescript.TestingVmScopeAdditions(), vmLimits)
@@ -82,7 +83,8 @@ func TestingRunVm(compiled compiler.Program, printToStdout bool, readFile func(p
 	if printToStdout {
 		fmt.Printf("VM elapsed: %v\n", time.Since(start))
 	}
-	return *executor.PrintBuf
+
+	return *rawExecutor.PrintBuf
 }
 
 func TestingRunInterpreter(analyzed map[string]ast.AnalyzedProgram, filename string) {
@@ -173,7 +175,7 @@ func TestingDebugConsumer(debuggerOutput *chan runtime.DebugOutput, core *runtim
 				}
 			}
 
-			fmt.Printf("\033[2J\033[H%s\n---------------------------\n%s\n", *core.Executor.(homescript.TestingVmExecutor).PrintBuf, strings.Join(lines, "\n"))
+			fmt.Printf("\033[2J\033[H%s\n---------------------------\n%s\n", *(core.Executor).(homescript.TestingVmExecutor).PrintBuf, strings.Join(lines, "\n"))
 		}
 	}
 }
