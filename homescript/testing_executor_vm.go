@@ -227,7 +227,7 @@ func (self TestingVmExecutor) LoadSingleton(singletonIdent, moduleName string) (
 	return nil, false, nil
 }
 
-func (self TestingVmExecutor) GetUser() string { return "<unknown>" }
+func (self TestingVmExecutor) Free() error { return nil }
 
 func (self TestingVmExecutor) GetBuiltinImport(moduleName string, toImport string) (val vmValue.Value, found bool) {
 	switch moduleName {

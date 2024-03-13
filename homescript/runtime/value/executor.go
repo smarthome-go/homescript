@@ -10,6 +10,6 @@ type Executor interface {
 	ResolveModuleCode(moduleName string) (code string, found bool, err error)
 	// Writes the given string (produced by a print function for instance) to any arbitrary source.
 	WriteStringTo(input string) error
-	// Returns the username of the user who is executing the current script.
-	GetUser() string
+	// Is executed by the Host to release any ressources that the executed program allocated.
+	Free() error
 }
