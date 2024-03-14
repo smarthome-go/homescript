@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
@@ -18,6 +19,7 @@ type AnalyzedStatementKind uint8
 
 const (
 	TypeDefinitionStatementKind AnalyzedStatementKind = iota
+	TriggerStatementKind
 	SingletonTypeDefinitionStatementKind
 	LetStatementKind
 	ReturnStatementKind
@@ -28,6 +30,42 @@ const (
 	ForStatementKind
 	ExpressionStatementKind
 )
+
+//
+// Trigger statement
+//
+
+type AnalyzedTriggerStatement struct {
+	FnIdent         ast.SpannedIdent
+	FnSignature     FunctionType
+	DispatchKeyword ast.TriggerDispatchKeywordKind
+	EventIdent      *ast.SpannedIdent
+	EventSignature  FunctionType
+	EventArguments  ast.CallArgs
+	Range           errors.Span
+}
+
+func (self AnalyzedTriggerStatement) Kind() AnalyzedStatementKind { return TriggerStatementKind }
+func (self AnalyzedTriggerStatement) Span() errors.Span           { return self.Range }
+func (self AnalyzedTriggerStatement) String() string {
+	eventIdent := ""
+	if self.EventIdent != nil {
+		eventIdent = " " + self.EventIdent.Ident()
+	}
+
+	eventArgs := make([]string, len(self.EventArguments.List))
+	for idx, arg := range self.EventArguments.List {
+		eventArgs[idx] = arg.String()
+	}
+
+	return fmt.Sprintf(
+		"trigger %s %s%s(%s);",
+		self.FnIdent.Ident(),
+		self.DispatchKeyword,
+		eventIdent,
+		strings.Join(eventArgs, ", "),
+	)
+}
 
 //
 // Type definition

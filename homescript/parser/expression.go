@@ -610,10 +610,12 @@ func (self *Parser) assignExpression(start errors.Location, lhs ast.Expression) 
 //	Call expression
 //
 
-func (self *Parser) callExpression(start errors.Location, base ast.Expression) (ast.CallExpression, *errors.Error) {
+func (self *Parser) callArgs() (argsRet ast.CallArgs, err *errors.Error) {
+	startLoc := self.CurrentToken.Span.Start
+
 	// skip opening parenthesis
 	if err := self.next(); err != nil {
-		return ast.CallExpression{}, err
+		return ast.CallArgs{}, err
 	}
 
 	args := make([]ast.Expression, 0)
@@ -621,14 +623,14 @@ func (self *Parser) callExpression(start errors.Location, base ast.Expression) (
 		// make first argument
 		expr, _, err := self.expression(0)
 		if err != nil {
-			return ast.CallExpression{}, err
+			return ast.CallArgs{}, err
 		}
 		args = append(args, expr)
 
 		// make remaining arguments
 		for self.CurrentToken.Kind == Comma {
 			if err := self.next(); err != nil {
-				return ast.CallExpression{}, err
+				return ast.CallArgs{}, err
 			}
 
 			if self.CurrentToken.Kind == RParen || self.CurrentToken.Kind == EOF {
@@ -637,7 +639,7 @@ func (self *Parser) callExpression(start errors.Location, base ast.Expression) (
 
 			expr, _, err := self.expression(0)
 			if err != nil {
-				return ast.CallExpression{}, err
+				return ast.CallArgs{}, err
 			}
 
 			args = append(args, expr)
@@ -645,6 +647,18 @@ func (self *Parser) callExpression(start errors.Location, base ast.Expression) (
 	}
 
 	if err := self.expectRecoverable(RParen); err != nil {
+		return ast.CallArgs{}, err
+	}
+
+	return ast.CallArgs{
+		Span: startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+		List: args,
+	}, nil
+}
+
+func (self *Parser) callExpression(start errors.Location, base ast.Expression) (ast.CallExpression, *errors.Error) {
+	args, err := self.callArgs()
+	if err != nil {
 		return ast.CallExpression{}, err
 	}
 

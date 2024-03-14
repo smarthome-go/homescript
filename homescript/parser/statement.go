@@ -15,6 +15,12 @@ func (self *Parser) statemtent() (ast.EitherStatementOrExpression, *errors.Error
 	res := ast.EitherStatementOrExpression{}
 
 	switch self.CurrentToken.Kind {
+	case Trigger:
+		triggerStmt, err := self.triggerStmt()
+		if err != nil {
+			return ast.EitherStatementOrExpression{}, err
+		}
+		res.Statement = triggerStmt
 	case Type:
 		typeDef, err := self.typeDefinition(false)
 		if err != nil {
@@ -67,6 +73,76 @@ func (self *Parser) statemtent() (ast.EitherStatementOrExpression, *errors.Error
 		return self.expressionStatement()
 	}
 	return res, nil
+}
+
+///
+/// Trigger Statement
+///
+
+func (self *Parser) triggerStmt() (ast.TriggerStatement, *errors.Error) {
+	// Skip the `trigger` keyword.
+	startLoc := self.CurrentToken.Span.Start
+
+	if err := self.next(); err != nil {
+		return ast.TriggerStatement{}, err
+	}
+
+	fnIdent := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
+	if err := self.expect(Identifier); err != nil {
+		return ast.TriggerStatement{}, err
+	}
+
+	// Dispatch keyword.
+
+	var dispatchKeyword ast.TriggerDispatchKeywordKind
+	switch self.CurrentToken.Value {
+	case "on":
+		dispatchKeyword = ast.OnTriggerDispatchKeyword
+	case "at":
+		dispatchKeyword = ast.AtTriggerDispatchKeyword
+	case "in":
+		dispatchKeyword = ast.InTriggerDispatchKeyword
+	default:
+		return ast.TriggerStatement{}, errors.NewSyntaxError(
+			self.CurrentToken.Span,
+			fmt.Sprintf("Expected trigger keyword (`on` or `at`), found %s", self.CurrentToken.Kind),
+		)
+	}
+
+	if err := self.next(); err != nil {
+		return ast.TriggerStatement{}, err
+	}
+
+	// Event identifier.
+
+	var eventIdent *ast.SpannedIdent
+	if self.CurrentToken.Kind == Identifier {
+		eventIdentTemp := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
+		eventIdent = &eventIdentTemp
+
+		if err := self.next(); err != nil {
+			return ast.TriggerStatement{}, err
+		}
+	}
+
+	// Event args
+	args, err := self.callArgs()
+	if err != nil {
+		return ast.TriggerStatement{}, err
+	}
+
+	// Expect `;`
+	if err := self.expect(Semicolon); err != nil {
+		return ast.TriggerStatement{}, err
+	}
+
+	return ast.TriggerStatement{
+		FnIdent:         fnIdent,
+		DispatchKeyword: dispatchKeyword,
+		EventIdent:      eventIdent,
+		EventArguments:  args,
+		Range:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+	}, nil
 }
 
 ///

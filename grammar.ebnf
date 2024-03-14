@@ -49,7 +49,7 @@ optionType = '?' , Type ;
 *)
 Statement = TypeDefinition | LetStatement | ReturnStatement | BreakStatement
           | ContinueStatement | LoopStatement | WhileStatement
-          | ForStatement | ExpressionStatement ;
+          | ForStatement | ExpressionStatement | TriggerStatement ;
 
 (* Let statement *)
 LetStatement = 'let' , ident , [ ':' , Type ] , '=' , Expression
@@ -77,10 +77,16 @@ ForStatement = 'for' , ident , 'in' , Expression , Block , [ ';' ] ;
 ExpressionStatement = ExpressionWithoutBlock , ';'
                     | ExpressionWithBlock , [ ';' ] ;
 
+(* Trigger Statement *)
+TriggerDispatchKind = 'on' | 'at' ;
+TriggerStatement    = 'trigger' , ident , TriggerDispatchKind
+                    , [ ident ] , '(' , [ callArguments ] , ')'
+                    , ';' ;
+
 (* Import item *)
 ImportItem = 'import' , ( [ 'type' , 'templ' ] , ident
-                        | '{' , [ 'type', 'templ' ] , ident , { ',' , [ 'type', 'templ' ]
-                                                     , ident }
+                        | '{' , [ 'type' , 'templ' ] , ident
+                        , { ',' , [ 'type' , 'templ' ] , ident }
                         , [ ',' ] , '}' ) , 'from' , ident , ';' ;
 
 (* Impl block *)

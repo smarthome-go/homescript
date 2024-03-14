@@ -893,6 +893,8 @@ func (self *Lexer) makeName() Token {
 		tokenKind = With
 	case "templ":
 		tokenKind = Templ
+	case "trigger":
+		tokenKind = Trigger
 	case "_":
 		tokenKind = Underscore
 	default:

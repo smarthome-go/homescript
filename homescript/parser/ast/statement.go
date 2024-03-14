@@ -22,6 +22,7 @@ type StatementKind uint8
 
 const (
 	ImportStatementKind StatementKind = iota
+	TriggerStatementKind
 	TypeDefinitionStatementKind
 	LetStatementKind
 	FnDefinitionStatementKind
@@ -84,6 +85,61 @@ func (self ImportStatementCandidate) String() string {
 	}
 
 	return fmt.Sprintf("%s%s", modifierStr, self.Ident)
+}
+
+//
+// Trigger statement
+//
+
+type TriggerDispatchKeywordKind uint8
+
+const (
+	OnTriggerDispatchKeyword TriggerDispatchKeywordKind = iota
+	AtTriggerDispatchKeyword
+	InTriggerDispatchKeyword
+)
+
+func (self TriggerDispatchKeywordKind) String() string {
+	switch self {
+	case OnTriggerDispatchKeyword:
+		return "on"
+	case AtTriggerDispatchKeyword:
+		return "at"
+	case InTriggerDispatchKeyword:
+		return "in"
+	default:
+		panic("Added a new TriggerDispatchKeywordKind without updating this code")
+	}
+}
+
+type TriggerStatement struct {
+	FnIdent         SpannedIdent
+	DispatchKeyword TriggerDispatchKeywordKind
+	EventIdent      *SpannedIdent
+	EventArguments  CallArgs
+	Range           errors.Span
+}
+
+func (self TriggerStatement) Kind() StatementKind { return TriggerStatementKind }
+func (self TriggerStatement) Span() errors.Span   { return self.Range }
+func (self TriggerStatement) String() string {
+	eventIdent := ""
+	if self.EventIdent != nil {
+		eventIdent = " " + self.EventIdent.ident
+	}
+
+	eventArgs := make([]string, len(self.EventArguments.List))
+	for idx, arg := range self.EventArguments.List {
+		eventArgs[idx] = arg.String()
+	}
+
+	return fmt.Sprintf(
+		"trigger %s %s%s(%s);",
+		self.FnIdent.ident,
+		self.DispatchKeyword,
+		eventIdent,
+		strings.Join(eventArgs, ", "),
+	)
 }
 
 //

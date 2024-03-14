@@ -307,9 +307,14 @@ func (self PrefixOperator) String() string {
 // Call expression
 //
 
+type CallArgs struct {
+	Span errors.Span
+	List []Expression
+}
+
 type CallExpression struct {
 	Base      Expression
-	Arguments []Expression
+	Arguments CallArgs
 	Range     errors.Span
 	IsSpawn   bool
 }
@@ -318,7 +323,7 @@ func (self CallExpression) Kind() ExpressionKind { return CallExpressionKind }
 func (self CallExpression) Span() errors.Span    { return self.Range }
 func (self CallExpression) String() string {
 	args := make([]string, 0)
-	for _, arg := range self.Arguments {
+	for _, arg := range self.Arguments.List {
 		args = append(args, arg.String())
 	}
 

@@ -17,6 +17,9 @@ import (
 
 func (self *Analyzer) statement(node pAst.Statement) ast.AnalyzedStatement {
 	switch node.Kind() {
+	case pAst.TriggerStatementKind:
+		src := node.(pAst.TriggerStatement)
+		return self.triggerStatement(src)
 	case pAst.TypeDefinitionStatementKind:
 		src := node.(pAst.TypeDefinition)
 		return self.typeDefStatement(src)
@@ -50,6 +53,25 @@ func (self *Analyzer) statement(node pAst.Statement) ast.AnalyzedStatement {
 	default:
 		panic("A new statement kind was introduced without updating this code")
 	}
+}
+
+//
+// Trigger statement
+//
+
+// Checks:
+//
+// - Trigger Event
+//   - Exists (pay respect to the dispatcher keyword)
+//
+// - Callback function
+//   - Exists
+//   - Has the correct type
+//   - Is an `event` function
+func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedTriggerStatement {
+	// Check that the function exists
+
+	return ast.AnalyzedTriggerStatement{}
 }
 
 //

@@ -818,14 +818,14 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 				newParams = append(newParams, param)
 			}
 
-			if len(node.Arguments) != len(newParams) {
+			if len(node.Arguments.List) != len(newParams) {
 				pluralS := "s"
 				if len(newParams) == 1 {
 					pluralS = ""
 				}
 
 				verb := "were"
-				if len(node.Arguments) == 1 {
+				if len(node.Arguments.List) == 1 {
 					verb = "was"
 				}
 
@@ -835,13 +835,13 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 				}
 
 				self.error(
-					fmt.Sprintf("Function requires %d argument%s (%s), however %d %s supplied", len(newParams), pluralS, strings.Join(paramList, ", "), len(node.Arguments), verb),
+					fmt.Sprintf("Function requires %d argument%s (%s), however %d %s supplied", len(newParams), pluralS, strings.Join(paramList, ", "), len(node.Arguments.List), verb),
 					nil,
 					node.Range,
 				)
 			} else {
 				for idx := 0; idx < len(newParams); idx++ {
-					argExpr := self.expression(node.Arguments[idx])
+					argExpr := self.expression(node.Arguments.List[idx])
 
 					if argExpr.Type().Kind() == ast.NullTypeKind {
 						self.error(
@@ -878,24 +878,30 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 			// validate that every argument matches the type of the varargs
 			varArgType := baseFn.Params.(ast.VarArgsFunctionTypeParamKindIdentifier)
 
-			if len(varArgType.ParamTypes) != 0 && len(node.Arguments) < len(varArgType.ParamTypes) {
+			if len(varArgType.ParamTypes) != 0 && len(node.Arguments.List) < len(varArgType.ParamTypes) {
 				pluralS := "s"
 				if len(varArgType.ParamTypes) == 1 {
 					pluralS = ""
 				}
 
 				verb := "were"
-				if len(node.Arguments) == 1 {
+				if len(node.Arguments.List) == 1 {
 					verb = "was"
 				}
 
 				self.error(
-					fmt.Sprintf("Function requires at least %d argument%s, however %d %s supplied", len(varArgType.ParamTypes), pluralS, len(node.Arguments), verb),
+					fmt.Sprintf(
+						"Function requires at least %d argument%s, however %d %s supplied",
+						len(varArgType.ParamTypes),
+						pluralS,
+						len(node.Arguments.List),
+						verb,
+					),
 					nil,
 					node.Range,
 				)
 			} else {
-				for idx, arg := range node.Arguments {
+				for idx, arg := range node.Arguments.List {
 					argExpr := self.expression(arg)
 
 					if argExpr.Type().Kind() == ast.NullTypeKind {

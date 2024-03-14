@@ -23,13 +23,23 @@ type BuiltinImport struct {
 }
 
 type HostProvider interface {
+	// Analyze imports, returns type of the imported value for type checks.
+	// Example: `import { Foo } from bar;`
+	// - `Foo` is the value name, if it was not found, `valueFound` is false.
+	// - `Bar` is the module name, if it was not found, `moduleFound` is false.
 	GetBuiltinImport(
 		moduleName string,
 		valueName string,
 		span errors.Span,
 		kind pAst.IMPORT_KIND,
 	) (result BuiltinImport, moduleFound bool, valueFound bool)
+
+	// Required so that the analyzer can validate
+	//
+	//
+
 	ResolveCodeModule(moduleName string) (code string, moduleFound bool, err error)
+
 	// This method is invoked if the analyzer analyzes a module without errors
 	// Then, this logical next stage is triggered to analyze the meta-semantics of the program.
 	// This refers to any meaning of the program that is Homescript-agnostic and specific to that program.

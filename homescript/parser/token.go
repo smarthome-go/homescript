@@ -101,6 +101,7 @@ const (
 	Impl     // impl
 	With     // with
 	Templ    // templ
+	Trigger  // trigger
 
 	True  // true
 	False // false
@@ -268,6 +269,8 @@ func (self TokenKind) String() string {
 		display = "with"
 	case Templ:
 		display = "templ"
+	case Trigger:
+		display = "trigger"
 	case BitOr:
 		display = "|"
 	case BitXor:
