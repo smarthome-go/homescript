@@ -35,37 +35,38 @@ const (
 // Trigger statement
 //
 
+type AnalyzedCallArgs struct {
+	Span errors.Span
+	List []AnalyzedCallArgument
+}
+
 type AnalyzedTriggerStatement struct {
-	FnIdent         ast.SpannedIdent
-	FnSignature     FunctionType
-	DispatchKeyword ast.TriggerDispatchKeywordKind
-	EventIdent      *ast.SpannedIdent
-	EventSignature  FunctionType
-	EventArguments  ast.CallArgs
-	Range           errors.Span
+	CallbackIdent     ast.SpannedIdent
+	CallbackSignature FunctionType
+	ConnectiveKeyword ast.TriggerDispatchKeywordKind
+	TriggerIdent      ast.SpannedIdent
+	TriggerSignature  FunctionType
+	TriggerArguments  AnalyzedCallArgs
+	Range             errors.Span
 }
 
 func (self AnalyzedTriggerStatement) Kind() AnalyzedStatementKind { return TriggerStatementKind }
 func (self AnalyzedTriggerStatement) Span() errors.Span           { return self.Range }
 func (self AnalyzedTriggerStatement) String() string {
-	eventIdent := ""
-	if self.EventIdent != nil {
-		eventIdent = " " + self.EventIdent.Ident()
-	}
-
-	eventArgs := make([]string, len(self.EventArguments.List))
-	for idx, arg := range self.EventArguments.List {
+	eventArgs := make([]string, len(self.TriggerArguments.List))
+	for idx, arg := range self.TriggerArguments.List {
 		eventArgs[idx] = arg.String()
 	}
 
 	return fmt.Sprintf(
-		"trigger %s %s%s(%s);",
-		self.FnIdent.Ident(),
-		self.DispatchKeyword,
-		eventIdent,
+		"trigger %s %s %s(%s);",
+		self.CallbackIdent.Ident(),
+		self.ConnectiveKeyword,
+		self.TriggerIdent.Ident(),
 		strings.Join(eventArgs, ", "),
 	)
 }
+func (self AnalyzedTriggerStatement) Type() Type { return NewNullType(self.Range) }
 
 //
 // Type definition

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
@@ -38,8 +39,6 @@ func analyzeFile(
 	printAnalyzed bool,
 	fileReader func(path string) (string, error),
 ) (analyzed map[string]ast.AnalyzedProgram, entryModule string, err error) {
-	// hmsFilename := path.Base(pathS)
-
 	analyzed, diagnostics, syntaxErrors := homescript.Analyze(homescript.InputProgram{
 		ProgramText: program,
 		Filename:    pathS,
@@ -63,6 +62,10 @@ func analyzeFile(
 	for _, item := range diagnostics {
 		if item.Level == diagnostic.DiagnosticLevelError {
 			abort = true
+		}
+
+		if item.Span.Filename == "" {
+			panic(spew.Sdump(item))
 		}
 
 		file, err := fileReader(item.Span.Filename)

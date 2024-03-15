@@ -7,19 +7,19 @@ import (
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
-// TODO: remove this
-// type BUILTIN_IMPORT_KIND uint8
-//
-// const (
-// 	BUILTIN_IMPORT_KIND_VALUE BUILTIN_IMPORT_KIND = iota
-// 	BUILTIN_IMPORT_KIND_TYPE
-// 	BUILTIN_IMPORT_KIND_TEMPLATE
-// )
+// Is the return value if a trigger is imported successfully.
+type TriggerFunction struct {
+	TriggerFnType  ast.FunctionType
+	CallbackFnType ast.FunctionType
+	Connective     pAst.TriggerDispatchKeywordKind
+	ImportedAt     errors.Span
+}
 
 // Is either a type (for types and values) or a template
 type BuiltinImport struct {
 	Type     ast.Type
 	Template *ast.TemplateSpec
+	Trigger  *TriggerFunction
 }
 
 type HostProvider interface {
@@ -33,10 +33,6 @@ type HostProvider interface {
 		span errors.Span,
 		kind pAst.IMPORT_KIND,
 	) (result BuiltinImport, moduleFound bool, valueFound bool)
-
-	// Required so that the analyzer can validate
-	//
-	//
 
 	ResolveCodeModule(moduleName string) (code string, moduleFound bool, err error)
 

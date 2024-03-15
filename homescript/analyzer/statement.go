@@ -69,9 +69,90 @@ func (self *Analyzer) statement(node pAst.Statement) ast.AnalyzedStatement {
 //   - Has the correct type
 //   - Is an `event` function
 func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedTriggerStatement {
-	// Check that the function exists
+	// Analyze event trigger
+	trigger, triggerFound := self.currentModule.getTrigger(node.TriggerIdent.Ident())
+	// triggerType, found, connectiveCorrect := self.host.GetTriggerEvent(node.EventIdent.Ident(), node.DispatchKeyword)
+	if !triggerFound {
+		self.error(
+			fmt.Sprintf("Use of undefined trigger function '%s'", node.TriggerIdent.Ident()),
+			[]string{
+				fmt.Sprintf("Trigger functions can be imported like this: `import { trigger %s } from ... ;`", node.TriggerIdent.Ident()),
+			},
+			node.TriggerIdent.Span(),
+		)
+	}
 
-	return ast.AnalyzedTriggerStatement{}
+	// Analyze callback function
+	callbackType, callbackFound := self.currentModule.getFunc(node.FnIdent.Ident())
+	if !callbackFound {
+		self.error(
+			fmt.Sprintf("Use of undefined callback function '%s'", node.FnIdent.Ident()),
+			[]string{
+				fmt.Sprintf("Functions can be defined like this: `fn %s(...) { ... }`", node.FnIdent.Ident()),
+			},
+			node.FnIdent.Span(),
+		)
+
+		// Still analyze arguments
+		for _, arg := range node.EventArguments.List {
+			self.expression(arg)
+		}
+
+		return ast.AnalyzedTriggerStatement{
+			CallbackIdent:     node.FnIdent,
+			CallbackSignature: ast.FunctionType{},
+			ConnectiveKeyword: node.DispatchKeyword,
+			TriggerIdent:      node.TriggerIdent,
+			TriggerSignature:  ast.FunctionType{},
+			TriggerArguments:  ast.AnalyzedCallArgs{},
+			Range:             errors.Span{},
+		}
+	}
+
+	// Analyze callback function compatability with event trigger
+	callbackFnType := callbackType.Type(node.Span()).(ast.FunctionType)
+
+	// if callbackFnType.Params.Kind() != trigger.Type.Params.Kind() {
+	// 	panic("This is a bug in the host implementation: a trigger function provided by the host should always be of param kind `normal`")
+	// }
+
+	// callbackParams := callbackFnType.Params.(ast.NormalFunctionTypeParamKindIdentifier).Params
+	// triggerParams := trigger.Type.Params.(ast.NormalFunctionTypeParamKindIdentifier).Params
+
+	// if len(callbackParams) != len(triggerParams) {
+	// 	// self.error(
+	// 	// 	fmt.Sprintf("Expected function ")
+	// 	// )
+	// }
+
+	args := ast.AnalyzedCallArgs{
+		Span: node.EventArguments.Span,
+		List: []ast.AnalyzedCallArgument{},
+	}
+
+	if triggerFound {
+		if err := self.TypeCheck(callbackFnType, trigger.CallbackFnType, true); err != nil {
+			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+			if err.ExpectedDiagnostic != nil {
+				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+			}
+		}
+		args = self.callArgs(
+			trigger.TriggerFnType,
+			node.EventArguments,
+			false,
+		)
+	}
+
+	return ast.AnalyzedTriggerStatement{
+		CallbackIdent:     node.FnIdent,
+		CallbackSignature: callbackFnType,
+		ConnectiveKeyword: node.DispatchKeyword,
+		TriggerIdent:      node.TriggerIdent,
+		TriggerSignature:  trigger.TriggerFnType,
+		TriggerArguments:  args,
+		Range:             node.Range,
+	}
 }
 
 //
@@ -241,7 +322,6 @@ func (self *Analyzer) letStatement(node pAst.LetStatement, isGlobal bool) ast.An
 				)
 			}
 		}
-
 	}
 
 	return ast.AnalyzedLetStatement{

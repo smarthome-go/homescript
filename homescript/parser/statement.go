@@ -115,14 +115,9 @@ func (self *Parser) triggerStmt() (ast.TriggerStatement, *errors.Error) {
 
 	// Event identifier.
 
-	var eventIdent *ast.SpannedIdent
-	if self.CurrentToken.Kind == Identifier {
-		eventIdentTemp := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
-		eventIdent = &eventIdentTemp
-
-		if err := self.next(); err != nil {
-			return ast.TriggerStatement{}, err
-		}
+	eventIdent := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
+	if err := self.expect(Identifier); err != nil {
+		return ast.TriggerStatement{}, err
 	}
 
 	// Event args
@@ -139,7 +134,7 @@ func (self *Parser) triggerStmt() (ast.TriggerStatement, *errors.Error) {
 	return ast.TriggerStatement{
 		FnIdent:         fnIdent,
 		DispatchKeyword: dispatchKeyword,
-		EventIdent:      eventIdent,
+		TriggerIdent:    eventIdent,
 		EventArguments:  args,
 		Range:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
 	}, nil

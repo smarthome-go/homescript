@@ -322,9 +322,10 @@ func (self *Analyzer) importDummyFields(node pAst.ImportStatement) ast.AnalyzedI
 	}
 
 	return ast.AnalyzedImport{
-		ToImport:   dummyFields,
-		FromModule: node.FromModule,
-		Range:      node.Range,
+		ToImport:    dummyFields,
+		FromModule:  node.FromModule,
+		Range:       node.Range,
+		TargetIsHMS: false,
 	}
 }
 
@@ -524,6 +525,14 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 				if prevFound {
 					self.error(fmt.Sprintf("Template '%s' already exists in current module", item.Ident), nil, item.Span)
 					self.hint(fmt.Sprintf("Template `%s` previously imported here", item.Ident), make([]string, 0), prev.Span)
+				}
+
+				continue
+			case pAst.IMPORT_KIND_TRIGGER:
+				prev, prevFound := self.currentModule.addTrigger(item.Ident, *imported.Trigger)
+				if prevFound {
+					self.error(fmt.Sprintf("Trigger function '%s' already exists in current module", item.Ident), nil, item.Span)
+					self.hint(fmt.Sprintf("Trigger function `%s` previously imported here", item.Ident), make([]string, 0), prev.ImportedAt)
 				}
 
 				continue

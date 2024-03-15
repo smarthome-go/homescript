@@ -80,8 +80,7 @@ ExpressionStatement = ExpressionWithoutBlock , ';'
 (* Trigger Statement *)
 TriggerDispatchKind = 'on' | 'at' ;
 TriggerStatement    = 'trigger' , ident , TriggerDispatchKind
-                    , [ ident ] , '(' , [ callArguments ] , ')'
-                    , ';' ;
+                    , ident , '(' , [ callArguments ] , ')' , ';' ;
 
 (* Import item *)
 ImportItem = 'import' , ( [ 'type' , 'templ' ] , ident

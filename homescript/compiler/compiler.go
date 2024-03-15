@@ -11,6 +11,7 @@ import (
 
 const MainFunctionIdent = "main"
 const EntryPointFunctionIdent = "@init"
+const RegisterTriggerHostFn = "@trigger"
 
 type Loop struct {
 	labelStart    string
@@ -539,6 +540,20 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 	case ast.TypeDefinitionStatementKind:
 		// This kind of statement is just ignored.
 		break
+	case ast.TriggerStatementKind:
+		node := node.(ast.AnalyzedTriggerStatement)
+		const defaultArgC = 2
+		hostCallArgc := defaultArgC + len(node.TriggerArguments.List)
+
+		for idx := len(node.TriggerArguments.List) - 1; idx >= 0; idx-- {
+			fmt.Printf("TRIGGER STATEMENT COMPILATION OF ARG: %s\n", node.TriggerArguments.List[idx].Expression)
+			self.compileExpr(node.TriggerArguments.List[idx].Expression)
+		}
+
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(node.TriggerIdent.Ident())), node.Span())
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(RegisterTriggerHostFn)), node.Span())
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(hostCallArgc))), node.Span())
+		self.insert(newOneStringInstruction(Opcode_HostCall, RegisterTriggerHostFn), node.Span())
 	case ast.LetStatementKind:
 		self.compileLetStmt(node.(ast.AnalyzedLetStatement), false)
 	case ast.ReturnStatementKind:

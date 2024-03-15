@@ -64,6 +64,8 @@ const (
 	IMPORT_KIND_TYPE
 	// A template is brought into the current module's template-scope
 	IMPORT_KIND_TEMPLATE
+	// A function of this kind can be used as a trigger in the `trigger` statement.
+	IMPORT_KIND_TRIGGER
 )
 
 type ImportStatementCandidate struct {
@@ -82,6 +84,8 @@ func (self ImportStatementCandidate) String() string {
 		modifierStr = "type "
 	case IMPORT_KIND_TEMPLATE:
 		modifierStr = "templ "
+	case IMPORT_KIND_TRIGGER:
+		modifierStr = "trigger "
 	}
 
 	return fmt.Sprintf("%s%s", modifierStr, self.Ident)
@@ -115,7 +119,7 @@ func (self TriggerDispatchKeywordKind) String() string {
 type TriggerStatement struct {
 	FnIdent         SpannedIdent
 	DispatchKeyword TriggerDispatchKeywordKind
-	EventIdent      *SpannedIdent
+	TriggerIdent    SpannedIdent
 	EventArguments  CallArgs
 	Range           errors.Span
 }
@@ -123,21 +127,16 @@ type TriggerStatement struct {
 func (self TriggerStatement) Kind() StatementKind { return TriggerStatementKind }
 func (self TriggerStatement) Span() errors.Span   { return self.Range }
 func (self TriggerStatement) String() string {
-	eventIdent := ""
-	if self.EventIdent != nil {
-		eventIdent = " " + self.EventIdent.ident
-	}
-
 	eventArgs := make([]string, len(self.EventArguments.List))
 	for idx, arg := range self.EventArguments.List {
 		eventArgs[idx] = arg.String()
 	}
 
 	return fmt.Sprintf(
-		"trigger %s %s%s(%s);",
+		"trigger %s %s %s(%s);",
 		self.FnIdent.ident,
 		self.DispatchKeyword,
-		eventIdent,
+		self.TriggerIdent,
 		strings.Join(eventArgs, ", "),
 	)
 }

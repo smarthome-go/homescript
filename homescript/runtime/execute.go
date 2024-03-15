@@ -131,10 +131,11 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		raw := self.pop()
 		argc := int((*raw).(value.ValueInt).Inner)
 		args := make([]*value.Value, 0)
+
 		for i := 0; i < argc; i++ {
 			args = append(args, self.pop())
 		}
-		v, interrupt := self.hostCall(self.parent, i.Value, args)
+		v, interrupt := self.hostCall(self.parent, i.Value, self.parent.SourceMap(*self.callFrame()), args)
 		if interrupt != nil {
 			return interrupt
 		}

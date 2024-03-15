@@ -20,21 +20,22 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 	toImport := make([]ast.ImportStatementCandidate, 0)
 
 	switch self.CurrentToken.Kind {
-	case Type, Templ, Identifier, Underscore:
+	case Type, Templ, Trigger, Identifier, Underscore:
 		startLoc := self.CurrentToken.Span.Start
 		importKind := ast.IMPORT_KIND_NORMAL
 
 		switch self.CurrentToken.Kind {
 		case Type:
 			importKind = ast.IMPORT_KIND_TYPE
-			if err := self.next(); err != nil {
-				return ast.ImportStatement{}, err
-			}
 		case Templ:
 			importKind = ast.IMPORT_KIND_TEMPLATE
-			if err := self.next(); err != nil {
-				return ast.ImportStatement{}, err
-			}
+		case Trigger:
+			importKind = ast.IMPORT_KIND_TRIGGER
+		default:
+		}
+
+		if err := self.next(); err != nil {
+			return ast.ImportStatement{}, err
 		}
 
 		// if self.CurrentToken.Kind == Type {
@@ -133,7 +134,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 			return ast.ImportStatement{}, err
 		}
 	default:
-		return ast.ImportStatement{}, self.expectedOneOfErr([]TokenKind{Identifier, LCurly})
+		return ast.ImportStatement{}, self.expectedOneOfErr([]TokenKind{Type, Templ, Trigger, Identifier, LCurly})
 	}
 
 	if err := self.expect(From); err != nil {

@@ -74,20 +74,41 @@ func NewVM(
 }
 
 // TODO: why is this not a real method?
-func hostcall(self *VM, function string, args []*value.Value) (*value.Value, *value.VmInterrupt) {
+func hostcall(self *VM, function string, span errors.Span, args []*value.Value) (*value.Value, *value.VmInterrupt) {
 	// TODO: this is extremely bad!!!
 	self.Lock.Lock()
 	defer self.Lock.Unlock()
 
-	if function == "__internal_list_push" {
+	switch function {
+	case "__internal_list_push":
 		elem := args[0]
 		list := (*args[1]).(value.ValueList)
 
 		(*list.Values) = append((*list.Values), elem)
 		return args[1], nil
-	}
+	case "@trigger":
+		callback := (*args[0]).(value.ValueString).Inner
+		triggerFunc := (*args[1]).(value.ValueString).Inner
 
-	panic("Invalid hostcall: " + function)
+		const argcOffsetCount = 2
+
+		remainingLen := len(args) - argcOffsetCount
+		remainingArgs := make([]value.Value, remainingLen)
+
+		if remainingLen > 0 {
+			remainingArgs := make([]value.Value, remainingLen)
+			for idx, val := range args[:argcOffsetCount-1] {
+				remainingArgs[idx] = *val
+			}
+		}
+
+		if err := self.Executor.RegisterTrigger(callback, triggerFunc, span, remainingArgs); err != nil {
+			return nil, value.NewVMFatalException(err.Error(), value.Vm_HostErrorKind, span)
+		}
+		return nil, nil
+	default:
+		panic("Invalid hostcall: " + function)
+	}
 }
 
 func (self *VM) GetGlobals() map[string]value.Value {

@@ -34,7 +34,7 @@ func DefaultReadFileProvider(path string) (string, error) {
 
 	file, err := os.ReadFile(path)
 	if err != nil {
-		panic(fmt.Sprintf("Could not read file `%s`: %s | %s\n", path, err.Error()))
+		panic(fmt.Sprintf("Could not read file `%s` | %s\n", path, err.Error()))
 	}
 
 	return string(file), nil

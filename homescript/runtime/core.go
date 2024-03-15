@@ -44,7 +44,7 @@ type Core struct {
 	// Each index is relative to the function, but doesn't matter
 	Labels map[string]uint
 	// TODO: maybe remove hostCall entirely
-	hostCall     func(*VM, string, []*value.Value) (*value.Value, *value.VmInterrupt)
+	hostCall     func(*VM, string, errors.Span, []*value.Value) (*value.Value, *value.VmInterrupt)
 	parent       *VM
 	Executor     value.Executor
 	Corenum      uint
@@ -70,7 +70,7 @@ type CoreLimits struct {
 
 func NewCore(
 	program *map[string][]compiler.Instruction,
-	hostCall func(*VM, string, []*value.Value) (*value.Value, *value.VmInterrupt),
+	hostCall func(*VM, string, errors.Span, []*value.Value) (*value.Value, *value.VmInterrupt),
 	executor value.Executor,
 	vm *VM,
 	coreNum uint,

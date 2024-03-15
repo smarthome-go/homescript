@@ -651,7 +651,7 @@ func (self *Parser) callArgs() (argsRet ast.CallArgs, err *errors.Error) {
 	}
 
 	return ast.CallArgs{
-		Span: startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+		Span: startLoc.Until(self.PreviousToken.Span.End, self.Filename),
 		List: args,
 	}, nil
 }

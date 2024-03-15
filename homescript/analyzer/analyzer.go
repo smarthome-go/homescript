@@ -130,7 +130,7 @@ func (self *Analyzer) dropScope(remove bool) {
 			)
 		case ImportedVariableOriginKind:
 			self.warn(
-				fmt.Sprintf("Import '%s' is unused", key),
+				fmt.Sprintf("Import `%s` is unused", key),
 				nil,
 				variable.Span,
 			)
@@ -157,6 +157,7 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		Scopes:                   make([]scope, 0),
 		Singletons:               make(map[string]*ast.AnalyzedSingleton),
 		Templates:                make(map[string]ast.TemplateSpec),
+		TriggerFunctions:         make(map[string]TriggerFunction),
 		LoopDepth:                0, // `break` and `continue` are legal if > 0
 		CurrentFunction:          nil,
 		CurrentLoopIsTerminated:  false,

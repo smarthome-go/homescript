@@ -12,6 +12,7 @@ type Module struct {
 	ImportsModules           []string
 	Functions                []*function
 	Scopes                   []scope
+	TriggerFunctions         map[string]TriggerFunction
 	Singletons               map[string]*ast.AnalyzedSingleton
 	Templates                map[string]ast.TemplateSpec
 	CurrentFunction          *function
@@ -68,6 +69,7 @@ func newFunction(
 	return function{
 		FnType:         typ,
 		Parameters:     params,
+		ParamsSpan:     paramsSpan,
 		ReturnType:     returnType,
 		ReturnTypeSpan: returnSpan,
 		Used:           false,
@@ -207,6 +209,24 @@ func (self *Module) addTemplate(ident string, template ast.TemplateSpec) (previo
 func (self *Module) getTemplate(ident string) (ast.TemplateSpec, bool) {
 	templ, found := self.Templates[ident]
 	return templ, found
+}
+
+//
+// Utility methods for triggers
+//
+
+func (self *Module) addTrigger(ident string, trigger TriggerFunction) (previous TriggerFunction, prevFound bool) {
+	prev, exists := self.TriggerFunctions[ident]
+	if exists {
+		return prev, true
+	}
+	self.TriggerFunctions[ident] = trigger
+	return TriggerFunction{}, false
+}
+
+func (self *Module) getTrigger(ident string) (TriggerFunction, bool) {
+	trigger, found := self.TriggerFunctions[ident]
+	return trigger, found
 }
 
 //

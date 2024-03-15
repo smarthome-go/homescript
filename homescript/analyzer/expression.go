@@ -778,6 +778,169 @@ func (self *Analyzer) assignErr(operator pAst.AssignOperator, typ ast.Type, span
 // Call expression
 //
 
+func (self *Analyzer) callArgs(fnType ast.FunctionType, args pAst.CallArgs, baseIsSpawn bool) ast.AnalyzedCallArgs {
+	arguments := make([]ast.AnalyzedCallArgument, 0)
+
+	// validate arguments depending on the parameter type of the function
+	switch fnType.Params.Kind() {
+	case ast.NormalFunctionTypeParamKindIdentifierKind:
+		// validate that all arguments match the declared parameter
+		baseParams := fnType.Params.(ast.NormalFunctionTypeParamKindIdentifier)
+
+		// Preprocess / skip singleton extractor params
+		// NOTE: this is valid since the extractions occur at the start
+
+		newParams := make([]ast.FunctionTypeParam, 0)
+		for _, param := range baseParams.Params {
+			if param.IsSingletonExtractor {
+				continue
+			}
+
+			newParams = append(newParams, param)
+		}
+
+		if len(args.List) != len(newParams) {
+			pluralS := "s"
+			if len(newParams) == 1 {
+				pluralS = ""
+			}
+
+			verb := "were"
+			if len(args.List) == 1 {
+				verb = "was"
+			}
+
+			paramList := make([]string, 0)
+			for _, param := range newParams {
+				paramList = append(paramList, param.Name.Ident())
+			}
+
+			paramListDisplay := ""
+			if len(newParams) > 0 {
+				paramListDisplay = fmt.Sprintf(" (%s)", strings.Join(paramList, ", "))
+			}
+
+			self.error(
+				fmt.Sprintf(
+					"Function requires %d argument%s%s, however %d %s supplied",
+					len(newParams),
+					pluralS,
+					paramListDisplay,
+					len(args.List),
+					verb,
+				),
+				nil,
+				args.Span,
+			)
+		} else {
+			for idx := 0; idx < len(newParams); idx++ {
+				argExpr := self.expression(args.List[idx])
+
+				if argExpr.Type().Kind() == ast.NullTypeKind {
+					self.error(
+						fmt.Sprintf("Cannot use a value of result type `%s` in function call", argExpr.Type()),
+						[]string{"This expression generates no value, therefore it can be omitted"},
+						argExpr.Span(),
+					)
+					continue
+				}
+
+				// Sending closures across threads is UB, prevent this.
+				// When sending a closure which captures values to a new thread, the old captured values are not deepcopie'd.
+				// Therefore, sending these closures across threads will cause weird memory bugs which must not occur in a Smarthome system.
+				if baseIsSpawn && argExpr.Type().Kind() == ast.FnTypeKind {
+					self.error(
+						"Sending closures across threads is undefined behaviour.",
+						[]string{fmt.Sprintf("It is not possible to use a value of type `%s` as an argument to a `spawn` invocation.", argExpr.Type())},
+						argExpr.Span(),
+					)
+					continue
+				}
+
+				if err := self.TypeCheck(argExpr.Type(), newParams[idx].Type, true); err != nil {
+					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+				} else {
+					arguments = append(arguments, ast.AnalyzedCallArgument{
+						Name:       newParams[idx].Name.Ident(),
+						Expression: argExpr,
+					})
+				}
+			}
+		}
+	case ast.VarArgsFunctionTypeParamKindIdentifierKind:
+		// validate that every argument matches the type of the varargs
+		varArgType := fnType.Params.(ast.VarArgsFunctionTypeParamKindIdentifier)
+
+		if len(varArgType.ParamTypes) != 0 && len(args.List) < len(varArgType.ParamTypes) {
+			pluralS := "s"
+			if len(varArgType.ParamTypes) == 1 {
+				pluralS = ""
+			}
+
+			verb := "were"
+			if len(args.List) == 1 {
+				verb = "was"
+			}
+
+			self.error(
+				fmt.Sprintf(
+					"Function requires at least %d argument%s, however %d %s supplied",
+					len(varArgType.ParamTypes),
+					pluralS,
+					len(args.List),
+					verb,
+				),
+				nil,
+				args.Span,
+			)
+		} else {
+			for idx, arg := range args.List {
+				argExpr := self.expression(arg)
+
+				if argExpr.Type().Kind() == ast.NullTypeKind {
+					self.error(
+						fmt.Sprintf("Cannot use a value of result type `%s` in function call", argExpr.Type()),
+						[]string{"This expression generates no value, therefore it can be omitted"},
+						argExpr.Span(),
+					)
+					continue
+				}
+
+				// Sending closures across threads is UB, prevent this.
+				// When sending a closure which captures values to a new thread, the old captured values are not deepcopie'd.
+				// Therefore, sending these closures across threads will cause weird memory bugs which must not occur in a Smarthome system.
+				if baseIsSpawn && argExpr.Type().Kind() == ast.FnTypeKind {
+					self.error(
+						"Sending closures across threads is undefined behaviour.",
+						[]string{fmt.Sprintf("It is not possible to use a value of type `%s` as an argument to a `spawn` invocation.", argExpr.Type())},
+						argExpr.Span(),
+					)
+					continue
+				}
+
+				toCheck := varArgType.RemainingType
+				if idx < len(varArgType.ParamTypes) {
+					toCheck = varArgType.ParamTypes[idx]
+				}
+
+				if err := self.TypeCheck(argExpr.Type(), toCheck, true); err != nil {
+					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+				} else {
+					arguments = append(arguments, ast.AnalyzedCallArgument{
+						Name:       "", // no name: is vararg
+						Expression: argExpr,
+					})
+				}
+			}
+		}
+	}
+
+	return ast.AnalyzedCallArgs{
+		Span: args.Span,
+		List: arguments,
+	}
+}
+
 // TODO: also forbid invoking a spawn fn which returns a closure.
 // TODO: also completely rewrite this function, it is very obfuscated.
 func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallExpression {
@@ -799,148 +962,6 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 		// do nothing
 	case ast.FnTypeKind:
 		baseFn := base.Type().(ast.FunctionType)
-
-		// validate arguments depending on the parameter type of the function
-		switch baseFn.Params.Kind() {
-		case ast.NormalFunctionTypeParamKindIdentifierKind:
-			// validate that all arguments match the declared parameter
-			baseParams := baseFn.Params.(ast.NormalFunctionTypeParamKindIdentifier)
-
-			// Preprocess / skip singleton extractor params
-			// NOTE: this is valid since the extractions occur at the start
-
-			newParams := make([]ast.FunctionTypeParam, 0)
-			for _, param := range baseParams.Params {
-				if param.IsSingletonExtractor {
-					continue
-				}
-
-				newParams = append(newParams, param)
-			}
-
-			if len(node.Arguments.List) != len(newParams) {
-				pluralS := "s"
-				if len(newParams) == 1 {
-					pluralS = ""
-				}
-
-				verb := "were"
-				if len(node.Arguments.List) == 1 {
-					verb = "was"
-				}
-
-				paramList := make([]string, 0)
-				for _, param := range newParams {
-					paramList = append(paramList, param.Name.Ident())
-				}
-
-				self.error(
-					fmt.Sprintf("Function requires %d argument%s (%s), however %d %s supplied", len(newParams), pluralS, strings.Join(paramList, ", "), len(node.Arguments.List), verb),
-					nil,
-					node.Range,
-				)
-			} else {
-				for idx := 0; idx < len(newParams); idx++ {
-					argExpr := self.expression(node.Arguments.List[idx])
-
-					if argExpr.Type().Kind() == ast.NullTypeKind {
-						self.error(
-							fmt.Sprintf("Cannot use a value of result type `%s` in function call", argExpr.Type()),
-							[]string{"This expression generates no value, therefore it can be omitted"},
-							argExpr.Span(),
-						)
-						continue
-					}
-
-					// Sending closures across threads is UB, prevent this.
-					// When sending a closure which captures values to a new thread, the old captured values are not deepcopie'd.
-					// Therefore, sending these closures across threads will cause weird memory bugs which must not occur in a Smarthome system.
-					if node.IsSpawn && argExpr.Type().Kind() == ast.FnTypeKind {
-						self.error(
-							"Sending closures across threads is undefined behaviour.",
-							[]string{fmt.Sprintf("It is not possible to use a value of type `%s` as an argument to a `spawn` invocation.", argExpr.Type())},
-							argExpr.Span(),
-						)
-						continue
-					}
-
-					if err := self.TypeCheck(argExpr.Type(), newParams[idx].Type, true); err != nil {
-						self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
-					} else {
-						arguments = append(arguments, ast.AnalyzedCallArgument{
-							Name:       newParams[idx].Name.Ident(),
-							Expression: argExpr,
-						})
-					}
-				}
-			}
-		case ast.VarArgsFunctionTypeParamKindIdentifierKind:
-			// validate that every argument matches the type of the varargs
-			varArgType := baseFn.Params.(ast.VarArgsFunctionTypeParamKindIdentifier)
-
-			if len(varArgType.ParamTypes) != 0 && len(node.Arguments.List) < len(varArgType.ParamTypes) {
-				pluralS := "s"
-				if len(varArgType.ParamTypes) == 1 {
-					pluralS = ""
-				}
-
-				verb := "were"
-				if len(node.Arguments.List) == 1 {
-					verb = "was"
-				}
-
-				self.error(
-					fmt.Sprintf(
-						"Function requires at least %d argument%s, however %d %s supplied",
-						len(varArgType.ParamTypes),
-						pluralS,
-						len(node.Arguments.List),
-						verb,
-					),
-					nil,
-					node.Range,
-				)
-			} else {
-				for idx, arg := range node.Arguments.List {
-					argExpr := self.expression(arg)
-
-					if argExpr.Type().Kind() == ast.NullTypeKind {
-						self.error(
-							fmt.Sprintf("Cannot use a value of result type `%s` in function call", argExpr.Type()),
-							[]string{"This expression generates no value, therefore it can be omitted"},
-							argExpr.Span(),
-						)
-						continue
-					}
-
-					// Sending closures across threads is UB, prevent this.
-					// When sending a closure which captures values to a new thread, the old captured values are not deepcopie'd.
-					// Therefore, sending these closures across threads will cause weird memory bugs which must not occur in a Smarthome system.
-					if node.IsSpawn && argExpr.Type().Kind() == ast.FnTypeKind {
-						self.error(
-							"Sending closures across threads is undefined behaviour.",
-							[]string{fmt.Sprintf("It is not possible to use a value of type `%s` as an argument to a `spawn` invocation.", argExpr.Type())},
-							argExpr.Span(),
-						)
-						continue
-					}
-
-					toCheck := varArgType.RemainingType
-					if idx < len(varArgType.ParamTypes) {
-						toCheck = varArgType.ParamTypes[idx]
-					}
-
-					if err := self.TypeCheck(argExpr.Type(), toCheck, true); err != nil {
-						self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
-					} else {
-						arguments = append(arguments, ast.AnalyzedCallArgument{
-							Name:       "", // no name: is vararg
-							Expression: argExpr,
-						})
-					}
-				}
-			}
-		}
 
 		// lookup the result type of the function
 		thisExpressionResultsIn = baseFn.ReturnType

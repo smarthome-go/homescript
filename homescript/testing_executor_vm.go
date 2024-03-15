@@ -301,6 +301,26 @@ func (self TestingVmExecutor) WriteStringTo(input string) error {
 	return nil
 }
 
+func (self TestingVmExecutor) RegisterTrigger(
+	callbackFunctionIdent string,
+	eventTriggerIdent string,
+	span herrors.Span,
+	args []value.Value,
+) error {
+	fmt.Println(callbackFunctionIdent, eventTriggerIdent, span)
+
+	switch eventTriggerIdent {
+	case "time":
+		panic("would register time now")
+	case "minute":
+		panic("TODO: would register minute now")
+	default:
+		panic(fmt.Sprintf("Unknown event trigger ident: `%s`", eventTriggerIdent))
+	}
+
+	return nil
+}
+
 func createTimeObjectVM(t time.Time) *vmValue.Value {
 	return vmValue.NewValueObject(
 		map[string]*vmValue.Value{

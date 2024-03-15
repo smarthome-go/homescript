@@ -173,6 +173,42 @@ func (self TestingAnalyzerHost) GetBuiltinImport(
 	kind pAst.IMPORT_KIND,
 ) (res analyzer.BuiltinImport, moduleFound bool, valueFound bool) {
 	switch moduleName {
+	case "triggers":
+		if kind != pAst.IMPORT_KIND_TRIGGER {
+			return analyzer.BuiltinImport{}, true, false
+		}
+
+		switch valueName {
+		case "minute":
+			return analyzer.BuiltinImport{
+				Trigger: &analyzer.TriggerFunction{
+					TriggerFnType: ast.NewFunctionType(
+						ast.NewNormalFunctionTypeParamKind(
+							[]ast.FunctionTypeParam{ast.NewFunctionTypeParam(
+								pAst.NewSpannedIdent("minutes", span),
+								ast.NewIntType(span),
+								nil,
+							)},
+						),
+						span,
+						ast.NewNullType(span),
+						span,
+					).(ast.FunctionType),
+					CallbackFnType: ast.NewFunctionType(
+						ast.NewNormalFunctionTypeParamKind(make([]ast.FunctionTypeParam, 0)),
+						span,
+						ast.NewNullType(span),
+						span,
+					).(ast.FunctionType),
+					Connective: pAst.AtTriggerDispatchKeyword,
+					ImportedAt: span,
+				},
+				Type:     nil,
+				Template: nil,
+			}, true, true
+		default:
+			return analyzer.BuiltinImport{}, true, false
+		}
 	case "testing":
 		if kind != pAst.IMPORT_KIND_NORMAL {
 			return analyzer.BuiltinImport{}, true, false
