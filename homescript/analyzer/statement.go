@@ -109,7 +109,7 @@ func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedT
 		}
 	}
 
-	// Analyze callback function compatability with event trigger
+	// Analyze callback function compatibility with event trigger
 	callbackFnType := callbackType.Type(node.Span()).(ast.FunctionType)
 
 	// if callbackFnType.Params.Kind() != trigger.Type.Params.Kind() {

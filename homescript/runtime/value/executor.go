@@ -20,6 +20,6 @@ type Executor interface {
 		args []Value,
 	) error
 	// TODO: unregister function
-	// Is executed by the Host to release any ressources that the executed program allocated.
+	// Is executed by the host to release any resources that the executed program allocated.
 	Free() error
 }
