@@ -195,7 +195,13 @@ func (self TestingAnalyzerHost) GetBuiltinImport(
 						span,
 					).(ast.FunctionType),
 					CallbackFnType: ast.NewFunctionType(
-						ast.NewNormalFunctionTypeParamKind(make([]ast.FunctionTypeParam, 0)),
+						ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+							ast.NewFunctionTypeParam(
+								pAst.NewSpannedIdent("offset", span),
+								ast.NewIntType(span),
+								nil,
+							),
+						}),
 						span,
 						ast.NewNullType(span),
 						span,

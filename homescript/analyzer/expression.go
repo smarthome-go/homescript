@@ -269,7 +269,6 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 					fn.Used = true
 				}
 			}
-
 		}
 
 		params := make([]ast.FunctionTypeParam, 0)

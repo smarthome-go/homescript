@@ -475,7 +475,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 					return newCompatibilityErr(
 						diagnostic.Diagnostic{
 							Level:   diagnostic.DiagnosticLevelError,
-							Message: fmt.Sprintf("Parameter '%s' is missing", expectedParam.Name.Ident()),
+							Message: fmt.Sprintf("Parameter '%s: %s' is missing", expectedParam.Name.Ident(), expectedParam.Type),
 							Notes:   nil,
 							Span:    gotFn.ParamsSpan,
 						},

@@ -310,10 +310,16 @@ func (self TestingVmExecutor) RegisterTrigger(
 	fmt.Println(callbackFunctionIdent, eventTriggerIdent, span)
 
 	switch eventTriggerIdent {
-	case "time":
-		panic("would register time now")
 	case "minute":
-		panic("TODO: would register minute now")
+		stringArgs := make([]string, len(args))
+		for idx, arg := range args {
+			argVString, err := arg.Display()
+			if err != nil {
+				panic((*err).Message())
+			}
+			stringArgs[idx] = argVString
+		}
+		fmt.Printf("PLACEHOLDER: Would register trigger `minute` (with args: `[%s]`) now", strings.Join(stringArgs, ", "))
 	default:
 		panic(fmt.Sprintf("Unknown event trigger ident: `%s`", eventTriggerIdent))
 	}

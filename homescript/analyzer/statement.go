@@ -83,14 +83,14 @@ func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedT
 	}
 
 	// Analyze callback function
-	callbackType, callbackFound := self.currentModule.getFunc(node.FnIdent.Ident())
+	callbackFn, callbackFound := self.currentModule.getFunc(node.CallbackFnIdent.Ident())
 	if !callbackFound {
 		self.error(
-			fmt.Sprintf("Use of undefined callback function '%s'", node.FnIdent.Ident()),
+			fmt.Sprintf("Use of undefined callback function '%s'", node.CallbackFnIdent.Ident()),
 			[]string{
-				fmt.Sprintf("Functions can be defined like this: `fn %s(...) { ... }`", node.FnIdent.Ident()),
+				fmt.Sprintf("Functions can be defined like this: `fn %s(...) { ... }`", node.CallbackFnIdent.Ident()),
 			},
-			node.FnIdent.Span(),
+			node.CallbackFnIdent.Span(),
 		)
 
 		// Still analyze arguments
@@ -99,7 +99,7 @@ func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedT
 		}
 
 		return ast.AnalyzedTriggerStatement{
-			CallbackIdent:     node.FnIdent,
+			CallbackIdent:     node.CallbackFnIdent,
 			CallbackSignature: ast.FunctionType{},
 			ConnectiveKeyword: node.DispatchKeyword,
 			TriggerIdent:      node.TriggerIdent,
@@ -109,8 +109,27 @@ func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedT
 		}
 	}
 
+	if self.currentModule.CurrentFunction.FnType.Kind() == normalFunctionKind {
+		currFn := self.currentModule.CurrentFunction.FnType.(normalFunction)
+		if callbackFn.FnType.Kind() == normalFunctionKind {
+			toBeCalled := callbackFn.FnType.(normalFunction)
+			if currFn.Ident.Ident() != toBeCalled.Ident.Ident() {
+				callbackFn.Used = true
+			} else {
+				self.error(
+					"Cannot trigger function from itself",
+					[]string{
+						"This could lead to unwanted recursive behavior",
+						"Move this statement to another function",
+					},
+					node.Span(),
+				)
+			}
+		}
+	}
+
 	// Analyze callback function compatibility with event trigger
-	callbackFnType := callbackType.Type(node.Span()).(ast.FunctionType)
+	callbackFnType := callbackFn.Type(node.Span()).(ast.FunctionType)
 
 	// if callbackFnType.Params.Kind() != trigger.Type.Params.Kind() {
 	// 	panic("This is a bug in the host implementation: a trigger function provided by the host should always be of param kind `normal`")
@@ -145,7 +164,7 @@ func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedT
 	}
 
 	return ast.AnalyzedTriggerStatement{
-		CallbackIdent:     node.FnIdent,
+		CallbackIdent:     node.CallbackFnIdent,
 		CallbackSignature: callbackFnType,
 		ConnectiveKeyword: node.DispatchKeyword,
 		TriggerIdent:      node.TriggerIdent,
