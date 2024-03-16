@@ -93,12 +93,11 @@ func hostcall(self *VM, function string, span errors.Span, args []*value.Value) 
 		const argcOffsetCount = 2
 
 		remainingLen := len(args) - argcOffsetCount
-		remainingArgs := make([]value.Value, remainingLen)
+		remainingArgs := make([]value.Value, 0)
 
 		if remainingLen > 0 {
-			remainingArgs := make([]value.Value, remainingLen)
-			for idx, val := range args[:argcOffsetCount-1] {
-				remainingArgs[idx] = *val
+			for i := argcOffsetCount; i < len(args); i++ {
+				remainingArgs = append(remainingArgs, *args[i])
 			}
 		}
 
