@@ -132,11 +132,11 @@ func (self *Parser) triggerStmt() (ast.TriggerStatement, *errors.Error) {
 	}
 
 	return ast.TriggerStatement{
-		FnIdent:         fnIdent,
+		CallbackFnIdent: fnIdent,
 		DispatchKeyword: dispatchKeyword,
 		TriggerIdent:    eventIdent,
 		EventArguments:  args,
-		Range:           startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+		Range:           startLoc.Until(self.PreviousToken.Span.End, self.Filename),
 	}, nil
 }
 

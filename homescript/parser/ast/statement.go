@@ -117,7 +117,7 @@ func (self TriggerDispatchKeywordKind) String() string {
 }
 
 type TriggerStatement struct {
-	FnIdent         SpannedIdent
+	CallbackFnIdent SpannedIdent
 	DispatchKeyword TriggerDispatchKeywordKind
 	TriggerIdent    SpannedIdent
 	EventArguments  CallArgs
@@ -134,7 +134,7 @@ func (self TriggerStatement) String() string {
 
 	return fmt.Sprintf(
 		"trigger %s %s %s(%s);",
-		self.FnIdent.ident,
+		self.CallbackFnIdent.ident,
 		self.DispatchKeyword,
 		self.TriggerIdent,
 		strings.Join(eventArgs, ", "),
