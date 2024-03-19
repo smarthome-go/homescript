@@ -27,15 +27,20 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 		switch self.CurrentToken.Kind {
 		case Type:
 			importKind = ast.IMPORT_KIND_TYPE
+			if err := self.next(); err != nil {
+				return ast.ImportStatement{}, err
+			}
 		case Templ:
 			importKind = ast.IMPORT_KIND_TEMPLATE
+			if err := self.next(); err != nil {
+				return ast.ImportStatement{}, err
+			}
 		case Trigger:
 			importKind = ast.IMPORT_KIND_TRIGGER
+			if err := self.next(); err != nil {
+				return ast.ImportStatement{}, err
+			}
 		default:
-		}
-
-		if err := self.next(); err != nil {
-			return ast.ImportStatement{}, err
 		}
 
 		// if self.CurrentToken.Kind == Type {
