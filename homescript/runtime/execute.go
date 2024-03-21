@@ -198,9 +198,13 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		i := instruction.(compiler.CastInstruction)
 		v := self.pop()
 
-		casted, interrupt := value.DeepCast(*v, i.Type, self.parent.SourceMap(*self.callFrame()), i.AllowCast)
-		if interrupt != nil {
-			return interrupt
+		casted, castError := value.DeepCast(*v, i.Type, self.parent.SourceMap(*self.callFrame()), i.AllowCast)
+		if castError != nil {
+			return value.NewVMFatalException(
+				castError.Message(),
+				value.Vm_CastErrorKind,
+				castError.Span,
+			)
 		}
 		self.push(casted)
 	case compiler.Opcode_Neg:

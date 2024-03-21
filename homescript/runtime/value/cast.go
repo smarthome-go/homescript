@@ -2,13 +2,99 @@ package value
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 )
 
 // TODO: set maximum recursion here
-func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Value, *VmInterrupt) {
+
+type fieldURI struct {
+	Parts []fieldURIComponent
+}
+
+func NewFieldURI(initial ...fieldURIComponent) fieldURI {
+	return fieldURI{
+		Parts: initial,
+	}
+}
+
+func (f fieldURI) String() string {
+	components := make([]string, 0)
+	for _, c := range f.Parts {
+		components = append(components, c.String())
+	}
+	return strings.Join(components, "")
+}
+
+func (f fieldURI) isEmpty() bool {
+	return len(f.Parts) == 0
+}
+
+func (f *fieldURI) push(kind fieldURIComponentKind, field string, index uint64) {
+	f.Parts = append(f.Parts, fieldURIComponent{
+		kind:      0,
+		fieldName: field,
+		index:     index,
+	})
+}
+
+func (f fieldURI) clone() fieldURI {
+	cloned := make([]fieldURIComponent, len(f.Parts))
+	copy(cloned, f.Parts)
+	return fieldURI{
+		Parts: cloned,
+	}
+}
+
+type fieldURIComponentKind uint8
+
+const (
+	componentKindField fieldURIComponentKind = iota
+	componentKindIndex
+	componentKindOptionInner
+)
+
+type fieldURIComponent struct {
+	kind      fieldURIComponentKind
+	fieldName string
+	index     uint64
+}
+
+func (f fieldURIComponent) String() string {
+	switch f.kind {
+	case componentKindField:
+		return fmt.Sprintf(".%s", f.fieldName)
+	case componentKindIndex:
+		return fmt.Sprintf("[%d]", f.index)
+	case componentKindOptionInner:
+		return "<option-inner>"
+	default:
+		panic("A new fieldURIComponent was added without updating this code")
+	}
+}
+
+type CastError struct {
+	typeErr   string
+	Span      errors.Span
+	FieldPath fieldURI
+}
+
+func (e CastError) Message() string {
+	uriLocation := ""
+	if !e.FieldPath.isEmpty() {
+		uriLocation = fmt.Sprintf(" at `%s`", e.FieldPath.String())
+	}
+	return fmt.Sprintf("Cast error%s: %s", uriLocation, e.typeErr)
+}
+
+func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Value, *CastError) {
+	return deepCastRecursive(val, typ, span, allowCasts, NewFieldURI())
+}
+
+// `fieldURI` is used to describe values in nested structures so that the error message will be clearer.
+func deepCastRecursive(val Value, typ ast.Type, span errors.Span, allowCasts bool, fieldURI fieldURI) (*Value, *CastError) {
 	// This does nothing as casting to an `any` does not validate anything.
 	if typ.Kind() == ast.AnyTypeKind {
 		return &val, nil
@@ -26,7 +112,9 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 			valInner := *valOption.Inner
 			typInner := typOption.Inner
 
-			innerCast, i := DeepCast(valInner, typInner, span, allowCasts)
+			newUri := fieldURI.clone()
+			newUri.push(componentKindOptionInner, "", 0)
+			innerCast, i := deepCastRecursive(valInner, typInner, span, allowCasts, fieldURI)
 			if i != nil {
 				return nil, i
 			}
@@ -39,11 +127,11 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 	case BoolValueKind:
 		if !allowCasts && typ.Kind() != ast.BoolTypeKind {
 			// TODO: should cast be a normal exception? is this sane?
-			return nil, NewVMFatalException(
-				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
-				Vm_CastErrorKind,
-				span,
-			)
+			return nil, &CastError{
+				typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				Span:      span,
+				FieldPath: fieldURI,
+			}
 		}
 
 		baseBool := val.(ValueBool).Inner
@@ -69,11 +157,11 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 		}
 	case IntValueKind:
 		if !allowCasts && typ.Kind() != ast.IntTypeKind {
-			return nil, NewVMFatalException(
-				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
-				Vm_CastErrorKind,
-				span,
-			)
+			return nil, &CastError{
+				typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				Span:      span,
+				FieldPath: fieldURI,
+			}
 		}
 
 		baseInt := val.(ValueInt).Inner
@@ -94,11 +182,11 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 		}
 	case FloatValueKind:
 		if !allowCasts && typ.Kind() != ast.FloatTypeKind {
-			return nil, NewVMFatalException(
-				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
-				Vm_CastErrorKind,
-				span,
-			)
+			return nil, &CastError{
+				typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				Span:      span,
+				FieldPath: fieldURI,
+			}
 		}
 
 		baseFloat := val.(ValueFloat).Inner
@@ -119,11 +207,11 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 		}
 	case ObjectValueKind:
 		if !allowCasts && typ.Kind() != ast.ObjectTypeKind {
-			return nil, NewVMFatalException(
-				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
-				Vm_CastErrorKind,
-				span,
-			)
+			return nil, &CastError{
+				typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				Span:      span,
+				FieldPath: fieldURI,
+			}
 		}
 
 		objVal := val.(ValueObject)
@@ -140,7 +228,10 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 				found := false
 				for _, otherField := range objType.ObjFields {
 					if key == otherField.FieldName.Ident() {
-						newField, i := DeepCast(*field, otherField.Type, span, allowCasts)
+						newUri := fieldURI.clone()
+						newUri.push(componentKindField, key, 0)
+
+						newField, i := deepCastRecursive(*field, otherField.Type, span, allowCasts, newUri)
 						if i != nil {
 							return nil, i
 						}
@@ -150,32 +241,32 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 					}
 				}
 				if !found {
-					return nil, NewVMFatalException(
-						fmt.Sprintf("Incompatible values: found unexpected field '%s'", key),
-						Vm_CastErrorKind,
-						span,
-					)
+					return nil, &CastError{
+						typeErr:   fmt.Sprintf("Incompatible values: found unexpected field '%s'", key),
+						Span:      span,
+						FieldPath: fieldURI,
+					}
 				}
 			}
 
 			for _, field := range objType.ObjFields {
 				_, found := objVal.FieldsInternal[field.FieldName.Ident()]
 				if !found {
-					return nil, NewVMFatalException(
-						fmt.Sprintf("Incompatible values: field '%s' was expected but not found", field.FieldName.Ident()),
-						Vm_CastErrorKind,
-						span,
-					)
+					return nil, &CastError{
+						typeErr:   fmt.Sprintf("Incompatible values: field '%s' was expected but not found", field.FieldName.Ident()),
+						Span:      span,
+						FieldPath: fieldURI,
+					}
 				}
 			}
 
 			return NewValueObject(outputFields), nil
 		default:
-			return nil, NewVMFatalException(
-				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
-				Vm_CastErrorKind,
-				span,
-			)
+			return nil, &CastError{
+				typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				Span:      span,
+				FieldPath: fieldURI,
+			}
 		}
 	case ListValueKind:
 		listVal := val.(ValueList)
@@ -184,8 +275,11 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 			asType := typ.(ast.ListType)
 
 			outputList := make([]*Value, 0)
-			for _, item := range *listVal.Values {
-				newVal, i := DeepCast(*item, asType.Inner, span, allowCasts)
+			for index, item := range *listVal.Values {
+				newUri := fieldURI.clone()
+				newUri.push(componentKindIndex, "", uint64(index))
+
+				newVal, i := deepCastRecursive(*item, asType.Inner, span, allowCasts, newUri)
 				if i != nil {
 					return nil, i
 				}
@@ -196,19 +290,19 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 		}
 	case AnyObjectValueKind:
 		if typ.Kind() != ast.AnyObjectTypeKind {
-			return nil, NewVMFatalException(
-				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
-				Vm_CastErrorKind,
-				span,
-			)
+			return nil, &CastError{
+				typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				Span:      span,
+				FieldPath: fieldURI,
+			}
 		}
 	case OptionValueKind:
 		if typ.Kind() != ast.OptionTypeKind {
-			return nil, NewVMFatalException(
-				fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
-				Vm_CastErrorKind,
-				span,
-			)
+			return nil, &CastError{
+				typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+				Span:      span,
+				FieldPath: fieldURI,
+			}
 		}
 
 		opt := val.(ValueOption)
@@ -220,7 +314,13 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 		}
 
 		// otherwise, the inner type must also match
-		return DeepCast(*opt.Inner, optType, span, allowCasts)
+		newUri := fieldURI.clone()
+		newUri.Parts = append(fieldURI.Parts, fieldURIComponent{
+			kind:      componentKindOptionInner,
+			fieldName: "",
+			index:     0,
+		})
+		return deepCastRecursive(*opt.Inner, optType, span, allowCasts, newUri)
 	case ClosureValueKind, FunctionValueKind, BuiltinFunctionValueKind:
 		panic("Unreachable, the analyzer prevents this")
 	case NullValueKind:
@@ -241,9 +341,9 @@ func DeepCast(val Value, typ ast.Type, span errors.Span, allowCasts bool) (*Valu
 			return &val, nil
 		}
 	}
-	return nil, NewVMFatalException(
-		fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
-		Vm_CastErrorKind,
-		span,
-	)
+	return nil, &CastError{
+		typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+		Span:      span,
+		FieldPath: fieldURI,
+	}
 }
