@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	herrors "github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
@@ -231,6 +232,39 @@ func (self TestingVmExecutor) Free() error { return nil }
 
 func (self TestingVmExecutor) GetBuiltinImport(moduleName string, toImport string) (val vmValue.Value, found bool) {
 	switch moduleName {
+	case "net":
+		switch toImport {
+		case "http":
+			return *value.NewValueObject(map[string]*value.Value{
+				"get": value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.VmInterrupt) {
+					spew.Dump(args)
+
+					return value.NewValueObject(map[string]*value.Value{
+						"status":      value.NewValueString("OK"),
+						"status_code": value.NewValueInt(int64(200)),
+						"body":        value.NewValueString("test"),
+						"cookies":     value.NewValueAnyObject(make(map[string]*vmValue.Value)),
+					}), nil
+				}),
+				"generic": value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.VmInterrupt) {
+					url := args[0].(value.ValueString).Inner
+					method := args[1].(value.ValueString).Inner
+					body := args[2].(value.ValueOption)
+					headers := args[3].(value.ValueAnyObject).FieldsInternal
+					cookies := args[4].(value.ValueAnyObject).FieldsInternal
+
+					fmt.Printf("url=%s,method=%s,body=%s,headers=%v,cookies=%v\n", url, method, body, headers, cookies)
+
+					return value.NewValueObject(map[string]*value.Value{
+						"status":      value.NewValueString("ok"),
+						"status_code": value.NewValueInt(int64(200)),
+						"body":        value.NewValueString("TEST"),
+						"cookies":     value.NewValueAnyObject(make(map[string]*vmValue.Value)),
+					}), nil
+				}),
+			}), true
+		}
+		return nil, false
 	case "testing":
 		switch toImport {
 		case "assert_eq":

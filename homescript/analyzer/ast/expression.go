@@ -472,7 +472,7 @@ func (self AnalyzedAssignExpression) Constant() bool { return false }
 
 type AnalyzedCallExpression struct {
 	Base       AnalyzedExpression
-	Arguments  []AnalyzedCallArgument
+	Arguments  AnalyzedCallArgs
 	ResultType Type
 	Range      errors.Span
 	IsSpawn    bool
@@ -485,7 +485,7 @@ func (self AnalyzedCallExpression) Span() errors.Span    { return self.Range }
 func (self AnalyzedCallExpression) String() string {
 	args := make([]string, 0)
 
-	for _, arg := range self.Arguments {
+	for _, arg := range self.Arguments.List {
 		args = append(args, arg.String())
 	}
 

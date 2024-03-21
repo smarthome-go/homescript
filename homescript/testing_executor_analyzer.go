@@ -173,6 +173,67 @@ func (self TestingAnalyzerHost) GetBuiltinImport(
 	kind pAst.IMPORT_KIND,
 ) (res analyzer.BuiltinImport, moduleFound bool, valueFound bool) {
 	switch moduleName {
+	case "net":
+		newHttpResponse := func() ast.Type {
+			return ast.NewObjectType(
+				[]ast.ObjectTypeField{
+					ast.NewObjectTypeField(pAst.NewSpannedIdent("status", span), ast.NewStringType(span), span),
+					ast.NewObjectTypeField(pAst.NewSpannedIdent("status_code", span), ast.NewIntType(span), span),
+					ast.NewObjectTypeField(pAst.NewSpannedIdent("body", span), ast.NewStringType(span), span),
+					ast.NewObjectTypeField(pAst.NewSpannedIdent("cookies", span), ast.NewAnyObjectType(span), span),
+				},
+				span,
+			)
+		}
+
+		switch valueName {
+		case "ping":
+			return analyzer.BuiltinImport{
+				Type: ast.NewFunctionType(
+					ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+						ast.NewFunctionTypeParam(pAst.NewSpannedIdent("ip", span), ast.NewStringType(span), nil),
+						ast.NewFunctionTypeParam(pAst.NewSpannedIdent("timeout", span), ast.NewFloatType(span), nil),
+					}),
+					span,
+					ast.NewBoolType(span),
+					span,
+				),
+				Template: &ast.TemplateSpec{},
+			}, true, true
+		case "HttpResponse":
+			return analyzer.BuiltinImport{
+				Type:     newHttpResponse(),
+				Template: &ast.TemplateSpec{},
+			}, true, true
+		case "http":
+			return analyzer.BuiltinImport{
+				Type: ast.NewObjectType([]ast.ObjectTypeField{
+					ast.NewObjectTypeField(pAst.NewSpannedIdent("get", span), ast.NewFunctionType(
+						ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{ast.NewFunctionTypeParam(pAst.NewSpannedIdent("url", span), ast.NewStringType(span), nil)}),
+						span,
+						newHttpResponse(),
+						span,
+					), span),
+					ast.NewObjectTypeField(pAst.NewSpannedIdent("generic", span), ast.NewFunctionType(
+						ast.NewNormalFunctionTypeParamKind(
+							[]ast.FunctionTypeParam{
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("url", span), ast.NewStringType(span), nil),
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("method", span), ast.NewStringType(span), nil),
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("body", span), ast.NewOptionType(ast.NewStringType(span), span), nil),
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("headers", span), ast.NewAnyObjectType(span), nil),
+								ast.NewFunctionTypeParam(pAst.NewSpannedIdent("cookies", span), ast.NewAnyObjectType(span), nil),
+							},
+						),
+						span,
+						newHttpResponse(),
+						span,
+					), span),
+				}, span),
+				Template: &ast.TemplateSpec{},
+			}, true, true
+		default:
+			return analyzer.BuiltinImport{}, true, false
+		}
 	case "triggers":
 		if kind != pAst.IMPORT_KIND_TRIGGER {
 			return analyzer.BuiltinImport{}, true, false

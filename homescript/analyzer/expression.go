@@ -943,7 +943,7 @@ func (self *Analyzer) callArgs(fnType ast.FunctionType, args pAst.CallArgs, base
 // TODO: also forbid invoking a spawn fn which returns a closure.
 // TODO: also completely rewrite this function, it is very obfuscated.
 func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallExpression {
-	var thisExpressionResultsIn ast.Type = nil
+	var thisExpressionResultsIn ast.Type
 
 	// check that the base is a value that can be called
 	base := self.expression(node.Base)
@@ -953,14 +953,15 @@ func (self *Analyzer) callExpression(node pAst.CallExpression) ast.AnalyzedCallE
 		isNormalFunction = base.(ast.AnalyzedIdentExpression).IsFunction
 	}
 
-	// make arguments
-	arguments := make([]ast.AnalyzedCallArgument, 0)
+	var arguments ast.AnalyzedCallArgs
 
 	switch base.Type().Kind() {
 	case ast.NeverTypeKind, ast.UnknownTypeKind:
 		// do nothing
 	case ast.FnTypeKind:
 		baseFn := base.Type().(ast.FunctionType)
+
+		arguments = self.callArgs(baseFn, node.Arguments, node.IsSpawn)
 
 		// lookup the result type of the function
 		thisExpressionResultsIn = baseFn.ReturnType

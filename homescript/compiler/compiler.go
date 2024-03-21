@@ -686,8 +686,8 @@ func (self *Compiler) compilePrefixOp(op ast.PrefixOperator, span errors.Span) {
 func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 	// Push each argument onto the stack
 	// The order is reversed so that later popping can be done naturally
-	for i := len(node.Arguments) - 1; i >= 0; i-- {
-		self.compileExpr(node.Arguments[i].Expression)
+	for i := len(node.Arguments.List) - 1; i >= 0; i-- {
+		self.compileExpr(node.Arguments.List[i].Expression)
 	}
 
 	if node.Base.Kind() == ast.IdentExpressionKind {
@@ -707,7 +707,7 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 			}
 
 			self.compileExpr(node.Base)
-			self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
+			self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
 			self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Span())
 		} else {
 			// TODO: the span mapping is broken here?
@@ -716,14 +716,14 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 				opcode := Opcode_Call_Imm
 				if node.IsSpawn {
 					opcode = Opcode_Spawn
-					self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
+					self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
 				}
 
 				self.insert(newOneStringInstruction(opcode, name), node.Span())
 			} else {
 				// call a global value
 				self.insert(newOneStringInstruction(Opcode_GetGlobImm, base.Ident.Ident()), node.Range)
-				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
+				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
 				self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Range)
 			}
 		}
@@ -735,7 +735,7 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 		self.compileExpr(node.Base)
 
 		// insert number of args
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments)))), node.Span())
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
 
 		// perform the actual call
 		self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Span())

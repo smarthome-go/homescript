@@ -70,7 +70,7 @@ func (self *Interpreter) expression(node ast.AnalyzedExpression) (*value.Value, 
 			return nil, i
 		}
 		// call the function and return the result
-		return self.callFunc(node.Range, *base, node.Arguments)
+		return self.callFunc(node.Range, *base, node.Arguments.List)
 	case ast.IndexExpressionKind:
 		node := node.(ast.AnalyzedIndexExpression)
 		return self.indexExpression(node)

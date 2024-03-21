@@ -105,7 +105,7 @@ func (self *Transformer) exprCanControlLoop(node ast.AnalyzedExpression) bool {
 			return true
 		}
 
-		for _, arg := range node.Arguments {
+		for _, arg := range node.Arguments.List {
 			if self.exprCanControlLoop(arg.Expression) {
 				return true
 			}
