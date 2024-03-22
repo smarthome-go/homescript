@@ -152,7 +152,7 @@ func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedT
 	if triggerFound {
 		if err := self.TypeCheck(
 			callbackFnType.SetSpan(node.CallbackFnIdent.Span()),
-			trigger.CallbackFnType.SetSpan(callbackFnType.Span()),
+			trigger.CallbackFnType.SetSpanAdvanced(callbackFnType.Span(), callbackFn.ParamsSpan),
 			true,
 		); err != nil {
 			self.diagnostics = append(self.diagnostics, err.GotDiagnostic.WithContext("Regarding callback function"))

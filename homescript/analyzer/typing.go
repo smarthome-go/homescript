@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/agnivade/levenshtein"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
@@ -467,6 +468,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 			err.ExpectedDiagnostic.Message = fmt.Sprintf("Regarding function's return type: %s", err.ExpectedDiagnostic.Message)
 			return err
 		}
+
 		if expectedFn.Params.Kind() != gotFn.Params.Kind() {
 			return newCompatibilityErr(
 				diagnostic.Diagnostic{
@@ -478,11 +480,40 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 				nil,
 			)
 		}
+
 		switch expectedFn.Params.Kind() {
 		case ast.NormalFunctionTypeParamKindIdentifierKind:
 			// check that all parameters of the `expected` function exist on the `got` function
 			expectedFnParams := expectedFn.Params.(ast.NormalFunctionTypeParamKindIdentifier)
 			gotFnParams := gotFn.Params.(ast.NormalFunctionTypeParamKindIdentifier)
+
+			if len(expectedFnParams.Params) != len(gotFnParams.Params) {
+				s := ""
+				if len(expectedFnParams.Params) != 1 {
+					s = "s"
+				}
+
+				expectedList := make([]string, 0)
+				for _, param := range expectedFnParams.Params {
+					expectedList = append(expectedList, fmt.Sprintf("'%s: %s'", param.Name.Ident(), param.Type))
+				}
+
+				return newCompatibilityErr(
+					diagnostic.Diagnostic{
+						Level:   diagnostic.DiagnosticLevelError,
+						Message: fmt.Sprintf("Expected %d parameter%s (%s), got %d", len(expectedFnParams.Params), s, strings.Join(expectedList, ", "), len(gotFnParams.Params)),
+						Notes:   []string{},
+						Span:    gotFn.ParamsSpan,
+					},
+					&diagnostic.Diagnostic{
+						Level:   diagnostic.DiagnosticLevelHint,
+						Message: fmt.Sprintf("Amount of %d parameters expected due to this", len(expectedFnParams.Params)),
+						Notes:   []string{},
+						Span:    expectedFn.ParamsSpan,
+					},
+				)
+			}
+
 			for _, expectedParam := range expectedFnParams.Params {
 				var foundParam *ast.FunctionTypeParam = nil
 				for _, gotParam := range gotFnParams.Params {
@@ -513,6 +544,8 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 				}
 			}
 		case ast.VarArgsFunctionTypeParamKindIdentifierKind:
+			// TODO: ...
+			panic("TODO: implement or remove this")
 		default:
 			panic("A new function parameter type kind was introduced without updating this code")
 		}
