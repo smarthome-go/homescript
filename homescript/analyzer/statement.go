@@ -150,11 +150,29 @@ func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedT
 	}
 
 	if triggerFound {
-		if err := self.TypeCheck(callbackFnType, trigger.CallbackFnType, true); err != nil {
-			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+		if err := self.TypeCheck(
+			callbackFnType.SetSpan(node.CallbackFnIdent.Span()),
+			trigger.CallbackFnType.SetSpan(callbackFnType.Span()),
+			true,
+		); err != nil {
+			self.diagnostics = append(self.diagnostics, err.GotDiagnostic.WithContext("Regarding callback function"))
 			if err.ExpectedDiagnostic != nil {
-				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+				self.diagnostics = append(
+					self.diagnostics,
+					err.ExpectedDiagnostic.WithContext(
+						fmt.Sprintf("Regarding callback function for trigger `%s`", node.TriggerIdent),
+					),
+				)
+				err.ExpectedDiagnostic.Notes = append(
+					err.ExpectedDiagnostic.Notes,
+					fmt.Sprintf("Function `%s` used as callback for trigger `%s`", node.CallbackFnIdent, node.TriggerIdent),
+				)
 			}
+			self.hint(
+				fmt.Sprintf("This function is used as a callback for trigger `%s`", node.TriggerIdent),
+				make([]string, 0),
+				callbackFn.IdentSpan,
+			)
 		}
 		args = self.callArgs(
 			trigger.TriggerFnType,

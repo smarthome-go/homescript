@@ -226,6 +226,23 @@ type CompatibilityError struct {
 	ExpectedDiagnostic *diagnostic.Diagnostic
 }
 
+func (c CompatibilityError) WithContext(context string) CompatibilityError {
+	return CompatibilityError{
+		GotDiagnostic: diagnostic.Diagnostic{
+			Level:   c.GotDiagnostic.Level,
+			Message: fmt.Sprintf("%s: %s", context, c.GotDiagnostic.Message),
+			Notes:   c.GotDiagnostic.Notes,
+			Span:    c.GotDiagnostic.Span,
+		},
+		ExpectedDiagnostic: &diagnostic.Diagnostic{
+			Level:   c.ExpectedDiagnostic.Level,
+			Message: fmt.Sprintf("%s: %s", context, c.ExpectedDiagnostic.Message),
+			Notes:   c.ExpectedDiagnostic.Notes,
+			Span:    c.ExpectedDiagnostic.Span,
+		},
+	}
+}
+
 func newCompatibilityErr(lhs diagnostic.Diagnostic, rhs *diagnostic.Diagnostic) *CompatibilityError {
 	return &CompatibilityError{
 		GotDiagnostic:      lhs,
@@ -442,9 +459,12 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 		}
 		gotFn := got.(ast.FunctionType)
 		expectedFn := expected.(ast.FunctionType)
+
 		// check return type
 		if err := self.TypeCheck(gotFn.ReturnType, expectedFn.ReturnType, allowFunctionTypes); err != nil {
 			// TODO: include better error message
+			err.GotDiagnostic.Message = fmt.Sprintf("Regarding function's return type: %s", err.GotDiagnostic.Message)
+			err.ExpectedDiagnostic.Message = fmt.Sprintf("Regarding function's return type: %s", err.ExpectedDiagnostic.Message)
 			return err
 		}
 		if expectedFn.Params.Kind() != gotFn.Params.Kind() {

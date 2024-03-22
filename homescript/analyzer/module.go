@@ -26,6 +26,7 @@ type Module struct {
 //
 
 type function struct {
+	IdentSpan      errors.Span
 	FnType         functionType
 	Parameters     []ast.AnalyzedFnParam
 	ParamsSpan     errors.Span
@@ -59,6 +60,7 @@ func (self function) Type(span errors.Span) ast.Type {
 }
 
 func newFunction(
+	identSpan errors.Span,
 	typ functionType,
 	params []ast.AnalyzedFnParam,
 	paramsSpan errors.Span,
@@ -67,6 +69,7 @@ func newFunction(
 	modifier pAst.FunctionModifier,
 ) function {
 	return function{
+		IdentSpan:      identSpan,
 		FnType:         typ,
 		Parameters:     params,
 		ParamsSpan:     paramsSpan,

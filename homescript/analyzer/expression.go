@@ -466,6 +466,7 @@ func (self *Analyzer) functionLiteral(node pAst.FunctionLiteralExpression) ast.A
 
 	// set current function
 	moduleFn := newFunction(
+		node.Span(),
 		newLambdaFunction(),
 		newParams,
 		node.ParamSpan,

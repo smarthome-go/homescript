@@ -68,6 +68,7 @@ func (self *Analyzer) functionSignature(node pAst.FunctionDefinition) {
 	}
 
 	self.currentModule.addFunc(newFunction(
+		node.Ident.Span(),
 		newNormalFunction(node.Ident),
 		newParams,
 		node.ParamSpan,
@@ -799,7 +800,7 @@ func (self *Analyzer) validateTemplateConstraints(
 					reqMethod.Signature.ReturnType.SetSpan(implHeaderSpan),
 					true,
 				); err != nil {
-					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+					self.diagnostics = append(self.diagnostics, err.GotDiagnostic.WithContext("Regarding function's return type"))
 					if err.ExpectedDiagnostic != nil {
 						self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
 					}

@@ -32,7 +32,7 @@ func (self DiagnosticLevel) String() string {
 }
 
 //
-// Diagnostic
+// Diagnostic.
 //
 
 type Diagnostic struct {
@@ -42,43 +42,52 @@ type Diagnostic struct {
 	Span    errors.Span     `json:"span"`
 }
 
-func (self Diagnostic) Display(program string) string {
+func (d Diagnostic) WithContext(context string) Diagnostic {
+	return Diagnostic{
+		Level:   d.Level,
+		Message: fmt.Sprintf("%s: %s", context, d.Message),
+		Notes:   d.Notes,
+		Span:    d.Span,
+	}
+}
+
+func (d Diagnostic) Display(program string) string {
 	singleMarker := "^"
 	markerMul := ""
-	var color uint8 = 0
+	var color uint8
 
-	switch self.Level {
+	switch d.Level {
 	case DiagnosticLevelHint:
 		markerMul = "~"
-		color = 5 // magenta
+		color = 5 // Magenta.
 	case DiagnosticLevelInfo:
 		markerMul = "~"
-		color = 4 // blue
+		color = 4 // Cyan.
 	case DiagnosticLevelWarning:
 		markerMul = "~"
-		color = 3 // yellow
+		color = 3 // Yellow.
 	case DiagnosticLevelError:
 		markerMul = "^"
-		color = 1 // red
+		color = 1 // Red.
 	}
 
 	notes := ""
 
-	for _, note := range self.Notes {
+	for _, note := range d.Notes {
 		notes += fmt.Sprintf("%s - note:\x1b[0m %s\n", ansiCol(36, true), note)
 	}
 
 	// take special action if there is no useful span / the source code is empty
-	if self.Span.Start.Line == 0 &&
-		self.Span.Start.Column == 0 &&
-		self.Span.End.Line == 0 &&
-		self.Span.End.Column == 0 {
+	if d.Span.Start.Line == 0 &&
+		d.Span.Start.Column == 0 &&
+		d.Span.End.Line == 0 &&
+		d.Span.End.Column == 0 {
 		return fmt.Sprintf(
 			"%s%s\x1b[1;39m in %s\x1b[0m\n%s\n%s",
 			ansiCol(color+30, true),
-			self.Level,
-			self.Span.Filename,
-			self.Message,
+			d.Level,
+			d.Span.Filename,
+			d.Message,
 			notes,
 		)
 	}
@@ -86,60 +95,60 @@ func (self Diagnostic) Display(program string) string {
 	lines := strings.Split(program, "\n")
 
 	line1 := ""
-	if self.Span.Start.Line > 1 {
-		line1 = fmt.Sprintf("\n \x1b[90m%- 3d | \x1b[0m%s", self.Span.Start.Line-1, lines[self.Span.Start.Line-2])
+	if d.Span.Start.Line > 1 {
+		line1 = fmt.Sprintf("\n \x1b[90m%- 3d | \x1b[0m%s", d.Span.Start.Line-1, lines[d.Span.Start.Line-2])
 	}
-	line2 := fmt.Sprintf(" \x1b[90m%- 3d | \x1b[0m%s", self.Span.Start.Line, lines[self.Span.Start.Line-1])
+	line2 := fmt.Sprintf(" \x1b[90m%- 3d | \x1b[0m%s", d.Span.Start.Line, lines[d.Span.Start.Line-1])
 	line3 := ""
-	if int(self.Span.Start.Line) < len(lines) {
-		line3 = fmt.Sprintf("\n \x1b[90m%- 3d | \x1b[0m%s", self.Span.Start.Line+1, lines[self.Span.Start.Line])
+	if int(d.Span.Start.Line) < len(lines) {
+		line3 = fmt.Sprintf("\n \x1b[90m%- 3d | \x1b[0m%s", d.Span.Start.Line+1, lines[d.Span.Start.Line])
 	}
 
 	markers := ""
-	if self.Span.Start.Line == self.Span.End.Line {
-		if self.Span.Start.Column == self.Span.End.Column {
+	if d.Span.Start.Line == d.Span.End.Line {
+		if d.Span.Start.Column == d.Span.End.Column {
 			// only one column difference
 			markers = singleMarker
 		} else {
 			// multiple columns difference
-			markers = strings.Repeat(markerMul, int(self.Span.End.Column-self.Span.Start.Column)+1) // This is required because token spans are inclusive
+			markers = strings.Repeat(markerMul, int(d.Span.End.Column-d.Span.Start.Column)+1) // This is required because token spans are inclusive
 		}
 	} else {
 		// multiline span
 		s := "s"
-		if self.Span.End.Line-self.Span.Start.Line == 1 {
+		if d.Span.End.Line-d.Span.Start.Line == 1 {
 			s = ""
 		}
 
 		markers = fmt.Sprintf(
 			"%s ...\n%s%s+ %d more line%s\x1b[0m",
-			strings.Repeat(markerMul, len(lines[self.Span.Start.Line-1])-int(self.Span.Start.Column)+1),
-			strings.Repeat(" ", int(self.Span.Start.Column)+6),
+			strings.Repeat(markerMul, len(lines[d.Span.Start.Line-1])-int(d.Span.Start.Column)+1),
+			strings.Repeat(" ", int(d.Span.Start.Column)+6),
 			ansiCol(32, true),
-			self.Span.End.Line-self.Span.Start.Line,
+			d.Span.End.Line-d.Span.Start.Line,
 			s,
 		)
 	}
 	marker := fmt.Sprintf(
 		"%s%s%s\x1b[0m",
 		ansiCol(color+30, true),
-		strings.Repeat(" ", int(self.Span.Start.Column+6)),
+		strings.Repeat(" ", int(d.Span.Start.Column+6)),
 		markers,
 	)
 
 	return fmt.Sprintf(
 		"%s%v\x1b[39m at %s:%d:%d\x1b[0m\n%s\n%s\n%s%s\n\n\x1b%s%s\x1b[0m\n%s",
 		ansiCol(color+30, true),
-		self.Level,
-		self.Span.Filename,
-		self.Span.Start.Line,
-		self.Span.Start.Column,
+		d.Level,
+		d.Span.Filename,
+		d.Span.Start.Line,
+		d.Span.Start.Column,
 		line1,
 		line2,
 		marker,
 		line3,
 		ansiCol(color+30, true),
-		self.Message,
+		d.Message,
 		notes,
 	)
 }
