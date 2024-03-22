@@ -135,7 +135,12 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		for i := 0; i < argc; i++ {
 			args = append(args, self.pop())
 		}
-		v, interrupt := self.hostCall(self.parent, i.Value, self.parent.SourceMap(*self.callFrame()), args)
+		v, interrupt := self.hostCall(
+			self.parent,
+			i.Value,
+			self.parent.SourceMap(*self.callFrame()),
+			args,
+		)
 		if interrupt != nil {
 			return interrupt
 		}

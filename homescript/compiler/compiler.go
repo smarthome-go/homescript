@@ -551,7 +551,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		}
 
 		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(node.TriggerIdent.Ident())), node.Span())
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(RegisterTriggerHostFn)), node.Span())
+		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(node.CallbackIdent.Ident())), node.Span())
 		self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(hostCallArgc))), node.Span())
 		self.insert(newOneStringInstruction(Opcode_HostCall, RegisterTriggerHostFn), node.Span())
 	case ast.LetStatementKind:

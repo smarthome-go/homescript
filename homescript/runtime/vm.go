@@ -43,7 +43,6 @@ type VM struct {
 	globals       Globals
 	Cores         Cores
 	Executor      value.Executor
-	Lock          sync.RWMutex
 	coreCnt       uint
 	CancelCtx     *context.Context
 	CancelFunc    *context.CancelFunc
@@ -64,7 +63,6 @@ func NewVM(
 		globals:       newGlobals(globalScopeAdditions),
 		Cores:         newCores(),
 		Executor:      executor,
-		Lock:          sync.RWMutex{},
 		coreCnt:       0,
 		CancelCtx:     ctx,
 		CancelFunc:    cancelFunc,
@@ -75,10 +73,6 @@ func NewVM(
 
 // TODO: why is this not a real method?
 func hostcall(self *VM, function string, span errors.Span, args []*value.Value) (*value.Value, *value.VmInterrupt) {
-	// TODO: this is extremely bad!!!
-	self.Lock.Lock()
-	defer self.Lock.Unlock()
-
 	switch function {
 	case "__internal_list_push":
 		elem := args[0]
@@ -116,8 +110,8 @@ func (self *VM) GetGlobals() map[string]value.Value {
 }
 
 func (self *VM) spawnCore() *Core {
-	self.Lock.Lock()
-	defer self.Lock.Unlock()
+	self.Cores.Lock.Lock()
+	defer self.Cores.Lock.Unlock()
 
 	ch := make(chan *value.VmInterrupt)
 	core := NewCore(
@@ -339,7 +333,6 @@ func (self *VM) WaitNonConsuming() {
 func (self *VM) Wait() (coreNum uint, i *value.VmInterrupt) {
 	for {
 		self.Cores.Lock.RLock()
-
 		for _, core := range self.Cores.Cores {
 			// fmt.Printf("checking core: %d | %v\n", core.Corenum, time.Now())
 
