@@ -52,6 +52,10 @@ func (self ValueString) Fields() (map[string]*Value, *VmInterrupt) {
 			test := args[0].(ValueString).Inner
 			return NewValueBool(strings.Contains(self.Inner, test)), nil
 		}),
+		"starts_with": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
+			test := args[0].(ValueString).Inner
+			return NewValueBool(strings.HasPrefix(self.Inner, test)), nil
+		}),
 		"to_lower": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 			return NewValueString(strings.ToLower(self.Inner)), nil
 		}),

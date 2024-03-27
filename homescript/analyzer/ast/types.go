@@ -310,6 +310,12 @@ func (self StringType) Fields(fieldSpan errors.Span) map[string]Type {
 			NewBoolType(fieldSpan),
 			fieldSpan,
 		),
+		"starts_with": NewFunctionType(
+			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("substring", fieldSpan), NewStringType(fieldSpan), nil)}),
+			fieldSpan,
+			NewBoolType(fieldSpan),
+			fieldSpan,
+		),
 		"split": NewFunctionType(
 			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("separator", fieldSpan), NewStringType(fieldSpan), nil)}),
 			fieldSpan,
