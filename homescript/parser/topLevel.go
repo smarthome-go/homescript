@@ -87,6 +87,13 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 			}
 		}
 
+		if self.CurrentToken.Kind == Trigger {
+			importKind = ast.IMPORT_KIND_TRIGGER
+			if err := self.next(); err != nil {
+				return ast.ImportStatement{}, err
+			}
+		}
+
 		if err := self.expectMultiple(Type, Templ, Identifier, Underscore); err != nil {
 			return ast.ImportStatement{}, err
 		}

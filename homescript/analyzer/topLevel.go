@@ -285,6 +285,8 @@ func entityErrNameFromImportKind(from pAst.IMPORT_KIND) string {
 		return "type"
 	case pAst.IMPORT_KIND_TEMPLATE:
 		return "template"
+	case pAst.IMPORT_KIND_TRIGGER:
+		return "trigger"
 	default:
 		panic("BUG warning: a new import kind was added without updating this code")
 	}
