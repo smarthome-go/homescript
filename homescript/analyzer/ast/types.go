@@ -375,7 +375,7 @@ type RangeType struct {
 }
 
 func (self RangeType) Kind() TypeKind                { return RangeTypeKind }
-func (self RangeType) String() string                { return "int..int" }
+func (self RangeType) String() string                { return "range" }
 func (self RangeType) Span() errors.Span             { return self.SpanRange }
 func (self RangeType) SetSpan(span errors.Span) Type { return NewRangeType(span) }
 func (self RangeType) Fields(fieldSpan errors.Span) map[string]Type {

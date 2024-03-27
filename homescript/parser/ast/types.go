@@ -159,7 +159,7 @@ type RangeType struct {
 	Range errors.Span
 }
 
-func (self RangeType) String() string { return fmt.Sprintf("%s:%s", self.Start, self.End) }
+func (self RangeType) String() string { return "range" }
 
 //
 // Function type

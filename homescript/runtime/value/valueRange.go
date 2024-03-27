@@ -17,7 +17,17 @@ type ValueRange struct {
 func (_ ValueRange) Kind() ValueKind { return RangeValueKind }
 
 func (self ValueRange) Display() (string, *VmInterrupt) {
-	return fmt.Sprintf("%d..%d", *self.Start, *self.End), nil
+	start, i := (*self.Start).Display()
+	if i != nil {
+		return "", i
+	}
+
+	end, i := (*self.End).Display()
+	if i != nil {
+		return "", i
+	}
+
+	return fmt.Sprintf("%s..%s", start, end), nil
 }
 
 func (self ValueRange) IsEqual(other Value) (bool, *VmInterrupt) {
