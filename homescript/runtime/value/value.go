@@ -109,6 +109,7 @@ type Value interface {
 	IsEqual(other Value) (bool, *VmInterrupt)
 	Fields() (map[string]*Value, *VmInterrupt)
 	IntoIter() func() (Value, bool)
+	Clone() *Value
 }
 
 func ZeroValue(typ ast.Type) *Value {

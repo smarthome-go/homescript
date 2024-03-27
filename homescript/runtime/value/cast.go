@@ -206,7 +206,7 @@ func deepCastRecursive(val Value, typ ast.Type, span errors.Span, allowCasts boo
 			return &val, nil
 		}
 	case ObjectValueKind:
-		if !allowCasts && typ.Kind() != ast.ObjectTypeKind {
+		if !allowCasts && (typ.Kind() != ast.ObjectTypeKind && typ.Kind() != ast.AnyObjectTypeKind) {
 			return nil, &CastError{
 				typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
 				Span:      span,

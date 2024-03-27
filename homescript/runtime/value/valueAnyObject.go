@@ -88,6 +88,16 @@ func (self ValueAnyObject) IntoIter() func() (Value, bool) {
 	panic("A value of type object cannot be used as an iterator")
 }
 
+func (self ValueAnyObject) Clone() *Value {
+	newFields := make(map[string]*Value)
+
+	for key, value := range self.FieldsInternal {
+		newFields[key] = (*value).Clone()
+	}
+
+	return NewValueAnyObject(newFields)
+}
+
 func NewValueAnyObject(fields map[string]*Value) *Value {
 	val := Value(ValueAnyObject{
 		FieldsInternal: fields,

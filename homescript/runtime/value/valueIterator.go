@@ -25,6 +25,13 @@ func (self ValueIterator) IntoIter() func() (Value, bool) {
 	panic("A value of type iter cannot be used as an iterator")
 }
 
+func (self ValueIterator) Clone() *Value {
+	v := Value(ValueIterator{
+		Func: self.Func,
+	})
+	return &v
+}
+
 func NewValueIter(val Value) *Value {
 	v := Value(ValueIterator{
 		Func: val.IntoIter(),

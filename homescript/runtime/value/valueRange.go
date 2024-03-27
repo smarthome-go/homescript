@@ -100,6 +100,10 @@ func (self ValueRange) IntoIter() func() (Value, bool) {
 	return self.iterNext
 }
 
+func (self ValueRange) Clone() *Value {
+	return NewValueRange(*(*self.Start).Clone(), *(*self.End).Clone(), self.EndIsInclusive)
+}
+
 func NewValueRange(start Value, end Value, endIsInclusive bool) *Value {
 	startInt := start.(ValueInt).Inner
 	val := Value(ValueRange{

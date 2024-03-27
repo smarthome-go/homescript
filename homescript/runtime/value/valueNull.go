@@ -21,6 +21,10 @@ func (self ValueNull) IntoIter() func() (Value, bool) {
 	panic("A value of type null cannot be used as an iterator")
 }
 
+func (self ValueNull) Clone() *Value {
+	return NewValueNull()
+}
+
 func NewValueNull() *Value {
 	val := Value(ValueNull{})
 	return &val

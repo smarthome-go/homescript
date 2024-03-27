@@ -29,6 +29,10 @@ func (self ValuePointer) IntoIter() func() (Value, bool) {
 	panic("A value of type int cannot be used as an iterator")
 }
 
+func (self ValuePointer) Clone() *Value {
+	return NewValuePointer(self.Inner)
+}
+
 func NewValuePointer(inner *Value) *Value {
 	val := Value(ValuePointer{Inner: inner})
 	return &val

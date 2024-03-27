@@ -126,6 +126,10 @@ func (self ValueString) IntoIter() func() (Value, bool) {
 	return self.iterNext
 }
 
+func (self ValueString) Clone() *Value {
+	return NewValueString(self.Inner)
+}
+
 func NewValueString(inner string) *Value {
 	zero := 0
 	val := Value(ValueString{Inner: inner, currIterIdx: &zero})

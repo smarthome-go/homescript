@@ -35,6 +35,10 @@ func (self ValueBool) IntoIter() func() (Value, bool) {
 	panic("A value of type bool cannot be used as an iterator")
 }
 
+func (self ValueBool) Clone() *Value {
+	return NewValueBool(self.Inner)
+}
+
 func NewValueBool(inner bool) *Value {
 	val := Value(ValueBool{Inner: inner})
 	return &val

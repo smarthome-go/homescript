@@ -522,7 +522,7 @@ func (self *Compiler) compileLetStmt(node ast.AnalyzedLetStatement, isGlobal boo
 func (self *Compiler) compileSingletonInit(node ast.AnalyzedSingletonTypeDefinition) (mangledName string) {
 	// Push default value onto the stack
 	def := value.ZeroValue(node.SingletonType)
-	self.insert(newValueInstruction(Opcode_Push, *def), node.Range)
+	self.insert(newValueInstruction(Opcode_Cloning_Push, *def), node.Range)
 
 	// Load singleton, either pop default and use other or use default.
 	self.insert(newTwoStringInstruction(Opcode_Load_Singleton, node.Ident.Ident(), node.Ident.Span().Filename), node.Range)
@@ -550,9 +550,9 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 			self.compileExpr(node.TriggerArguments.List[idx].Expression)
 		}
 
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(node.TriggerIdent.Ident())), node.Span())
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(node.CallbackIdent.Ident())), node.Span())
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(hostCallArgc))), node.Span())
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueString(node.TriggerIdent.Ident())), node.Span())
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueString(node.CallbackIdent.Ident())), node.Span())
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueInt(int64(hostCallArgc))), node.Span())
 		self.insert(newOneStringInstruction(Opcode_HostCall, RegisterTriggerHostFn), node.Span())
 	case ast.LetStatementKind:
 		self.compileLetStmt(node.(ast.AnalyzedLetStatement), false)
@@ -707,7 +707,7 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 			}
 
 			self.compileExpr(node.Base)
-			self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
+			self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
 			self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Span())
 		} else {
 			// TODO: the span mapping is broken here?
@@ -716,14 +716,14 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 				opcode := Opcode_Call_Imm
 				if node.IsSpawn {
 					opcode = Opcode_Spawn
-					self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
+					self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
 				}
 
 				self.insert(newOneStringInstruction(opcode, name), node.Span())
 			} else {
 				// call a global value
 				self.insert(newOneStringInstruction(Opcode_GetGlobImm, base.Ident.Ident()), node.Range)
-				self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
+				self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
 				self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Range)
 			}
 		}
@@ -735,7 +735,7 @@ func (self *Compiler) compileCallExpr(node ast.AnalyzedCallExpression) {
 		self.compileExpr(node.Base)
 
 		// insert number of args
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueInt(int64(len(node.Arguments.List)))), node.Span())
 
 		// perform the actual call
 		self.insert(newPrimitiveInstruction(Opcode_Call_Val), node.Span())
@@ -798,7 +798,7 @@ func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 		self.insert(newOneStringInstruction(Opcode_Jump, afterLabel), node.Range)
 
 		self.insert(newOneStringInstruction(Opcode_Label, returnTrue), node.Range)
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueBool(true)), node.Range)
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueBool(true)), node.Range)
 
 		self.insert(newOneStringInstruction(Opcode_Label, afterLabel), node.Range)
 	case pAst.LogicalAndInfixOperator:
@@ -812,7 +812,7 @@ func (self *Compiler) compileInfixExpr(node ast.AnalyzedInfixExpression) {
 		self.insert(newOneStringInstruction(Opcode_Jump, afterLabel), node.Range)
 
 		self.insert(newOneStringInstruction(Opcode_Label, returnFalse), node.Range)
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueBool(false)), node.Range)
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueBool(false)), node.Range)
 
 		self.insert(newOneStringInstruction(Opcode_Label, afterLabel), node.Range)
 	default:
@@ -838,7 +838,7 @@ func (self *Compiler) compileIdentExpression(node ast.AnalyzedIdentExpression) {
 	name, fnFound := self.getMangledFn(node.Ident.Ident())
 	if fnFound {
 		// This value is a function, it should also be wrapped like one
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueVMFunction(
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueVMFunction(
 			name,
 		)), node.Span())
 	} else {
@@ -853,22 +853,22 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		panic("Unreachable, this should not happen")
 	case ast.IntLiteralExpressionKind:
 		node := node.(ast.AnalyzedIntLiteralExpression)
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(node.Value)), node.Range)
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueInt(node.Value)), node.Range)
 	case ast.FloatLiteralExpressionKind:
 		node := node.(ast.AnalyzedFloatLiteralExpression)
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueFloat(node.Value)), node.Range)
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueFloat(node.Value)), node.Range)
 	case ast.BoolLiteralExpressionKind:
 		node := node.(ast.AnalyzedBoolLiteralExpression)
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueBool(node.Value)), node.Range)
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueBool(node.Value)), node.Range)
 	case ast.StringLiteralExpressionKind:
 		node := node.(ast.AnalyzedStringLiteralExpression)
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueString(node.Value)), node.Range)
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueString(node.Value)), node.Range)
 	case ast.IdentExpressionKind:
 		self.compileIdentExpression(node.(ast.AnalyzedIdentExpression))
 	case ast.NullLiteralExpressionKind:
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueNull()), node.Span())
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueNull()), node.Span())
 	case ast.NoneLiteralExpressionKind:
-		self.insert(newValueInstruction(Opcode_Push, *value.NewNoneOption()), node.Span())
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewNoneOption()), node.Span())
 	case ast.RangeLiteralExpressionKind:
 		node := node.(ast.AnalyzedRangeLiteralExpression)
 		self.compileExpr(node.Start)
@@ -877,15 +877,16 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		self.insert(newOneBoolInstruction(Opcode_Into_Range, node.EndIsInclusive), node.Range)
 	case ast.ListLiteralExpressionKind:
 		node := node.(ast.AnalyzedListLiteralExpression)
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueList(make([]*value.Value, 0))), node.Range)
+		// TODO: is this cloning required???
+		self.insert(newValueInstruction(Opcode_Cloning_Push, *value.NewValueList(make([]*value.Value, 0))), node.Range)
 
 		for _, element := range node.Values {
 			self.compileExpr(element)
-			self.insert(newValueInstruction(Opcode_Push, *value.NewValueInt(2)), node.Range)
+			self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueInt(2)), node.Range)
 			self.insert(newOneStringInstruction(Opcode_HostCall, LIST_PUSH), node.Range)
 		}
 	case ast.AnyObjectLiteralExpressionKind:
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueAnyObject(make(map[string]*value.Value))), node.Span())
+		self.insert(newValueInstruction(Opcode_Cloning_Push, *value.NewValueAnyObject(make(map[string]*value.Value))), node.Span())
 	case ast.ObjectLiteralExpressionKind:
 		node := node.(ast.AnalyzedObjectLiteralExpression)
 
@@ -895,7 +896,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		}
 
 		object := *value.NewValueObject(fields)
-		self.insert(newValueInstruction(Opcode_Push, object), node.Range)
+		self.insert(newValueInstruction(Opcode_Cloning_Push, object), node.Range)
 
 		for _, field := range node.Fields {
 			self.insert(newPrimitiveInstruction(Opcode_Duplicate), node.Range)
@@ -924,7 +925,7 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 		})
 		self.currFn = oldCurrFn
 
-		self.insert(newValueInstruction(Opcode_Push, *value.NewValueVMFunction(fnName)), node.Span())
+		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueVMFunction(fnName)), node.Span())
 	case ast.GroupedExpressionKind:
 		node := node.(ast.AnalyzedGroupedExpression)
 		self.compileExpr(node.Inner)

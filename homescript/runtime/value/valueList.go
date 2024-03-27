@@ -236,6 +236,17 @@ func (self ValueList) IntoIter() func() (Value, bool) {
 	return self.iterNext
 }
 
+func (self ValueList) Clone() *Value {
+	lenSelf := len(*self.Values)
+	newValues := make([]*Value, lenSelf)
+
+	for idx, value := range *self.Values {
+		newValues[idx] = (*value).Clone()
+	}
+
+	return NewValueList(newValues)
+}
+
 func NewValueList(values []*Value) *Value {
 	zero := 0
 	val := Value(ValueList{Values: &values, currIterIdx: &zero})

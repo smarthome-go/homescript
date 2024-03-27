@@ -28,6 +28,10 @@ func (self ValueBuiltinFunction) IntoIter() func() (Value, bool) {
 	panic("A value of type builtin-function cannot be used as an iterator")
 }
 
+func (self ValueBuiltinFunction) Clone() *Value {
+	return NewValueBuiltinFunction(self.Callback)
+}
+
 func NewValueBuiltinFunction(callback func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt)) *Value {
 	val := Value(ValueBuiltinFunction{Callback: callback})
 	return &val

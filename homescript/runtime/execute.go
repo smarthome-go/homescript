@@ -24,10 +24,13 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 				self.parent.SourceMap(*self.callFrame()),
 			)
 		}
-	case compiler.Opcode_Push:
+	case compiler.Opcode_Copy_Push:
 		i := instruction.(compiler.ValueInstruction)
 		v := i.Value
 		self.push(&v)
+	case compiler.Opcode_Cloning_Push:
+		i := instruction.(compiler.ValueInstruction)
+		self.push(i.Value.Clone())
 	case compiler.Opcode_Drop:
 		self.pop()
 	case compiler.Opcode_Duplicate:
@@ -205,10 +208,9 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 
 		casted, castError := value.DeepCast(*v, i.Type, self.parent.SourceMap(*self.callFrame()), i.AllowCast)
 		if castError != nil {
-			return value.NewVMFatalException(
-				castError.Message(),
-				value.Vm_CastErrorKind,
+			return value.NewVMThrowInterrupt(
 				castError.Span,
+				castError.Message(),
 			)
 		}
 		self.push(casted)

@@ -47,6 +47,10 @@ func (self ValueInt) IntoIter() func() (Value, bool) {
 	panic("A value of type int cannot be used as an iterator")
 }
 
+func (self ValueInt) Clone() *Value {
+	return NewValueInt(self.Inner)
+}
+
 func NewValueInt(inner int64) *Value {
 	val := Value(ValueInt{Inner: inner})
 	return &val

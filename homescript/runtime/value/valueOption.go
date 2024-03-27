@@ -98,6 +98,13 @@ func (self ValueOption) IntoIter() func() (Value, bool) {
 	panic("A value of type option cannot be used as an iterator")
 }
 
+func (self ValueOption) Clone() *Value {
+	if self.Inner == nil {
+		return NewNoneOption()
+	}
+	return NewValueOption((*self.Inner).Clone())
+}
+
 func NewNoneOption() *Value {
 	return NewValueOption(nil)
 }

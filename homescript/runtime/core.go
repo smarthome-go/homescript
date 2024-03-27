@@ -28,7 +28,7 @@ const (
 const VM_VERBOSE = VmNotVerbose
 
 const VM_DEBUGGER = false
-const VM_DEBUGGER_SLEEP = 1 * time.Millisecond
+const VM_DEBUGGER_SLEEP = 10 * time.Millisecond
 
 type CallFrame struct {
 	Function           string

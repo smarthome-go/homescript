@@ -46,7 +46,8 @@ type Opcode uint8
 
 const (
 	Opcode_Nop Opcode = iota
-	Opcode_Push
+	Opcode_Copy_Push
+	Opcode_Cloning_Push
 	Opcode_Drop
 	Opcode_Spawn
 	Opcode_Call_Val
@@ -100,8 +101,10 @@ func (self Opcode) String() string {
 	switch self {
 	case Opcode_Nop:
 		return "Nop"
-	case Opcode_Push:
-		return "Push"
+	case Opcode_Copy_Push:
+		return "CopyPush"
+	case Opcode_Cloning_Push:
+		return "CloningPush"
 	case Opcode_Drop:
 		return "Drop"
 	case Opcode_Spawn:
@@ -326,7 +329,8 @@ type CastInstruction struct {
 
 func (self CastInstruction) Opcode() Opcode { return self.opCode }
 func (self CastInstruction) String() string {
-	return fmt.Sprintf("%v(%v; %t)", self.Opcode(), self.Type, self.AllowCast)
+	typeStr := strings.ReplaceAll(self.Type.String(), "\n", "\n        ")
+	return fmt.Sprintf("%v(as_type=%s; perform_cast=%t)", self.Opcode(), typeStr, self.AllowCast)
 }
 
 func newCastInstruction(type_ ast.Type, allowCast bool) CastInstruction {

@@ -22,6 +22,10 @@ func (self ValueVMFunction) IntoIter() func() (Value, bool) {
 	panic("A value of type function cannot be used as an iterator")
 }
 
+func (self ValueVMFunction) Clone() *Value {
+	return NewValueVMFunction(self.Ident)
+}
+
 func NewValueVMFunction(ident string) *Value {
 	val := Value(ValueVMFunction{
 		Ident: ident,

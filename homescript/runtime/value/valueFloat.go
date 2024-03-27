@@ -51,6 +51,10 @@ func (self ValueFloat) IntoIter() func() (Value, bool) {
 	panic("A value of type float cannot be used as an iterator")
 }
 
+func (self ValueFloat) Clone() *Value {
+	return NewValueFloat(self.Inner)
+}
+
 func NewValueFloat(inner float64) *Value {
 	val := Value(ValueFloat{Inner: inner})
 	return &val
