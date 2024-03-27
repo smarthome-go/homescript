@@ -18,7 +18,7 @@ import (
 )
 
 var vmLimits = runtime.CoreLimits{
-	CallStackMaxSize: 100,
+	CallStackMaxSize: 2048,
 	StackMaxSize:     500,
 	MaxMemorySize:    100 * 1000,
 }
