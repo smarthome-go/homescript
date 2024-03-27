@@ -296,6 +296,8 @@ func deepCastRecursive(val Value, typ ast.Type, span errors.Span, allowCasts boo
 				FieldPath: fieldURI,
 			}
 		}
+
+		return &val, nil
 	case OptionValueKind:
 		if typ.Kind() != ast.OptionTypeKind {
 			return nil, &CastError{
