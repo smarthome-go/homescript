@@ -45,7 +45,7 @@ func (self *Transformer) stmtVariants(node ast.AnalyzedStatement) []ast.Analyzed
 
 	switch node.Kind() {
 	case ast.TypeDefinitionStatementKind:
-		panic("TODO")
+		break
 	case ast.LetStatementKind:
 		node := node.(ast.AnalyzedLetStatement)
 		// TODO: make two definitions out of one
