@@ -58,6 +58,13 @@ func (self *Transformer) expressionVariants(node ast.AnalyzedExpression, needsTo
 	case ast.FloatLiteralExpressionKind:
 		variants = append(variants, node)
 
+		// Test if the float is actually an int.
+		// Only if this is the case, a random value can be added without riscing IEEE754 rounding errors.
+		nodeValue := node.(ast.AnalyzedFloatLiteralExpression).Value
+		if float64(int(nodeValue)) != nodeValue {
+			break
+		}
+
 		operators := []pAst.InfixOperator{pAst.PlusInfixOperator, pAst.MinusInfixOperator, pAst.MultiplyInfixOperator}
 		inverseOperators := []pAst.InfixOperator{pAst.MinusInfixOperator, pAst.PlusInfixOperator, pAst.DivideInfixOperator}
 
