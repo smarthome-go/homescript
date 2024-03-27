@@ -1,0 +1,5 @@
+fn main() {
+    let int_range: range = 0..=42;
+    println(int_range);
+    assert_eq(fmt("%v", int_range), "0..42")
+}
