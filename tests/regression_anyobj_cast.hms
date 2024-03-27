@@ -1,0 +1,4 @@
+fn main() {
+    let foo: { ? } = new { bar: "baz" } as { ? } as { ? };
+    println(foo);
+}
