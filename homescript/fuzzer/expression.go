@@ -127,9 +127,18 @@ func (self *Transformer) expressionVariants(node ast.AnalyzedExpression, needsTo
 		panic("TODO")
 	case ast.ObjectLiteralExpressionKind:
 		// TODO: this can be obfuscated
+		// For instance: swap around the order
 		variants = append(variants, node)
 	case ast.FunctionLiteralExpressionKind:
-		panic("TODO")
+		node := node.(ast.AnalyzedFunctionLiteralExpression)
+		newBody := self.Block(node.Body)
+		variants = append(variants, ast.AnalyzedFunctionLiteralExpression{
+			Parameters: node.Parameters,
+			ParamSpan:  node.ParamSpan,
+			ReturnType: node.ReturnType,
+			Body:       newBody,
+			Range:      node.Range,
+		})
 	case ast.GroupedExpressionKind:
 		variants = append(variants, node)
 		variants = append(variants, ast.AnalyzedGroupedExpression{
