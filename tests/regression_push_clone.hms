@@ -1,0 +1,21 @@
+fn main() {
+    type Obj = { name: str };
+    let res: [Obj] = [];
+
+    for name in ['a', 'b', 'c'] {
+        res.push(new { name: name });
+    }
+
+    println(res);
+    assert_eq(res, [
+        new {
+            name: 'a'
+        },
+        new {
+            name: 'b'
+        },
+        new {
+            name: 'c'
+        },
+    ])
+}
