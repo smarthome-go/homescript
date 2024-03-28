@@ -2,22 +2,23 @@ package parser
 
 import (
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
 type Parser struct {
-	Lexer         Lexer
+	Lexer         lexer.Lexer
 	Errors        []errors.Error
-	PreviousToken Token
-	CurrentToken  Token
+	PreviousToken lexer.Token
+	CurrentToken  lexer.Token
 	Filename      string
 }
 
-func NewParser(lexer Lexer, filename string) Parser {
+func NewParser(lex lexer.Lexer, filename string) Parser {
 	return Parser{
-		Lexer:         lexer,
-		PreviousToken: unknownToken(errors.Location{}),
-		CurrentToken:  unknownToken(errors.Location{}),
+		Lexer:         lex,
+		PreviousToken: lexer.UnknownToken(errors.Location{}),
+		CurrentToken:  lexer.UnknownToken(errors.Location{}),
 		Errors:        make([]errors.Error, 0),
 		Filename:      filename,
 	}
@@ -55,15 +56,15 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 		Filename:  self.Filename,
 	}
 
-	for self.CurrentToken.Kind != EOF {
+	for self.CurrentToken.Kind != lexer.EOF {
 		switch self.CurrentToken.Kind {
-		case Import:
+		case lexer.Import:
 			importStmt, err := self.importItem()
 			if err != nil {
 				return ast.Program{}, err
 			}
 			tree.Imports = append(tree.Imports, importStmt)
-		case SINGLETON_TOKEN:
+		case lexer.SINGLETON_TOKEN:
 			// Handle singleton type definition
 			singleton, err := self.singleton()
 			if err != nil {
@@ -71,16 +72,16 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 			}
 
 			tree.Singletons = append(tree.Singletons, singleton)
-		case Impl:
+		case lexer.Impl:
 			implBlock, err := self.implBlockHead()
 			if err != nil {
 				return ast.Program{}, err
 			}
 
 			tree.ImplBlocks = append(tree.ImplBlocks, implBlock)
-		case Event, Pub, Type, Let, Fn:
-			isPub := self.CurrentToken.Kind == Pub
-			isEvent := self.CurrentToken.Kind == Event
+		case lexer.Event, lexer.Pub, lexer.Type, lexer.Let, lexer.Fn:
+			isPub := self.CurrentToken.Kind == lexer.Pub
+			isEvent := self.CurrentToken.Kind == lexer.Event
 
 			if isPub || isEvent {
 				if err := self.next(); err != nil {
@@ -89,19 +90,19 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 			}
 
 			switch self.CurrentToken.Kind {
-			case Type:
+			case lexer.Type:
 				typeDefinition, err := self.typeDefinition(isPub)
 				if err != nil {
 					return ast.Program{}, err
 				}
 				tree.Types = append(tree.Types, typeDefinition)
-			case Let:
+			case lexer.Let:
 				letStmt, err := self.letStatement(isPub)
 				if err != nil {
 					return ast.Program{}, err
 				}
 				tree.Globals = append(tree.Globals, letStmt)
-			case Fn:
+			case lexer.Fn:
 				fnModifier := ast.FN_MODIFIER_NONE
 
 				if isPub {
@@ -116,10 +117,18 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 				}
 				tree.Functions = append(tree.Functions, fnDefinition)
 			default:
-				return ast.Program{}, self.expectedOneOfErr([]TokenKind{Let, Fn})
+				return ast.Program{}, self.expectedOneOfErr([]lexer.TokenKind{lexer.Let, lexer.Fn})
 			}
 		default:
-			return ast.Program{}, self.expectedOneOfErr([]TokenKind{Import, Type, Pub, Event, Let, Fn, SINGLETON_TOKEN})
+			return ast.Program{}, self.expectedOneOfErr([]lexer.TokenKind{
+				lexer.Import,
+				lexer.Type,
+				lexer.Pub,
+				lexer.Event,
+				lexer.Let,
+				lexer.Fn,
+				lexer.SINGLETON_TOKEN,
+			})
 		}
 	}
 

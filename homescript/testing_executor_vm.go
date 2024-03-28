@@ -170,46 +170,46 @@ func TestingVmScopeAdditions() map[string]vmValue.Value {
 			}
 			return vmValue.NewValueNull(), nil
 		}),
-		"assert_eq": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
-			if args[0].Kind() != args[1].Kind() {
-				a, i := args[0].Display()
-				if i != nil {
-					return nil, i
-				}
-
-				b, i := args[1].Display()
-				if i != nil {
-					return nil, i
-				}
-				return nil, vmValue.NewVMThrowInterrupt(
-					span,
-					fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
-				)
-			}
-
-			eq, i := args[0].IsEqual(args[1])
-			if i != nil {
-				return nil, i
-			}
-
-			if !eq {
-				a, i := args[0].Display()
-				if i != nil {
-					return nil, i
-				}
-
-				b, i := args[1].Display()
-				if i != nil {
-					return nil, i
-				}
-
-				return nil, vmValue.NewVMThrowInterrupt(
-					span,
-					fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
-				)
-			}
-			return vmValue.NewValueNull(), nil
-		}),
+		// "assert_eq": *vmValue.NewValueBuiltinFunction(func(executor vmValue.Executor, cancelCtx *context.Context, span herrors.Span, args ...vmValue.Value) (*vmValue.Value, *vmValue.VmInterrupt) {
+		// 	if args[0].Kind() != args[1].Kind() {
+		// 		a, i := args[0].Display()
+		// 		if i != nil {
+		// 			return nil, i
+		// 		}
+		//
+		// 		b, i := args[1].Display()
+		// 		if i != nil {
+		// 			return nil, i
+		// 		}
+		// 		return nil, vmValue.NewVMThrowInterrupt(
+		// 			span,
+		// 			fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
+		// 		)
+		// 	}
+		//
+		// 	eq, i := args[0].IsEqual(args[1])
+		// 	if i != nil {
+		// 		return nil, i
+		// 	}
+		//
+		// 	if !eq {
+		// 		a, i := args[0].Display()
+		// 		if i != nil {
+		// 			return nil, i
+		// 		}
+		//
+		// 		b, i := args[1].Display()
+		// 		if i != nil {
+		// 			return nil, i
+		// 		}
+		//
+		// 		return nil, vmValue.NewVMThrowInterrupt(
+		// 			span,
+		// 			fmt.Sprintf("Assertion failed: `%s` is not equal to `%s`", a, b),
+		// 		)
+		// 	}
+		// 	return vmValue.NewValueNull(), nil
+		// }),
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
@@ -15,7 +16,7 @@ func (self *Parser) nonCriticalErr(span errors.Span, message string) {
 	))
 }
 
-func (self *Parser) expect(expected TokenKind) *errors.Error {
+func (self *Parser) expect(expected lexer.TokenKind) *errors.Error {
 	if self.CurrentToken.Kind != expected {
 		return errors.NewSyntaxError(
 			self.CurrentToken.Span,
@@ -30,12 +31,12 @@ func (self *Parser) expect(expected TokenKind) *errors.Error {
 	return nil
 }
 
-func (self *Parser) expectRecoverable(expected TokenKind) *errors.Error {
+func (self *Parser) expectRecoverable(expected lexer.TokenKind) *errors.Error {
 	if self.CurrentToken.Kind != expected {
 		// If the expected token kind is a semicolon,
 		// display a special error message where the last token location is used as the span, not the current one.
 		// Furthermore, the error message is a bit more precise.
-		if expected == Semicolon {
+		if expected == lexer.Semicolon {
 			self.nonCriticalErr(
 				self.PreviousToken.Span,
 				fmt.Sprintf("Missing semicolon ('%s') after this entity", expected),
@@ -56,7 +57,7 @@ func (self *Parser) expectRecoverable(expected TokenKind) *errors.Error {
 	return nil
 }
 
-func (self *Parser) expectMultiple(expected ...TokenKind) *errors.Error {
+func (self *Parser) expectMultiple(expected ...lexer.TokenKind) *errors.Error {
 	for _, test := range expected {
 		if self.CurrentToken.Kind == test {
 			if err := self.next(); err != nil {
@@ -69,7 +70,7 @@ func (self *Parser) expectMultiple(expected ...TokenKind) *errors.Error {
 	return self.expectedOneOfErr(expected)
 }
 
-func (self Parser) expectedOneOfErr(expected []TokenKind) *errors.Error {
+func (self Parser) expectedOneOfErr(expected []lexer.TokenKind) *errors.Error {
 	message := ""
 
 	if len(expected) == 2 {
@@ -94,12 +95,12 @@ func (self Parser) expectedOneOfErr(expected []TokenKind) *errors.Error {
 func (self *Parser) singletonIdent() (ast.SpannedIdent, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
-	if err := self.expectRecoverable(SINGLETON_TOKEN); err != nil {
+	if err := self.expectRecoverable(lexer.SINGLETON_TOKEN); err != nil {
 		self.Errors = append(self.Errors, *err)
 	}
 
 	identValue := self.CurrentToken.Value
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expect(lexer.Identifier); err != nil {
 		return ast.SpannedIdent{}, err
 	}
 
@@ -111,14 +112,14 @@ func (self *Parser) singletonIdent() (ast.SpannedIdent, *errors.Error) {
 
 func (self *Parser) singletonIdentOrNormal() (ident ast.SpannedIdent, isSingleton bool, err *errors.Error) {
 	// is singleton ident
-	if self.CurrentToken.Kind == SINGLETON_TOKEN {
+	if self.CurrentToken.Kind == lexer.SINGLETON_TOKEN {
 		ident, err := self.singletonIdent()
 		return ident, true, err
 	}
 
 	// is normal ident
 	ident = ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expect(lexer.Identifier); err != nil {
 		return ast.SpannedIdent{}, false, err
 	}
 

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
@@ -20,22 +21,22 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 	toImport := make([]ast.ImportStatementCandidate, 0)
 
 	switch self.CurrentToken.Kind {
-	case Type, Templ, Trigger, Identifier, Underscore:
+	case lexer.Type, lexer.Templ, lexer.Trigger, lexer.Identifier, lexer.Underscore:
 		startLoc := self.CurrentToken.Span.Start
 		importKind := ast.IMPORT_KIND_NORMAL
 
 		switch self.CurrentToken.Kind {
-		case Type:
+		case lexer.Type:
 			importKind = ast.IMPORT_KIND_TYPE
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
 			}
-		case Templ:
+		case lexer.Templ:
 			importKind = ast.IMPORT_KIND_TEMPLATE
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
 			}
-		case Trigger:
+		case lexer.Trigger:
 			importKind = ast.IMPORT_KIND_TRIGGER
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
@@ -63,7 +64,7 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 		if err := self.next(); err != nil {
 			return ast.ImportStatement{}, err
 		}
-	case LCurly:
+	case lexer.LCurly:
 		// skip the `{`
 		if err := self.next(); err != nil {
 			return ast.ImportStatement{}, err
@@ -73,28 +74,28 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 		importKind := ast.IMPORT_KIND_NORMAL
 		startLoc := self.CurrentToken.Span.Start
 
-		if self.CurrentToken.Kind == Type {
+		if self.CurrentToken.Kind == lexer.Type {
 			importKind = ast.IMPORT_KIND_TYPE
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
 			}
 		}
 
-		if self.CurrentToken.Kind == Templ {
+		if self.CurrentToken.Kind == lexer.Templ {
 			importKind = ast.IMPORT_KIND_TEMPLATE
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
 			}
 		}
 
-		if self.CurrentToken.Kind == Trigger {
+		if self.CurrentToken.Kind == lexer.Trigger {
 			importKind = ast.IMPORT_KIND_TRIGGER
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
 			}
 		}
 
-		if err := self.expectMultiple(Type, Templ, Identifier, Underscore); err != nil {
+		if err := self.expectMultiple(lexer.Type, lexer.Templ, lexer.Identifier, lexer.Underscore); err != nil {
 			return ast.ImportStatement{}, err
 		}
 
@@ -105,33 +106,33 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 		})
 
 		// make remaining imports
-		for self.CurrentToken.Kind == Comma {
+		for self.CurrentToken.Kind == lexer.Comma {
 			if err := self.next(); err != nil {
 				return ast.ImportStatement{}, err
 			}
 
 			startLoc := self.CurrentToken.Span.Start
 
-			if self.CurrentToken.Kind == RCurly || self.CurrentToken.Kind == EOF {
+			if self.CurrentToken.Kind == lexer.RCurly || self.CurrentToken.Kind == lexer.EOF {
 				break
 			}
 
 			importKind = ast.IMPORT_KIND_NORMAL
-			if self.CurrentToken.Kind == Type {
+			if self.CurrentToken.Kind == lexer.Type {
 				importKind = ast.IMPORT_KIND_TYPE
 				if err := self.next(); err != nil {
 					return ast.ImportStatement{}, err
 				}
 			}
 
-			if self.CurrentToken.Kind == Templ {
+			if self.CurrentToken.Kind == lexer.Templ {
 				importKind = ast.IMPORT_KIND_TEMPLATE
 				if err := self.next(); err != nil {
 					return ast.ImportStatement{}, err
 				}
 			}
 
-			if err := self.expectMultiple(Identifier, Underscore); err != nil {
+			if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
 				return ast.ImportStatement{}, err
 			}
 
@@ -142,23 +143,29 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 			})
 		}
 
-		if err := self.expectRecoverable(RCurly); err != nil {
+		if err := self.expectRecoverable(lexer.RCurly); err != nil {
 			return ast.ImportStatement{}, err
 		}
 	default:
-		return ast.ImportStatement{}, self.expectedOneOfErr([]TokenKind{Type, Templ, Trigger, Identifier, LCurly})
+		return ast.ImportStatement{}, self.expectedOneOfErr([]lexer.TokenKind{
+			lexer.Type,
+			lexer.Templ,
+			lexer.Trigger,
+			lexer.Identifier,
+			lexer.LCurly,
+		})
 	}
 
-	if err := self.expect(From); err != nil {
+	if err := self.expect(lexer.From); err != nil {
 		return ast.ImportStatement{}, err
 	}
 
-	if err := self.expectMultiple(Identifier, Underscore); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
 		return ast.ImportStatement{}, err
 	}
 	fromModule := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
 
-	if err := self.expectRecoverable(Semicolon); err != nil {
+	if err := self.expectRecoverable(lexer.Semicolon); err != nil {
 		return ast.ImportStatement{}, err
 	}
 
@@ -181,7 +188,7 @@ func (self *Parser) functionDefinition(fnModifier ast.FunctionModifier) (ast.Fun
 		return ast.FunctionDefinition{}, err
 	}
 
-	if err := self.expectMultiple(Identifier, Underscore); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
 		return ast.FunctionDefinition{}, err
 	}
 	ident := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
@@ -197,7 +204,7 @@ func (self *Parser) functionDefinition(fnModifier ast.FunctionModifier) (ast.Fun
 		Ident: ast.NewSpannedIdent("null", self.PreviousToken.Span.End.Until(self.CurrentToken.Span.End, self.Filename)),
 	})
 
-	if self.CurrentToken.Kind == Arrow {
+	if self.CurrentToken.Kind == lexer.Arrow {
 		if err := self.next(); err != nil {
 			return ast.FunctionDefinition{}, err
 		}
@@ -227,12 +234,12 @@ func (self *Parser) functionDefinition(fnModifier ast.FunctionModifier) (ast.Fun
 }
 
 func (self *Parser) parameterList() ([]ast.FnParam, *errors.Error) {
-	if err := self.expect(LParen); err != nil {
+	if err := self.expect(lexer.LParen); err != nil {
 		return nil, err
 	}
 
 	params := make([]ast.FnParam, 0)
-	if self.CurrentToken.Kind != RParen && self.CurrentToken.Kind != EOF {
+	if self.CurrentToken.Kind != lexer.RParen && self.CurrentToken.Kind != lexer.EOF {
 		// make initial parameter
 		param, err := self.parameter()
 		if err != nil {
@@ -241,12 +248,12 @@ func (self *Parser) parameterList() ([]ast.FnParam, *errors.Error) {
 		params = append(params, param)
 
 		// make remaining parameters
-		for self.CurrentToken.Kind == Comma {
+		for self.CurrentToken.Kind == lexer.Comma {
 			if err := self.next(); err != nil {
 				return nil, err
 			}
 
-			if self.CurrentToken.Kind == RParen || self.CurrentToken.Kind == EOF {
+			if self.CurrentToken.Kind == lexer.RParen || self.CurrentToken.Kind == lexer.EOF {
 				break
 			}
 
@@ -258,7 +265,7 @@ func (self *Parser) parameterList() ([]ast.FnParam, *errors.Error) {
 		}
 	}
 
-	if err := self.expectRecoverable(RParen); err != nil {
+	if err := self.expectRecoverable(lexer.RParen); err != nil {
 		return nil, err
 	}
 
@@ -272,7 +279,7 @@ func (self *Parser) parameter() (ast.FnParam, *errors.Error) {
 		return ast.FnParam{}, err
 	}
 
-	if err := self.expect(Colon); err != nil {
+	if err := self.expect(lexer.Colon); err != nil {
 		return ast.FnParam{}, err
 	}
 
@@ -300,7 +307,7 @@ func (self *Parser) singleton() (ast.SingletonTypeDefinition, *errors.Error) {
 		return ast.SingletonTypeDefinition{}, err
 	}
 
-	if err := self.expect(Assign); err != nil {
+	if err := self.expect(lexer.Assign); err != nil {
 		return ast.SingletonTypeDefinition{}, err
 	}
 
@@ -311,7 +318,7 @@ func (self *Parser) singleton() (ast.SingletonTypeDefinition, *errors.Error) {
 		return ast.SingletonTypeDefinition{}, err
 	}
 
-	if err := self.expectRecoverable(Semicolon); err != nil {
+	if err := self.expectRecoverable(lexer.Semicolon); err != nil {
 		return ast.SingletonTypeDefinition{}, err
 	}
 
@@ -358,7 +365,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 
 	// In this case, we except a template
 	templateIdent := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expect(lexer.Identifier); err != nil {
 		return ast.ImplBlock{}, err
 	}
 
@@ -374,7 +381,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 	capabilitiesStartLoc := self.CurrentToken.Span.Start
 
 	// If there is the `with` token, there are optional capabilities for this implementation
-	if self.CurrentToken.Kind == With {
+	if self.CurrentToken.Kind == lexer.With {
 		if err := self.next(); err != nil {
 			return ast.ImplBlock{}, err
 		}
@@ -383,7 +390,7 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 		capabilitiesStartLoc = self.CurrentToken.Span.Start
 		usingTemplate.UserDefinedCapabilities.Defined = true
 
-		if err := self.expect(LCurly); err != nil {
+		if err := self.expect(lexer.LCurly); err != nil {
 			return ast.ImplBlock{}, err
 		}
 
@@ -393,19 +400,19 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 			self.CurrentToken.Span,
 		))
 
-		if err := self.expect(Identifier); err != nil {
+		if err := self.expect(lexer.Identifier); err != nil {
 			return ast.ImplBlock{}, err
 		}
 
 		// As long as there is an `,` make additional capabilities
-		for self.CurrentToken.Kind == Comma {
+		for self.CurrentToken.Kind == lexer.Comma {
 			// Skip the `,`
 			if err := self.next(); err != nil {
 				return ast.ImplBlock{}, err
 			}
 
 			// If there is a `}`, this was a trailing comma
-			if self.CurrentToken.Kind == RCurly {
+			if self.CurrentToken.Kind == lexer.RCurly {
 				if err := self.next(); err != nil {
 					return ast.ImplBlock{}, err
 				}
@@ -419,13 +426,13 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 				self.CurrentToken.Span,
 			))
 
-			if err := self.expect(Identifier); err != nil {
+			if err := self.expect(lexer.Identifier); err != nil {
 				return ast.ImplBlock{}, err
 			}
 		}
 
 		// Expect a closing `}`
-		if err := self.expectRecoverable(RCurly); err != nil {
+		if err := self.expectRecoverable(lexer.RCurly); err != nil {
 			return ast.ImplBlock{}, err
 		}
 
@@ -433,8 +440,8 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 	}
 
 	// Expect a `for`
-	if err := self.expect(For); err != nil {
-		if self.CurrentToken.Kind == For {
+	if err := self.expect(lexer.For); err != nil {
+		if self.CurrentToken.Kind == lexer.For {
 			self.Errors = append(self.Errors, *err)
 		} else {
 			return ast.ImplBlock{}, err
@@ -463,21 +470,21 @@ func (self *Parser) implBlockHead() (ast.ImplBlock, *errors.Error) {
 
 func (self *Parser) implBlockBody() ([]ast.FunctionDefinition, *errors.Error) {
 	// Expect `{`
-	if err := self.expect(LCurly); err != nil {
+	if err := self.expect(lexer.LCurly); err != nil {
 		return nil, err
 	}
 
 	// Loop over function definitions until the end (`}`) is reached
 	methods := make([]ast.FunctionDefinition, 0)
-	for self.CurrentToken.Kind != EOF && self.CurrentToken.Kind != RCurly {
+	for self.CurrentToken.Kind != lexer.EOF && self.CurrentToken.Kind != lexer.RCurly {
 		modifier := ast.FN_MODIFIER_NONE
 
-		if self.CurrentToken.Kind == Pub {
+		if self.CurrentToken.Kind == lexer.Pub {
 			if err := self.next(); err != nil {
 				return nil, err
 			}
 			modifier = ast.FN_MODIFIER_PUB
-		} else if self.CurrentToken.Kind == Event {
+		} else if self.CurrentToken.Kind == lexer.Event {
 			if err := self.next(); err != nil {
 				return nil, err
 			}
@@ -492,7 +499,7 @@ func (self *Parser) implBlockBody() ([]ast.FunctionDefinition, *errors.Error) {
 	}
 
 	// Expect closing `}`
-	if err := self.expectRecoverable(RCurly); err != nil {
+	if err := self.expectRecoverable(lexer.RCurly); err != nil {
 		return nil, err
 	}
 

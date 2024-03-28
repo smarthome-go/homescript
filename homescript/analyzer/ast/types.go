@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer/util"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
-	"github.com/smarthome-go/homescript/v3/homescript/parser/util"
 )
 
 type TypeKind uint8

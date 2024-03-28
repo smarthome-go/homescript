@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
@@ -18,53 +19,53 @@ func (self *Parser) expression(prec uint8) (expr ast.Expression, isWithBlock boo
 	var lhs ast.Expression
 
 	switch self.CurrentToken.Kind {
-	case AtSymbol, Identifier, Underscore:
+	case lexer.AtSymbol, lexer.Identifier, lexer.Underscore:
 		ident, err := self.identExpression()
 		if err != nil {
 			return nil, false, err
 		}
 		lhs = ident
-	case LParen:
+	case lexer.LParen:
 		grouped, err := self.groupedExpression()
 		if err != nil {
 			return nil, false, err
 		}
 		lhs = grouped
-	case Not, Minus, QuestionMark:
+	case lexer.Not, lexer.Minus, lexer.QuestionMark:
 		prefixExpr, err := self.prefixExpression(false)
 		if err != nil {
 			return nil, false, err
 		}
 		lhs = prefixExpr
-	case LCurly:
+	case lexer.LCurly:
 		blockExpr, err := self.blockExpression()
 		if err != nil {
 			return nil, false, err
 		}
 		lhs = blockExpr
 		isWithBlock = true
-	case If:
+	case lexer.If:
 		ifExpr, err := self.ifExpression()
 		if err != nil {
 			return nil, false, err
 		}
 		lhs = ifExpr
 		isWithBlock = true
-	case Match:
+	case lexer.Match:
 		matchExpr, err := self.matchExpression()
 		if err != nil {
 			return nil, false, err
 		}
 		lhs = matchExpr
 		isWithBlock = true
-	case Try:
+	case lexer.Try:
 		tryExpr, err := self.tryExpression()
 		if err != nil {
 			return nil, false, err
 		}
 		lhs = tryExpr
 		isWithBlock = true
-	case Spawn:
+	case lexer.Spawn:
 		spawnExpr, err := self.spawnExpr()
 		if err != nil {
 			return nil, false, err
@@ -78,20 +79,20 @@ func (self *Parser) expression(prec uint8) (expr ast.Expression, isWithBlock boo
 		lhs = expr
 	}
 
-	for left, _ := self.CurrentToken.Kind.prec(); left > prec; left, _ = self.CurrentToken.Kind.prec() {
+	for left, _ := self.CurrentToken.Kind.Prec(); left > prec; left, _ = self.CurrentToken.Kind.Prec() {
 		isWithBlock = false
 
 		switch self.CurrentToken.Kind {
-		case DoubleDot:
+		case lexer.DoubleDot:
 			newLhs, err := self.rangeLiteral(startLoc, lhs)
 			if err != nil {
 				return nil, false, err
 			}
 			lhs = newLhs
-		case Plus, Minus, Multiply, Divide, Modulo,
-			Power, ShiftLeft, ShiftRight, BitOr, BitAnd,
-			BitXor, Or, And, Equal, NotEqual, LessThan,
-			LessThanEqual, GreaterThan, GreaterThanEqual:
+		case lexer.Plus, lexer.Minus, lexer.Multiply, lexer.Divide, lexer.Modulo,
+			lexer.Power, lexer.ShiftLeft, lexer.ShiftRight, lexer.BitOr, lexer.BitAnd,
+			lexer.BitXor, lexer.Or, lexer.And, lexer.Equal, lexer.NotEqual, lexer.LessThan,
+			lexer.LessThanEqual, lexer.GreaterThan, lexer.GreaterThanEqual:
 			// infix expression
 
 			newLhs, err := self.infixExpression(startLoc, lhs)
@@ -99,10 +100,10 @@ func (self *Parser) expression(prec uint8) (expr ast.Expression, isWithBlock boo
 				return nil, false, err
 			}
 			lhs = newLhs
-		case Assign, PlusAssign, MinusAssign, MultiplyAssign,
-			DivideAssign, ModuloAssign, PowerAssign,
-			ShiftLeftAssign, ShiftRightAssign,
-			BitOrAssign, BitAndAssign, BitXorAssign:
+		case lexer.Assign, lexer.PlusAssign, lexer.MinusAssign, lexer.MultiplyAssign,
+			lexer.DivideAssign, lexer.ModuloAssign, lexer.PowerAssign,
+			lexer.ShiftLeftAssign, lexer.ShiftRightAssign,
+			lexer.BitOrAssign, lexer.BitAndAssign, lexer.BitXorAssign:
 			// assign expression
 
 			newLhs, err := self.assignExpression(startLoc, lhs)
@@ -110,25 +111,25 @@ func (self *Parser) expression(prec uint8) (expr ast.Expression, isWithBlock boo
 				return nil, false, err
 			}
 			lhs = newLhs
-		case LParen:
+		case lexer.LParen:
 			newLhs, err := self.callExpression(startLoc, lhs)
 			if err != nil {
 				return nil, false, err
 			}
 			lhs = newLhs
-		case LBracket:
+		case lexer.LBracket:
 			newLhs, err := self.indexExpression(startLoc, lhs)
 			if err != nil {
 				return nil, false, err
 			}
 			lhs = newLhs
-		case Dot:
-			newLhs, err := self.memberExpression(startLoc, lhs)
+		case lexer.Dot, lexer.Arrow, lexer.TildeArrow:
+			newLhs, err := self.memberExpression(startLoc, lhs, ast.NewMemberOperator(self.CurrentToken.Kind))
 			if err != nil {
 				return nil, false, err
 			}
 			lhs = newLhs
-		case As:
+		case lexer.As:
 			newLhs, err := self.castExpression(startLoc, lhs)
 			if err != nil {
 				return nil, false, err
@@ -145,17 +146,17 @@ func (self *Parser) expression(prec uint8) (expr ast.Expression, isWithBlock boo
 
 func (self *Parser) literal(useLiteralInErr bool) (ast.Expression, *errors.Error) {
 	switch self.CurrentToken.Kind {
-	case Int, Float:
+	case lexer.Int, lexer.Float:
 		return self.intFloatLiteral()
-	case True, False:
+	case lexer.True, lexer.False:
 		if err := self.next(); err != nil {
 			return nil, err
 		}
 		return ast.BoolLiteralExpression{
-			Value: self.PreviousToken.Kind == True,
+			Value: self.PreviousToken.Kind == lexer.True,
 			Range: self.PreviousToken.Span,
 		}, nil
-	case String:
+	case lexer.String:
 		if err := self.next(); err != nil {
 			return nil, err
 		}
@@ -163,15 +164,15 @@ func (self *Parser) literal(useLiteralInErr bool) (ast.Expression, *errors.Error
 			Value: self.PreviousToken.Value,
 			Range: self.PreviousToken.Span,
 		}, nil
-	case Null:
+	case lexer.Null:
 		return self.nullLiteral()
-	case None:
+	case lexer.None:
 		return self.noneLiteral()
-	case LBracket:
+	case lexer.LBracket:
 		return self.listLiteral()
-	case New:
+	case lexer.New:
 		return self.objectLiteral()
-	case Fn:
+	case lexer.Fn:
 		return self.functionLiteral()
 	default:
 		message := fmt.Sprintf("Expected an expression, found '%s'", self.CurrentToken.Kind)
@@ -196,7 +197,7 @@ func (self *Parser) intFloatLiteral() (ast.Expression, *errors.Error) {
 	}
 
 	switch self.PreviousToken.Kind {
-	case Int:
+	case lexer.Int:
 		intRes, err := strconv.ParseInt(self.PreviousToken.Value, 10, 64)
 		if err != nil {
 			return nil, errors.NewSyntaxError(
@@ -209,7 +210,7 @@ func (self *Parser) intFloatLiteral() (ast.Expression, *errors.Error) {
 			Range: self.PreviousToken.Span,
 			Value: intRes,
 		}), nil
-	case Float:
+	case lexer.Float:
 		floatRes, err := strconv.ParseFloat(self.PreviousToken.Value, 64)
 		if err != nil {
 			return nil, errors.NewSyntaxError(
@@ -277,7 +278,7 @@ func (self *Parser) rangeLiteral(start errors.Location, rangeStart ast.Expressio
 
 	// if there is an `=`, include the upper bound
 	endIsInclusive := false
-	if self.CurrentToken.Kind == Assign {
+	if self.CurrentToken.Kind == lexer.Assign {
 		endIsInclusive = true
 		if err := self.next(); err != nil {
 			return ast.RangeLiteralExpression{}, err
@@ -310,7 +311,7 @@ func (self *Parser) listLiteral() (ast.ListLiteralExpression, *errors.Error) {
 	}
 
 	values := make([]ast.Expression, 0)
-	if self.CurrentToken.Kind != RBracket && self.CurrentToken.Kind != EOF {
+	if self.CurrentToken.Kind != lexer.RBracket && self.CurrentToken.Kind != lexer.EOF {
 		// make initial value
 		expr, _, err := self.expression(0)
 		if err != nil {
@@ -319,12 +320,12 @@ func (self *Parser) listLiteral() (ast.ListLiteralExpression, *errors.Error) {
 		values = append(values, expr)
 
 		// make remaining values
-		for self.CurrentToken.Kind == Comma {
+		for self.CurrentToken.Kind == lexer.Comma {
 			if err := self.next(); err != nil {
 				return ast.ListLiteralExpression{}, err
 			}
 
-			if self.CurrentToken.Kind == RBracket || self.CurrentToken.Kind == EOF {
+			if self.CurrentToken.Kind == lexer.RBracket || self.CurrentToken.Kind == lexer.EOF {
 				break
 			}
 
@@ -336,7 +337,7 @@ func (self *Parser) listLiteral() (ast.ListLiteralExpression, *errors.Error) {
 		}
 	}
 
-	if err := self.expectRecoverable(RBracket); err != nil {
+	if err := self.expectRecoverable(lexer.RBracket); err != nil {
 		return ast.ListLiteralExpression{}, err
 	}
 
@@ -358,17 +359,17 @@ func (self *Parser) objectLiteral() (ast.Expression, *errors.Error) {
 		return nil, err
 	}
 
-	if err := self.expect(LCurly); err != nil {
+	if err := self.expect(lexer.LCurly); err != nil {
 		return nil, err
 	}
 
 	fields := make([]ast.ObjectLiteralField, 0)
 
-	if self.CurrentToken.Kind == QuestionMark {
+	if self.CurrentToken.Kind == lexer.QuestionMark {
 		if err := self.next(); err != nil {
 			return nil, err
 		}
-		if err := self.expectRecoverable(RCurly); err != nil {
+		if err := self.expectRecoverable(lexer.RCurly); err != nil {
 			return nil, err
 		}
 		return ast.AnyObjectLiteralExpression{
@@ -376,7 +377,7 @@ func (self *Parser) objectLiteral() (ast.Expression, *errors.Error) {
 		}, nil
 	}
 
-	if self.CurrentToken.Kind != RCurly && self.CurrentToken.Kind != EOF {
+	if self.CurrentToken.Kind != lexer.RCurly && self.CurrentToken.Kind != lexer.EOF {
 		// make initial field
 		field, err := self.objectLiteralField()
 		if err != nil {
@@ -386,13 +387,13 @@ func (self *Parser) objectLiteral() (ast.Expression, *errors.Error) {
 		fields = append(fields, field)
 
 		// make remaining fields
-		for self.CurrentToken.Kind == Comma {
+		for self.CurrentToken.Kind == lexer.Comma {
 			// skip comma
 			if err := self.next(); err != nil {
 				return nil, err
 			}
 
-			if self.CurrentToken.Kind == RCurly || self.CurrentToken.Kind == EOF {
+			if self.CurrentToken.Kind == lexer.RCurly || self.CurrentToken.Kind == lexer.EOF {
 				break
 			}
 
@@ -405,7 +406,7 @@ func (self *Parser) objectLiteral() (ast.Expression, *errors.Error) {
 		}
 	}
 
-	if err := self.expectRecoverable(RCurly); err != nil {
+	if err := self.expectRecoverable(lexer.RCurly); err != nil {
 		return nil, err
 	}
 
@@ -434,7 +435,7 @@ func (self *Parser) functionLiteral() (ast.FunctionLiteralExpression, *errors.Er
 		Ident: ast.NewSpannedIdent("null", self.PreviousToken.Span.End.Until(self.CurrentToken.Span.End, self.Filename)),
 	})
 
-	if self.CurrentToken.Kind == Arrow {
+	if self.CurrentToken.Kind == lexer.Arrow {
 		if err := self.next(); err != nil {
 			return ast.FunctionLiteralExpression{}, err
 		}
@@ -464,12 +465,12 @@ func (self *Parser) functionLiteral() (ast.FunctionLiteralExpression, *errors.Er
 func (self *Parser) objectLiteralField() (ast.ObjectLiteralField, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
-	if err := self.expectMultiple(Identifier, Underscore, String); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore, lexer.String); err != nil {
 		return ast.ObjectLiteralField{}, err
 	}
 	key := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
 
-	if err := self.expect(Colon); err != nil {
+	if err := self.expect(lexer.Colon); err != nil {
 		return ast.ObjectLiteralField{}, err
 	}
 
@@ -502,7 +503,7 @@ func (self *Parser) groupedExpression() (ast.GroupedExpression, *errors.Error) {
 		return ast.GroupedExpression{}, err
 	}
 
-	if err := self.expectRecoverable(RParen); err != nil {
+	if err := self.expectRecoverable(lexer.RParen); err != nil {
 		return ast.GroupedExpression{}, err
 	}
 
@@ -519,7 +520,7 @@ func (self *Parser) groupedExpression() (ast.GroupedExpression, *errors.Error) {
 func (self *Parser) prefixExpression(restrictBaseToLiterals bool) (ast.PrefixExpression, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
-	operator := self.CurrentToken.Kind.asPrefixOperator()
+	operator := ast.TokenAsPrefixOperator(self.CurrentToken.Kind)
 	if err := self.next(); err != nil {
 		return ast.PrefixExpression{}, err
 	}
@@ -554,8 +555,8 @@ func (self *Parser) prefixExpression(restrictBaseToLiterals bool) (ast.PrefixExp
 
 func (self *Parser) infixExpression(start errors.Location, lhs ast.Expression) (ast.InfixExpression, *errors.Error) {
 	// determine infix operator kind
-	op := self.CurrentToken.Kind.asInfixOperator()
-	_, rhsPrec := self.CurrentToken.Kind.prec()
+	op := ast.TokenAsInfixOperator(self.CurrentToken.Kind)
+	_, rhsPrec := self.CurrentToken.Kind.Prec()
 
 	if err := self.next(); err != nil {
 		return ast.InfixExpression{}, err
@@ -579,8 +580,8 @@ func (self *Parser) infixExpression(start errors.Location, lhs ast.Expression) (
 //
 
 func (self *Parser) assignExpression(start errors.Location, lhs ast.Expression) (ast.AssignExpression, *errors.Error) {
-	operator := self.CurrentToken.Kind.asAssignOperator()
-	_, rhsPrec := self.CurrentToken.Kind.prec()
+	operator := ast.TokenAsAssignOperator(self.CurrentToken.Kind)
+	_, rhsPrec := self.CurrentToken.Kind.Prec()
 
 	if err := self.next(); err != nil {
 		return ast.AssignExpression{}, err
@@ -619,7 +620,7 @@ func (self *Parser) callArgs() (argsRet ast.CallArgs, err *errors.Error) {
 	}
 
 	args := make([]ast.Expression, 0)
-	if self.CurrentToken.Kind != RParen && self.CurrentToken.Kind != EOF {
+	if self.CurrentToken.Kind != lexer.RParen && self.CurrentToken.Kind != lexer.EOF {
 		// make first argument
 		expr, _, err := self.expression(0)
 		if err != nil {
@@ -628,12 +629,12 @@ func (self *Parser) callArgs() (argsRet ast.CallArgs, err *errors.Error) {
 		args = append(args, expr)
 
 		// make remaining arguments
-		for self.CurrentToken.Kind == Comma {
+		for self.CurrentToken.Kind == lexer.Comma {
 			if err := self.next(); err != nil {
 				return ast.CallArgs{}, err
 			}
 
-			if self.CurrentToken.Kind == RParen || self.CurrentToken.Kind == EOF {
+			if self.CurrentToken.Kind == lexer.RParen || self.CurrentToken.Kind == lexer.EOF {
 				break
 			}
 
@@ -646,7 +647,7 @@ func (self *Parser) callArgs() (argsRet ast.CallArgs, err *errors.Error) {
 		}
 	}
 
-	if err := self.expectRecoverable(RParen); err != nil {
+	if err := self.expectRecoverable(lexer.RParen); err != nil {
 		return ast.CallArgs{}, err
 	}
 
@@ -684,7 +685,7 @@ func (self *Parser) indexExpression(start errors.Location, base ast.Expression) 
 		return ast.IndexExpression{}, err
 	}
 
-	if err := self.expectRecoverable(RBracket); err != nil {
+	if err := self.expectRecoverable(lexer.RBracket); err != nil {
 		return ast.IndexExpression{}, err
 	}
 
@@ -699,21 +700,26 @@ func (self *Parser) indexExpression(start errors.Location, base ast.Expression) 
 //	Member expression
 //
 
-func (self *Parser) memberExpression(start errors.Location, base ast.Expression) (ast.MemberExpression, *errors.Error) {
-	// skip the `.`
+func (self *Parser) memberExpression(
+	start errors.Location,
+	base ast.Expression,
+	operator ast.MemberOperator,
+) (ast.MemberExpression, *errors.Error) {
+	// Skip the operator.
 	if err := self.next(); err != nil {
 		return ast.MemberExpression{}, err
 	}
 
-	if err := self.expectMultiple(Identifier, Underscore); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
 		return ast.MemberExpression{}, err
 	}
 	member := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
 
 	return ast.MemberExpression{
-		Base:   base,
-		Member: member,
-		Range:  start.Until(self.PreviousToken.Span.End, self.Filename),
+		Base:     base,
+		Member:   member,
+		Range:    start.Until(self.PreviousToken.Span.End, self.Filename),
+		Operator: operator,
 	}, nil
 }
 
@@ -779,12 +785,12 @@ func (self *Parser) ifExpression() (ast.IfExpression, *errors.Error) {
 	// make optional `else if` block
 	var elseBlock *ast.Block
 
-	if self.CurrentToken.Kind == Else {
+	if self.CurrentToken.Kind == lexer.Else {
 		if err := self.next(); err != nil {
 			return ast.IfExpression{}, err
 		}
 
-		if self.CurrentToken.Kind == If {
+		if self.CurrentToken.Kind == lexer.If {
 			elseIf, err := self.ifExpression()
 			if err != nil {
 				return ast.IfExpression{}, err
@@ -830,13 +836,13 @@ func (self *Parser) matchExpression() (ast.MatchExpression, *errors.Error) {
 		return ast.MatchExpression{}, err
 	}
 
-	if err := self.expect(LCurly); err != nil {
+	if err := self.expect(lexer.LCurly); err != nil {
 		return ast.MatchExpression{}, err
 	}
 
 	arms := make([]ast.MatchArm, 0)
 
-	if self.CurrentToken.Kind != EOF && self.CurrentToken.Kind != RCurly {
+	if self.CurrentToken.Kind != lexer.EOF && self.CurrentToken.Kind != lexer.RCurly {
 		// make initial value
 		arm, withBlockTemp, err := self.matchArm()
 		if err != nil {
@@ -847,14 +853,14 @@ func (self *Parser) matchExpression() (ast.MatchExpression, *errors.Error) {
 		withBlock := withBlockTemp
 
 		// make remaining values
-		for self.CurrentToken.Kind == Comma || withBlock {
-			if self.CurrentToken.Kind == Comma {
+		for self.CurrentToken.Kind == lexer.Comma || withBlock {
+			if self.CurrentToken.Kind == lexer.Comma {
 				if err := self.next(); err != nil {
 					return ast.MatchExpression{}, err
 				}
 			}
 
-			if self.CurrentToken.Kind == RCurly || self.CurrentToken.Kind == EOF {
+			if self.CurrentToken.Kind == lexer.RCurly || self.CurrentToken.Kind == lexer.EOF {
 				break
 			}
 
@@ -867,7 +873,7 @@ func (self *Parser) matchExpression() (ast.MatchExpression, *errors.Error) {
 		}
 	}
 
-	if err := self.expectRecoverable(RCurly); err != nil {
+	if err := self.expectRecoverable(lexer.RCurly); err != nil {
 		return ast.MatchExpression{}, err
 	}
 
@@ -883,12 +889,12 @@ func (self *Parser) matchArm() (arm ast.MatchArm, withBlock bool, err *errors.Er
 	var literal ast.DefaultOrLiteral
 
 	switch self.CurrentToken.Kind {
-	case Underscore:
+	case lexer.Underscore:
 		literal = ast.NewDefaultOrLiteralDefault()
 		if err := self.next(); err != nil {
 			return ast.MatchArm{}, false, err
 		}
-	case Not, Minus, QuestionMark:
+	case lexer.Not, lexer.Minus, lexer.QuestionMark:
 		expr, err := self.prefixExpression(true)
 		if err != nil {
 			return ast.MatchArm{}, false, err
@@ -902,7 +908,7 @@ func (self *Parser) matchArm() (arm ast.MatchArm, withBlock bool, err *errors.Er
 		literal = ast.NewDefaultOrLiteralLiteral(expr)
 	}
 
-	if err := self.expect(FatArrow); err != nil {
+	if err := self.expect(lexer.FatArrow); err != nil {
 		return ast.MatchArm{}, false, err
 	}
 
@@ -935,11 +941,11 @@ func (self *Parser) tryExpression() (ast.TryExpression, *errors.Error) {
 		return ast.TryExpression{}, err
 	}
 
-	if err := self.expect(Catch); err != nil {
+	if err := self.expect(lexer.Catch); err != nil {
 		return ast.TryExpression{}, err
 	}
 
-	if err := self.expectMultiple(Identifier, Underscore); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
 		return ast.TryExpression{}, err
 	}
 	catchIdentifier := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
@@ -968,7 +974,7 @@ func (self *Parser) spawnExpr() (ast.CallExpression, *errors.Error) {
 	}
 
 	ident := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expect(lexer.Identifier); err != nil {
 		return ast.CallExpression{}, err
 	}
 
@@ -991,14 +997,14 @@ func (self *Parser) spawnExpr() (ast.CallExpression, *errors.Error) {
 func (self *Parser) block() (ast.Block, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
 
-	if err := self.expect(LCurly); err != nil {
+	if err := self.expect(lexer.LCurly); err != nil {
 		return ast.Block{}, err
 	}
 
 	statements := make([]ast.Statement, 0)
 	var trailingExpr ast.Expression
 
-	for self.CurrentToken.Kind != RCurly && self.CurrentToken.Kind != EOF {
+	for self.CurrentToken.Kind != lexer.RCurly && self.CurrentToken.Kind != lexer.EOF {
 		item, err := self.statemtent()
 		if err != nil {
 			return ast.Block{}, err
@@ -1014,7 +1020,7 @@ func (self *Parser) block() (ast.Block, *errors.Error) {
 		}
 	}
 
-	if err := self.expectRecoverable(RCurly); err != nil {
+	if err := self.expectRecoverable(lexer.RCurly); err != nil {
 		return ast.Block{}, err
 	}
 

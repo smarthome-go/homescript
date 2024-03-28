@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer/util"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
-	"github.com/smarthome-go/homescript/v3/homescript/parser/util"
 )
 
 //
@@ -533,13 +533,14 @@ type AnalyzedMemberExpression struct {
 	Base       AnalyzedExpression
 	Member     ast.SpannedIdent
 	ResultType Type
+	Operator   ast.MemberOperator
 	Range      errors.Span
 }
 
 func (self AnalyzedMemberExpression) Kind() ExpressionKind { return MemberExpressionKind }
 func (self AnalyzedMemberExpression) Span() errors.Span    { return self.Range }
 func (self AnalyzedMemberExpression) String() string {
-	return fmt.Sprintf("%s.%s", self.Base, self.Member.Ident())
+	return fmt.Sprintf("%s%s%s", self.Base, self.Operator, self.Member.Ident())
 }
 func (self AnalyzedMemberExpression) Type() Type     { return self.ResultType }
 func (self AnalyzedMemberExpression) Constant() bool { return self.Base.Constant() }

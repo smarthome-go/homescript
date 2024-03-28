@@ -10,13 +10,14 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
 func Parse(code string, filename string) (pAst.Program, []errors.Error, *errors.Error) {
-	lexer := parser.NewLexer(code, filename)
-	parser := parser.NewParser(lexer, filename)
+	lex := lexer.NewLexer(code, filename)
+	parser := parser.NewParser(lex, filename)
 	return parser.Parse()
 }
 
@@ -30,8 +31,8 @@ func Analyze(
 	scopeAdditions map[string]analyzer.Variable,
 	host analyzer.HostProvider,
 ) (modules map[string]ast.AnalyzedProgram, diagnostics []diagnostic.Diagnostic, syntaxErrors []errors.Error) {
-	lexer := parser.NewLexer(input.ProgramText, input.Filename)
-	parser := parser.NewParser(lexer, input.Filename)
+	lex := lexer.NewLexer(input.ProgramText, input.Filename)
+	parser := parser.NewParser(lex, input.Filename)
 	parsedTree, nonCriticalErrors, criticalError := parser.Parse()
 
 	syntaxErrors = append(syntaxErrors, nonCriticalErrors...)

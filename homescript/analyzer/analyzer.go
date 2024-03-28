@@ -7,7 +7,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
-	"github.com/smarthome-go/homescript/v3/homescript/parser"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
@@ -55,7 +55,7 @@ func NewAnalyzer(host HostProvider, scopeAdditions map[string]Variable) Analyzer
 	analyzer.knownObjectTypeFieldAnnotations = make([]string, len(knownAnnotationsWithoutPrefix))
 
 	for idx, annotation := range knownAnnotationsWithoutPrefix {
-		analyzer.knownObjectTypeFieldAnnotations[idx] = fmt.Sprintf("%s%s", parser.TYPE_ANNOTATION_TOKEN, annotation)
+		analyzer.knownObjectTypeFieldAnnotations[idx] = fmt.Sprintf("%s%s", lexer.TYPE_ANNOTATION_TOKEN, annotation)
 	}
 
 	return analyzer

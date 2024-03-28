@@ -122,23 +122,23 @@ func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 				herrors.Span{},
 			),
 		),
-		"assert_eq": analyzer.NewBuiltinVar(
-			ast.NewFunctionType(
-				ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
-					{
-						Name: pAst.NewSpannedIdent("l", herrors.Span{}),
-						Type: ast.NewUnknownType(),
-					},
-					{
-						Name: pAst.NewSpannedIdent("r", herrors.Span{}),
-						Type: ast.NewUnknownType(),
-					},
-				}),
-				herrors.Span{},
-				ast.NewNullType(herrors.Span{}),
-				herrors.Span{},
-			),
-		),
+		// "assert_eq": analyzer.NewBuiltinVar(
+		// 	ast.NewFunctionType(
+		// 		ast.NewNormalFunctionTypeParamKind([]ast.FunctionTypeParam{
+		// 			{
+		// 				Name: pAst.NewSpannedIdent("l", herrors.Span{}),
+		// 				Type: ast.NewUnknownType(),
+		// 			},
+		// 			{
+		// 				Name: pAst.NewSpannedIdent("r", herrors.Span{}),
+		// 				Type: ast.NewUnknownType(),
+		// 			},
+		// 		}),
+		// 		herrors.Span{},
+		// 		ast.NewNullType(herrors.Span{}),
+		// 		herrors.Span{},
+		// 	),
+		// ),
 	}
 }
 

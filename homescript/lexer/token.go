@@ -1,10 +1,7 @@
-package parser
+package lexer
 
 import (
-	"fmt"
-
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
-	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
 type Token struct {
@@ -33,6 +30,7 @@ const (
 	DoubleDot    // ..
 	Arrow        // ->
 	FatArrow     // =>
+	TildeArrow   // ~>
 
 	LParen   // (
 	RParen   // )
@@ -122,7 +120,7 @@ func newToken(kind TokenKind, value string, span errors.Span) Token {
 	}
 }
 
-func unknownToken(location errors.Location) Token {
+func UnknownToken(location errors.Location) Token {
 	return newToken(Unknown, "", errors.Span{Start: location, End: location})
 }
 
@@ -147,6 +145,8 @@ func (self TokenKind) String() string {
 		display = "->"
 	case FatArrow:
 		display = "=>"
+	case TildeArrow:
+		display = "~>"
 	case LParen:
 		display = "("
 	case RParen:
@@ -303,7 +303,7 @@ func (self TokenKind) String() string {
 	return display
 }
 
-func (self TokenKind) prec() (left uint8, right uint8) {
+func (self TokenKind) Prec() (left uint8, right uint8) {
 	switch self {
 	case Assign, PlusAssign, MinusAssign, MultiplyAssign,
 		DivideAssign, ModuloAssign, PowerAssign,
@@ -339,99 +339,10 @@ func (self TokenKind) prec() (left uint8, right uint8) {
 		return 27, 28
 	case LParen, LBracket:
 		return 30, 31
-	case Dot:
+	case Dot, Arrow, TildeArrow:
 		// inverse order for right-associativity
 		return 33, 32
 	default:
 		return 0, 0
-	}
-}
-
-func (self TokenKind) asInfixOperator() ast.InfixOperator {
-	switch self {
-	case Plus:
-		return ast.PlusInfixOperator
-	case Minus:
-		return ast.MinusInfixOperator
-	case Multiply:
-		return ast.MultiplyInfixOperator
-	case Divide:
-		return ast.DivideInfixOperator
-	case Modulo:
-		return ast.ModuloInfixOperator
-	case Power:
-		return ast.PowerInfixOperator
-	case ShiftLeft:
-		return ast.ShiftLeftInfixOperator
-	case ShiftRight:
-		return ast.ShiftRightInfixOperator
-	case BitOr:
-		return ast.BitOrInfixOperator
-	case BitAnd:
-		return ast.BitAndInfixOperator
-	case BitXor:
-		return ast.BitXorInfixOperator
-	case Or:
-		return ast.LogicalOrInfixOperator
-	case And:
-		return ast.LogicalAndInfixOperator
-	case Equal:
-		return ast.EqualInfixOperator
-	case NotEqual:
-		return ast.NotEqualInfixOperator
-	case LessThan:
-		return ast.LessThanInfixOperator
-	case LessThanEqual:
-		return ast.LessThanEqualInfixOperator
-	case GreaterThan:
-		return ast.GreaterThanInfixOperator
-	case GreaterThanEqual:
-		return ast.GreaterThanEqualInfixOperator
-	default:
-		panic(fmt.Sprintf("Unreachable: this method was called on an unsupported token `%s`", self))
-	}
-}
-
-func (self TokenKind) asPrefixOperator() ast.PrefixOperator {
-	switch self {
-	case Minus:
-		return ast.MinusPrefixOperator
-	case Not:
-		return ast.NegatePrefixOperator
-	case QuestionMark:
-		return ast.IntoSomePrefixOperator
-	default:
-		panic(fmt.Sprintf("Unreachable: this method was called on an unsupported token `%s`", self))
-	}
-}
-
-func (self TokenKind) asAssignOperator() ast.AssignOperator {
-	switch self {
-	case Assign:
-		return ast.StdAssignOperatorKind
-	case PlusAssign:
-		return ast.PlusAssignOperatorKind
-	case MinusAssign:
-		return ast.MinusAssignOperatorKind
-	case MultiplyAssign:
-		return ast.MultiplyAssignOperatorKind
-	case DivideAssign:
-		return ast.DivideAssignOperatorKind
-	case ModuloAssign:
-		return ast.ModuloAssignOperatorKind
-	case PowerAssign:
-		return ast.PowerAssignOperatorKind
-	case ShiftLeftAssign:
-		return ast.ShiftLeftAssignOperatorKind
-	case ShiftRightAssign:
-		return ast.ShiftRightAssignOperatorKind
-	case BitOrAssign:
-		return ast.BitOrAssignOperatorKind
-	case BitAndAssign:
-		return ast.BitAndAssignOperatorKind
-	case BitXorAssign:
-		return ast.BitXorAssignOperatorKind
-	default:
-		panic(fmt.Sprintf("Unreachable: this method was called on an unsupported token `%s`", self))
 	}
 }

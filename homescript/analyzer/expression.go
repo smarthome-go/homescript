@@ -1156,39 +1156,75 @@ func (self *Analyzer) memberExpression(node pAst.MemberExpression) ast.AnalyzedE
 			Range:      node.Range,
 		}
 	default:
-		// ensure that the field exists on the type of base
-		fields := base.Type().Fields(node.Member.Span())
-		res, found := fields[node.Member.Ident()]
-		resultType = res
-
-		if !found {
-			notes := make([]string, 0)
-
-			// If the type is an option and the inner type has this field, suggest that it can be unwrapped.
-			if base.Type().Kind() == ast.OptionTypeKind {
-				baseInnerType := base.Type().(ast.OptionType).Inner
-
-				baseFields := baseInnerType.Fields(node.Member.Span())
-				if _, found := baseFields[node.Member.Ident()]; found {
-					notes = append(
-						notes,
-						fmt.Sprintf(
-							"Consider accessing the wrapped element like this: `%s.unwrap().%s`",
-							node.Base,
-							node.Member,
-						),
-					)
+		switch node.Operator {
+		case pAst.ArrowMemberOperator, pAst.TildeArrowMemberOperator:
+			if base.Type().Kind() != ast.AnyObjectTypeKind {
+				notes := []string{
+					fmt.Sprintf("To access normal members, use following syntax: `(...).%s`", node.Member.Ident()),
+					fmt.Sprintf(
+						"The '%s' operator can only be used on values of type '%s'",
+						node.Operator,
+						ast.NewAnyObjectType(errors.Span{}),
+					),
 				}
+
+				self.error(
+					fmt.Sprintf(
+						"The '%s' operator cannot be used on values of type '%s'",
+						node.Operator,
+						base.Type(),
+					),
+					notes,
+					node.Base.Span().Start.Until(node.Member.Span().Start, node.Base.Span().Filename),
+				)
+				resultType = ast.NewUnknownType()
 			}
 
-			self.error(
-				fmt.Sprintf("Type '%s' has no member named '%s'", base.Type(), node.Member.Ident()),
-				notes,
-				node.Member.Span(),
-			)
+			switch node.Operator {
+			case pAst.ArrowMemberOperator:
+				resultType = ast.NewAnyType(node.Range)
+			case pAst.TildeArrowMemberOperator:
+				resultType = ast.NewOptionType(ast.NewAnyType(node.Range), node.Range)
+			default:
+				panic("Unreachable: a new member operator was added without updating this code")
+			}
+		case pAst.DotMemberOperator:
+			// ensure that the field exists on the type of base
+			fields := base.Type().Fields(node.Member.Span())
+			res, found := fields[node.Member.Ident()]
+			resultType = res
 
-			// use `unknown` as the result type
-			resultType = ast.NewUnknownType()
+			if !found {
+				notes := make([]string, 0)
+
+				// If the type is an option and the inner type has this field, suggest that it can be unwrapped.
+				if base.Type().Kind() == ast.OptionTypeKind {
+					baseInnerType := base.Type().(ast.OptionType).Inner
+
+					baseFields := baseInnerType.Fields(node.Member.Span())
+					if _, found := baseFields[node.Member.Ident()]; found {
+						notes = append(
+							notes,
+							fmt.Sprintf(
+								"Consider accessing the wrapped element like this: `%s.unwrap().%s`",
+								node.Base,
+								node.Member,
+							),
+						)
+					}
+				}
+
+				self.error(
+					fmt.Sprintf("Type '%s' has no member named '%s'", base.Type(), node.Member.Ident()),
+					notes,
+					node.Member.Span(),
+				)
+
+				// use `unknown` as the result type
+				resultType = ast.NewUnknownType()
+			}
+		default:
+			panic("A new member expr operator was added without updating this code")
 		}
 	}
 

@@ -1,4 +1,4 @@
-package parser
+package lexer
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
-	"github.com/smarthome-go/homescript/v3/homescript/parser/util"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer/util"
 )
 
 //
@@ -127,6 +127,8 @@ outer:
 			return self.makeSingleChar(Colon, ':'), nil
 		case '.':
 			return self.makeDots(), nil
+		case '~':
+			return self.makeTildeArrow()
 		case '=':
 			return self.makeEquals(), nil
 		case '(':
@@ -180,7 +182,7 @@ outer:
 			if util.IsLetter(*self.currentChar) {
 				return self.makeName(), nil
 			}
-			return unknownToken(self.location), errors.NewError(errors.Span{
+			return UnknownToken(self.location), errors.NewError(errors.Span{
 				Start:    self.location,
 				End:      self.location,
 				Filename: self.filename,
@@ -213,7 +215,7 @@ func (self *Lexer) makeString() (Token, *errors.Error) {
 		if *self.currentChar == '\\' {
 			char, err := self.makeEscapeSequence()
 			if err != nil {
-				return unknownToken(startLocation), err
+				return UnknownToken(startLocation), err
 			}
 			value_buf = append(value_buf, char)
 		} else {
@@ -224,7 +226,7 @@ func (self *Lexer) makeString() (Token, *errors.Error) {
 
 	// check for closing quote
 	if self.currentChar == nil {
-		return unknownToken(startLocation), errors.NewError(errors.Span{
+		return UnknownToken(startLocation), errors.NewError(errors.Span{
 			Start:    startLocation,
 			End:      self.location,
 			Filename: self.filename,
@@ -409,6 +411,35 @@ func (self *Lexer) makeDots() Token {
 
 	self.advance()
 	return token
+}
+
+func (self *Lexer) makeTildeArrow() (Token, *errors.Error) {
+	startLocation := self.location
+	self.advance()
+
+	if self.currentChar == nil || *self.currentChar != '>' {
+		message := "Expected '>', got "
+
+		if self.currentChar != nil {
+			message += fmt.Sprintf("'%c'", self.currentChar)
+		} else {
+			message += "EOF"
+		}
+
+		return Token{}, errors.NewError(
+			self.location.Until(self.location, self.filename),
+			message,
+			errors.SyntaxError,
+		)
+	}
+
+	self.advance()
+
+	return newToken(
+		TildeArrow,
+		"->",
+		startLocation.Until(self.location, self.filename),
+	), nil
 }
 
 func (self *Lexer) makeEquals() Token {

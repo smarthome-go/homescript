@@ -324,7 +324,11 @@ func deepCastRecursive(val Value, typ ast.Type, span errors.Span, allowCasts boo
 		})
 		return deepCastRecursive(*opt.Inner, optType, span, allowCasts, newUri)
 	case ClosureValueKind, FunctionValueKind, BuiltinFunctionValueKind:
-		panic("Unreachable, the analyzer prevents this")
+		return nil, &CastError{
+			typeErr:   fmt.Sprintf("Incompatible values: a value of type '%s' is not compatible with a value of type '%s'", val.Kind(), typ),
+			Span:      span,
+			FieldPath: fieldURI,
+		}
 	case NullValueKind:
 		switch typ.Kind() {
 		case ast.NullTypeKind:

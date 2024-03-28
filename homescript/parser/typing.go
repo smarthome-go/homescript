@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
@@ -13,17 +14,17 @@ import (
 
 func (self *Parser) hmsType(allowAnnotations bool) (ast.HmsType, *errors.Error) {
 	switch self.CurrentToken.Kind {
-	case SINGLETON_TOKEN:
+	case lexer.SINGLETON_TOKEN:
 		return self.singletonReferenceType()
-	case Null, Identifier, Underscore:
+	case lexer.Null, lexer.Identifier, lexer.Underscore:
 		return self.nameReferenceType()
-	case LBracket:
+	case lexer.LBracket:
 		return self.listType()
-	case LCurly:
+	case lexer.LCurly:
 		return self.objectType(allowAnnotations)
-	case QuestionMark:
+	case lexer.QuestionMark:
 		return self.optionType()
-	case Fn:
+	case lexer.Fn:
 		// Here, annotations are always illegal
 		return self.functionType()
 	default:
@@ -81,7 +82,7 @@ func (self *Parser) listType() (ast.ListType, *errors.Error) {
 		return ast.ListType{}, err
 	}
 
-	if err = self.expectRecoverable(RBracket); err != nil {
+	if err = self.expectRecoverable(lexer.RBracket); err != nil {
 		return ast.ListType{}, err
 	}
 
@@ -105,12 +106,12 @@ func (self *Parser) objectType(allowAnnotations bool) (ast.ObjectType, *errors.E
 	fields := make([]ast.ObjectTypeField, 0)
 
 	// if this is an `any-object`, expect `?` and `}`
-	if self.CurrentToken.Kind == QuestionMark {
+	if self.CurrentToken.Kind == lexer.QuestionMark {
 		if err := self.next(); err != nil {
 			return ast.ObjectType{}, err
 		}
 
-		if err := self.expectRecoverable(RCurly); err != nil {
+		if err := self.expectRecoverable(lexer.RCurly); err != nil {
 			return ast.ObjectType{}, err
 		}
 
@@ -121,7 +122,7 @@ func (self *Parser) objectType(allowAnnotations bool) (ast.ObjectType, *errors.E
 	}
 
 	// if there are no fields, return early
-	if self.CurrentToken.Kind == RCurly {
+	if self.CurrentToken.Kind == lexer.RCurly {
 		if err := self.next(); err != nil {
 			return ast.ObjectType{}, err
 		}
@@ -140,13 +141,13 @@ func (self *Parser) objectType(allowAnnotations bool) (ast.ObjectType, *errors.E
 	fields = append(fields, field)
 
 	// Make remaining fields
-	for self.CurrentToken.Kind == Comma {
+	for self.CurrentToken.Kind == lexer.Comma {
 		if err := self.next(); err != nil {
 			return ast.ObjectType{}, err
 		}
 
 		// Handle optional trailing comma
-		if self.CurrentToken.Kind == RCurly {
+		if self.CurrentToken.Kind == lexer.RCurly {
 			break
 		}
 
@@ -158,8 +159,8 @@ func (self *Parser) objectType(allowAnnotations bool) (ast.ObjectType, *errors.E
 	}
 
 	// Expect a `}`
-	if self.CurrentToken.Kind != RCurly {
-		return ast.ObjectType{}, self.expectedOneOfErr([]TokenKind{Comma, RCurly})
+	if self.CurrentToken.Kind != lexer.RCurly {
+		return ast.ObjectType{}, self.expectedOneOfErr([]lexer.TokenKind{lexer.Comma, lexer.RCurly})
 	}
 	if err := self.next(); err != nil {
 		return ast.ObjectType{}, err
@@ -176,7 +177,7 @@ func (self *Parser) objectTypeFieldComponent(allowAnnotations bool) (ast.ObjectT
 
 	// If there is a `@` token, add a annotation
 	var annotation *ast.SpannedIdent = nil
-	if self.CurrentToken.Kind == TYPE_ANNOTATION_TOKEN {
+	if self.CurrentToken.Kind == lexer.TYPE_ANNOTATION_TOKEN {
 		// If annotations are not allowed, create an error
 		if !allowAnnotations {
 			return ast.ObjectTypeField{}, errors.NewSyntaxError(
@@ -191,18 +192,18 @@ func (self *Parser) objectTypeFieldComponent(allowAnnotations bool) (ast.ObjectT
 
 		ident := ast.NewSpannedIdent(fmt.Sprintf("@%s", self.CurrentToken.Value), self.CurrentToken.Span)
 		annotation = &ident
-		if err := self.expect(Identifier); err != nil {
+		if err := self.expect(lexer.Identifier); err != nil {
 			return ast.ObjectTypeField{}, err
 		}
 	}
 
-	if err := self.expectMultiple(Identifier, Underscore, String); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore, lexer.String); err != nil {
 		return ast.ObjectTypeField{}, err
 	}
 
 	ident := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
 
-	if err := self.expectRecoverable(Colon); err != nil {
+	if err := self.expectRecoverable(lexer.Colon); err != nil {
 		return ast.ObjectTypeField{}, err
 	}
 
@@ -262,7 +263,7 @@ func (self *Parser) functionType() (ast.FunctionType, *errors.Error) {
 		Ident: ast.NewSpannedIdent("null", self.PreviousToken.Span.End.Until(self.CurrentToken.Span.End, self.Filename)),
 	})
 
-	if self.CurrentToken.Kind == Arrow {
+	if self.CurrentToken.Kind == lexer.Arrow {
 		if err := self.next(); err != nil {
 			return ast.FunctionType{}, err
 		}
@@ -283,12 +284,12 @@ func (self *Parser) functionType() (ast.FunctionType, *errors.Error) {
 }
 
 func (self *Parser) functionTypeParameterList() ([]ast.FunctionTypeParam, *errors.Error) {
-	if err := self.expect(LParen); err != nil {
+	if err := self.expect(lexer.LParen); err != nil {
 		return nil, err
 	}
 
 	params := make([]ast.FunctionTypeParam, 0)
-	if self.CurrentToken.Kind != RParen && self.CurrentToken.Kind != EOF {
+	if self.CurrentToken.Kind != lexer.RParen && self.CurrentToken.Kind != lexer.EOF {
 		// make initial parameter
 		param, err := self.functionTypeParameter()
 		if err != nil {
@@ -297,12 +298,12 @@ func (self *Parser) functionTypeParameterList() ([]ast.FunctionTypeParam, *error
 		params = append(params, param)
 
 		// make remaining parameters
-		for self.CurrentToken.Kind == Comma {
+		for self.CurrentToken.Kind == lexer.Comma {
 			if err := self.next(); err != nil {
 				return nil, err
 			}
 
-			if self.CurrentToken.Kind == RParen || self.CurrentToken.Kind == EOF {
+			if self.CurrentToken.Kind == lexer.RParen || self.CurrentToken.Kind == lexer.EOF {
 				break
 			}
 
@@ -314,7 +315,7 @@ func (self *Parser) functionTypeParameterList() ([]ast.FunctionTypeParam, *error
 		}
 	}
 
-	if err := self.expectRecoverable(RParen); err != nil {
+	if err := self.expectRecoverable(lexer.RParen); err != nil {
 		return nil, err
 	}
 
@@ -322,12 +323,12 @@ func (self *Parser) functionTypeParameterList() ([]ast.FunctionTypeParam, *error
 }
 
 func (self *Parser) functionTypeParameter() (ast.FunctionTypeParam, *errors.Error) {
-	if err := self.expectMultiple(Identifier, Underscore); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
 		return ast.FunctionTypeParam{}, err
 	}
 	ident := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
 
-	if err := self.expect(Colon); err != nil {
+	if err := self.expect(lexer.Colon); err != nil {
 		return ast.FunctionTypeParam{}, err
 	}
 

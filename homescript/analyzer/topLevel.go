@@ -6,6 +6,7 @@ import (
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
@@ -349,7 +350,7 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 	if found {
 		self.currentModule.ImportsModules = append(self.currentModule.ImportsModules, node.FromModule.Ident())
 
-		lexer := parser.NewLexer(codeModule, node.FromModule.Ident())
+		lexer := lexer.NewLexer(codeModule, node.FromModule.Ident())
 		parser := parser.NewParser(lexer, node.FromModule.Ident())
 		parsed, softErrors, err := parser.Parse()
 		self.syntaxErrors = append(self.syntaxErrors, softErrors...)

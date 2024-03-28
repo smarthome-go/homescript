@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
-	"github.com/smarthome-go/homescript/v3/homescript/parser/util"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer/util"
 )
 
 var HMS_BUILTIN_TYPES = []string{"null", "int", "float", "range", "bool", "str"}

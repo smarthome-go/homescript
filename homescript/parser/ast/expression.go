@@ -5,7 +5,8 @@ import (
 	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
-	"github.com/smarthome-go/homescript/v3/homescript/parser/util"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer/util"
 )
 
 type Expression interface {
@@ -355,16 +356,51 @@ func (self IndexExpression) String() string {
 // Member expression
 //
 
+type MemberOperator uint8
+
+const (
+	DotMemberOperator MemberOperator = iota
+	ArrowMemberOperator
+	TildeArrowMemberOperator
+)
+
+func (self MemberOperator) String() string {
+	switch self {
+	case DotMemberOperator:
+		return "."
+	case ArrowMemberOperator:
+		return "->"
+	case TildeArrowMemberOperator:
+		return "~>"
+	default:
+		panic("A new member operator was added without updating this code")
+	}
+}
+
+func NewMemberOperator(token lexer.TokenKind) MemberOperator {
+	switch token {
+	case lexer.Dot:
+		return DotMemberOperator
+	case lexer.Arrow:
+		return ArrowMemberOperator
+	case lexer.TildeArrow:
+		return TildeArrowMemberOperator
+	default:
+		panic("A new member operator was added without updating this code")
+	}
+}
+
 type MemberExpression struct {
-	Base   Expression
-	Member SpannedIdent
-	Range  errors.Span
+	Base     Expression
+	Member   SpannedIdent
+	Range    errors.Span
+	Operator MemberOperator
 }
 
 func (self MemberExpression) Kind() ExpressionKind { return MemberExpressionKind }
 func (self MemberExpression) Span() errors.Span    { return self.Range }
 func (self MemberExpression) String() string {
-	return fmt.Sprintf("%s.%s", self.Base, self.Member.ident)
+	return fmt.Sprintf("%s%s%s", self.Base, self.Operator, self.Member.ident)
 }
 
 //
@@ -483,4 +519,97 @@ func (self TryExpression) Kind() ExpressionKind { return TryExpressionKind }
 func (self TryExpression) Span() errors.Span    { return self.Range }
 func (self TryExpression) String() string {
 	return fmt.Sprintf("try %s catch %s %s", self.TryBlock, self.CatchIdent, self.CatchBlock)
+}
+
+//
+// Operators from tokens.
+//
+
+func TokenAsInfixOperator(from lexer.TokenKind) InfixOperator {
+	switch from {
+	case lexer.Plus:
+		return PlusInfixOperator
+	case lexer.Minus:
+		return MinusInfixOperator
+	case lexer.Multiply:
+		return MultiplyInfixOperator
+	case lexer.Divide:
+		return DivideInfixOperator
+	case lexer.Modulo:
+		return ModuloInfixOperator
+	case lexer.Power:
+		return PowerInfixOperator
+	case lexer.ShiftLeft:
+		return ShiftLeftInfixOperator
+	case lexer.ShiftRight:
+		return ShiftRightInfixOperator
+	case lexer.BitOr:
+		return BitOrInfixOperator
+	case lexer.BitAnd:
+		return BitAndInfixOperator
+	case lexer.BitXor:
+		return BitXorInfixOperator
+	case lexer.Or:
+		return LogicalOrInfixOperator
+	case lexer.And:
+		return LogicalAndInfixOperator
+	case lexer.Equal:
+		return EqualInfixOperator
+	case lexer.NotEqual:
+		return NotEqualInfixOperator
+	case lexer.LessThan:
+		return LessThanInfixOperator
+	case lexer.LessThanEqual:
+		return LessThanEqualInfixOperator
+	case lexer.GreaterThan:
+		return GreaterThanInfixOperator
+	case lexer.GreaterThanEqual:
+		return GreaterThanEqualInfixOperator
+	default:
+		panic(fmt.Sprintf("Unreachable: this method was called on an unsupported token `%s`", from))
+	}
+}
+
+func TokenAsPrefixOperator(from lexer.TokenKind) PrefixOperator {
+	switch from {
+	case lexer.Minus:
+		return MinusPrefixOperator
+	case lexer.Not:
+		return NegatePrefixOperator
+	case lexer.QuestionMark:
+		return IntoSomePrefixOperator
+	default:
+		panic(fmt.Sprintf("Unreachable: this method was called on an unsupported token `%s`", from))
+	}
+}
+
+func TokenAsAssignOperator(from lexer.TokenKind) AssignOperator {
+	switch from {
+	case lexer.Assign:
+		return StdAssignOperatorKind
+	case lexer.PlusAssign:
+		return PlusAssignOperatorKind
+	case lexer.MinusAssign:
+		return MinusAssignOperatorKind
+	case lexer.MultiplyAssign:
+		return MultiplyAssignOperatorKind
+	case lexer.DivideAssign:
+		return DivideAssignOperatorKind
+	case lexer.ModuloAssign:
+		return ModuloAssignOperatorKind
+	case lexer.PowerAssign:
+		return PowerAssignOperatorKind
+	case lexer.ShiftLeftAssign:
+		return ShiftLeftAssignOperatorKind
+	case lexer.ShiftRightAssign:
+		return ShiftRightAssignOperatorKind
+	case lexer.BitOrAssign:
+		return BitOrAssignOperatorKind
+	case lexer.BitAndAssign:
+		return BitAndAssignOperatorKind
+	case lexer.BitXorAssign:
+		return BitXorAssignOperatorKind
+	default:
+		panic(fmt.Sprintf("Unreachable: this method was called on an unsupported token `%s`", from))
+	}
 }

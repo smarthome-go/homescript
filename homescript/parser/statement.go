@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 )
 
@@ -15,55 +16,55 @@ func (self *Parser) statemtent() (ast.EitherStatementOrExpression, *errors.Error
 	res := ast.EitherStatementOrExpression{}
 
 	switch self.CurrentToken.Kind {
-	case Trigger:
+	case lexer.Trigger:
 		triggerStmt, err := self.triggerStmt()
 		if err != nil {
 			return ast.EitherStatementOrExpression{}, err
 		}
 		res.Statement = triggerStmt
-	case Type:
+	case lexer.Type:
 		typeDef, err := self.typeDefinition(false)
 		if err != nil {
 			return ast.EitherStatementOrExpression{}, err
 		}
 		res.Statement = typeDef
-	case Let:
+	case lexer.Let:
 		letStmt, err := self.letStatement(false) // no longer top-level
 		if err != nil {
 			return ast.EitherStatementOrExpression{}, err
 		}
 		res.Statement = letStmt
-	case Return:
+	case lexer.Return:
 		returnStmt, err := self.returnStatement()
 		if err != nil {
 			return ast.EitherStatementOrExpression{}, err
 		}
 		res.Statement = returnStmt
-	case Break:
+	case lexer.Break:
 		breakStmt, err := self.breakStatement()
 		if err != nil {
 			return ast.EitherStatementOrExpression{}, err
 		}
 		res.Statement = breakStmt
-	case Continue:
+	case lexer.Continue:
 		continueStmt, err := self.continueStatement()
 		if err != nil {
 			return ast.EitherStatementOrExpression{}, err
 		}
 		res.Statement = continueStmt
-	case Loop:
+	case lexer.Loop:
 		loopStmt, err := self.loopStatement()
 		if err != nil {
 			return ast.EitherStatementOrExpression{}, err
 		}
 		res.Statement = loopStmt
-	case While:
+	case lexer.While:
 		whileStmt, err := self.whileStatement()
 		if err != nil {
 			return ast.EitherStatementOrExpression{}, err
 		}
 		res.Statement = whileStmt
-	case For:
+	case lexer.For:
 		forStmt, err := self.forStatement()
 		if err != nil {
 			return ast.EitherStatementOrExpression{}, err
@@ -88,7 +89,7 @@ func (self *Parser) triggerStmt() (ast.TriggerStatement, *errors.Error) {
 	}
 
 	fnIdent := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expect(lexer.Identifier); err != nil {
 		return ast.TriggerStatement{}, err
 	}
 
@@ -116,7 +117,7 @@ func (self *Parser) triggerStmt() (ast.TriggerStatement, *errors.Error) {
 	// Event identifier.
 
 	eventIdent := ast.NewSpannedIdent(self.CurrentToken.Value, self.CurrentToken.Span)
-	if err := self.expect(Identifier); err != nil {
+	if err := self.expect(lexer.Identifier); err != nil {
 		return ast.TriggerStatement{}, err
 	}
 
@@ -127,7 +128,7 @@ func (self *Parser) triggerStmt() (ast.TriggerStatement, *errors.Error) {
 	}
 
 	// Expect `;`
-	if err := self.expect(Semicolon); err != nil {
+	if err := self.expect(lexer.Semicolon); err != nil {
 		return ast.TriggerStatement{}, err
 	}
 
@@ -151,7 +152,7 @@ func (self *Parser) typeDefinition(isPub bool) (ast.TypeDefinition, *errors.Erro
 		return ast.TypeDefinition{}, err
 	}
 
-	if err := self.expectMultiple(Identifier, Underscore); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
 		return ast.TypeDefinition{}, err
 	}
 	newTypeIdent := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
@@ -173,7 +174,7 @@ func (self *Parser) typeDefinition(isPub bool) (ast.TypeDefinition, *errors.Erro
 		)
 	}
 
-	if err := self.expect(Assign); err != nil {
+	if err := self.expect(lexer.Assign); err != nil {
 		return ast.TypeDefinition{}, err
 	}
 
@@ -183,7 +184,7 @@ func (self *Parser) typeDefinition(isPub bool) (ast.TypeDefinition, *errors.Erro
 		return ast.TypeDefinition{}, err
 	}
 
-	if err := self.expectRecoverable(Semicolon); err != nil {
+	if err := self.expectRecoverable(lexer.Semicolon); err != nil {
 		return ast.TypeDefinition{}, err
 	}
 
@@ -206,18 +207,18 @@ func (self *Parser) letStatement(isPub bool) (ast.LetStatement, *errors.Error) {
 		return ast.LetStatement{}, err
 	}
 
-	if err := self.expectMultiple(Identifier, Underscore); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
 		return ast.LetStatement{}, err
 	}
 	ident := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
 
-	if self.CurrentToken.Kind != Assign && self.CurrentToken.Kind != Colon {
-		return ast.LetStatement{}, self.expectedOneOfErr([]TokenKind{Assign, Colon})
+	if self.CurrentToken.Kind != lexer.Assign && self.CurrentToken.Kind != lexer.Colon {
+		return ast.LetStatement{}, self.expectedOneOfErr([]lexer.TokenKind{lexer.Assign, lexer.Colon})
 	}
 
 	// make optional type
 	var optType ast.HmsType
-	if self.CurrentToken.Kind == Colon {
+	if self.CurrentToken.Kind == lexer.Colon {
 		// skip the colon
 		if err := self.next(); err != nil {
 			return ast.LetStatement{}, err
@@ -230,7 +231,7 @@ func (self *Parser) letStatement(isPub bool) (ast.LetStatement, *errors.Error) {
 
 		optType = typ
 
-		if err := self.expect(Assign); err != nil {
+		if err := self.expect(lexer.Assign); err != nil {
 			return ast.LetStatement{}, err
 		}
 	} else {
@@ -244,7 +245,7 @@ func (self *Parser) letStatement(isPub bool) (ast.LetStatement, *errors.Error) {
 		return ast.LetStatement{}, err
 	}
 
-	if err := self.expectRecoverable(Semicolon); err != nil {
+	if err := self.expectRecoverable(lexer.Semicolon); err != nil {
 		return ast.LetStatement{}, err
 	}
 
@@ -270,9 +271,9 @@ func (self *Parser) returnStatement() (ast.ReturnStatement, *errors.Error) {
 	}
 
 	var expr ast.Expression
-	if self.CurrentToken.Kind != Semicolon &&
-		self.CurrentToken.Kind != EOF &&
-		self.CurrentToken.Kind != RCurly { // this may lead to a hard error being a soft error
+	if self.CurrentToken.Kind != lexer.Semicolon &&
+		self.CurrentToken.Kind != lexer.EOF &&
+		self.CurrentToken.Kind != lexer.RCurly { // this may lead to a hard error being a soft error
 		returnExpr, _, err := self.expression(0)
 		if err != nil {
 			return ast.ReturnStatement{}, err
@@ -280,7 +281,7 @@ func (self *Parser) returnStatement() (ast.ReturnStatement, *errors.Error) {
 		expr = returnExpr
 	}
 
-	if err := self.expectRecoverable(Semicolon); err != nil {
+	if err := self.expectRecoverable(lexer.Semicolon); err != nil {
 		return ast.ReturnStatement{}, err
 	}
 
@@ -302,7 +303,7 @@ func (self *Parser) breakStatement() (ast.BreakStatement, *errors.Error) {
 		return ast.BreakStatement{}, err
 	}
 
-	if err := self.expectRecoverable(Semicolon); err != nil {
+	if err := self.expectRecoverable(lexer.Semicolon); err != nil {
 		return ast.BreakStatement{}, err
 	}
 
@@ -323,7 +324,7 @@ func (self *Parser) continueStatement() (ast.ContinueStatement, *errors.Error) {
 		return ast.ContinueStatement{}, err
 	}
 
-	if err := self.expectRecoverable(Semicolon); err != nil {
+	if err := self.expectRecoverable(lexer.Semicolon); err != nil {
 		return ast.ContinueStatement{}, err
 	}
 
@@ -396,12 +397,12 @@ func (self *Parser) forStatement() (ast.ForStatement, *errors.Error) {
 		return ast.ForStatement{}, err
 	}
 
-	if err := self.expectMultiple(Identifier, Underscore); err != nil {
+	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
 		return ast.ForStatement{}, err
 	}
 	ident := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
 
-	if err := self.expect(In); err != nil {
+	if err := self.expect(lexer.In); err != nil {
 		return ast.ForStatement{}, err
 	}
 
@@ -475,13 +476,13 @@ func (self *Parser) expressionStatement() (ast.EitherStatementOrExpression, *err
 		return ast.EitherStatementOrExpression{}, err
 	}
 
-	if self.CurrentToken.Kind == RCurly {
+	if self.CurrentToken.Kind == lexer.RCurly {
 		return ast.EitherStatementOrExpression{
 			Expression: expression,
 		}, nil
 	}
 
-	if self.CurrentToken.Kind == Semicolon {
+	if self.CurrentToken.Kind == lexer.Semicolon {
 		if err := self.next(); err != nil {
 			return ast.EitherStatementOrExpression{}, err
 		}
