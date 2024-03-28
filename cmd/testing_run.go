@@ -40,7 +40,7 @@ func DefaultReadFileProvider(path string) (string, error) {
 	return string(file), nil
 }
 
-func TestingRunVm(compiled compiler.Program, printToStdout bool, readFile func(path string) (string, error)) string {
+func TestingRunVm(compiled compiler.Program, printToStdout bool, readFile func(path string) (string, error)) (output string, err *diagnostic.Diagnostic) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 
 	rawExecutor := homescript.TestingVmExecutor{
@@ -77,14 +77,14 @@ func TestingRunVm(compiled compiler.Program, printToStdout bool, readFile func(p
 		}
 
 		fmt.Printf("%s\n", d.Display(string(file)))
-		panic(fmt.Sprintf("Core %d crashed", coreNum))
+		return "", &d
 	}
 
 	if printToStdout {
 		fmt.Printf("VM elapsed: %v\n", time.Since(start))
 	}
 
-	return *rawExecutor.PrintBuf
+	return *rawExecutor.PrintBuf, nil
 }
 
 func TestingRunInterpreter(analyzed map[string]ast.AnalyzedProgram, filename string) {

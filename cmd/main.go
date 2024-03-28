@@ -8,8 +8,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"runtime"
-	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -260,7 +258,10 @@ func main() {
 
 							// Generate reference output.
 							code := CompileVm(analyzed, entryModule)
-							referenceOutput := TestingRunVm(code, true, DefaultReadFileProvider)
+							referenceOutput, d := TestingRunVm(code, true, DefaultReadFileProvider)
+							if d != nil {
+								return fmt.Errorf("VM crashed: %s", d.Display(string(file)))
+							}
 
 							// Create output zip file.
 							outputFile := ctx.Args().Get(1)
@@ -330,122 +331,7 @@ func main() {
 						Args:   true,
 						Action: func(ctx *cli.Context) error {
 							filename := ctx.Args().First()
-
-							archive, err := zip.OpenReader(filename)
-							if err != nil {
-								return err
-							}
-
-							expectedOutFile, err := archive.Open(expectedFile)
-							if err != nil {
-								return err
-							}
-
-							expectedBuf := bytes.NewBuffer(make([]byte, 0))
-							_, err = io.Copy(expectedBuf, expectedOutFile)
-							if err != nil {
-								return err
-							}
-
-							expectedFileContents := expectedBuf.String()
-
-							// Workers.
-							// wg := sync.WaitGroup{}
-
-							inputSize := len(archive.File)
-							numCpu := runtime.NumCPU()
-							chunkSize := (inputSize + numCpu - 1) / numCpu
-							chunks := fuzzer.ChunkInput[*zip.File](archive.File, uint(chunkSize))
-							brokenMap := make(map[string]string)
-							progressChans := make([]chan workerProgress, len(chunks))
-							numChunks := len(chunks)
-
-							for idx, chunk := range chunks {
-								ch := make(chan workerProgress)
-
-								go worker(
-									chunk,
-									idx,
-									expectedFileContents,
-									ch,
-								)
-
-								progressChans[idx] = ch
-							}
-
-							success := make([]uint, len(chunks))
-							errs := make([]uint, len(chunks))
-							start := time.Now()
-
-							const minRenderDelay = time.Millisecond * 50
-							lastRender := time.Time{}
-
-							// Allocate screen space for the progress buffer.
-							for i := 0; i < numChunks+2; i++ {
-								fmt.Println(strings.Repeat(" ", 100))
-							}
-
-							for {
-								for idx, ch := range progressChans {
-									select {
-									case m := <-ch:
-										if m.done {
-											if success[m.idx]+errs[m.idx] < uint(len(archive.File)) {
-												success[m.idx] = uint(chunkSize)
-											}
-
-											progressChans = remove(progressChans, idx)
-											continue
-										}
-
-										if m.success {
-											success[m.idx]++
-										} else {
-											errs[m.idx]++
-											brokenMap[m.mismatchID] = m.mismatchOutput
-										}
-
-										// Only print if there is enough (minRefresh) time elapsed.
-										if time.Since(lastRender) > minRenderDelay {
-											lastRender = time.Now()
-											printProgress(
-												numChunks,
-												chunkSize,
-												&success,
-												&errs,
-												len(archive.File),
-												start,
-											)
-										}
-									default:
-									}
-								}
-
-								if len(progressChans) == 0 {
-									break
-								}
-							}
-
-							printProgress(
-								numChunks,
-								chunkSize,
-								&success,
-								&errs,
-								len(archive.File),
-								start,
-							)
-
-							errMsg := fmt.Sprintf("Found %d broken program(s)\n", len(brokenMap))
-							log.Println(errMsg)
-							for key, output := range brokenMap {
-								log.Printf("- `%s` created output `%s`\n", key, output)
-							}
-
-							if len(brokenMap) > 0 {
-								return errors.New(errMsg)
-							}
-
-							return nil
+							return validateFuzzDB(filename)
 						},
 					},
 				},
@@ -455,154 +341,5 @@ func main() {
 
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
-	}
-}
-
-func fmtDuration(d time.Duration) string {
-	d = d.Round(time.Second)
-
-	h := d / time.Hour
-	d -= h * time.Hour
-	m := d / time.Minute
-	d -= m * time.Minute
-	s := d / time.Second
-	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
-}
-
-func printProgress(numChunks int, chunkSize int, success *[]uint, errs *[]uint, numFiles int, start time.Time) {
-	// Erase lines.
-	for i := 0; i < numChunks+2; i++ {
-		fmt.Printf("\x1b[1A")
-	}
-
-	accAll := 0
-
-	padding := strings.Repeat(" ", 30)
-
-	// Print state.
-	for i := 0; i < numChunks; i++ {
-		thisAcc := (*success)[i] + (*errs)[i]
-		accAll += int(thisAcc)
-		fmt.Printf("Worker %2d: (%5d / %d) \x1b[1;32mworking\x1b[1;0m:%5d; \x1b[1;31mfailed\x1b[1;0m:%5d%s\n", i, thisAcc, chunkSize, (*success)[i], (*errs)[i], padding)
-	}
-
-	// Percentage of work left to do multiplied by the time it took to do one percent.
-	timeUntilNow := time.Since(start)
-	percentNow := (float64(accAll) / float64(numFiles)) * 100.0
-
-	if percentNow > 100 {
-		percentNow = 100
-	}
-
-	timeOncepercent := time.Duration(float64(timeUntilNow) / percentNow)
-	remainingPercent := 100.0 - percentNow
-	remainingTime := timeOncepercent * time.Duration(int(remainingPercent))
-	remaining := numFiles - accAll
-	if remaining < 0 {
-		remaining = 0
-	}
-
-	fmt.Printf(
-		"\x1b[1;35m%3d%% completed\x1b[1;0m | processed: %5d; remaining: %5d\n=> \x1b[1;30mElapsed: %s\x1b[1;0m, ETA %s\n",
-		int(percentNow),
-		accAll,
-		remaining,
-		fmtDuration(time.Since(start)),
-		fmtDuration(remainingTime),
-	)
-}
-
-func remove[T any](s []T, idx int) []T {
-	s[idx] = s[len(s)-1]
-	return s[:len(s)-1]
-}
-
-type workerProgress struct {
-	done           bool
-	success        bool
-	mismatchID     string
-	mismatchOutput string
-	chunkSize      int
-	idx            int
-}
-
-func worker(chunk []*zip.File, workerIndex int, expectedFileContents string, resultChan chan workerProgress) {
-	for _, file := range chunk {
-		if file.Name == expectedFile {
-			continue
-		}
-
-		// log.Printf("\x1b[2m\x1b[1;30mRUNNING:\x1b[1;0m (5%d / %d) testing file `%s`...\n", idx, chunkSize, file.Name)
-
-		zipFileReader := func(path string) (string, error) {
-			for _, file := range chunk {
-				if file.Name == path {
-					buf := bytes.NewBuffer(make([]byte, 0))
-					file, err := file.Open()
-					_, err = io.Copy(buf, file)
-
-					return buf.String(), err
-				}
-			}
-
-			return "", fmt.Errorf("File not found in chunk")
-		}
-
-		contents, err := file.Open()
-		if err != nil {
-			log.Panic(err.Error())
-		}
-
-		buf := bytes.NewBuffer(make([]byte, 0))
-		_, err = io.Copy(buf, contents)
-		if err != nil {
-			log.Panic(err.Error())
-		}
-
-		analyzed, entryModule, err := analyzeFile(buf.String(), file.Name, false, zipFileReader)
-		if err != nil {
-			log.Panic(err.Error())
-		}
-
-		code := CompileVm(analyzed, entryModule)
-		output := TestingRunVm(code, false, zipFileReader)
-
-		// Erase previous line.
-		// fmt.Printf("\x1b[1A")
-
-		if output != expectedFileContents {
-			// log.Printf("\x1b[1;31mFAIL:   \x1b[1;0m expected `%s`, got: `%s`\n", expectedFileContents, output)
-
-			resultChan <- workerProgress{
-				done:           false,
-				success:        false,
-				mismatchID:     file.Name,
-				mismatchOutput: output,
-				chunkSize:      len(chunk),
-				idx:            workerIndex,
-			}
-
-			continue
-		}
-
-		// log.Printf("\x1b[1;32mPASS:   \x1b[1;0m output matches reference.\n")
-
-		resultChan <- workerProgress{
-			done:           false,
-			success:        true,
-			mismatchID:     "",
-			mismatchOutput: "",
-			chunkSize:      len(chunk),
-			idx:            workerIndex,
-		}
-	}
-
-	resultChan <- workerProgress{
-		done:           true,
-		success:        false,
-		mismatchID:     "",
-		mismatchOutput: "",
-		chunkSize:      len(chunk),
-		idx:            workerIndex,
 	}
 }
