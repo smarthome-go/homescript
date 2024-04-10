@@ -988,7 +988,25 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	case ast.MemberExpressionKind:
 		node := node.(ast.AnalyzedMemberExpression)
 		self.compileExpr(node.Base)
-		self.insert(newOneStringInstruction(Opcode_Member, node.Member.Ident()), node.Range)
+
+		opcode := Opcode_Nop
+		var additionalInst Instruction
+
+		switch node.Operator {
+		case pAst.DotMemberOperator:
+			opcode = Opcode_Member
+		case pAst.ArrowMemberOperator:
+			opcode = Opcode_Member_Anyobj
+		case pAst.TildeArrowMemberOperator:
+			opcode = Opcode_Member_Anyobj
+			additionalInst = newPrimitiveInstruction(Opcode_Member_Unwrap)
+		}
+
+		self.insert(newOneStringInstruction(opcode, node.Member.Ident()), node.Range)
+		if additionalInst != nil {
+			self.insert(additionalInst, node.Range)
+		}
+
 	case ast.CastExpressionKind:
 		node := node.(ast.AnalyzedCastExpression)
 		self.compileExpr(node.Base)

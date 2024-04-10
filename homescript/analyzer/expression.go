@@ -1154,6 +1154,7 @@ func (self *Analyzer) memberExpression(node pAst.MemberExpression) ast.AnalyzedE
 			Member:     node.Member,
 			ResultType: ast.NewUnknownType(),
 			Range:      node.Range,
+			Operator:   pAst.DotMemberOperator,
 		}
 	default:
 		switch node.Operator {
@@ -1182,9 +1183,9 @@ func (self *Analyzer) memberExpression(node pAst.MemberExpression) ast.AnalyzedE
 
 			switch node.Operator {
 			case pAst.ArrowMemberOperator:
-				resultType = ast.NewAnyType(node.Range)
-			case pAst.TildeArrowMemberOperator:
 				resultType = ast.NewOptionType(ast.NewAnyType(node.Range), node.Range)
+			case pAst.TildeArrowMemberOperator:
+				resultType = ast.NewAnyType(node.Range)
 			default:
 				panic("Unreachable: a new member operator was added without updating this code")
 			}
@@ -1231,6 +1232,7 @@ func (self *Analyzer) memberExpression(node pAst.MemberExpression) ast.AnalyzedE
 	return ast.AnalyzedMemberExpression{
 		Base:       base,
 		Member:     node.Member,
+		Operator:   node.Operator,
 		ResultType: resultType.SetSpan(node.Range),
 		Range:      node.Range,
 	}
