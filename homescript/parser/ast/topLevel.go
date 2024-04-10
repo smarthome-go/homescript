@@ -42,3 +42,12 @@ type ImplBlock struct {
 	Methods        []FunctionDefinition
 	Span           errors.Span
 }
+
+//
+// Function annotation.
+//
+
+type FunctionAnnotation struct {
+	Function FunctionDefinition
+	Span     errors.Span
+}

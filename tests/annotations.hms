@@ -1,0 +1,10 @@
+let foo = 1;
+
+#[trigger on mqtt('foo/bar'), trigger at noon()]
+event fn whatever() {
+    println("whatever() was called");
+}
+
+fn main() {
+    println("Hello world");
+}

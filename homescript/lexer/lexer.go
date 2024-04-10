@@ -111,6 +111,8 @@ outer:
 		switch *self.currentChar {
 		case ' ', '\n', '\t' | '\r':
 			self.advance()
+		case '#':
+			return self.makeSingleChar(HashTag, '#'), nil
 		case '?':
 			return self.makeSingleChar(QuestionMark, '?'), nil
 		case '@':

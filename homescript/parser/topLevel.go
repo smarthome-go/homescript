@@ -7,6 +7,57 @@ import (
 )
 
 //
+// Function annotation
+//
+
+func (self *Parser) functionAnnotation() (ast.FunctionAnnotation, *errors.Error) {
+	start := self.CurrentToken.Span.Start
+
+	// Skip the #.
+	if err := self.next(); err != nil {
+		return ast.FunctionAnnotation{}, err
+	}
+
+	if err := self.expect(lexer.LBracket); err != nil {
+		return ast.FunctionAnnotation{}, err
+	}
+
+	// TODO: implement inner stuff
+	panic("TODO: implement functionality")
+
+	if err := self.expectRecoverable(lexer.RBracket); err != nil {
+		return ast.FunctionAnnotation{}, err
+	}
+
+	if err := self.expectMultiple(lexer.Pub, lexer.Event, lexer.Fn); err != nil {
+		return ast.FunctionAnnotation{}, err
+	}
+
+	var function ast.FunctionDefinition
+	var err *errors.Error
+
+	switch self.PreviousToken.Kind {
+	case lexer.Pub:
+		function, err = self.functionDefinition(ast.FN_MODIFIER_PUB)
+	case lexer.Event:
+		function, err = self.functionDefinition(ast.FN_MODIFIER_EVENT)
+	case lexer.Fn:
+		function, err = self.functionDefinition(ast.FN_MODIFIER_NONE)
+	}
+
+	if err != nil {
+		return ast.FunctionAnnotation{}, err
+	}
+
+	// TODO: later, it will be nicer if the annotation just holds the ident of the function that it is annotating.
+
+	return ast.FunctionAnnotation{
+		Span:     start.Until(self.PreviousToken.Span.End, self.Filename),
+		Function: function,
+	}, nil
+}
+
+//
 // Import item
 //
 

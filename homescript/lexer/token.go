@@ -14,11 +14,13 @@ type TokenKind uint8
 
 const SINGLETON_TOKEN = DollarSymbol
 const TYPE_ANNOTATION_TOKEN = AtSymbol
+const FN_ANNOTATION_TOKEN = HashTag
 
 const (
 	Unknown TokenKind = iota
 	EOF
 
+	HashTag      // #
 	QuestionMark // ?
 	AtSymbol     // @
 	DollarSymbol // $
@@ -295,6 +297,8 @@ func (self TokenKind) String() string {
 		display = "@"
 	case DollarSymbol:
 		display = "$"
+	case HashTag:
+		display = "#"
 	case Underscore:
 		display = "_"
 	default:
