@@ -49,6 +49,13 @@ func (self ValueOption) IsEqual(other Value) (bool, *VmInterrupt) {
 	}
 }
 
+func NewValueOptionUnwrapErr(span errors.Span) *VmInterrupt {
+	return NewVMThrowInterrupt(
+		span,
+		"Called 'unwrap' on a 'null' option value",
+	)
+}
+
 func (self ValueOption) Fields() (map[string]*Value, *VmInterrupt) {
 	return map[string]*Value{
 		"is_some": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
@@ -59,11 +66,7 @@ func (self ValueOption) Fields() (map[string]*Value, *VmInterrupt) {
 		}),
 		"unwrap": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 			if !self.IsSome() {
-				return nil, NewVMFatalException(
-					"Called 'unwrap' on a 'null' option value",
-					Vm_ValueErrorKind,
-					span,
-				)
+				return nil, NewValueOptionUnwrapErr(span)
 			}
 			return self.Inner, nil
 		}),

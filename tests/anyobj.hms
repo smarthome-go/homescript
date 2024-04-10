@@ -18,6 +18,21 @@ fn main() {
     // New Syntax
 
     let c = new { bar: "baz" } as { ? };
-    let v0: str = c->bar;
+    let v0: ?str = c->bar;
     println(v0);
+
+    assert_eq(v0, ?"baz");
+    assert_eq(c->quux, none);
+
+    let reached_err = false;
+
+    try {
+        let v1: str = c~>barar;
+        println(v1);
+    } catch err {
+        assert_eq(err.message, "Called 'unwrap' on a 'null' option value");
+        reached_err = true;
+    }
+
+    assert_eq(reached_err, true);
 }

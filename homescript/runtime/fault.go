@@ -3,10 +3,13 @@ package runtime
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
+
+const stackTraceLineLength = 24
 
 func (self *VM) SourceMap(frame CallFrame) errors.Span {
 	if frame.InstructionPointer >= uint(len(self.Program.SourceMap[frame.Function])) {
@@ -16,16 +19,30 @@ func (self *VM) SourceMap(frame CallFrame) errors.Span {
 	return self.Program.SourceMap[frame.Function][frame.InstructionPointer]
 }
 
+func formatStackTrace(message string, trace []string, lineLen int) string {
+	const headline = "Stacktrace"
+	padding := strings.Repeat("=", (lineLen-len(headline))/2)
+
+	return fmt.Sprintf(
+		"%s\n%s %s %s\n%s",
+		message,
+		padding,
+		headline,
+		padding,
+		strings.Join(trace, "\n"),
+	)
+}
+
 func (self Core) fatalErr(
 	message string,
 	kind value.VMFatalExceptionKind,
 	span errors.Span,
 ) *value.VmInterrupt {
-	trace := self.unwind()
+	trace, lineLen := self.unwind()
 
 	// TODO: add stack unwinding to the runtime err itself
 	return value.NewVMFatalException(
-		fmt.Sprintf("%s\n=== Stacktrace ===\n%s", message, strings.Join(trace, "\n")),
+		formatStackTrace(message, trace, lineLen),
 		kind,
 		span,
 	)
@@ -35,18 +52,21 @@ func (self Core) normalException(
 	message string,
 	span errors.Span,
 ) *value.VmInterrupt {
-	trace := self.unwind()
+	trace, lineLen := self.unwind()
 
 	// TODO: add stack unwinding to the runtime err itself
 	return value.NewVMThrowInterrupt(
 		span,
-		fmt.Sprintf("%s\n=== Stacktrace ===\n%s", message, strings.Join(trace, "\n")),
+		formatStackTrace(message, trace, lineLen),
 	)
 }
 
-func (self Core) unwind() []string {
-	output := make([]string, 0)
+type Fragment struct {
+	Left  string
+	Right string
+}
 
+func (self Core) unwind() (trace []string, lineLen int) {
 	type CallFrameInfo struct {
 		frame CallFrame
 		count uint
@@ -69,6 +89,10 @@ func (self Core) unwind() []string {
 		}
 	}
 
+	stackTraceLineLengthUsed := stackTraceLineLength
+
+	fragments := make([]Fragment, 0)
+
 	for _, frame := range filtered {
 		span := self.parent.SourceMap(frame.frame)
 
@@ -78,19 +102,39 @@ func (self Core) unwind() []string {
 			additions = fmt.Sprintf("    (%dx)", frame.count-1)
 		}
 
-		output = append(
-			output,
-			fmt.Sprintf(
-				"%05d: %s() %s:%d:%d%s",
-				frame.index,
-				frame.frame.Function,
+		left := fmt.Sprintf(
+			"%05d: %s()",
+			frame.index,
+			frame.frame.Function,
+		)
+
+		for stackTraceLineLengthUsed-utf8.RuneCountInString(left) < 0 {
+			stackTraceLineLengthUsed += 4
+		}
+
+		fragments = append(fragments, Fragment{
+			Left: left,
+			Right: fmt.Sprintf(
+				"%s:%d:%d%s",
 				span.Filename,
 				span.Start.Line,
 				span.Start.Column,
 				additions,
 			),
+		})
+	}
+
+	output := make([]string, len(fragments))
+
+	for i := len(fragments) - 1; i >= 0; i-- {
+		fragment := fragments[i]
+		output[len(fragments)-1-i] = fmt.Sprintf(
+			"%s%s%s",
+			fragment.Left,
+			strings.Repeat(" ", stackTraceLineLengthUsed-utf8.RuneCountInString(fragment.Left)),
+			fragment.Right,
 		)
 	}
 
-	return output
+	return output, utf8.RuneCountInString(output[0])
 }

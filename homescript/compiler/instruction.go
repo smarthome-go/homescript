@@ -88,6 +88,8 @@ const (
 	Opcode_PopTryLabel
 	Opcode_Throw
 	Opcode_Member
+	Opcode_Member_Anyobj
+	Opcode_Member_Unwrap
 	Opcode_Import
 	Opcode_Label
 	Opcode_Into_Range
@@ -185,6 +187,10 @@ func (self Opcode) String() string {
 		return "Throw"
 	case Opcode_Member:
 		return "Member"
+	case Opcode_Member_Anyobj:
+		return "MemberAnyobj"
+	case Opcode_Member_Unwrap:
+		return "Unwrap"
 	case Opcode_Import:
 		return "Import"
 	case Opcode_Label:

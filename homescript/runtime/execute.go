@@ -555,6 +555,25 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 			panic(fmt.Sprintf("Field `%s` not found on `%s`: %s:%d:%d", i.Value, disp, span.Filename, span.Start.Index, span.Start.Column))
 		}
 		self.push(field)
+	case compiler.Opcode_Member_Anyobj:
+		i := instruction.(compiler.OneStringInstruction)
+
+		v := *self.pop()
+		field, found := v.(value.ValueAnyObject).FieldsInternal[i.Value]
+		if !found {
+			self.push(value.NewNoneOption())
+		}
+		self.push(value.NewValueOption(field))
+	case compiler.Opcode_Member_Unwrap:
+		val := self.pop()
+		inner := (*val).(value.ValueOption).Inner
+
+		if inner == nil {
+			span := self.parent.SourceMap(*self.callFrame())
+			return value.NewValueOptionUnwrapErr(span)
+		}
+
+		self.push(inner)
 	case compiler.Opcode_Import:
 		i := instruction.(compiler.TwoStringInstruction)
 		self.importItem(i.Values[0], i.Values[1])
