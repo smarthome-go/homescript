@@ -319,7 +319,7 @@ func (self *Analyzer) rangeLiteralExpression(node pAst.RangeLiteralExpression) a
 	end := self.expression(node.End)
 
 	// ensure that both values of the range are `int`
-	if err := self.TypeCheck(start.Type(), ast.NewIntType(errors.Span{}), false); err != nil {
+	if err := self.TypeCheck(start.Type(), ast.NewIntType(errors.Span{}), TypeCheckOptions{}); err != nil {
 		self.error(
 			fmt.Sprintf("Type mismatch: expected '%s', found '%s'", ast.NewIntType(errors.Span{}).Kind(), start.Type().Kind()),
 			nil,
@@ -327,7 +327,7 @@ func (self *Analyzer) rangeLiteralExpression(node pAst.RangeLiteralExpression) a
 		)
 	}
 
-	if err := self.TypeCheck(end.Type(), ast.NewIntType(errors.Span{}), false); err != nil {
+	if err := self.TypeCheck(end.Type(), ast.NewIntType(errors.Span{}), TypeCheckOptions{}); err != nil {
 		self.error(
 			fmt.Sprintf("Type mismatch: expected '%s', found '%s'", ast.NewIntType(errors.Span{}).Kind(), end.Type().Kind()),
 			nil,
@@ -356,7 +356,7 @@ func (self *Analyzer) listLiteralExpression(node pAst.ListLiteralExpression) ast
 		valExpression := self.expression(val)
 		newValues = append(newValues, valExpression)
 
-		if err := self.TypeCheck(valExpression.Type(), listType, false); err != nil && listType.Kind() != ast.AnyTypeKind {
+		if err := self.TypeCheck(valExpression.Type(), listType, TypeCheckOptions{}); err != nil && listType.Kind() != ast.AnyTypeKind {
 			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 			if err.ExpectedDiagnostic != nil {
 				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -480,7 +480,10 @@ func (self *Analyzer) functionLiteral(node pAst.FunctionLiteralExpression) ast.A
 	analyzedBlock := self.block(node.Body, false)
 
 	// analyze return type
-	if err := self.TypeCheck(analyzedBlock.Type(), fnReturntype, true); err != nil {
+	if err := self.TypeCheck(analyzedBlock.Type(), fnReturntype, TypeCheckOptions{
+		AllowFunctionTypes:          true,
+		IgnoreFnParamNameMismatches: false,
+	}); err != nil {
 		self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 		if err.ExpectedDiagnostic != nil {
 			self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -563,7 +566,13 @@ func (self *Analyzer) infixExpression(node pAst.InfixExpression) ast.AnalyzedInf
 	resultType := ast.NewUnknownType()
 	lhsTypeKind := lhs.Type().Kind()
 
-	if err := self.TypeCheck(rhs.Type().SetSpan(node.Rhs.Span()), lhs.Type().SetSpan(node.Lhs.Span()), true); err != nil {
+	if err := self.TypeCheck(
+		rhs.Type().SetSpan(node.Rhs.Span()),
+		lhs.Type().SetSpan(node.Lhs.Span()),
+		TypeCheckOptions{
+			AllowFunctionTypes:          true,
+			IgnoreFnParamNameMismatches: false,
+		}); err != nil {
 		self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 		if err.ExpectedDiagnostic != nil {
 			self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -690,7 +699,7 @@ func (self *Analyzer) assignExpression(node pAst.AssignExpression) ast.AnalyzedA
 		resultType = ast.NewNeverType()
 	}
 
-	if err := self.TypeCheck(rhs.Type(), lhs.Type(), true); err != nil {
+	if err := self.TypeCheck(rhs.Type(), lhs.Type(), TypeCheckOptions{}); err != nil {
 		self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 		if err.ExpectedDiagnostic != nil {
 			self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -857,7 +866,10 @@ func (self *Analyzer) callArgs(fnType ast.FunctionType, args pAst.CallArgs, base
 					continue
 				}
 
-				if err := self.TypeCheck(argExpr.Type(), newParams[idx].Type, true); err != nil {
+				if err := self.TypeCheck(argExpr.Type(), newParams[idx].Type, TypeCheckOptions{
+					AllowFunctionTypes:          true,
+					IgnoreFnParamNameMismatches: false,
+				}); err != nil {
 					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 				} else {
 					arguments = append(arguments, ast.AnalyzedCallArgument{
@@ -923,7 +935,10 @@ func (self *Analyzer) callArgs(fnType ast.FunctionType, args pAst.CallArgs, base
 					toCheck = varArgType.ParamTypes[idx]
 				}
 
-				if err := self.TypeCheck(argExpr.Type(), toCheck, true); err != nil {
+				if err := self.TypeCheck(argExpr.Type(), toCheck, TypeCheckOptions{
+					AllowFunctionTypes:          true,
+					IgnoreFnParamNameMismatches: false,
+				}); err != nil {
 					self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 				} else {
 					arguments = append(arguments, ast.AnalyzedCallArgument{
@@ -1293,7 +1308,7 @@ func (self *Analyzer) castExpression(node pAst.CastExpression) ast.AnalyzedCastE
 		}
 	}
 
-	if err := self.TypeCheck(base.Type(), asType, false); err != nil {
+	if err := self.TypeCheck(base.Type(), asType, TypeCheckOptions{}); err != nil {
 		// check if the cast is legal
 		self.error(
 			fmt.Sprintf("Impossible cast: cannot cast value of type '%s' to '%s'", base.Type(), asType),
@@ -1324,7 +1339,10 @@ func (self *Analyzer) ifExpression(node pAst.IfExpression) ast.AnalyzedIfExpress
 	// TODO: implement constant folding
 	// analyze condition (must be bool)
 	cond := self.expression(node.Condition)
-	if err := self.TypeCheck(cond.Type(), ast.NewBoolType(errors.Span{}), true); err != nil {
+	if err := self.TypeCheck(cond.Type(), ast.NewBoolType(errors.Span{}), TypeCheckOptions{
+		AllowFunctionTypes:          true,
+		IgnoreFnParamNameMismatches: false,
+	}); err != nil {
 		err.GotDiagnostic.Notes = append(
 			err.GotDiagnostic.Notes,
 			fmt.Sprintf("A condition must be of type '%s'", ast.TypeKind(ast.BoolTypeKind)),
@@ -1344,7 +1362,10 @@ func (self *Analyzer) ifExpression(node pAst.IfExpression) ast.AnalyzedIfExpress
 		elseBlock = &elseBlockTemp
 
 		// the two blocks must have the identical type
-		if err := self.TypeCheck(elseBlock.ResultType, thenBlock.ResultType, true); err != nil {
+		if err := self.TypeCheck(elseBlock.ResultType, thenBlock.ResultType, TypeCheckOptions{
+			AllowFunctionTypes:          true,
+			IgnoreFnParamNameMismatches: false,
+		}); err != nil {
 			err.GotDiagnostic.Notes = append(err.GotDiagnostic.Notes, "The `if` and `else` branches must result in the identical type")
 			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 			if err.ExpectedDiagnostic != nil {
@@ -1366,7 +1387,10 @@ func (self *Analyzer) ifExpression(node pAst.IfExpression) ast.AnalyzedIfExpress
 		}
 	} else {
 		// check that the `then` branch results in null
-		if err := self.TypeCheck(thenBlock.ResultType, ast.NewNullType(errors.Span{}), true); err != nil {
+		if err := self.TypeCheck(thenBlock.ResultType, ast.NewNullType(errors.Span{}), TypeCheckOptions{
+			AllowFunctionTypes:          true,
+			IgnoreFnParamNameMismatches: false,
+		}); err != nil {
 			self.diagnostics = append(self.diagnostics, diagnostic.Diagnostic{
 				Level:   diagnostic.DiagnosticLevelError,
 				Message: fmt.Sprintf("%s: missing `else` branch with result type '%s'", err.GotDiagnostic.Message, thenBlock.ResultType.Kind()),
@@ -1430,7 +1454,10 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 
 		condition := self.expression(arm.Literal.Literal)
 
-		if err := self.TypeCheck(condition.Type(), controlExpr.Type(), true); err != nil {
+		if err := self.TypeCheck(condition.Type(), controlExpr.Type(), TypeCheckOptions{
+			AllowFunctionTypes:          true,
+			IgnoreFnParamNameMismatches: false,
+		}); err != nil {
 			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 			if err.ExpectedDiagnostic != nil {
 				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -1441,7 +1468,10 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 
 		if !hadTypeErr && (resultType.Kind() == ast.UnknownTypeKind || resultType.Kind() == ast.NeverTypeKind) {
 			resultType = action.Type()
-		} else if err := self.TypeCheck(action.Type(), resultType, true); err != nil {
+		} else if err := self.TypeCheck(action.Type(), resultType, TypeCheckOptions{
+			AllowFunctionTypes:          true,
+			IgnoreFnParamNameMismatches: false,
+		}); err != nil {
 			hadTypeErr = true
 			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 			if err.ExpectedDiagnostic != nil {
@@ -1460,7 +1490,10 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 	if len(node.Arms) > 0 {
 		lastSpan = node.Arms[len(node.Arms)-1].Range
 	}
-	if err := self.TypeCheck(ast.NewNullType(lastSpan), resultType, true); defaultArm == nil && err != nil {
+	if err := self.TypeCheck(ast.NewNullType(lastSpan), resultType, TypeCheckOptions{
+		AllowFunctionTypes:          true,
+		IgnoreFnParamNameMismatches: false,
+	}); defaultArm == nil && err != nil {
 		self.error(
 			"Missing default branch",
 			[]string{
@@ -1518,7 +1551,10 @@ func (self *Analyzer) tryExpression(node pAst.TryExpression) ast.AnalyzedTryExpr
 		resultType = tryBlock.ResultType.SetSpan(node.Range)
 	}
 
-	if err := self.TypeCheck(catchBlock.ResultType, tryBlock.ResultType, true); err != nil {
+	if err := self.TypeCheck(catchBlock.ResultType, tryBlock.ResultType, TypeCheckOptions{
+		AllowFunctionTypes:          true,
+		IgnoreFnParamNameMismatches: false,
+	}); err != nil {
 		err.GotDiagnostic.Notes = append(err.GotDiagnostic.Notes, "The `try` and `catch` branches must result in the identical type")
 		self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 		if err.ExpectedDiagnostic != nil {

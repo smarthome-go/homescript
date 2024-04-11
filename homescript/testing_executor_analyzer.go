@@ -150,15 +150,19 @@ func (TestingAnalyzerHost) GetKnownObjectTypeFieldAnnotations() []string {
 }
 
 func (self TestingAnalyzerHost) PostValidationHook(analyzedModules map[string]ast.AnalyzedProgram, mainModule string, _ *analyzer.Analyzer) []diagnostic.Diagnostic {
+	fmt.Println("=== Begin functions ===")
+
 	for _, fn := range analyzedModules[mainModule].Functions {
 		annotations := "NIL"
 
-		if fn.Annotations != nil {
-			annotations = spew.Sdump(*fn.Annotations)
+		if fn.Annotation != nil {
+			annotations = spew.Sdump(*fn.Annotation)
 		}
 
 		fmt.Printf("function `%s` with annotations: %s\n", fn.Ident, annotations)
 	}
+
+	fmt.Println("=== END functions ===")
 
 	return nil
 }

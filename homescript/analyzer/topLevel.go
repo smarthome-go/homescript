@@ -149,7 +149,10 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 	analyzedBlock := self.block(node.Body, false)
 
 	// analyze return type
-	if err := self.TypeCheck(analyzedBlock.Type(), fnReturnType, true); err != nil {
+	if err := self.TypeCheck(analyzedBlock.Type(), fnReturnType, TypeCheckOptions{
+		AllowFunctionTypes:          true,
+		IgnoreFnParamNameMismatches: false,
+	}); err != nil {
 		self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 		if err.ExpectedDiagnostic != nil {
 			self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -175,11 +178,11 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 			List: newParams,
 			Span: node.ParamSpan,
 		},
-		ReturnType:  fnReturnType,
-		Body:        analyzedBlock,
-		Modifier:    node.Modifier,
-		Annotations: annotations,
-		Range:       node.Range,
+		ReturnType: fnReturnType,
+		Body:       analyzedBlock,
+		Modifier:   node.Modifier,
+		Annotation: annotations,
+		Range:      node.Range,
 	}
 }
 
@@ -789,7 +792,10 @@ func (self *Analyzer) validateTemplateConstraints(
 						break
 					}
 
-					if err := self.TypeCheck(gotParam.Type, reqParam.Type.SetSpan(implHeaderSpan), true); err != nil {
+					if err := self.TypeCheck(gotParam.Type, reqParam.Type.SetSpan(implHeaderSpan), TypeCheckOptions{
+						AllowFunctionTypes:          true,
+						IgnoreFnParamNameMismatches: false,
+					}); err != nil {
 						self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 						if err.ExpectedDiagnostic != nil {
 							self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -809,7 +815,10 @@ func (self *Analyzer) validateTemplateConstraints(
 				if err := self.TypeCheck(
 					method.ReturnType,
 					reqMethod.Signature.ReturnType.SetSpan(implHeaderSpan),
-					true,
+					TypeCheckOptions{
+						AllowFunctionTypes:          true,
+						IgnoreFnParamNameMismatches: false,
+					},
 				); err != nil {
 					self.diagnostics = append(self.diagnostics, err.GotDiagnostic.WithContext("Regarding function's return type"))
 					if err.ExpectedDiagnostic != nil {

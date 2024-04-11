@@ -304,7 +304,12 @@ func (self *Analyzer) CheckAny(typ ast.Type) bool {
 	}
 }
 
-func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTypes bool) *CompatibilityError {
+type TypeCheckOptions struct {
+	AllowFunctionTypes          bool
+	IgnoreFnParamNameMismatches bool
+}
+
+func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, options TypeCheckOptions) *CompatibilityError {
 	// allow the `any` type if it is expected
 	switch expected.Kind() {
 	case ast.AnyTypeKind, ast.UnknownTypeKind, ast.NeverTypeKind:
@@ -336,7 +341,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 		rhsType := expected.(ast.ListType)
 
 		// check inner type
-		if err := self.TypeCheck(lhsType.Inner, rhsType.Inner, allowFunctionTypes); err != nil {
+		if err := self.TypeCheck(lhsType.Inner, rhsType.Inner, options); err != nil {
 			return err
 		}
 	case ast.AnyObjectTypeKind:
@@ -389,7 +394,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 			}
 
 			// check field type equality
-			if err := self.TypeCheck(gotField.Type, expectedField.Type, allowFunctionTypes); err != nil {
+			if err := self.TypeCheck(gotField.Type, expectedField.Type, options); err != nil {
 				return err
 			}
 		}
@@ -432,12 +437,13 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 
 		if expected.Kind() == ast.OptionTypeKind {
 			expectedOpt := expected.(ast.OptionType)
-			return self.TypeCheck(gotOpt.Inner, expectedOpt.Inner, true)
+			options.AllowFunctionTypes = true
+			return self.TypeCheck(gotOpt.Inner, expectedOpt.Inner, options)
 		}
 
 		return nil
 	case ast.FnTypeKind:
-		if !allowFunctionTypes {
+		if !options.AllowFunctionTypes {
 			return newCompatibilityErr(
 				diagnostic.Diagnostic{
 					Level:   diagnostic.DiagnosticLevelError,
@@ -462,7 +468,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 		expectedFn := expected.(ast.FunctionType)
 
 		// check return type
-		if err := self.TypeCheck(gotFn.ReturnType, expectedFn.ReturnType, allowFunctionTypes); err != nil {
+		if err := self.TypeCheck(gotFn.ReturnType, expectedFn.ReturnType, options); err != nil {
 			// TODO: include better error message
 			err.GotDiagnostic.Message = fmt.Sprintf("Regarding function's return type: %s", err.GotDiagnostic.Message)
 			err.ExpectedDiagnostic.Message = fmt.Sprintf("Regarding function's return type: %s", err.ExpectedDiagnostic.Message)
@@ -514,7 +520,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 				)
 			}
 
-			for _, expectedParam := range expectedFnParams.Params {
+			for expectedIdx, expectedParam := range expectedFnParams.Params {
 				var foundParam *ast.FunctionTypeParam = nil
 				for _, gotParam := range gotFnParams.Params {
 					if expectedParam.Name.Ident() == gotParam.Name.Ident() {
@@ -522,7 +528,15 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 						break
 					}
 				}
+
 				if foundParam == nil {
+					paramTypeErr := self.TypeCheck(expectedParam.Type, gotFnParams.Params[expectedIdx].Type, options)
+
+					// If the type is the same but only the name differs, allow this (if the option enables it).
+					if options.IgnoreFnParamNameMismatches && paramTypeErr == nil {
+						continue
+					}
+
 					return newCompatibilityErr(
 						diagnostic.Diagnostic{
 							Level:   diagnostic.DiagnosticLevelError,
@@ -538,8 +552,9 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 						},
 					)
 				}
+
 				// check type equality of the param type
-				if err := self.TypeCheck(foundParam.Type, expectedParam.Type, allowFunctionTypes); err != nil {
+				if err := self.TypeCheck(foundParam.Type, expectedParam.Type, options); err != nil {
 					return err
 				}
 			}

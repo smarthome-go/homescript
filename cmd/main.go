@@ -85,7 +85,7 @@ func analyzeFile(
 	log.Println("=== ANALYZED ===")
 	for name, module := range analyzed {
 		log.Printf("=== MODULE: %s ===\n", name)
-		log.Println(module)
+		fmt.Println(module)
 	}
 
 	return analyzed, pathS, nil

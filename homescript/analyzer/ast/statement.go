@@ -40,6 +40,15 @@ type AnalyzedCallArgs struct {
 	List []AnalyzedCallArgument
 }
 
+func (self AnalyzedCallArgs) String() string {
+	list := make([]string, len(self.List))
+	for idx, arg := range self.List {
+		list[idx] = arg.String()
+	}
+
+	return strings.Join(list, ", ")
+}
+
 type AnalyzedTriggerStatement struct {
 	CallbackIdent     ast.SpannedIdent
 	CallbackSignature FunctionType

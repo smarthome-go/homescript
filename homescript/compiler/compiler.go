@@ -365,17 +365,17 @@ func (self *Compiler) compileProgram(
 
 		// Compile all events.
 		// TODO: allow customizing this `@event` prefix
-		for _, fn := range module.Events {
-			oldIdent := fn.Ident.Ident()
-
-			fn.Ident = pAst.NewSpannedIdent(fmt.Sprintf("@event_%s", fn.Ident.Ident()), fn.Ident.Span())
-			mangled := self.mangleFn(fn.Ident.Ident())
-			self.addFn(fn.Ident.Ident(), mangled)
-			self.compileFn(fn)
-
-			// Add event function to mappings.
-			mappings.Functions[oldIdent] = mangled
-		}
+		// for _, fn := range module.Events {
+		// 	oldIdent := fn.Ident.Ident()
+		//
+		// 	fn.Ident = pAst.NewSpannedIdent(fmt.Sprintf("@event_%s", fn.Ident.Ident()), fn.Ident.Span())
+		// 	mangled := self.mangleFn(fn.Ident.Ident())
+		// 	self.addFn(fn.Ident.Ident(), mangled)
+		// 	self.compileFn(fn)
+		//
+		// 	// Add event function to mappings.
+		// 	mappings.Functions[oldIdent] = mangled
+		// }
 
 		if moduleName == entryPointModule {
 			// If the current module is the entry module,

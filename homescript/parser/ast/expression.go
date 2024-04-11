@@ -313,6 +313,15 @@ type CallArgs struct {
 	List []Expression
 }
 
+func (self CallArgs) String() string {
+	args := make([]string, 0)
+	for _, arg := range self.List {
+		args = append(args, arg.String())
+	}
+
+	return strings.Join(args, ", ")
+}
+
 type CallExpression struct {
 	Base      Expression
 	Arguments CallArgs
@@ -323,17 +332,12 @@ type CallExpression struct {
 func (self CallExpression) Kind() ExpressionKind { return CallExpressionKind }
 func (self CallExpression) Span() errors.Span    { return self.Range }
 func (self CallExpression) String() string {
-	args := make([]string, 0)
-	for _, arg := range self.Arguments.List {
-		args = append(args, arg.String())
-	}
-
 	spawnPrefix := ""
 	if self.IsSpawn {
 		spawnPrefix = "spawn "
 	}
 
-	return fmt.Sprintf("%s%s(%s)", spawnPrefix, self.Base, strings.Join(args, ", "))
+	return fmt.Sprintf("%s%s(%s)", spawnPrefix, self.Base, self.Arguments)
 }
 
 //

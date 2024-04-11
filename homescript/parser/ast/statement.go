@@ -222,6 +222,11 @@ type FunctionDefinition struct {
 func (self FunctionDefinition) Kind() StatementKind { return FnDefinitionStatementKind }
 func (self FunctionDefinition) Span() errors.Span   { return self.Range }
 func (self FunctionDefinition) String() string {
+	annotation := ""
+	if self.Annotation != nil {
+		annotation = fmt.Sprintf("%s\n", self.Annotation.String())
+	}
+
 	params := make([]string, 0)
 	for _, param := range self.Parameters {
 		params = append(params, param.String())
@@ -240,7 +245,7 @@ func (self FunctionDefinition) String() string {
 		panic(fmt.Sprintf("Modifier %d is not implemented.", self.Modifier))
 	}
 
-	return fmt.Sprintf("%sfn %s(%s) -> %s %s", modifier, self.Ident, strings.Join(params, ", "), self.ReturnType, self.Body)
+	return fmt.Sprintf("%s%sfn %s(%s) -> %s %s", annotation, modifier, self.Ident, strings.Join(params, ", "), self.ReturnType, self.Body)
 }
 
 type FnParam struct {

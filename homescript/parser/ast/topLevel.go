@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 )
@@ -58,8 +59,19 @@ type FunctionAnnotationInner struct {
 	Items []AnnotationItem
 }
 
+func (self FunctionAnnotationInner) String() string {
+	innerList := make([]string, 0)
+
+	for _, annotation := range self.Items {
+		innerList = append(innerList, annotation.String())
+	}
+
+	return fmt.Sprintf("#[%s]", strings.Join(innerList, ", "))
+}
+
 type AnnotationItem interface {
 	Span() errors.Span
+	String() string
 }
 
 //
@@ -72,6 +84,10 @@ type AnnotationItemIdent struct {
 
 func (self AnnotationItemIdent) Span() errors.Span {
 	return self.Ident.span
+}
+
+func (self AnnotationItemIdent) String() string {
+	return self.Ident.ident
 }
 
 //
@@ -87,4 +103,8 @@ type AnnotationItemTrigger struct {
 
 func (self AnnotationItemTrigger) Span() errors.Span {
 	return self.Range
+}
+
+func (self AnnotationItemTrigger) String() string {
+	return fmt.Sprintf("trigger %s %s(%s)", self.TriggerConnective, self.TriggerSource, self.TriggerArgs)
 }

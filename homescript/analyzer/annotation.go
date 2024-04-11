@@ -45,6 +45,22 @@ func (self *Analyzer) analyzeFnAnnotation(annotation pAst.AnnotationItem, fnIden
 		// Analyze callback function compatibility with event trigger.
 		callbackFnType := callbackFn.Type(callbackFn.IdentSpan).(ast.FunctionType)
 
+		if callbackFn.Modifier != pAst.FN_MODIFIER_EVENT {
+			message := fmt.Sprintf("Target function has wrong modifier `%s`", callbackFn.Modifier)
+			if callbackFn.Modifier == pAst.FN_MODIFIER_NONE {
+				message = "Target function misses the `event` modifier"
+			}
+
+			self.error(
+				message,
+				[]string{
+					"Functions invoked through a `trigger` will run once an *event* takes place",
+					fmt.Sprintf("The correct modifier `event` can be implemented like this: `event fn %s(...)`", fnIdent),
+				},
+				callbackFn.IdentSpan,
+			)
+		}
+
 		args := ast.AnalyzedCallArgs{
 			Span: ann.TriggerArgs.Span,
 			List: []ast.AnalyzedCallArgument{},
@@ -54,7 +70,10 @@ func (self *Analyzer) analyzeFnAnnotation(annotation pAst.AnnotationItem, fnIden
 			if err := self.TypeCheck(
 				callbackFnType.SetSpan(callbackFn.IdentSpan),
 				trigger.CallbackFnType.SetSpanAdvanced(ann.TriggerSource.Span(), ann.TriggerSource.Span()),
-				true,
+				TypeCheckOptions{
+					AllowFunctionTypes:          true,
+					IgnoreFnParamNameMismatches: true,
+				},
 			); err != nil {
 				self.diagnostics = append(self.diagnostics, err.GotDiagnostic.WithContext("Regarding callback function"))
 				if err.ExpectedDiagnostic != nil {
@@ -81,6 +100,8 @@ func (self *Analyzer) analyzeFnAnnotation(annotation pAst.AnnotationItem, fnIden
 				false,
 			)
 		}
+
+		callbackFn.Used = true
 
 		return ast.AnalyzedAnnotationItemTrigger{
 			TriggerConnective: ann.TriggerConnective,

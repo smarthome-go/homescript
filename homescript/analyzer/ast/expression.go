@@ -483,18 +483,12 @@ type AnalyzedCallExpression struct {
 func (self AnalyzedCallExpression) Kind() ExpressionKind { return CallExpressionKind }
 func (self AnalyzedCallExpression) Span() errors.Span    { return self.Range }
 func (self AnalyzedCallExpression) String() string {
-	args := make([]string, 0)
-
-	for _, arg := range self.Arguments.List {
-		args = append(args, arg.String())
-	}
-
 	spawnPrefix := ""
 	if self.IsSpawn {
 		spawnPrefix = "spawn "
 	}
 
-	return fmt.Sprintf("%s%s(%s)", spawnPrefix, self.Base, strings.Join(args, ", "))
+	return fmt.Sprintf("%s%s(%s)", spawnPrefix, self.Base, self.Arguments)
 }
 func (self AnalyzedCallExpression) Type() Type     { return self.ResultType }
 func (self AnalyzedCallExpression) Constant() bool { return false }

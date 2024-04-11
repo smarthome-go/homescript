@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
@@ -53,7 +55,7 @@ func (self *Parser) functionAnnotation() (ast.FunctionAnnotation, *errors.Error)
 		return ast.FunctionAnnotation{}, err
 	}
 
-	if err := self.expectMultiple(lexer.Pub, lexer.Event, lexer.Fn); err != nil {
+	if err := self.expectMultipleInternal(false, lexer.Pub, lexer.Event, lexer.Fn); err != nil {
 		return ast.FunctionAnnotation{}, err
 	}
 
@@ -62,13 +64,21 @@ func (self *Parser) functionAnnotation() (ast.FunctionAnnotation, *errors.Error)
 
 	innerSpan := start.Until(self.PreviousToken.Span.End, self.Filename)
 
-	switch self.PreviousToken.Kind {
+	switch self.CurrentToken.Kind {
 	case lexer.Pub:
+		if err := self.next(); err != nil {
+			return ast.FunctionAnnotation{}, err
+		}
 		function, err = self.functionDefinition(ast.FN_MODIFIER_PUB)
 	case lexer.Event:
+		if err := self.next(); err != nil {
+			return ast.FunctionAnnotation{}, err
+		}
 		function, err = self.functionDefinition(ast.FN_MODIFIER_EVENT)
 	case lexer.Fn:
 		function, err = self.functionDefinition(ast.FN_MODIFIER_NONE)
+	default:
+		panic(fmt.Sprintf("Unreachable: %s", self.CurrentToken.Kind))
 	}
 
 	if err != nil {

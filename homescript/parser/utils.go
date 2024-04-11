@@ -57,17 +57,23 @@ func (self *Parser) expectRecoverable(expected lexer.TokenKind) *errors.Error {
 	return nil
 }
 
-func (self *Parser) expectMultiple(expected ...lexer.TokenKind) *errors.Error {
+func (self *Parser) expectMultipleInternal(advance bool, expected ...lexer.TokenKind) *errors.Error {
 	for _, test := range expected {
 		if self.CurrentToken.Kind == test {
-			if err := self.next(); err != nil {
-				return err
+			if advance {
+				if err := self.next(); err != nil {
+					return err
+				}
 			}
 			return nil
 		}
 	}
 
 	return self.expectedOneOfErr(expected)
+}
+
+func (self *Parser) expectMultiple(expected ...lexer.TokenKind) *errors.Error {
+	return self.expectMultipleInternal(true, expected...)
 }
 
 func (self Parser) expectedOneOfErr(expected []lexer.TokenKind) *errors.Error {

@@ -19,7 +19,6 @@ type AnalyzedProgram struct {
 	ImplBlocks []AnalyzedImplBlock
 	Globals    []AnalyzedLetStatement
 	Functions  []AnalyzedFunctionDefinition
-	Events     []AnalyzedFunctionDefinition
 }
 
 func (self AnalyzedProgram) String() string {
@@ -36,7 +35,7 @@ func (self AnalyzedProgram) String() string {
 		types += typ.String() + "\n"
 	}
 	if types != "" {
-		types += "\n"
+		types += "\n\n"
 	}
 
 	singletons := ""
@@ -44,7 +43,7 @@ func (self AnalyzedProgram) String() string {
 		singletons += singleton.String() + "\n"
 	}
 	if singletons != "" {
-		singletons += "\n"
+		singletons += "\n\n"
 	}
 
 	globals := ""
@@ -52,7 +51,7 @@ func (self AnalyzedProgram) String() string {
 		globals += glob.String()
 	}
 	if globals != "" {
-		globals += "\n"
+		globals += "\n\n"
 	}
 
 	functions := make([]string, 0)
@@ -60,27 +59,7 @@ func (self AnalyzedProgram) String() string {
 		functions = append(functions, fn.String())
 	}
 
-	events := make([]string, 0)
-	for _, fn := range self.Events {
-		events = append(events, fn.String())
-	}
-
-	eventsStr := ""
-	if len(events) > 0 {
-		eventsStr = "\n\n" + strings.Join(events, "\n\n")
-	}
-
-	return fmt.Sprintf("%s%s%s%s%s%s", imports, types, singletons, globals, strings.Join(functions, "\n\n"), eventsStr)
-}
-
-func (self AnalyzedProgram) SupportsEvent(ident string) bool {
-	for _, event := range self.Events {
-		if event.Ident.Ident() == ident {
-			return true
-		}
-	}
-
-	return false
+	return fmt.Sprintf("%s%s%s%s%s", imports, types, singletons, globals, strings.Join(functions, "\n\n"))
 }
 
 //
@@ -129,17 +108,22 @@ func (self AnalyzedFunctionParams) Type() FunctionTypeParamKind {
 }
 
 type AnalyzedFunctionDefinition struct {
-	Ident       ast.SpannedIdent
-	Parameters  AnalyzedFunctionParams
-	ReturnType  Type
-	Body        AnalyzedBlock
-	Modifier    ast.FunctionModifier
-	Annotations *AnalyzedFunctionAnnotation
-	Range       errors.Span
+	Ident      ast.SpannedIdent
+	Parameters AnalyzedFunctionParams
+	ReturnType Type
+	Body       AnalyzedBlock
+	Modifier   ast.FunctionModifier
+	Annotation *AnalyzedFunctionAnnotation
+	Range      errors.Span
 }
 
 func (self AnalyzedFunctionDefinition) Span() errors.Span { return self.Range }
 func (self AnalyzedFunctionDefinition) String() string {
+	annotation := ""
+	if self.Annotation != nil {
+		annotation = fmt.Sprintf("%s\n", *self.Annotation)
+	}
+
 	params := make([]string, 0)
 	for _, param := range self.Parameters.List {
 		params = append(params, param.String())
@@ -157,7 +141,7 @@ func (self AnalyzedFunctionDefinition) String() string {
 		panic(fmt.Sprintf("This modifier is not implemented: %d.", self.Modifier))
 	}
 
-	return fmt.Sprintf("%sfn %s(%s) -> %s %s", modifier, self.Ident, strings.Join(params, ", "), self.ReturnType, self.Body)
+	return fmt.Sprintf("%s%sfn %s(%s) -> %s %s", annotation, modifier, self.Ident, strings.Join(params, ", "), self.ReturnType, self.Body)
 }
 func (self AnalyzedFunctionDefinition) Type() Type {
 	return NewFunctionType(self.Parameters.Type(), self.Parameters.Span, self.ReturnType, self.Range)
@@ -184,8 +168,19 @@ type AnalyzedFunctionAnnotation struct {
 	Span  errors.Span
 }
 
+func (self AnalyzedFunctionAnnotation) String() string {
+	items := make([]string, len(self.Items))
+
+	for idx, item := range self.Items {
+		items[idx] = item.String()
+	}
+
+	return fmt.Sprintf("#[%s]", strings.Join(items, ", "))
+}
+
 type AnalyzedAnnotationItem interface {
 	Span() errors.Span
+	String() string
 }
 
 type AnalyzedAnnotationItemIdent struct {
@@ -194,6 +189,10 @@ type AnalyzedAnnotationItemIdent struct {
 
 func (self AnalyzedAnnotationItemIdent) Span() errors.Span {
 	return self.Ident.Span()
+}
+
+func (self AnalyzedAnnotationItemIdent) String() string {
+	return self.Ident.Ident()
 }
 
 type AnalyzedAnnotationItemTrigger struct {
@@ -205,6 +204,10 @@ type AnalyzedAnnotationItemTrigger struct {
 
 func (self AnalyzedAnnotationItemTrigger) Span() errors.Span {
 	return self.Range
+}
+
+func (self AnalyzedAnnotationItemTrigger) String() string {
+	return fmt.Sprintf("trigger %s %s(%s)", self.TriggerConnective, self.TriggerSource, self.TriggerArgs)
 }
 
 //

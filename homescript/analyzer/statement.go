@@ -128,6 +128,22 @@ func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedT
 		}
 	}
 
+	if callbackFn.Modifier != pAst.FN_MODIFIER_EVENT {
+		message := fmt.Sprintf("Target function has wrong modifier `%s`", callbackFn.Modifier)
+		if callbackFn.Modifier == pAst.FN_MODIFIER_NONE {
+			message = "Target function misses the `event` modifier"
+		}
+
+		self.error(
+			message,
+			[]string{
+				"Functions invoked through a `trigger` will run once an *event* takes place",
+				fmt.Sprintf("The correct modifier `event` can be implemented like this: `event fn %s(...)`", node.CallbackFnIdent),
+			},
+			callbackFn.IdentSpan,
+		)
+	}
+
 	// Analyze callback function compatibility with event trigger
 	callbackFnType := callbackFn.Type(node.Span()).(ast.FunctionType)
 
@@ -153,7 +169,10 @@ func (self *Analyzer) triggerStatement(node pAst.TriggerStatement) ast.AnalyzedT
 		if err := self.TypeCheck(
 			callbackFnType.SetSpan(node.CallbackFnIdent.Span()),
 			trigger.CallbackFnType.SetSpanAdvanced(callbackFnType.Span(), callbackFn.ParamsSpan),
-			true,
+			TypeCheckOptions{
+				AllowFunctionTypes:          true,
+				IgnoreFnParamNameMismatches: true,
+			},
 		); err != nil {
 			self.diagnostics = append(self.diagnostics, err.GotDiagnostic.WithContext("Regarding callback function"))
 			if err.ExpectedDiagnostic != nil {
@@ -290,7 +309,10 @@ func (self *Analyzer) letStatement(node pAst.LetStatement, isGlobal bool) ast.An
 
 	// check that the optional type annotation does not cause a conflict
 	if node.OptType != nil {
-		if err := self.TypeCheck(rhsType, optType, !rhsHasAny); err != nil {
+		if err := self.TypeCheck(rhsType, optType, TypeCheckOptions{
+			AllowFunctionTypes:          !rhsHasAny,
+			IgnoreFnParamNameMismatches: false,
+		}); err != nil {
 			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 			if err.ExpectedDiagnostic != nil {
 				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -401,7 +423,10 @@ func (self *Analyzer) returnStatement(node pAst.ReturnStatement) ast.AnalyzedRet
 	}
 
 	// check for possible type conflicts
-	if err := self.TypeCheck(gotReturnType, self.currentModule.CurrentFunction.ReturnType, true); err != nil {
+	if err := self.TypeCheck(gotReturnType, self.currentModule.CurrentFunction.ReturnType, TypeCheckOptions{
+		AllowFunctionTypes:          true,
+		IgnoreFnParamNameMismatches: false,
+	}); err != nil {
 		self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 		if err.ExpectedDiagnostic != nil {
 			self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
@@ -489,7 +514,10 @@ func (self *Analyzer) whileStatement(node pAst.WhileStatement) ast.AnalyzedWhile
 	condExpr := self.expression(node.Condition)
 
 	// validate that the condition if of type `bool`
-	if err := self.TypeCheck(condExpr.Type(), ast.NewBoolType(errors.Span{}), true); err != nil {
+	if err := self.TypeCheck(condExpr.Type(), ast.NewBoolType(errors.Span{}), TypeCheckOptions{
+		AllowFunctionTypes:          true,
+		IgnoreFnParamNameMismatches: false,
+	}); err != nil {
 		self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 	}
 

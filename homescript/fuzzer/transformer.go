@@ -49,7 +49,8 @@ func (self *Transformer) Transform(tree ast.AnalyzedProgram) ast.AnalyzedProgram
 		Types:     make([]ast.AnalyzedTypeDefinition, 0), // Should not transform these, stuff will break
 		Globals:   make([]ast.AnalyzedLetStatement, 0),
 		Functions: make([]ast.AnalyzedFunctionDefinition, 0),
-		Events:    make([]ast.AnalyzedFunctionDefinition, 0),
+		// TODO: remove this
+		// Events:    make([]ast.AnalyzedFunctionDefinition, 0),
 	}
 
 	// Iterate over the imports and shuffle the order around
@@ -61,18 +62,20 @@ func (self *Transformer) Transform(tree ast.AnalyzedProgram) ast.AnalyzedProgram
 	// Iterate over the functions and shuffle their order around
 	ShuffleSlice(tree.Functions, self.randSource)
 
+	// TODO: remove this
 	// Iterate over the events and shuffle their order around
-	ShuffleSlice(tree.Events, self.randSource)
+	// ShuffleSlice(tree.Events, self.randSource)
 
 	// Iterate over the ast's functions in order to transform each one
 	for _, fn := range tree.Functions {
 		output.Functions = append(output.Functions, self.Function(fn))
 	}
 
+	// TODO: remove this
 	// Iterate over the ast's events and transform each one
-	for _, eventFn := range tree.Events {
-		output.Events = append(output.Events, self.Function(eventFn))
-	}
+	// for _, eventFn := range tree.Events {
+	// 	output.Events = append(output.Events, self.Function(eventFn))
+	// }
 
 	output.Types = tree.Types
 	output.Imports = tree.Imports

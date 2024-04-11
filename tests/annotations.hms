@@ -4,7 +4,7 @@ let foo = 1;
 
 //#[trigger in minute($Device.topics)]
 #[trigger in minute(1)]
-event fn whatever(elapsed: int) {
+event fn whatever(_elapsed: int) {
     println("whatever() was called");
 }
 

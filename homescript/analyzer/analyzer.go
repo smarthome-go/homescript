@@ -222,7 +222,8 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 
 		switch item.Modifier {
 		case pAst.FN_MODIFIER_EVENT:
-			output.Events = append(output.Events, fnOut)
+			// TODO: merge this, perform any extra actions here?
+			output.Functions = append(output.Functions, fnOut)
 		default:
 			output.Functions = append(output.Functions, fnOut)
 		}
