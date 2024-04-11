@@ -129,12 +129,13 @@ func (self AnalyzedFunctionParams) Type() FunctionTypeParamKind {
 }
 
 type AnalyzedFunctionDefinition struct {
-	Ident      ast.SpannedIdent
-	Parameters AnalyzedFunctionParams
-	ReturnType Type
-	Body       AnalyzedBlock
-	Modifier   ast.FunctionModifier
-	Range      errors.Span
+	Ident       ast.SpannedIdent
+	Parameters  AnalyzedFunctionParams
+	ReturnType  Type
+	Body        AnalyzedBlock
+	Modifier    ast.FunctionModifier
+	Annotations *AnalyzedFunctionAnnotation
+	Range       errors.Span
 }
 
 func (self AnalyzedFunctionDefinition) Span() errors.Span { return self.Range }
@@ -172,6 +173,38 @@ type AnalyzedFnParam struct {
 
 func (self AnalyzedFnParam) String() string {
 	return fmt.Sprintf("%s: %s", self.Ident, self.Type)
+}
+
+//
+// Function annotation
+//
+
+type AnalyzedFunctionAnnotation struct {
+	Items []AnalyzedAnnotationItem
+	Span  errors.Span
+}
+
+type AnalyzedAnnotationItem interface {
+	Span() errors.Span
+}
+
+type AnalyzedAnnotationItemIdent struct {
+	Ident ast.SpannedIdent
+}
+
+func (self AnalyzedAnnotationItemIdent) Span() errors.Span {
+	return self.Ident.Span()
+}
+
+type AnalyzedAnnotationItemTrigger struct {
+	TriggerConnective ast.TriggerDispatchKeywordKind
+	TriggerSource     ast.SpannedIdent
+	TriggerArgs       AnalyzedCallArgs
+	Range             errors.Span
+}
+
+func (self AnalyzedAnnotationItemTrigger) Span() errors.Span {
+	return self.Range
 }
 
 //

@@ -214,6 +214,8 @@ type FunctionDefinition struct {
 	ReturnType HmsType
 	Body       Block
 	Modifier   FunctionModifier
+	// Optional annotation, like #[foo].
+	Annotation *FunctionAnnotationInner
 	Range      errors.Span
 }
 

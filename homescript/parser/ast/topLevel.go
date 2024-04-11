@@ -49,5 +49,42 @@ type ImplBlock struct {
 
 type FunctionAnnotation struct {
 	Function FunctionDefinition
+	Inner    FunctionAnnotationInner
 	Span     errors.Span
+}
+
+type FunctionAnnotationInner struct {
+	Span  errors.Span
+	Items []AnnotationItem
+}
+
+type AnnotationItem interface {
+	Span() errors.Span
+}
+
+//
+// Ident, like `#[foo]`
+//
+
+type AnnotationItemIdent struct {
+	Ident SpannedIdent
+}
+
+func (self AnnotationItemIdent) Span() errors.Span {
+	return self.Ident.span
+}
+
+//
+// Trigger, like #[trigger at noon()]
+//
+
+type AnnotationItemTrigger struct {
+	TriggerConnective TriggerDispatchKeywordKind
+	TriggerSource     SpannedIdent
+	TriggerArgs       CallArgs
+	Range             errors.Span
+}
+
+func (self AnnotationItemTrigger) Span() errors.Span {
+	return self.Range
 }

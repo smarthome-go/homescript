@@ -93,24 +93,8 @@ func (self *Parser) triggerStmt() (ast.TriggerStatement, *errors.Error) {
 		return ast.TriggerStatement{}, err
 	}
 
-	// Dispatch keyword.
-
-	var dispatchKeyword ast.TriggerDispatchKeywordKind
-	switch self.CurrentToken.Value {
-	case "on":
-		dispatchKeyword = ast.OnTriggerDispatchKeyword
-	case "at":
-		dispatchKeyword = ast.AtTriggerDispatchKeyword
-	case "in":
-		dispatchKeyword = ast.InTriggerDispatchKeyword
-	default:
-		return ast.TriggerStatement{}, errors.NewSyntaxError(
-			self.CurrentToken.Span,
-			fmt.Sprintf("Expected trigger keyword (`on` or `at`), found %s", self.CurrentToken.Kind),
-		)
-	}
-
-	if err := self.next(); err != nil {
+	dispatchKeyword, err := self.triggerConnective()
+	if err != nil {
 		return ast.TriggerStatement{}, err
 	}
 
@@ -139,6 +123,31 @@ func (self *Parser) triggerStmt() (ast.TriggerStatement, *errors.Error) {
 		EventArguments:  args,
 		Range:           startLoc.Until(self.PreviousToken.Span.End, self.Filename),
 	}, nil
+}
+
+func (self *Parser) triggerConnective() (ast.TriggerDispatchKeywordKind, *errors.Error) {
+	// Dispatch keyword.
+
+	var dispatchKeyword ast.TriggerDispatchKeywordKind
+	switch self.CurrentToken.Value {
+	case "on":
+		dispatchKeyword = ast.OnTriggerDispatchKeyword
+	case "at":
+		dispatchKeyword = ast.AtTriggerDispatchKeyword
+	case "in":
+		dispatchKeyword = ast.InTriggerDispatchKeyword
+	default:
+		return 0, errors.NewSyntaxError(
+			self.CurrentToken.Span,
+			fmt.Sprintf("Expected trigger keyword (`on` or `at`), found %s", self.CurrentToken.Kind),
+		)
+	}
+
+	if err := self.next(); err != nil {
+		return 0, err
+	}
+
+	return dispatchKeyword, nil
 }
 
 ///

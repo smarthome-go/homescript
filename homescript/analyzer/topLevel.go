@@ -159,6 +159,13 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 	// drop scope when finished
 	self.dropScope(true)
 
+	// validate annotations.
+	var annotations *ast.AnalyzedFunctionAnnotation
+	if node.Annotation != nil {
+		annotationsTemp := self.analyzeFnAnnotations(*node.Annotation, node.Ident.Ident())
+		annotations = &annotationsTemp
+	}
+
 	// unset current function
 	self.currentModule.CurrentFunction = nil
 
@@ -168,10 +175,11 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 			List: newParams,
 			Span: node.ParamSpan,
 		},
-		ReturnType: fnReturnType,
-		Body:       analyzedBlock,
-		Modifier:   node.Modifier,
-		Range:      node.Range,
+		ReturnType:  fnReturnType,
+		Body:        analyzedBlock,
+		Modifier:    node.Modifier,
+		Annotations: annotations,
+		Range:       node.Range,
 	}
 }
 

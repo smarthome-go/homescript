@@ -507,7 +507,7 @@ func (self *Analyzer) TypeCheck(got ast.Type, expected ast.Type, allowFunctionTy
 					},
 					&diagnostic.Diagnostic{
 						Level:   diagnostic.DiagnosticLevelHint,
-						Message: fmt.Sprintf("Amount of %d parameters expected due to this", len(expectedFnParams.Params)),
+						Message: fmt.Sprintf("Amount of %d parameter%s expected due to this", len(expectedFnParams.Params), s),
 						Notes:   []string{},
 						Span:    expectedFn.ParamsSpan,
 					},

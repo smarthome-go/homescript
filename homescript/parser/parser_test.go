@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 )
 
 const EXAMPLE_DIR = "../../examples/"
@@ -23,7 +25,7 @@ func FuzzParser(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, input string) {
-		l := NewLexer(input, t.Name())
+		l := lexer.NewLexer(input, t.Name())
 		p := NewParser(l, t.Name())
 
 		defer func() {

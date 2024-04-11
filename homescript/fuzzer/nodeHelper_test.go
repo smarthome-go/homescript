@@ -62,6 +62,6 @@ func TestRegressionIfNode(t *testing.T) {
 	// 	Range:      errors.Span{},
 	// }
 
-	trans := NewTransformer(0, 0)
+	trans := NewTransformer(0)
 	assert.True(t, trans.exprCanControlLoop(node))
 }

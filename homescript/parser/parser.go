@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
@@ -79,8 +78,7 @@ func (self *Parser) program() (ast.Program, *errors.Error) {
 				return ast.Program{}, err
 			}
 
-			spew.Dump(annotation)
-			panic("TODO: handle parseed annotation")
+			tree.Functions = append(tree.Functions, annotation.Function)
 		case lexer.Impl:
 			implBlock, err := self.implBlockHead()
 			if err != nil {
