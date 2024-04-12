@@ -23,9 +23,9 @@ var vmLimits = runtime.CoreLimits{
 	MaxMemorySize:    100 * 1000,
 }
 
-func CompileVm(analyzed map[string]ast.AnalyzedProgram, filename string) compiler.Program {
-	compilerStruct := compiler.NewCompiler()
-	compiled := compilerStruct.Compile(analyzed, filename)
+func CompileVm(analyzed map[string]ast.AnalyzedProgram, filename string) compiler.CompileOutput {
+	compilerStruct := compiler.NewCompiler(analyzed, filename)
+	compiled := compilerStruct.Compile()
 	return compiled
 }
 
@@ -40,7 +40,7 @@ func DefaultReadFileProvider(path string) (string, error) {
 	return string(file), nil
 }
 
-func TestingRunVm(compiled compiler.Program, printToStdout bool, readFile func(path string) (string, error)) (output string, err *diagnostic.Diagnostic) {
+func TestingRunVm(compiled compiler.CompileOutput, printToStdout bool, readFile func(path string) (string, error)) (output string, err *diagnostic.Diagnostic) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 
 	rawExecutor := homescript.TestingVmExecutor{

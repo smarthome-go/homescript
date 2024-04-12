@@ -16,16 +16,17 @@ type MangleMappings struct {
 	Singletons map[string]string
 }
 
-type Program struct {
+type CompileOutput struct {
 	Functions map[string][]Instruction
 	// Associates a mangled function with its instruction-spans.
 	SourceMap map[string][]errors.Span
 	// NOTE: this type is returned by the compiler so that the execution environment
 	// is still able to interact with the runtime through function calls and global variable access.
-	Mappings MangleMappings
+	Mappings    MangleMappings
+	Annotations ModuleAnnotations
 }
 
-func (self Program) AsmString() string {
+func (self CompileOutput) AsmString() string {
 	functionsStr := make([]string, 0)
 
 	for fnName, instructions := range self.Functions {

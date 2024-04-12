@@ -39,7 +39,7 @@ func newCores() Cores {
 }
 
 type VM struct {
-	Program       compiler.Program
+	Program       compiler.CompileOutput
 	globals       Globals
 	Cores         Cores
 	Executor      value.Executor
@@ -51,7 +51,7 @@ type VM struct {
 }
 
 func NewVM(
-	program compiler.Program,
+	program compiler.CompileOutput,
 	executor value.Executor,
 	ctx *context.Context,
 	cancelFunc *context.CancelFunc,

@@ -22,8 +22,8 @@ var testingLimits = runtime.CoreLimits{
 }
 
 func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, printToStdout bool) string {
-	compilerStruct := compiler.NewCompiler()
-	compiled := compilerStruct.Compile(analyzed, filename)
+	compilerStruct := compiler.NewCompiler(analyzed, filename)
+	compiled := compilerStruct.Compile()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	rawExecutor := TestingVmExecutor{

@@ -176,6 +176,17 @@ func main() {
 
 					if emitAsm {
 						fmt.Println(code.AsmString())
+
+						fmt.Println("=== Function annotations ===")
+						for key, annotations := range code.Annotations {
+							module := fmt.Sprintf("mod %s", key.Module)
+
+							if key.Module == entryModule {
+								module = fmt.Sprintf("mod (MAIN) %s", key.Module)
+							}
+
+							fmt.Printf("%s | `fn %s` | annotation=%v\n", module, key.UnmangledFunction, annotations)
+						}
 					}
 
 					TestingRunVm(code, true, DefaultReadFileProvider)
