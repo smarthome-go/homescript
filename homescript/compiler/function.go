@@ -35,6 +35,7 @@ type IdentCompiledAnnotation struct {
 func (self IdentCompiledAnnotation) Kind() CompiledAnnotationKind { return CompiledAnnotationKindIdent }
 
 type TriggerCompiledAnnotation struct {
+	CallbackFnIdent   string
 	TriggerConnective pAst.TriggerDispatchKeywordKind
 	TriggerSource     string
 	TriggerArgs       []value.Value
@@ -73,6 +74,7 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) *CompiledAn
 				}
 
 				compiledItems[idx] = TriggerCompiledAnnotation{
+					CallbackFnIdent:   node.Ident.Ident(),
 					TriggerConnective: ann.TriggerConnective,
 					TriggerSource:     ann.TriggerSource.Ident(),
 					TriggerArgs:       values,
