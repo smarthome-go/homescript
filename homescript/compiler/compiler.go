@@ -1,14 +1,15 @@
 package compiler
 
 import (
-	"fmt"
-
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 )
 
 const MainFunctionIdent = "main"
-const EntryPointFunctionIdent = "@init"
+
+const InitFunctionIdent = "@init"
+
+// const EntryPointFunctionIdent = "@entrypoint"
 const RegisterTriggerHostFn = "@trigger"
 
 type Loop struct {
@@ -116,10 +117,10 @@ func (self *Compiler) compileProgram(
 		self.currModule = moduleName
 		self.modules[self.currModule] = make(map[string]*Function)
 
-		initFn := self.mangleFn(EntryPointFunctionIdent)
-		self.addFn(EntryPointFunctionIdent, initFn)
+		initFn := self.mangleFn(InitFunctionIdent)
+		self.addFn(InitFunctionIdent, initFn)
 		initFns[moduleName] = initFn
-		self.currFn = EntryPointFunctionIdent
+		self.currFn = InitFunctionIdent
 
 		for _, singleton := range module.Singletons {
 			// Save mangled name for external mapping.
@@ -167,6 +168,22 @@ func (self *Compiler) compileProgram(
 		}
 	}
 
+	// self.currModule = entryPointModule
+	// entryPointFN := self.mangleFn(EntryPointFunctionIdent)
+	// self.addFn(EntryPointFunctionIdent, entryPointFN)
+
+	// for moduleName, _ := range program {
+	// 	self.currModule = moduleName
+	//
+	// 	// If the current module is the entry module,
+	// 	// add all mangled functions to the `mangledEntryFunctions` map.
+	// 	if moduleName == entryPointModule {
+	// 		for srcIdent, fn := range self.modules[self.currModule] {
+	// 			mappings.Functions[srcIdent] = fn.MangledName
+	// 		}
+	// 	}
+	// }
+
 	moduleAnnotations := make(ModuleAnnotations)
 
 	for moduleName, module := range program {
@@ -211,8 +228,8 @@ func (self *Compiler) compileProgram(
 
 		if moduleName == entryPointModule {
 			// If the current module is the entry module,
-			// Go back to the init function and insert the main function call.
-			self.currFn = EntryPointFunctionIdent
+			// Go back to the entrypoint function and insert the main function call.
+			self.currFn = InitFunctionIdent
 			self.currModule = entryPointModule
 
 			for moduleName, otherInit := range initFns {
@@ -223,13 +240,17 @@ func (self *Compiler) compileProgram(
 				self.insert(newOneStringInstruction(Opcode_Call_Imm, otherInit), mainFnSpan)
 			}
 
-			mangledMain, found := self.getMangledFn(MainFunctionIdent)
-			if !found {
-				panic(fmt.Sprintf("`%s` function not found in current module", MainFunctionIdent))
-			}
-
-			self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
 			self.insert(newPrimitiveInstruction(Opcode_Return), mainFnSpan)
+
+			// mangledMain, found := self.getMangledFn(MainFunctionIdent)
+			// if !found {
+			// 	panic(fmt.Sprintf("`%s` function not found in current module", MainFunctionIdent))
+			// }
+
+			// // Also create the entrypoint function which performs calls the `main` function.
+			// self.currFn = EntryPointFunctionIdent
+			// self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
+			// self.insert(newPrimitiveInstruction(Opcode_Return), mainFnSpan)
 		}
 	}
 

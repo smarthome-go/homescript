@@ -324,7 +324,7 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 
 	// TODO: how to handle the debugger at this point?
 	vm.SpawnAsync(runtime.FunctionInvocation{
-		Function: compiler.EntryPointFunctionIdent,
+		Function: compiler.InitFunctionIdent,
 		Args:     make([]vmValue.Value, 0),
 	}, nil)
 

@@ -38,7 +38,7 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 
 	debuggerOut := make(chan runtime.DebugOutput)
 	vm.SpawnAsync(runtime.FunctionInvocation{
-		Function: compiler.EntryPointFunctionIdent,
+		Function: compiler.InitFunctionIdent,
 		Args:     make([]vmValue.Value, 0),
 		// TODO: is this allowed?
 		FunctionSignature: runtime.FunctionInvocationSignature{},

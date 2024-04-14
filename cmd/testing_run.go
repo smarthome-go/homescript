@@ -55,7 +55,7 @@ func TestingRunVm(compiled compiler.CompileOutput, printToStdout bool, readFile 
 
 	debuggerOut := make(chan runtime.DebugOutput)
 	core := vm.SpawnAsync(runtime.FunctionInvocation{
-		Function: compiler.EntryPointFunctionIdent,
+		Function: compiler.MainFunctionIdent,
 		Args:     make([]vmValue.Value, 0),
 	}, &debuggerOut)
 

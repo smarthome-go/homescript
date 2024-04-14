@@ -58,7 +58,7 @@ func NewVM(
 	globalScopeAdditions map[string]value.Value,
 	limits CoreLimits,
 ) VM {
-	return VM{
+	vm := VM{
 		Program:       program,
 		globals:       newGlobals(globalScopeAdditions),
 		Cores:         newCores(),
@@ -69,6 +69,29 @@ func NewVM(
 		Interrupts:    make(map[uint]value.VmInterrupt),
 		LimitsPerCore: limits,
 	}
+
+	// nolint:contextcheck
+	res := vm.SpawnSync(
+		FunctionInvocation{
+			Function:    compiler.InitFunctionIdent,
+			LiteralName: false,
+			Args:        []value.Value{},
+			FunctionSignature: FunctionInvocationSignature{
+				Params:     []FunctionInvocationSignatureParam{},
+				ReturnType: ast.NewNullType(errors.Span{}),
+			},
+		},
+		nil,
+	)
+
+	if res.Exception != nil {
+		panic(fmt.Sprintf(
+			"Fatal: VM encountered exception during initialization code: %s",
+			res.Exception.Interrupt.Message()),
+		)
+	}
+
+	return vm
 }
 
 // TODO: why is this not a real method?
