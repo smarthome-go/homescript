@@ -3,6 +3,8 @@ import {
     any_list,
 } from testing;
 
+import assert_eq from testing;
+
 fn main() {
     let a: int = any_func();
     assert_eq(a, 42);

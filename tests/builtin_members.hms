@@ -1,3 +1,5 @@
+import assert_eq from testing;
+
 fn float() {
     let  x = 42.0;
     let y = 42.69;

@@ -1,3 +1,5 @@
+import assert_eq from testing;
+
 fn main() {
     simple();
     try {
