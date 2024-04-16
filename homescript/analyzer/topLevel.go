@@ -392,7 +392,7 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 		// add values to current scope
 		for _, item := range node.ToImport {
 			// TODO: template imports also need special action
-			panic("TODO: templates")
+			// panic("TODO: templates")
 
 			// type imports need special action: only add the type and filter out this import
 			if item.Kind == pAst.IMPORT_KIND_TYPE {
@@ -427,6 +427,28 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 				if prev := self.currentModule.addType(item.Ident, newTypeWrapper(typ.Type.SetSpan(item.Span), false, item.Span, false)); prev != nil {
 					self.error(fmt.Sprintf("Type '%s' already exists in current scope", item.Ident), nil, item.Span)
 				}
+				continue
+			}
+
+			if item.Kind == pAst.IMPORT_KIND_TEMPLATE {
+				templ, found := module.getTemplate(item.Ident)
+				if !found {
+					self.error(
+						fmt.Sprintf("No template named '%s' found in module '%s'", item.Ident, node.FromModule),
+						nil,
+						item.Span,
+					)
+
+					if _, prevFound := self.currentModule.addTemplate(item.Ident, templ); prevFound {
+						self.error(fmt.Sprintf("Template '%s' already exists in current scope", item.Ident), nil, item.Span)
+					}
+					continue
+				}
+
+				if _, prevFound := self.currentModule.addTemplate(item.Ident, templ); prevFound {
+					self.error(fmt.Sprintf("Template '%s' already exists in current scope", item.Ident), nil, item.Span)
+				}
+
 				continue
 			}
 
