@@ -1,3 +1,5 @@
+import assert_eq from testing;
+
 // This script approximates some digits of Apéry's theorem.
 // The final output is an integer which approximates to Apéry * 10000000
 fn main() {

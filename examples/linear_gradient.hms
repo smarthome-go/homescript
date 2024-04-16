@@ -1,3 +1,5 @@
+import assert_eq from testing;
+
 let ALPHA = 1f/3f;
 
 let e = 2.718281828459045;

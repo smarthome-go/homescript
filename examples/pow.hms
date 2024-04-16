@@ -1,3 +1,5 @@
+import assert_eq from testing;
+
 fn main() {
     let res = pow(2, 4);
     println(res);

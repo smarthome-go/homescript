@@ -1,5 +1,6 @@
-fn main() {
+import assert_eq from testing;
 
+fn main() {
     // This file is used for implementing new language features
     let object = new {
         key: 42,

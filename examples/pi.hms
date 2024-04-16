@@ -1,3 +1,6 @@
+import assert_eq from testing;
+
+
 // This script approximates some digits of Pi.
 // The final output is an integer which approximates to PI * 1000000
 let ITERATIONS = 400000;

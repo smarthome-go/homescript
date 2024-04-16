@@ -1,3 +1,5 @@
+import assert_eq from testing;
+
 let ALPHA = 1f/20f;
 let X0: Vec = new {
     a: 1f,
