@@ -685,7 +685,7 @@ func (self ObjectTypeField) String() string {
 
 	annotationStr := ""
 	if self.Annotation != nil {
-		annotationStr = self.Annotation.Ident()
+		annotationStr = self.Annotation.Ident() + " "
 	}
 
 	return fmt.Sprintf("%s%s: %s", annotationStr, key, self.Type)

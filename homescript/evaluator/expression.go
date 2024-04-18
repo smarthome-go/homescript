@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
@@ -437,9 +438,10 @@ func (i *Interpreter) memberExpression(node ast.AnalyzedMemberExpression) (*valu
 		return nil, err
 	}
 
+	// BUG: Here, the issue is that the actual fields loaded from the singleton do not include all the fields of the type.
 	val, found := fields[node.Member.Ident()]
 	if !found {
-		panic(fmt.Sprintf("Field '%s' not found on value of type '%s' | node: %s", node.Member.Ident(), node.Base.Type(), node))
+		panic(fmt.Sprintf("Field '%s' not found on value of type '%s' | node: %s | fields: %s", node.Member.Ident(), node.Base.Type(), node, spew.Sdump(fields)))
 	}
 
 	return val, nil
