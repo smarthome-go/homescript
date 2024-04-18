@@ -118,6 +118,7 @@ matchLiteral    = LiteralExpression | ( PREFIX_OPERATOR , LiteralExpression )
 TryExpression = 'try' , Block , 'catch' , ident , block ;
 
 ExpressionWithoutBlock = IdentExpr
+                       | singletonIdent
                        | LiteralExpression
                        | '(' , Expression , ')'
                        | PrefixExpression

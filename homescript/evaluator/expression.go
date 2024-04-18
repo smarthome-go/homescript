@@ -6,11 +6,11 @@ import (
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
-	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
-func (i *Interpreter) Expression(node ast.AnalyzedExpression) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) Expression(node ast.AnalyzedExpression) (*value.Value, *value.VmInterrupt) {
 	switch node.Kind() {
 	case ast.IntLiteralExpressionKind:
 		return value.NewValueInt(node.(ast.AnalyzedIntLiteralExpression).Value), nil
@@ -26,9 +26,9 @@ func (i *Interpreter) Expression(node ast.AnalyzedExpression) (*value.Value, *va
 
 		val, found := i.currModule.scopes[i.currModule.currentScope][node.Ident()]
 		if !found {
-			return nil, value.NewRuntimeErr(
+			return nil, value.NewVMFatalException(
 				fmt.Sprintf(errMsg, node),
-				value.UncaughtThrowKind,
+				value.Vm_HostErrorKind,
 				node.Span(),
 			)
 		} else {
@@ -85,12 +85,7 @@ func (i *Interpreter) Expression(node ast.AnalyzedExpression) (*value.Value, *va
 
 		return value.NewValueObject(fields), nil
 	case ast.FunctionLiteralExpressionKind:
-		node := node.(ast.AnalyzedFunctionLiteralExpression)
-		return value.NewValueFunction(
-			i.currModule.filename,
-			node.Body,
-			nil,
-		), nil
+		panic("Function literals are not supported")
 	case ast.GroupedExpressionKind:
 		return i.Expression(node.(ast.AnalyzedGroupedExpression).Inner)
 	case ast.PrefixExpressionKind:
@@ -124,7 +119,7 @@ func (i *Interpreter) Expression(node ast.AnalyzedExpression) (*value.Value, *va
 // Prefix expressions.
 //
 
-func (i *Interpreter) PrefixExpr(node ast.AnalyzedPrefixExpression) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) PrefixExpr(node ast.AnalyzedPrefixExpression) (*value.Value, *value.VmInterrupt) {
 	base, err := i.Expression(node.Base)
 	if err != nil {
 		return nil, err
@@ -161,12 +156,12 @@ func (i *Interpreter) PrefixExpr(node ast.AnalyzedPrefixExpression) (*value.Valu
 // Infix expressions.
 //
 
-func (i *Interpreter) InfixExpr(node ast.AnalyzedInfixExpression) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) InfixExpr(node ast.AnalyzedInfixExpression) (*value.Value, *value.VmInterrupt) {
 	res, _, err := i.infixHelper(node.Lhs, node.Rhs, node.Operator)
 	return res, err
 }
 
-func (i *Interpreter) infixHelper(lhs ast.AnalyzedExpression, rhs ast.AnalyzedExpression, operator pAst.InfixOperator) (res *value.Value, lhsAddr *value.Value, err *value.Interrupt) {
+func (i *Interpreter) infixHelper(lhs ast.AnalyzedExpression, rhs ast.AnalyzedExpression, operator pAst.InfixOperator) (res *value.Value, lhsAddr *value.Value, err *value.VmInterrupt) {
 	switch operator {
 	case pAst.EqualInfixOperator:
 		lhs, err := i.Expression(lhs)
@@ -379,7 +374,7 @@ func (i *Interpreter) infixHelper(lhs ast.AnalyzedExpression, rhs ast.AnalyzedEx
 // Assign expression
 //
 
-func (i *Interpreter) assignExpression(node ast.AnalyzedAssignExpression) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) assignExpression(node ast.AnalyzedAssignExpression) (*value.Value, *value.VmInterrupt) {
 	if node.Operator == pAst.StdAssignOperatorKind {
 		lhs, err := i.Expression(node.Lhs)
 		if err != nil {
@@ -409,7 +404,7 @@ func (i *Interpreter) assignExpression(node ast.AnalyzedAssignExpression) (*valu
 // Index expression
 //
 
-func (i *Interpreter) indexExpression(node ast.AnalyzedIndexExpression) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) indexExpression(node ast.AnalyzedIndexExpression) (*value.Value, *value.VmInterrupt) {
 	base, err := i.Expression(node.Base)
 	if err != nil {
 		return nil, err
@@ -431,7 +426,7 @@ func (i *Interpreter) indexExpression(node ast.AnalyzedIndexExpression) (*value.
 // Member expression
 //
 
-func (i *Interpreter) memberExpression(node ast.AnalyzedMemberExpression) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) memberExpression(node ast.AnalyzedMemberExpression) (*value.Value, *value.VmInterrupt) {
 	base, err := i.Expression(node.Base)
 	if err != nil {
 		return nil, err
@@ -454,7 +449,7 @@ func (i *Interpreter) memberExpression(node ast.AnalyzedMemberExpression) (*valu
 // Cast expression
 //
 
-func (i *Interpreter) castExpression(node ast.AnalyzedCastExpression) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) castExpression(node ast.AnalyzedCastExpression) (*value.Value, *value.VmInterrupt) {
 	base, err := i.Expression(node.Base)
 	if err != nil {
 		return nil, err
@@ -474,16 +469,23 @@ func (i *Interpreter) castExpression(node ast.AnalyzedCastExpression) (*value.Va
 	// }
 
 	// TODO: implement a `deepCast` method which can convert [ {} ] -> [ { ? } ]
-	return value.DeepCast(*base, node.AsType, node.Span(), true)
+	val, castErr := value.DeepCast(*base, node.AsType, node.Span(), true)
+	if castErr != nil {
+		return nil, value.NewVMFatalException(
+			castErr.Message(),
+			value.Vm_CastErrorKind,
+			castErr.Span,
+		)
+	}
 
-	panic(fmt.Sprintf("Unsupported runtime cast from %v to %s", (*base).Kind(), node.AsType.Kind()))
+	return val, nil
 }
 
 //
 // If expression
 //
 
-func (i *Interpreter) ifExpression(node ast.AnalyzedIfExpression) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) ifExpression(node ast.AnalyzedIfExpression) (*value.Value, *value.VmInterrupt) {
 	condition, err := i.Expression(node.Condition)
 	if err != nil {
 		return nil, err
@@ -515,7 +517,7 @@ func (i *Interpreter) ifExpression(node ast.AnalyzedIfExpression) (*value.Value,
 // Match expression
 //
 
-func (i *Interpreter) matchExpression(node ast.AnalyzedMatchExpression) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) matchExpression(node ast.AnalyzedMatchExpression) (*value.Value, *value.VmInterrupt) {
 	control, err := i.Expression(node.ControlExpression)
 	if err != nil {
 		return nil, err
@@ -549,18 +551,18 @@ func (i *Interpreter) matchExpression(node ast.AnalyzedMatchExpression) (*value.
 // Try expression
 //
 
-func (self *Interpreter) tryExpression(node ast.AnalyzedTryExpression) (*value.Value, *value.Interrupt) {
+func (self *Interpreter) tryExpression(node ast.AnalyzedTryExpression) (*value.Value, *value.VmInterrupt) {
 	tryRes, i := self.block(node.TryBlock, true)
 	if i == nil {
 		return tryRes, nil
 	}
 
-	if (*i).Kind() != value.NormalExceptionInterruptKind {
+	if (*i).Kind() != value.Vm_NormalExceptionInterruptKind {
 		// only non-fatal interrupts can be caught
 		return nil, i
 	}
 
-	throwError := (*i).(value.ThrowInterrupt)
+	throwError := (*i).(value.Vm_NormalException)
 	self.pushScope()
 	defer self.popScope()
 
@@ -579,7 +581,7 @@ func (self *Interpreter) tryExpression(node ast.AnalyzedTryExpression) (*value.V
 // Block
 //
 
-func (i *Interpreter) block(node ast.AnalyzedBlock, handleScoping bool) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) block(node ast.AnalyzedBlock, handleScoping bool) (*value.Value, *value.VmInterrupt) {
 	if handleScoping {
 		i.pushScope()
 		defer i.popScope()

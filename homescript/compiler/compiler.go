@@ -1,8 +1,11 @@
 package compiler
 
 import (
+	"fmt"
+
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
 const MainFunctionIdent = "main"
@@ -41,9 +44,11 @@ type Compiler struct {
 	// Program source: required for invocations of the evaluator.
 	analyzedSource   map[string]ast.AnalyzedProgram
 	entryPointModule string
+	// Used when the interpreter is invoked during compilation, for instance for annotations.
+	executor value.Executor
 }
 
-func NewCompiler(program map[string]ast.AnalyzedProgram, entryPointModule string) Compiler {
+func NewCompiler(program map[string]ast.AnalyzedProgram, entryPointModule string, executor value.Executor) Compiler {
 	scopes := make([]map[string]string, 1)
 	scopes[0] = make(map[string]string)
 	currScope := &scopes[0]
@@ -61,6 +66,8 @@ func NewCompiler(program map[string]ast.AnalyzedProgram, entryPointModule string
 		// Program source.
 		analyzedSource:   program,
 		entryPointModule: entryPointModule,
+		// Executor.
+		executor: executor,
 	}
 }
 
@@ -68,10 +75,14 @@ const (
 	LIST_PUSH = "__internal_list_push"
 )
 
-func (self *Compiler) Compile() CompileOutput {
+func (self *Compiler) Compile() (CompileOutput, error) {
 	// BUG: cross-module calls do not work
 	// BUG: furthermore, cross-module pub-let definitions also do not work.
-	mappings, annotations := self.compileProgram(self.analyzedSource, self.entryPointModule)
+	mappings, annotations, i := self.compileProgram(self.analyzedSource, self.entryPointModule)
+
+	if i != nil {
+		return CompileOutput{}, i
+	}
 
 	self.relocateLabels()
 	self.renameVariables()
@@ -91,7 +102,7 @@ func (self *Compiler) Compile() CompileOutput {
 		SourceMap:   sourceMap,
 		Mappings:    mappings,
 		Annotations: annotations,
-	}
+	}, nil
 }
 
 // Maps an unmangled function identifier to its annotations.
@@ -104,7 +115,7 @@ type ModuleFunction struct {
 func (self *Compiler) compileProgram(
 	program map[string]ast.AnalyzedProgram,
 	entryPointModule string,
-) (MangleMappings, ModuleAnnotations) {
+) (MangleMappings, ModuleAnnotations, error) {
 	initFns := make(map[string]string)
 
 	mappings := MangleMappings{
@@ -195,7 +206,12 @@ func (self *Compiler) compileProgram(
 			if fn.Ident.Ident() == MainFunctionIdent {
 				mainFnSpan = fn.Range
 			}
-			fnAnnotations := self.compileFn(fn)
+			fnAnnotations, i := self.compileFn(fn)
+
+			if i != nil {
+				return MangleMappings{}, ModuleAnnotations{}, fmt.Errorf("Constant evaluation failed: %s", (*i).Message())
+			}
+
 			if fnAnnotations != nil {
 				moduleAnnotations[ModuleFunction{
 					Module:            moduleName,
@@ -254,5 +270,5 @@ func (self *Compiler) compileProgram(
 		}
 	}
 
-	return mappings, moduleAnnotations
+	return mappings, moduleAnnotations, nil
 }

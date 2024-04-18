@@ -22,15 +22,20 @@ var testingLimits = runtime.CoreLimits{
 }
 
 func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, printToStdout bool) string {
-	compilerStruct := compiler.NewCompiler(analyzed, filename)
-	compiled := compilerStruct.Compile()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-
 	rawExecutor := TestingVmExecutor{
 		PrintToStdout: printToStdout,
 		PrintBuf:      new(string),
 		PintBufMutex:  &sync.Mutex{},
 	}
+
+	compilerStruct := compiler.NewCompiler(analyzed, filename, rawExecutor)
+	compiled, err := compilerStruct.Compile()
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	executor := vmValue.Executor(rawExecutor)
 

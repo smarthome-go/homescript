@@ -324,6 +324,17 @@ func (self *Analyzer) importDummyFields(node pAst.ImportStatement) ast.AnalyzedI
 				self.error(fmt.Sprintf("Template '%s' already exists in current module", toImport.Ident), nil, toImport.Span)
 				self.hint(fmt.Sprintf("Template `%s` previously imported here", toImport.Ident), make([]string, 0), prev.Span)
 			}
+		case pAst.IMPORT_KIND_TRIGGER:
+			// TODO: what to do here?
+			fn := TriggerFunction{
+				TriggerFnType:  ast.FunctionType{},
+				CallbackFnType: ast.FunctionType{},
+				Connective:     0,
+				ImportedAt:     toImport.Span,
+			}
+			if _, prevFound := self.currentModule.addTrigger(toImport.Ident, fn); prevFound {
+				self.error(fmt.Sprintf("Trigger '%s' already exists in current module", toImport.Ident), nil, toImport.Span)
+			}
 		case pAst.IMPORT_KIND_NORMAL:
 			dummyFields = append(dummyFields, ast.AnalyzedImportValue{
 				Ident: pAst.NewSpannedIdent(toImport.Ident, toImport.Span),
@@ -447,6 +458,28 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 
 				if _, prevFound := self.currentModule.addTemplate(item.Ident, templ); prevFound {
 					self.error(fmt.Sprintf("Template '%s' already exists in current scope", item.Ident), nil, item.Span)
+				}
+
+				continue
+			}
+
+			if item.Kind == pAst.IMPORT_KIND_TRIGGER {
+				trigg, found := module.getTrigger(item.Ident)
+				if !found {
+					self.error(
+						fmt.Sprintf("No trigger named '%s' found in module '%s'", item.Ident, node.FromModule),
+						nil,
+						item.Span,
+					)
+
+					if _, prevFound := self.currentModule.addTrigger(item.Ident, trigg); prevFound {
+						self.error(fmt.Sprintf("Trigger '%s' already exists in current scope", item.Ident), nil, item.Span)
+					}
+					continue
+				}
+
+				if _, prevFound := self.currentModule.addTrigger(item.Ident, trigg); prevFound {
+					self.error(fmt.Sprintf("Trigger '%s' already exists in current scope", item.Ident), nil, item.Span)
 				}
 
 				continue

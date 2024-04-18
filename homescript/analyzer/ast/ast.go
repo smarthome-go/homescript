@@ -85,10 +85,24 @@ func (self AnalyzedImport) Type() Type { return NewNullType(self.Range) }
 
 type AnalyzedImportValue struct {
 	Ident ast.SpannedIdent
+	Kind  ast.IMPORT_KIND
 	Type  Type
 }
 
-func (self AnalyzedImportValue) String() string { return self.Ident.Ident() }
+func (self AnalyzedImportValue) String() string {
+	switch self.Kind {
+	case ast.IMPORT_KIND_NORMAL:
+		return self.Ident.Ident()
+	case ast.IMPORT_KIND_TYPE:
+		return fmt.Sprintf("type %s", self.Ident)
+	case ast.IMPORT_KIND_TEMPLATE:
+		return fmt.Sprintf("templ %s", self.Ident)
+	case ast.IMPORT_KIND_TRIGGER:
+		return fmt.Sprintf("trigger %s", self.Ident)
+	default:
+		panic("A new import kind was added without updating this code")
+	}
+}
 
 //
 // Function definition

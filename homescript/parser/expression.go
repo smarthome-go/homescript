@@ -19,7 +19,7 @@ func (self *Parser) expression(prec uint8) (expr ast.Expression, isWithBlock boo
 	var lhs ast.Expression
 
 	switch self.CurrentToken.Kind {
-	case lexer.AtSymbol, lexer.Identifier, lexer.Underscore:
+	case lexer.SINGLETON_TOKEN, lexer.Identifier, lexer.Underscore:
 		ident, err := self.identExpression()
 		if err != nil {
 			return nil, false, err

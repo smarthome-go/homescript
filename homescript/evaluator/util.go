@@ -3,39 +3,38 @@ package evaluator
 import (
 	"fmt"
 
-	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
+	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
-func (i *Interpreter) ident(ident ast.SpannedIdent) (*value.Value, *value.Interrupt) {
+func (i *Interpreter) ident(ident ast.SpannedIdent) (*value.Value, *value.VmInterrupt) {
 	const errMsg = "Value or function `%s` was not found"
 
 	val, found := i.currModule.scopes[i.currModule.currentScope][ident.Ident()]
 	if !found {
-		return nil, value.NewRuntimeErr(
+		return nil, value.NewVMFatalException(
 			fmt.Sprintf(errMsg, ident),
-			value.UncaughtThrowKind,
-			ident.Span(),
-		)
-	} else {
-		return val, nil
-	}
-
-	fn, found := i.currModule.functions[ident.Ident()]
-	if !found {
-		return nil, value.NewRuntimeErr(
-			fmt.Sprintf(errMsg, ident),
-			value.UncaughtThrowKind,
+			value.Vm_UncaughtThrowKind,
 			ident.Span(),
 		)
 	}
 
-	return value.NewValueFunction(
-		i.currModule.filename,
-		fn.Body,
-		nil, // TODO: this might be broken
-	), nil
+	return val, nil
 
+	// fn, found := i.currModule.functions[ident.Ident()]
+	// if !found {
+	// 	return nil, value.NewRuntimeErr(
+	// 		fmt.Sprintf(errMsg, ident),
+	// 		value.UncaughtThrowKind,
+	// 		ident.Span(),
+	// 	)
+	// }
+
+	// return value.NewValueFunction(
+	// 	i.currModule.filename,
+	// 	fn.Body,
+	// 	nil, // TODO: this might be broken
+	// ), nil
 }
 
 func (i *Interpreter) pushScope() {

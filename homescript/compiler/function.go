@@ -45,7 +45,7 @@ func (self TriggerCompiledAnnotation) Kind() CompiledAnnotationKind {
 	return CompiledAnnotationKindTrigger
 }
 
-func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) *CompiledAnnotations {
+func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) (*CompiledAnnotations, *value.VmInterrupt) {
 	self.currFn = node.Ident.Ident()
 	self.pushScope()
 	defer self.popScope()
@@ -59,7 +59,10 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) *CompiledAn
 			switch ann := annotation.(type) {
 			case ast.AnalyzedAnnotationItemTrigger:
 				// Evaluate arguments.
-				eval := evaluator.NewInterpreter(self.analyzedSource, self.entryPointModule)
+				eval, i := evaluator.NewInterpreter(self.analyzedSource, self.entryPointModule, self.executor)
+				if i != nil {
+					return nil, i
+				}
 
 				values := make([]value.Value, len(ann.TriggerArgs.List))
 
@@ -69,8 +72,8 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) *CompiledAn
 						panic(fmt.Sprintf("Unreachable: comptime evaluation failed for trigger arg: %s", (*err).Message()))
 					}
 
-					argVUpgrade := upgradeValue(argV)
-					values[idx] = *argVUpgrade
+					// argVUpgrade := upgradeValue(argV)
+					values[idx] = *argV
 				}
 
 				compiledItems[idx] = TriggerCompiledAnnotation{
@@ -141,5 +144,5 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) *CompiledAn
 	self.insert(newOneIntInstruction(Opcode_AddMempointer, -varCnt), node.Range)
 	self.insert(newPrimitiveInstruction(Opcode_Return), node.Span())
 
-	return annotations
+	return annotations, nil
 }
