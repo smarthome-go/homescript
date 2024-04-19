@@ -48,7 +48,7 @@ type Compiler struct {
 	executor value.Executor
 }
 
-func NewCompiler(program map[string]ast.AnalyzedProgram, entryPointModule string, executor value.Executor) Compiler {
+func NewCompiler(program map[string]ast.AnalyzedProgram, entryPointModule string) Compiler {
 	scopes := make([]map[string]string, 1)
 	scopes[0] = make(map[string]string)
 	currScope := &scopes[0]
@@ -66,8 +66,6 @@ func NewCompiler(program map[string]ast.AnalyzedProgram, entryPointModule string
 		// Program source.
 		analyzedSource:   program,
 		entryPointModule: entryPointModule,
-		// Executor.
-		executor: executor,
 	}
 }
 

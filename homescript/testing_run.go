@@ -28,7 +28,7 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 		PintBufMutex:  &sync.Mutex{},
 	}
 
-	compilerStruct := compiler.NewCompiler(analyzed, filename, rawExecutor)
+	compilerStruct := compiler.NewCompiler(analyzed, filename)
 	compiled, err := compilerStruct.Compile()
 
 	if err != nil {
