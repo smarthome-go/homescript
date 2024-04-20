@@ -79,7 +79,7 @@ func (self AnalyzedImport) String() string {
 	for _, imported := range self.ToImport {
 		toImport = append(toImport, imported.String())
 	}
-	return fmt.Sprintf("import {%s} from %s;", strings.Join(toImport, ", "), self.FromModule)
+	return fmt.Sprintf("import { %s } from %s;", strings.Join(toImport, ", "), self.FromModule)
 }
 func (self AnalyzedImport) Type() Type { return NewNullType(self.Range) }
 

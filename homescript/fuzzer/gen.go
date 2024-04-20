@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"log"
-	"runtime"
 	"sync"
 	"time"
 
@@ -19,6 +18,8 @@ type Generator struct {
 	terminateAfterNTries uint
 	outputLimitPerPass   uint
 	verbose              bool
+	// How many threads the generator may use.
+	numWorkers uint
 }
 
 func NewGenerator(
@@ -29,6 +30,7 @@ func NewGenerator(
 	terminateAfterNTries uint,
 	outputSizeLimit uint,
 	verbose bool,
+	numWorkers uint,
 ) Generator {
 	return Generator{
 		onOutput:             onOutput,
@@ -38,6 +40,7 @@ func NewGenerator(
 		terminateAfterNTries: terminateAfterNTries,
 		outputLimitPerPass:   outputSizeLimit,
 		verbose:              verbose,
+		numWorkers:           numWorkers,
 	}
 }
 
@@ -61,6 +64,7 @@ func ChunkInput[T any](input []T, chunkSize uint) [][]T {
 }
 
 func (self *Generator) Gen() {
+	log.Printf("=== Configured generator to use %d workers.\n", self.numWorkers)
 	startAll := time.Now()
 
 	passResults := make([][]ast.AnalyzedProgram, self.passes+1)
@@ -85,14 +89,13 @@ func (self *Generator) Gen() {
 		}
 
 		inputSize := uint(len(passResults[passIndex]))
-		numCpu := uint(runtime.NumCPU())
-		chunkSize := (inputSize + numCpu - 1) / numCpu
+		chunkSize := (inputSize + self.numWorkers - 1) / self.numWorkers
 
 		inputChunks := ChunkInput[ast.AnalyzedProgram](passResults[passIndex], chunkSize)
 		numChunks := uint(len(inputChunks))
 		outputChunks := make([][]ast.AnalyzedProgram, numChunks)
 
-		if numChunks > numCpu {
+		if numChunks > self.numWorkers {
 			panic("Illegal state")
 		}
 

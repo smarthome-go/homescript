@@ -404,7 +404,6 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 		for _, item := range node.ToImport {
 			// TODO: template imports also need special action
 			// panic("TODO: templates")
-
 			// type imports need special action: only add the type and filter out this import
 			if item.Kind == pAst.IMPORT_KIND_TYPE {
 				typ, found := module.getType(item.Ident)
@@ -481,6 +480,12 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 				if _, prevFound := self.currentModule.addTrigger(item.Ident, trigg); prevFound {
 					self.error(fmt.Sprintf("Trigger '%s' already exists in current scope", item.Ident), nil, item.Span)
 				}
+
+				toImport = append(toImport, ast.AnalyzedImportValue{
+					Ident: pAst.NewSpannedIdent(item.Ident, item.Span),
+					Kind:  pAst.IMPORT_KIND_TRIGGER,
+					Type:  nil,
+				})
 
 				continue
 			}
@@ -589,6 +594,13 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 				if prev := self.currentModule.addType(item.Ident, newTypeWrapper(imported.Type.SetSpan(item.Span), false, item.Span, false)); prev != nil {
 					self.error(fmt.Sprintf("Type '%s' already exists in current scope", item.Ident), nil, item.Span)
 				}
+
+				toImport = append(toImport, ast.AnalyzedImportValue{
+					Ident: pAst.NewSpannedIdent(item.Ident, item.Span),
+					Type:  imported.Type.SetSpan(item.Span),
+					Kind:  pAst.IMPORT_KIND_TYPE,
+				})
+
 				continue
 			case pAst.IMPORT_KIND_TEMPLATE:
 				prev, prevFound := self.currentModule.addTemplate(item.Ident, *imported.Template)
@@ -597,6 +609,12 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 					self.hint(fmt.Sprintf("Template `%s` previously imported here", item.Ident), make([]string, 0), prev.Span)
 				}
 
+				toImport = append(toImport, ast.AnalyzedImportValue{
+					Ident: pAst.NewSpannedIdent(item.Ident, item.Span),
+					Type:  nil,
+					Kind:  pAst.IMPORT_KIND_TEMPLATE,
+				})
+
 				continue
 			case pAst.IMPORT_KIND_TRIGGER:
 				prev, prevFound := self.currentModule.addTrigger(item.Ident, *imported.Trigger)
@@ -604,6 +622,12 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 					self.error(fmt.Sprintf("Trigger function '%s' already exists in current module", item.Ident), nil, item.Span)
 					self.hint(fmt.Sprintf("Trigger function `%s` previously imported here", item.Ident), make([]string, 0), prev.ImportedAt)
 				}
+
+				toImport = append(toImport, ast.AnalyzedImportValue{
+					Ident: pAst.NewSpannedIdent(item.Ident, item.Span),
+					Type:  nil,
+					Kind:  pAst.IMPORT_KIND_TRIGGER,
+				})
 
 				continue
 			}

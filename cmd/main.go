@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -236,6 +237,11 @@ func main() {
 								Usage:   "The number of iterations to continue even though no new output was generated",
 								Aliases: []string{"a"},
 							},
+							&cli.UintFlag{
+								Name:    "num-workers",
+								Usage:   "The number of threads to spawn during fuzz generation. (Default is number of CPUs)",
+								Aliases: []string{"n"},
+							},
 						},
 						Action: func(ctx *cli.Context) error {
 							fmt.Println("fuzzing database generation: ", ctx.Args().First())
@@ -251,6 +257,12 @@ func main() {
 							satisfiedAfter := ctx.Uint("satisfied-after")
 							if satisfiedAfter == 0 {
 								satisfiedAfter = satisfiedAfterDefault
+							}
+
+							numWorkers := ctx.Uint("num-workers")
+							if numWorkers == 0 {
+								numWorkers = uint(runtime.NumCPU())
+								log.Printf("Using default amount of %d workers.\n", numWorkers)
 							}
 
 							verbose := ctx.Bool("verbose")
@@ -309,6 +321,7 @@ func main() {
 								satisfiedAfter,
 								passLimit,
 								verbose,
+								numWorkers,
 							)
 
 							doneChan := make(chan struct{})
