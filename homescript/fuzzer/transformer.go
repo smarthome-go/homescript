@@ -3,7 +3,6 @@ package fuzzer
 import (
 	"math/rand"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 )
 
@@ -93,8 +92,6 @@ func (self *Transformer) Transform(tree ast.AnalyzedProgram) ast.AnalyzedProgram
 
 		output.Globals = append(output.Globals, newGlob)
 	}
-
-	spew.Dump(output.Imports)
 
 	return output
 }
