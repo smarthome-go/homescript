@@ -334,6 +334,7 @@ func main() {
 							// Spawn writer.
 							bufferFlush(
 								newJobChan,
+								filename,
 								zipWriter,
 								doneChan,
 							)
