@@ -24,13 +24,7 @@ var vmLimits = runtime.CoreLimits{
 }
 
 func CompileVm(analyzed map[string]ast.AnalyzedProgram, filename string) compiler.CompileOutput {
-	executor := homescript.TestingVmExecutor{
-		PrintToStdout: true,
-		PrintBuf:      new(string),
-		PintBufMutex:  &sync.Mutex{},
-	}
-
-	compilerStruct := compiler.NewCompiler(analyzed, filename, executor)
+	compilerStruct := compiler.NewCompiler(analyzed, filename)
 	compiled, err := compilerStruct.Compile()
 
 	if err != nil {
