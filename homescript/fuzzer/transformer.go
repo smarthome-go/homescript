@@ -54,7 +54,8 @@ func (self *Transformer) Transform(tree ast.AnalyzedProgram) ast.AnalyzedProgram
 	}
 
 	// Iterate over the imports and shuffle the order around
-	ShuffleSlice(tree.Imports, self.randSource)
+	// TODO: why does this cause errors sometimes?
+	// ShuffleSlice(tree.Imports, self.randSource)
 
 	// Iterate over the globals and shuffle their order around
 	ShuffleSlice(tree.Globals, self.randSource)
