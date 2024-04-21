@@ -202,7 +202,7 @@ func (self AnalyzedNoneLiteralExpression) Kind() ExpressionKind {
 	return NoneLiteralExpressionKind
 }
 func (self AnalyzedNoneLiteralExpression) Span() errors.Span { return self.Range }
-func (self AnalyzedNoneLiteralExpression) String() string    { return "one" }
+func (self AnalyzedNoneLiteralExpression) String() string    { return "none" }
 func (self AnalyzedNoneLiteralExpression) Type() Type {
 	return NewOptionType(NewAnyType(self.Span()), self.Span())
 }
