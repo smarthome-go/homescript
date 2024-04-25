@@ -29,6 +29,19 @@ func (self ValueObject) Display() (string, *VmInterrupt) {
 	return fmt.Sprintf("{\n    %s\n}", strings.Join(fields, ",\n    ")), nil
 }
 
+func (self ValueObject) DisplayFlat() (string, *VmInterrupt) {
+	fields := make([]string, 0)
+	for key, field := range self.FieldsInternal {
+		disp, err := (*field).Display()
+		if err != nil {
+			return "", err
+		}
+		fields = append(fields, fmt.Sprintf("%s: %s", key, disp))
+	}
+
+	return fmt.Sprintf("{ %s }", strings.Join(fields, ", ")), nil
+}
+
 func (self ValueObject) IsEqual(other Value) (bool, *VmInterrupt) {
 	otherObj := other.(ValueObject)
 

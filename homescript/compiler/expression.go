@@ -289,20 +289,20 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 
 		fnName := self.mangleFn("$lambda")
 		self.addFn(fnName, fnName)
-
 		oldCurrFn := self.currFn
 
-		self.compileFn(ast.AnalyzedFunctionDefinition{
-			Ident: pAst.NewSpannedIdent(fnName, node.Range),
-			Parameters: ast.AnalyzedFunctionParams{
-				List: node.Parameters,
-				Span: node.ParamSpan,
+		self.compileFn(
+			ast.AnalyzedFunctionDefinition{
+				Ident:      pAst.NewSpannedIdent(fnName, node.Range),
+				Parameters: ast.AnalyzedFunctionParams{List: node.Parameters, Span: node.ParamSpan},
+				ReturnType: node.ReturnType,
+				Body:       node.Body,
+				Modifier:   pAst.FN_MODIFIER_NONE,
+				Annotation: nil,
+				Range:      node.Range,
 			},
-			ReturnType: node.ReturnType,
-			Body:       node.Body,
-			Modifier:   pAst.FN_MODIFIER_NONE,
-			Range:      node.Range,
-		})
+		)
+
 		self.currFn = oldCurrFn
 
 		self.insert(newValueInstruction(Opcode_Copy_Push, *value.NewValueVMFunction(fnName)), node.Span())

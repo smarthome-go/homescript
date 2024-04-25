@@ -4,9 +4,7 @@ import (
 	"fmt"
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
-	"github.com/smarthome-go/homescript/v3/homescript/evaluator"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
-	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
 //
@@ -38,49 +36,81 @@ type TriggerCompiledAnnotation struct {
 	CallbackFnIdent   string
 	TriggerConnective pAst.TriggerDispatchKeywordKind
 	TriggerSource     string
-	TriggerArgs       []value.Value
+	// Which function to call in order to retrieve the arguments.
+	// The compiler generates a 'hidden' function for every trigger annotation.
+	ArgumentFunctionIdent string
 }
 
 func (self TriggerCompiledAnnotation) Kind() CompiledAnnotationKind {
 	return CompiledAnnotationKindTrigger
 }
 
-func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) (*CompiledAnnotations, *value.VmInterrupt) {
+func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) (annotations *CompiledAnnotations, mangledIdent string) {
+	mangledFn := self.mangleFn(node.Ident.Ident())
+	self.addFn(node.Ident.Ident(), mangledFn)
 	self.currFn = node.Ident.Ident()
 	self.pushScope()
 	defer self.popScope()
 
 	// Compile annotations.
-	var annotations *CompiledAnnotations
 	if node.Annotation != nil {
+		fmt.Println("ENTERING here")
 		compiledItems := make([]CompiledAnnotation, len(node.Annotation.Items))
 
 		for idx, annotation := range node.Annotation.Items {
 			switch ann := annotation.(type) {
 			case ast.AnalyzedAnnotationItemTrigger:
-				// Evaluate arguments.
-				eval, i := evaluator.NewInterpreter(self.analyzedSource, self.entryPointModule, self.executor)
-				if i != nil {
-					return nil, i
-				}
+				//
+				// Compile argument function.
+				//
 
-				values := make([]value.Value, len(ann.TriggerArgs.List))
+				argFnIdent := fmt.Sprintf("TRIGGER_args_for_%s", node.Ident)
+				argFnfnRetType := ast.NewListType(ast.NewAnyType(node.Range), node.Range)
 
+				argList := make([]ast.AnalyzedExpression, len(ann.TriggerArgs.List))
 				for idx, arg := range ann.TriggerArgs.List {
-					argV, err := eval.Expression(arg.Expression)
-					if err != nil {
-						panic(fmt.Sprintf("Unreachable: comptime evaluation failed for trigger arg: %s", (*err).Message()))
-					}
-
-					// argVUpgrade := upgradeValue(argV)
-					values[idx] = *argV
+					argList[idx] = arg.Expression
 				}
+
+				// fmt.Printf("OLD = %s\n", self.currFn)
+				currFnOld := self.currFn
+
+				self.addFn(argFnIdent, argFnIdent)
+				self.currFn = argFnIdent
+
+				_, annotationCallbackIdent := self.compileFn(ast.AnalyzedFunctionDefinition{
+					Ident: pAst.NewSpannedIdent(argFnIdent, node.Range),
+					Parameters: ast.AnalyzedFunctionParams{
+						List: make([]ast.AnalyzedFnParam, 0),
+						Span: node.Range,
+					},
+					ReturnType: argFnfnRetType,
+					Body: ast.AnalyzedBlock{
+						Statements: []ast.AnalyzedStatement{},
+						Expression: ast.AnalyzedListLiteralExpression{
+							Values:   argList,
+							Range:    node.Range,
+							ListType: ast.NewAnyType(node.Range),
+						},
+						Range:      node.Range,
+						ResultType: argFnfnRetType,
+					},
+					Modifier:   pAst.FN_MODIFIER_NONE,
+					Annotation: nil,
+					Range:      node.Range,
+				})
+
+				self.currFn = currFnOld
+
+				//
+				// End argument function.
+				//
 
 				compiledItems[idx] = TriggerCompiledAnnotation{
-					CallbackFnIdent:   node.Ident.Ident(),
-					TriggerConnective: ann.TriggerConnective,
-					TriggerSource:     ann.TriggerSource.Ident(),
-					TriggerArgs:       values,
+					CallbackFnIdent:       node.Ident.Ident(),
+					TriggerConnective:     ann.TriggerConnective,
+					TriggerSource:         ann.TriggerSource.Ident(),
+					ArgumentFunctionIdent: annotationCallbackIdent,
 				}
 			case ast.AnalyzedAnnotationItem:
 				panic("TODO: this is not yet implemented")
@@ -144,5 +174,5 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) (*CompiledA
 	self.insert(newOneIntInstruction(Opcode_AddMempointer, -varCnt), node.Range)
 	self.insert(newPrimitiveInstruction(Opcode_Return), node.Span())
 
-	return annotations, nil
+	return annotations, mangledFn
 }

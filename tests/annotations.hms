@@ -2,8 +2,16 @@ import trigger minute from triggers;
 
 let foo = 1;
 
-//#[trigger in minute($Device.topics)]
-#[trigger in minute(1)]
+fn fib(n: int) -> int {
+    if n < 2 {
+        n
+    } else {
+        fib(n - 2) + fib(n - 1)
+    }
+}
+
+#[trigger in minute(foo * 20 + fib(10))]
+// #[trigger in minute($Driver.foo)]
 event fn whatever(_elapsed: int) {
     println("whatever() was called");
 }
@@ -11,35 +19,3 @@ event fn whatever(_elapsed: int) {
 fn main() {
     println("Hello world");
 }
-
-
-
-
-
-
-//#[trigger on mqtt('foo/bar'), trigger at noon()]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

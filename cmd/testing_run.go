@@ -12,6 +12,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
+	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/interpreter/value"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
 	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
@@ -58,13 +59,51 @@ func TestingRunVm(compiled compiler.CompileOutput, printToStdout bool, readFile 
 	start := time.Now()
 	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, homescript.TestingVmScopeAdditions(), vmLimits)
 
-	debuggerOut := make(chan runtime.DebugOutput)
-	core := vm.SpawnAsync(runtime.FunctionInvocation{
-		Function: compiler.MainFunctionIdent,
-		Args:     make([]vmValue.Value, 0),
-	}, &debuggerOut)
+	//
+	// Run all annotations which have a separate function.
+	//
 
-	go TestingDebugConsumer(&debuggerOut, core)
+	for fn, ann := range compiled.Annotations {
+		for _, item := range ann.Items {
+			switch i := item.(type) {
+			case ast.AnalyzedAnnotationItem:
+			case compiler.TriggerCompiledAnnotation:
+				startTrigger := time.Now()
+
+				callback := i.ArgumentFunctionIdent
+
+				result := vm.SpawnSync(runtime.FunctionInvocation{
+					Function:    callback,
+					LiteralName: true,
+					Args:        make([]vmValue.Value, 0),
+					FunctionSignature: runtime.FunctionInvocationSignature{
+						Params:     []runtime.FunctionInvocationSignatureParam{},
+						ReturnType: ast.NewListType(ast.NewAnyType(errors.Span{}), errors.Span{}),
+					},
+				}, nil)
+
+				if result.Exception != nil {
+					panic("Annotation returned non <nil> exception")
+				}
+
+				disp, err := result.ReturnValue.Display()
+				if err != nil {
+					panic((*err).Message())
+				}
+
+				fmt.Printf("====> (%v) FN = `%s:%s` | ARGS = `%s`\n", time.Since(startTrigger), fn.Module, fn.UnmangledFunction, disp)
+			}
+		}
+	}
+
+	debuggerOut := make(chan runtime.DebugOutput)
+	coreMain := vm.SpawnAsync(runtime.FunctionInvocation{
+		Function:          compiler.MainFunctionIdent,
+		LiteralName:       false,
+		Args:              make([]vmValue.Value, 0),
+		FunctionSignature: runtime.FunctionInvocationSignature{},
+	}, &debuggerOut)
+	go TestingDebugConsumer(&debuggerOut, coreMain)
 
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i

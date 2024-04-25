@@ -209,11 +209,7 @@ func (self *Compiler) compileProgram(
 			if fn.Ident.Ident() == MainFunctionIdent {
 				mainFnSpan = fn.Range
 			}
-			fnAnnotations, i := self.compileFn(fn)
-
-			if i != nil {
-				return MangleMappings{}, ModuleAnnotations{}, fmt.Errorf("Constant evaluation failed: %s", (*i).Message())
-			}
+			fnAnnotations, _ := self.compileFn(fn)
 
 			if fnAnnotations != nil {
 				moduleAnnotations[ModuleFunction{
