@@ -202,7 +202,7 @@ func (self *Compiler) compileIdentExpression(node ast.AnalyzedIdentExpression) {
 	name, varFound := self.getMangled(node.Ident.Ident())
 
 	opCode := Opcode_GetVarImm
-	if node.IsGlobal {
+	if node.IsGlobal || node.IsSingleton {
 		opCode = Opcode_GetGlobImm
 	}
 

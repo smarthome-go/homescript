@@ -12,8 +12,13 @@ import (
 const stackTraceLineLength = 24
 
 func (self *VM) SourceMap(frame CallFrame) errors.Span {
+	instructionsOfCurrFn := len(self.Program.SourceMap[frame.Function])
+	if instructionsOfCurrFn == 0 {
+		panic(fmt.Sprintf("Empty function: `%s`", frame.Function))
+	}
+
 	if frame.InstructionPointer >= uint(len(self.Program.SourceMap[frame.Function])) {
-		return self.Program.SourceMap[frame.Function][len(self.Program.SourceMap[frame.Function])-1]
+		return self.Program.SourceMap[frame.Function][instructionsOfCurrFn-1]
 	}
 
 	return self.Program.SourceMap[frame.Function][frame.InstructionPointer]
