@@ -40,17 +40,18 @@ func NewAnalyzer(host HostProvider, scopeAdditions map[string]Variable) Analyzer
 	)
 
 	analyzer := Analyzer{
-		analyzedModules:   make(map[string]ast.AnalyzedProgram),
-		scopeAdditions:    scopeAdditions,
-		diagnostics:       make([]diagnostic.Diagnostic, 0),
-		syntaxErrors:      make([]errors.Error, 0),
-		modules:           make(map[string]*Module),
-		currentModuleName: "",
-		currentModule:     nil,
-		host:              host,
+		analyzedModules:                 make(map[string]ast.AnalyzedProgram),
+		scopeAdditions:                  scopeAdditions,
+		diagnostics:                     make([]diagnostic.Diagnostic, 0),
+		syntaxErrors:                    make([]errors.Error, 0),
+		modules:                         make(map[string]*Module),
+		currentModuleName:               "",
+		currentModule:                   nil,
+		host:                            host,
+		knownObjectTypeFieldAnnotations: []string{},
 	}
 
-	// Precompute this list as this could be expensive (depens on the host)
+	// Precompute this list as this could be expensive (depens on the host).
 	knownAnnotationsWithoutPrefix := analyzer.host.GetKnownObjectTypeFieldAnnotations()
 	analyzer.knownObjectTypeFieldAnnotations = make([]string, len(knownAnnotationsWithoutPrefix))
 
@@ -62,7 +63,7 @@ func NewAnalyzer(host HostProvider, scopeAdditions map[string]Variable) Analyzer
 }
 
 //
-// Analyzer helper functions
+// Analyzer helper functions.
 //
 
 func (self *Analyzer) error(message string, notes []string, span errors.Span) {
@@ -100,7 +101,7 @@ func (self *Analyzer) dropScope(remove bool) {
 		scope = self.currentModule.Scopes[len(self.currentModule.Scopes)-1]
 	}
 
-	// check for unused type definitions
+	// Check for unused type definitions.
 	for key, typ := range scope.Types {
 		if !typ.Used {
 			self.warn(
@@ -111,7 +112,7 @@ func (self *Analyzer) dropScope(remove bool) {
 		}
 	}
 
-	// check for unused variables
+	// Check for unused variables.
 	for key, variable := range scope.Values {
 		if variable.Used || variable.IsPub || strings.HasPrefix(key, "_") {
 			continue
@@ -135,7 +136,7 @@ func (self *Analyzer) dropScope(remove bool) {
 				variable.Span,
 			)
 		case BuiltinVariableOriginKind:
-			// ignore this variable
+			// Ignore this variable.
 		default:
 			panic("A new variable origin kind was added without updating this code")
 		}
@@ -143,14 +144,14 @@ func (self *Analyzer) dropScope(remove bool) {
 }
 
 //
-// Analyzer logic
+// Analyzer logic.
 //
 
 func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
-	currModulePrev := self.currentModule // save previous module
+	currModulePrev := self.currentModule // Save previous module.
 	currModuleNamePrev := self.currentModuleName
 
-	// create module
+	// Create module.
 	self.modules[moduleName] = &Module{
 		ImportsModules:           make([]string, 0),
 		Functions:                make([]*function, 0),
@@ -158,13 +159,13 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		Singletons:               make(map[string]*ast.AnalyzedSingleton),
 		Templates:                make(map[string]ast.TemplateSpec),
 		TriggerFunctions:         make(map[string]TriggerFunction),
-		LoopDepth:                0, // `break` and `continue` are legal if > 0
+		LoopDepth:                0, // `break` and `continue` are legal if > 0.
 		CurrentFunction:          nil,
 		CurrentLoopIsTerminated:  false,
 		CreateErrorIfContainsAny: true,
 	}
 
-	// set the current module to the new name
+	// Set the current module to the new name.
 	self.setCurrentModule(moduleName)
 
 	output := ast.AnalyzedProgram{
@@ -175,30 +176,30 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		Singletons: make([]ast.AnalyzedSingletonTypeDefinition, 0),
 	}
 
-	// add the root scope
+	// Add the root scope.
 	self.pushScope()
 
-	// populate root scope with scope additions
+	// Populate root scope with scope additions.
 	for name, val := range self.scopeAdditions {
 		self.currentModule.addVar(name, val, false)
 	}
 
-	// analyze all import statements
+	// Analyze all import statements.
 	for _, item := range module.Imports {
 		output.Imports = append(output.Imports, self.importItem(item))
 	}
 
-	// analyze all type declarations
+	// Analyze all type declarations.
 	for _, item := range module.Types {
 		output.Types = append(output.Types, self.typeDefStatement(item))
 	}
 
-	// analyze all singleton declarations
+	// Analyze all singleton declarations.
 	for _, item := range module.Singletons {
 		output.Singletons = append(output.Singletons, self.singletonDeclStatement(item))
 	}
 
-	// add all impl block function signatures first
+	// Add all impl block function signatures first.
 	for _, impl := range module.ImplBlocks {
 		for _, fn := range impl.Methods {
 			// TODO: is this OK?
@@ -206,17 +207,17 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		}
 	}
 
-	// add all function signatures first (renders order of definition irrelevant)
+	// Add all function signatures first (renders order of definition irrelevant).
 	for _, fn := range module.Functions {
 		self.functionSignature(fn)
 	}
 
-	// analyze all global let statements
+	// Analyze all global let statements.
 	for _, item := range module.Globals {
 		output.Globals = append(output.Globals, self.letStatement(item, true))
 	}
 
-	// analyze all functions / events
+	// Analyze all functions / events.
 	for _, item := range module.Functions {
 		fnOut := self.functionDefinition(item)
 
@@ -229,23 +230,26 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		}
 	}
 
-	// analyze all impl blocks
+	// Analyze all impl blocks.
 	for _, impl := range module.ImplBlocks {
 		output.ImplBlocks = append(output.ImplBlocks, self.implBlock(impl))
 	}
 
 	for singletonName, singleton := range self.currentModule.Singletons {
 		for idx, otherSingleton := range output.Singletons {
-			// Match found, copy implemented templates
+			// Match found, copy implemented templates.
 			if singletonName == otherSingleton.Ident.Ident() {
-				output.Singletons[idx].ImplementsTemplates = append(output.Singletons[idx].ImplementsTemplates, singleton.ImplementsTemplates...)
+				output.Singletons[idx].ImplementsTemplates = append(
+					output.Singletons[idx].ImplementsTemplates,
+					singleton.ImplementsTemplates...,
+				)
 				output.Singletons[idx].Used = singleton.Used
 				break
 			}
 		}
 	}
 
-	// check if the `main` function exists
+	// Check if the `main` function exists.
 	mainExists := false
 	for _, fn := range output.Functions {
 		if fn.Ident.Ident() == "main" {
@@ -261,36 +265,42 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 		)
 	}
 
-	// check that all functions are used and ignore them if they are `pub`
-	// NOTE: this only works if `NONE` is the only default modifier
+	// Check that all functions are used and ignore them if they are `pub`.
+	// NOTE: this only works if `NONE` is the only default modifier.
 	for _, fn := range self.currentModule.Functions {
 		if fn.Used || fn.Modifier != pAst.FN_MODIFIER_NONE || fn.FnType.Kind() != normalFunctionKind {
 			continue
 		}
 		fnType := fn.FnType.(normalFunction)
-		if fnType.Ident.Ident() == "main" || strings.HasPrefix(fnType.Ident.Ident(), "_") { // ignore the `main` fn
+		if fnType.Ident.Ident() == "main" || strings.HasPrefix(fnType.Ident.Ident(), "_") { // Ignore the `main` fn.
 			continue
 		}
 		self.warn(
 			fmt.Sprintf("Function '%s' is never used", fnType.Ident.Ident()),
-			[]string{fmt.Sprintf("If this is intentional, change the name to '_%s' to hide this message", fnType.Ident.Ident())},
+			[]string{fmt.Sprintf(
+				"If this is intentional, change the name to '_%s' to hide this message",
+				fnType.Ident.Ident(),
+			)},
 			fnType.Ident.Span(),
 		)
 	}
 
-	// Detect any unused singletons
+	// Detect any unused singletons.
 	for singletonName, singleton := range self.currentModule.Singletons {
 		if !singleton.Used {
 			self.warn(
 				fmt.Sprintf("Singleton '%s' is never used", singletonName),
-				[]string{fmt.Sprintf("If this is intentional, change the name to '_%s' to hide this message", singletonName)},
+				[]string{fmt.Sprintf(
+					"If this is intentional, change the name to '_%s' to hide this message",
+					singletonName,
+				)},
 				singleton.Type.Span(),
 			)
 		}
 	}
 
-	// drop the root scope so that all unused globals are displayed
-	// do not remove the scope
+	// Drop the root scope so that all unused globals are displayed.
+	// Do not remove the scope.
 	self.dropScope(false)
 
 	if currModulePrev != nil {
@@ -310,7 +320,7 @@ func (self *Analyzer) Analyze(
 ) {
 	self.analyzeModule(parsedEntryModule.Filename, parsedEntryModule)
 
-	// If there are no serious errors found, call the post-validation hook
+	// If there are no serious errors found, call the post-validation hook.
 	containsErrs := false
 	for _, d := range diagnostics {
 		if d.Level == diagnostic.DiagnosticLevelError {
