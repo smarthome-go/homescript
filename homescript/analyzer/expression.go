@@ -132,64 +132,26 @@ func (self *Analyzer) block(node pAst.Block, pushNewScope bool) ast.AnalyzedBloc
 
 	// analyze statements
 	statements := make([]ast.AnalyzedStatement, 0)
-	var unreachableSpan *errors.Span = nil
-	warnedUnreachable := false
+	// warnedUnreachable := false
 
 	for _, statement := range node.Statements {
-		newStatement := self.statement(statement)
-
-		// if the previous statement had the never type, warn that this statement is unreachable
-		if unreachableSpan != nil && !warnedUnreachable {
-			warnedUnreachable = true
-			self.warn(
-				"Unreachable statement",
-				nil,
-				newStatement.Span(),
-			)
-			self.hint(
-				"Any code following this statement is unreachable",
-				nil,
-				*unreachableSpan,
-			)
-		}
-
-		// detect if this statement renders all following unreachable
-		if unreachableSpan == nil && newStatement.Type().Kind() == ast.NeverTypeKind {
-			span := newStatement.Span()
-			unreachableSpan = &span
-		}
-
-		statements = append(statements, newStatement)
+		statements = append(statements, self.statement(statement))
 	}
 
 	// analyze optional trailing expression
-	var trailingExpr ast.AnalyzedExpression = nil
+	var trailingExpr ast.AnalyzedExpression
 
 	if node.Expression != nil {
 		trailingExpr = self.expression(node.Expression)
-
-		if unreachableSpan != nil && !warnedUnreachable {
-			self.warn(
-				"Unreachable expression",
-				nil,
-				node.Expression.Span(),
-			)
-			self.hint(
-				"Any code following this statement is unreachable",
-				nil,
-				*unreachableSpan,
-			)
-		}
 	}
 
 	// if this block diverges, the entrire block has the never type
 	// otherwise, use the type of the trailing expression
 	var resultType ast.Type
-	if unreachableSpan != nil {
-		resultType = ast.NewNeverType()
-	} else if trailingExpr != nil {
+	switch {
+	case trailingExpr != nil:
 		resultType = trailingExpr.Type()
-	} else {
+	default:
 		resultType = ast.NewNullType(node.Range)
 	}
 

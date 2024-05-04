@@ -1,4 +1,4 @@
-package main
+package optimizer
 
 import (
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
@@ -51,7 +51,7 @@ func NewOptimizer() Optimizer {
 	}
 }
 
-func (o *Optimizer) Analyze(
+func (o *Optimizer) Optimize(
 	analyzedModule map[string]ast.AnalyzedProgram,
 ) (
 	modules map[string]ast.AnalyzedProgram,
@@ -67,6 +67,12 @@ func (o *Optimizer) Analyze(
 }
 
 func (o *Optimizer) analyzeModule(moduleName string, module ast.AnalyzedProgram) ast.AnalyzedProgram {
+	functionsOut := make([]ast.AnalyzedFunctionDefinition, 0)
+
+	for _, fn := range module.Functions {
+		newFn := o.optimizeFn(fn)
+		functionsOut = append(functionsOut, newFn)
+	}
 
 	return ast.AnalyzedProgram{
 		Imports:    module.Imports,
@@ -74,17 +80,22 @@ func (o *Optimizer) analyzeModule(moduleName string, module ast.AnalyzedProgram)
 		Singletons: module.Singletons,
 		ImplBlocks: module.ImplBlocks,
 		Globals:    module.Globals,
-		Functions:  module.Functions,
+		Functions:  functionsOut,
 	}
 }
 
-func (o *Optimizer) functions(node ast.AnalyzedFunctionDefinition) ast.AnalyzedFunctionDefinition {
-	// TODO: optimize params
+func (o *Optimizer) optimizeFn(node ast.AnalyzedFunctionDefinition) ast.AnalyzedFunctionDefinition {
 	newBlock := o.block(node.Body)
 
+	// TODO: optimize the parameters
 	newParams := ast.AnalyzedFunctionParams{
-		List: make([]ast.AnalyzedFnParam, 0),
+		List: make([]ast.AnalyzedFnParam, len(node.Parameters.List)),
 		Span: errors.Span{},
+	}
+
+	// TODO: remove unused parameters
+	for idx, param := range node.Parameters.List {
+		newParams.List[idx] = param
 	}
 
 	return ast.AnalyzedFunctionDefinition{
@@ -98,76 +109,55 @@ func (o *Optimizer) functions(node ast.AnalyzedFunctionDefinition) ast.AnalyzedF
 	}
 }
 
-func (o *Optimizer) block(node ast.AnalyzedBlock, pushNewScope bool) ast.AnalyzedBlock {
-	// newStatements := make([]ast.AnalyzedStatement, 0)
-	//
-	// var expression ast.AnalyzedExpression
-	//
-	// for _, statement := range node.Statements {
-	// 	if statement.Type().Kind() == ast.NeverTypeKind {
-	//
-	// 	}
-	// 	newStatements = append(newStatements, o.statement(statement))
-	// }
-	//
-	// return ast.AnalyzedBlock{
-	// 	Statements: newStatements,
-	// 	Expression: expression,
-	// 	Range:      node.Range,
-	// 	ResultType: node.ResultType,
-	// }
-
-	// push a new scope if required
-	if pushNewScope {
-		panic("not implemented")
-		// self.currentModule.pushScope()
-	}
-
-	// analyze statements
+func (o *Optimizer) block(node ast.AnalyzedBlock) ast.AnalyzedBlock {
 	statements := make([]ast.AnalyzedStatement, 0)
-	var unreachableSpan *errors.Span = nil
+	var unreachableSpan *errors.Span
 	warnedUnreachable := false
 
 	for _, statement := range node.Statements {
-		newStatement := o.statement(statement)
+		newStatement := o.optStatement(statement)
 
-		// if the previous statement had the never type, warn that this statement is unreachable
+		// If the previous statement had the never type, warn that this statement is unreachable.
 		if unreachableSpan != nil && !warnedUnreachable {
 			warnedUnreachable = true
-			self.warn(
+			o.warn(
 				"Unreachable statement",
 				nil,
 				newStatement.Span(),
 			)
-			self.hint(
+			o.hint(
 				"Any code following this statement is unreachable",
 				nil,
 				*unreachableSpan,
 			)
 		}
 
-		// detect if this statement renders all following unreachable
+		// Detect if this statement renders all following unreachable.
 		if unreachableSpan == nil && newStatement.Type().Kind() == ast.NeverTypeKind {
 			span := newStatement.Span()
 			unreachableSpan = &span
 		}
 
+		if warnedUnreachable {
+			continue
+		}
+
 		statements = append(statements, newStatement)
 	}
 
-	// analyze optional trailing expression
-	var trailingExpr ast.AnalyzedExpression = nil
+	// Analyze optional trailing expression.
+	var trailingExpr ast.AnalyzedExpression
 
 	if node.Expression != nil {
-		trailingExpr = self.expression(node.Expression)
+		trailingExpr = o.optExpression(node.Expression)
 
 		if unreachableSpan != nil && !warnedUnreachable {
-			self.warn(
+			o.warn(
 				"Unreachable expression",
 				nil,
 				node.Expression.Span(),
 			)
-			self.hint(
+			o.hint(
 				"Any code following this statement is unreachable",
 				nil,
 				*unreachableSpan,
@@ -175,20 +165,17 @@ func (o *Optimizer) block(node ast.AnalyzedBlock, pushNewScope bool) ast.Analyze
 		}
 	}
 
-	// if this block diverges, the entrire block has the never type
-	// otherwise, use the type of the trailing expression
+	// If this block diverges, the entrire block has the never type
+	// otherwise, use the type of the trailing expression.
 	var resultType ast.Type
-	if unreachableSpan != nil {
-		resultType = ast.NewNeverType()
-	} else if trailingExpr != nil {
-		resultType = trailingExpr.Type()
-	} else {
-		resultType = ast.NewNullType(node.Range)
-	}
 
-	// pop scope if one was pushed at the beginning
-	if pushNewScope {
-		self.dropScope(true)
+	switch {
+	case unreachableSpan != nil:
+		resultType = ast.NewNeverType()
+	case trailingExpr != nil:
+		resultType = trailingExpr.Type()
+	default:
+		resultType = ast.NewNullType(node.Range)
 	}
 
 	return ast.AnalyzedBlock{
@@ -199,7 +186,10 @@ func (o *Optimizer) block(node ast.AnalyzedBlock, pushNewScope bool) ast.Analyze
 	}
 }
 
-func (o *Optimizer) statement(ast.AnalyzedStatement) ast.AnalyzedStatement {
-	panic("TODO")
-	return nil
+func (o *Optimizer) optStatement(node ast.AnalyzedStatement) ast.AnalyzedStatement {
+	return node
+}
+
+func (o *Optimizer) optExpression(node ast.AnalyzedExpression) ast.AnalyzedExpression {
+	return node
 }

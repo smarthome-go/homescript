@@ -16,6 +16,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/fuzzer"
+	"github.com/smarthome-go/homescript/v3/homescript/optimizer"
 	"github.com/urfave/cli/v2"
 )
 
@@ -89,7 +90,36 @@ func analyzeFile(
 		fmt.Println(module)
 	}
 
-	return analyzed, pathS, nil
+	log.Println("Optimizing...")
+	optStart := time.Now()
+	optimizer := optimizer.NewOptimizer()
+	optimized, diagnostics := optimizer.Optimize(analyzed)
+	log.Printf("Finished optimization: elapsed: %v\n", time.Since(optStart))
+
+	for _, item := range diagnostics {
+		if item.Level == diagnostic.DiagnosticLevelError {
+			abort = true
+		}
+
+		if item.Span.Filename == "" {
+			panic(spew.Sdump(item))
+		}
+
+		file, err := fileReader(item.Span.Filename)
+		if err != nil {
+			return nil, "", fmt.Errorf("Could not read file `%s`: %s\n%s | %v", item.Span.Filename, err.Error(), item.Message, item.Span)
+		}
+
+		fmt.Println(item.Display(string(file)))
+	}
+
+	log.Println("=== OPTIMIZED ===")
+	for name, module := range optimized {
+		log.Printf("=== (OPTIMIZED) MODULE: %s ===\n", name)
+		fmt.Println(module)
+	}
+
+	return optimized, pathS, nil
 }
 
 func main() {
@@ -168,14 +198,15 @@ func main() {
 						return err
 					}
 
-					analyzed, entryModule, err := analyzeFile(string(file), filename, true, DefaultReadFileProvider)
+					analyzedAndOpt, entryModule, err := analyzeFile(string(file), filename, true, DefaultReadFileProvider)
 					if err != nil {
 						return err
 					}
 
-					code := CompileVm(analyzed, entryModule)
+					code := CompileVm(analyzedAndOpt, entryModule)
 
 					if emitAsm {
+						fmt.Println("========= COMPILED (ASM) ============")
 						fmt.Println(code.AsmString())
 
 						fmt.Println("=== Function annotations ===")
