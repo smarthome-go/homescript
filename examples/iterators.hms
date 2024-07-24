@@ -1,4 +1,4 @@
-import time from sys; // TODO: also allow type imports
+//import time from sys; // TODO: also allow type imports
 
 fn main() {
     println("Num to range");

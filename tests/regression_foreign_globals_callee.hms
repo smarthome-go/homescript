@@ -1,0 +1,10 @@
+let BAR = 42;
+
+fn foo() {
+    println(BAR);
+}
+
+fn main() {
+    // This works, always.
+    foo();
+}

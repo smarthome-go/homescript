@@ -1,0 +1,9 @@
+let FOO = 42;
+
+pub fn a_print() {
+    println(FOO);
+}
+
+fn main() {
+    a_print();
+}

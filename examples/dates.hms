@@ -1,4 +1,4 @@
-import time from sys;
+// import time from sys;
 
 fn main() {
     let now = time.now();

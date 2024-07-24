@@ -7,7 +7,7 @@ fn main() {
     println(a.keys());
     assert(a.keys().contains("foo"));
     assert(!a.keys().contains("invalid"));
-    assert(a.keys() == ["foo", "bar"]);
-    assert(!a.contains('foo2'));
-    assert(a.contains('foo'));
+    assert(a.keys() == ["bar", "baz"]);
+    assert(!a.keys().contains('foo2'));
+    assert(a.keys().contains('foo'));
 }

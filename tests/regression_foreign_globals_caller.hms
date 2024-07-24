@@ -1,0 +1,5 @@
+import { foo } from regression_foreign_globals_callee;
+
+fn main() {
+    foo();
+}
