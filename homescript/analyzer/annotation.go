@@ -67,6 +67,10 @@ func (self *Analyzer) analyzeFnAnnotation(annotation pAst.AnnotationItem, fnIden
 		}
 
 		if triggerFound {
+			if trigger.CallbackFnType.ReturnType == nil {
+				panic("trigger return type is <nil>")
+			}
+
 			if err := self.TypeCheck(
 				callbackFnType.SetSpan(callbackFn.IdentSpan),
 				trigger.CallbackFnType.SetSpanAdvanced(ann.TriggerSource.Span(), ann.TriggerSource.Span()),

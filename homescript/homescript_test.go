@@ -12,7 +12,6 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
-	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -171,6 +170,8 @@ func TestScripts(t *testing.T) {
 
 	// Prepare the tests
 	for _, test := range tests {
+		fmt.Println(test.Path)
+
 		if test.Skip {
 			t.Logf("Skipping test `%s` and all its expansions\n", test.Name)
 			continue

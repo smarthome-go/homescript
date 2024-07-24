@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	herrors "github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 	vmValue "github.com/smarthome-go/homescript/v3/homescript/runtime/value"
@@ -237,8 +236,6 @@ func (self TestingVmExecutor) GetBuiltinImport(moduleName string, toImport strin
 		case "http":
 			return *value.NewValueObject(map[string]*value.Value{
 				"get": value.NewValueBuiltinFunction(func(executor value.Executor, cancelCtx *context.Context, span herrors.Span, args ...value.Value) (*value.Value, *value.VmInterrupt) {
-					spew.Dump(args)
-
 					return value.NewValueObject(map[string]*value.Value{
 						"status":      value.NewValueString("OK"),
 						"status_code": value.NewValueInt(int64(200)),

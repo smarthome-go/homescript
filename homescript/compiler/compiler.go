@@ -13,7 +13,6 @@ const MainFunctionIdent = "main"
 
 const InitFunctionIdent = "@init"
 
-// const EntryPointFunctionIdent = "@entrypoint"
 const RegisterTriggerHostFn = "@trigger"
 
 type Loop struct {
@@ -138,10 +137,15 @@ func (self *Compiler) compileProgram(
 		}
 
 		for _, glob := range module.Globals {
-			if moduleName == entryPointModule {
-				// Save mangled name for external mapping.
-				mappings.Globals[glob.Ident.Ident()] = self.compileLetStmt(glob, true)
-			}
+			// BUG: this if condition created a bug:
+			// two modules:
+			// - a: has a global, private variable `bar` and prints it in a public function `foo`.
+			// - b: imports `foo` and calls it, without importing `bar`.
+
+			// if moduleName == entryPointModule {
+			// Save mangled name for external mapping.
+			mappings.Globals[glob.Ident.Ident()] = self.compileLetStmt(glob, true)
+			// }
 		}
 
 		for _, item := range module.Imports {

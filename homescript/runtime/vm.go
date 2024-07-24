@@ -12,7 +12,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
-const CATCH_PANIC = false
+const shouldCatchPanic = false
 
 type Globals struct {
 	Data  map[string]value.Value
@@ -48,6 +48,20 @@ type VM struct {
 	CancelFunc    *context.CancelFunc
 	Interrupts    map[uint]value.VmInterrupt
 	LimitsPerCore CoreLimits
+}
+
+func MainFn() FunctionInvocation {
+	functionInvocation := FunctionInvocation{
+		Function:    compiler.MainFunctionIdent,
+		LiteralName: false,
+		Args:        []value.Value{},
+		FunctionSignature: FunctionInvocationSignature{
+			Params:     []FunctionInvocationSignatureParam{},
+			ReturnType: ast.NewNullType(errors.Span{}),
+		},
+	}
+
+	return functionInvocation
 }
 
 func NewVM(

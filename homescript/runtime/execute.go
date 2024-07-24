@@ -3,11 +3,29 @@ package runtime
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
+
+const debugAssertions = true
+
+func (self *Core) abort(msg string) string {
+	callFrame := *self.callFrame()
+	location := self.parent.SourceMap(callFrame)
+
+	panic(fmt.Sprintf(
+		"abort() fn=%s ip=%d (%d:%d:%s): %s",
+		callFrame.Function,
+		callFrame.InstructionPointer,
+		location.Start.Line,
+		location.Start.Column,
+		location.Filename,
+		msg,
+	))
+}
 
 func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInterrupt {
 	switch instruction.Opcode() {
@@ -72,7 +90,17 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 			args := make([]value.Value, 0)
 			for i := 0; i < int(numArgs); i++ {
 				v := *self.pop()
+
 				args = append(args, v)
+			}
+
+			if debugAssertions {
+				for _, v := range args {
+					if v == nil {
+
+						self.abort(fmt.Sprintf("at least one arg to a builtin was <nil>: (all=%v)", args))
+					}
+				}
 			}
 
 			res, i := fn.Callback(
@@ -166,7 +194,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 
 		abs := self.absolute(i.Value)
 
-		if VM_VERBOSE != VmNotVerbose {
+		if vmVerbose != VMNotVerbose {
 			fmt.Printf("Memory read access at %x\n", abs)
 		}
 
@@ -174,9 +202,23 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 	case compiler.Opcode_GetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
 		self.parent.globals.Mutex.RLock()
-		defer self.parent.globals.Mutex.RUnlock()
-
 		v := self.parent.globals.Data[i.Value]
+		self.parent.globals.Mutex.RUnlock()
+
+		if debugAssertions {
+			if v == nil {
+				self.parent.globals.Mutex.RLock()
+
+				list := make([]string, 0)
+
+				for k, v := range self.parent.GetGlobals() {
+					list = append(list, fmt.Sprintf("    %-20s -> %s", k, v.Kind().String()))
+				}
+
+				self.abort(fmt.Sprintf("result of %s was <nil>:\n===GLOBAL DUMP===\n%s", i, strings.Join(list, "\n")))
+			}
+		}
+
 		self.push(&v)
 	case compiler.Opcode_SetVarImm:
 		i := instruction.(compiler.OneIntInstruction)
@@ -184,18 +226,18 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 
 		abs := self.absolute(i.Value)
 
-		if VM_VERBOSE != VmNotVerbose {
+		if vmVerbose != VMNotVerbose {
 			fmt.Printf("Memory write access `%v` at %x\n", *v, abs)
 		}
 
 		self.Memory[abs] = v
 	case compiler.Opcode_SetGlobImm:
 		i := instruction.(compiler.OneStringInstruction)
-		self.parent.globals.Mutex.Lock()
-		defer self.parent.globals.Mutex.Unlock()
-
 		v := self.pop()
+
+		self.parent.globals.Mutex.Lock()
 		self.parent.globals.Data[i.Value] = *v
+		self.parent.globals.Mutex.Unlock()
 	case compiler.Opcode_Assign: // TODO: Assigns pointers on the stack???
 		src := self.pop()
 		dest := self.pop()
