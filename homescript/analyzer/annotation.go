@@ -79,7 +79,10 @@ func (self *Analyzer) analyzeFnAnnotation(annotation pAst.AnnotationItem, fnIden
 					IgnoreFnParamNameMismatches: true,
 				},
 			); err != nil {
-				self.diagnostics = append(self.diagnostics, err.GotDiagnostic.WithContext("Regarding callback function"))
+				self.diagnostics = append(
+					self.diagnostics,
+					err.GotDiagnostic.WithContext("Regarding callback function"),
+				)
 				if err.ExpectedDiagnostic != nil {
 					self.diagnostics = append(
 						self.diagnostics,

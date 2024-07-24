@@ -326,15 +326,18 @@ func (self *Analyzer) importDummyFields(node pAst.ImportStatement) ast.AnalyzedI
 			}
 		case pAst.IMPORT_KIND_TRIGGER:
 			// TODO: what to do here?
-			fn := TriggerFunction{
-				TriggerFnType:  ast.FunctionType{},
-				CallbackFnType: ast.FunctionType{},
-				Connective:     0,
-				ImportedAt:     toImport.Span,
-			}
-			if _, prevFound := self.currentModule.addTrigger(toImport.Ident, fn); prevFound {
-				self.error(fmt.Sprintf("Trigger '%s' already exists in current module", toImport.Ident), nil, toImport.Span)
-			}
+			// fn := TriggerFunction{
+			// 	TriggerFnType:  ast.NewFunctionType(
+			// 		ast.NewNormalFunctionTypeParamKind(),
+			//
+			// 	),
+			// 	CallbackFnType: ast.FunctionType{},
+			// 	Connective:     0,
+			// 	ImportedAt:     toImport.Span,
+			// }
+			// if _, prevFound := self.currentModule.addTrigger(toImport.Ident, fn); prevFound {
+			// 	self.error(fmt.Sprintf("Trigger '%s' already exists in current module", toImport.Ident), nil, toImport.Span)
+			// }
 		case pAst.IMPORT_KIND_NORMAL:
 			dummyFields = append(dummyFields, ast.AnalyzedImportValue{
 				Ident: pAst.NewSpannedIdent(toImport.Ident, toImport.Span),

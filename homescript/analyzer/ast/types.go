@@ -797,7 +797,11 @@ func (self FunctionType) SetSpan(span errors.Span) Type {
 	return NewFunctionType(self.Params, span, self.ReturnType.SetSpan(span), span)
 }
 func (self FunctionType) SetSpanAdvanced(span errors.Span, paramsSpan errors.Span) Type {
-	return NewFunctionType(self.Params, paramsSpan, self.ReturnType.SetSpan(span), span)
+	var returnType Type
+	if self.ReturnType != nil {
+		returnType = self.ReturnType.SetSpan(span)
+	}
+	return NewFunctionType(self.Params, paramsSpan, returnType, span)
 }
 func (self FunctionType) Fields(_ errors.Span) map[string]Type { return make(map[string]Type) }
 func (self FunctionType) IsPrimitive() bool                    { return self.Kind().IsPrimitive() }
