@@ -66,7 +66,7 @@ func (o *Optimizer) Optimize(
 	return modulesOut, o.diagnostics
 }
 
-func (o *Optimizer) analyzeModule(moduleName string, module ast.AnalyzedProgram) ast.AnalyzedProgram {
+func (o *Optimizer) analyzeModule(_moduleName string, module ast.AnalyzedProgram) ast.AnalyzedProgram {
 	functionsOut := make([]ast.AnalyzedFunctionDefinition, 0)
 
 	for _, fn := range module.Functions {
@@ -87,13 +87,13 @@ func (o *Optimizer) analyzeModule(moduleName string, module ast.AnalyzedProgram)
 func (o *Optimizer) optimizeFn(node ast.AnalyzedFunctionDefinition) ast.AnalyzedFunctionDefinition {
 	newBlock := o.block(node.Body)
 
-	// TODO: optimize the parameters
+	// TODO: optimize the parameters.
 	newParams := ast.AnalyzedFunctionParams{
 		List: make([]ast.AnalyzedFnParam, len(node.Parameters.List)),
 		Span: errors.Span{},
 	}
 
-	// TODO: remove unused parameters
+	// TODO: remove unused parameters.
 	for idx, param := range node.Parameters.List {
 		newParams.List[idx] = param
 	}

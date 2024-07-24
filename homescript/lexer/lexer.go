@@ -423,11 +423,12 @@ func (self *Lexer) makeTildeArrow() (Token, *errors.Error) {
 		message := "Expected '>', got "
 
 		if self.currentChar != nil {
-			message += fmt.Sprintf("'%c'", self.currentChar)
+			message += fmt.Sprintf("'%c'", *self.currentChar)
 		} else {
 			message += "EOF"
 		}
 
+		// nolint:exhaustruct
 		return Token{}, errors.NewError(
 			self.location.Until(self.location, self.filename),
 			message,

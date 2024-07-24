@@ -250,11 +250,25 @@ func (self TestingVmExecutor) GetBuiltinImport(moduleName string, toImport strin
 					headers := args[3].(value.ValueAnyObject).FieldsInternal
 					cookies := args[4].(value.ValueAnyObject).FieldsInternal
 
-					fmt.Printf("url=%s,method=%s,body=%s,headers=%v,cookies=%v\n", url, method, body, headers, cookies)
+					bodyStr, err := body.Display()
+					if err != nil {
+						panic((*err).Message())
+					}
+
+					fmt.Printf(
+						"url=%s,method=%s,body=%s,headers=%v,cookies=%v\n",
+						url,
+						method,
+						bodyStr,
+						headers,
+						cookies,
+					)
+
+					const statusOK = 200
 
 					return value.NewValueObject(map[string]*value.Value{
 						"status":      value.NewValueString("ok"),
-						"status_code": value.NewValueInt(int64(200)),
+						"status_code": value.NewValueInt(int64(statusOK)),
 						"body":        value.NewValueString("TEST"),
 						"cookies":     value.NewValueAnyObject(make(map[string]*vmValue.Value)),
 					}), nil

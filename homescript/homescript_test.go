@@ -47,120 +47,164 @@ func TestScripts(t *testing.T) {
 		// Can be used for manual override
 		// {
 		// 	Name:  "TestAllBuiltinMembers",
-		// 	Path:  "../tests/builtin_members.hms",
+		// 	Path:  "../tests/tests/builtin_members.hms",
 		// 	Debug: false,
 		// },
 		{
 			Name:               "PrimeFuzz",
-			Path:               "../prime_fuzz/*.hms",
+			Path:               "../tests/prime_fuzz/*.hms",
 			IsGlob:             true,
 			Debug:              false,
 			ExpectedOutputFile: "../examples/primes.hms.out",
+			ExpectedOutputRaw:  "",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
 			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
 			Name:               "FizzBuzzFuzz",
-			Path:               "../fizz_fuzz/*.hms",
+			Path:               "../tests/fizz_fuzz/*.hms",
 			IsGlob:             true,
 			Debug:              false,
 			ExpectedOutputFile: "../examples/fizzbuzz.hms.out",
+			ExpectedOutputRaw:  "",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
 			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
 			Name:               "BoxFuzz",
-			Path:               "../box_fuzz/*.hms",
+			Path:               "../tests/box_fuzz/*.hms",
 			IsGlob:             true,
 			Debug:              false,
 			ExpectedOutputFile: "../examples/box.hms.out",
+			ExpectedOutputRaw:  "",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
 			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
 			Name:               "BinaryFuzz",
-			Path:               "../binary_fuzz/*.hms",
+			Path:               "../tests/binary_fuzz/*.hms",
 			IsGlob:             true,
 			Debug:              false,
 			ExpectedOutputFile: "../examples/binary.hms.out",
-			Skip:               false,
+			ExpectedOutputRaw:  "",
 			ValidateOutput:     OUTPUT_VALIDATION_NONE,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
 			Name:               "DevFuzz",
-			Path:               "../dev_fuzz/*.hms",
+			Path:               "../tests/dev_fuzz/*.hms",
 			IsGlob:             true,
 			Debug:              false,
 			ExpectedOutputFile: "../examples/dev.hms.out",
+			ExpectedOutputRaw:  "",
 			ValidateOutput:     OUTPUT_VALIDATION_FILE,
 			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
-			Name:           "PowFuzz",
-			Path:           "../pow_fuzz/*.hms",
-			IsGlob:         true,
-			Debug:          false,
-			ValidateOutput: OUTPUT_VALIDATION_NONE,
-			Skip:           false,
+			Name:               "PowFuzz",
+			Path:               "../tests/pow_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "",
+			ValidateOutput:     OUTPUT_VALIDATION_NONE,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
 			Name:               "PiFuzz",
-			Path:               "../pi_fuzz/*.hms",
+			Path:               "../tests/pi_fuzz/*.hms",
 			IsGlob:             true,
 			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "",
 			ValidateOutput:     OUTPUT_VALIDATION_NONE,
 			Skip:               false,
 			OverrideTimeout:    time.Second * 60,
 			UseOverrideTimeout: true,
 		},
 		{
-			Name:           "EFuzz",
-			Path:           "../e_fuzz/*.hms",
-			IsGlob:         true,
-			Debug:          false,
-			ValidateOutput: OUTPUT_VALIDATION_NONE,
-			Skip:           false,
+			Name:               "EFuzz",
+			Path:               "../tests/e_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "",
+			ValidateOutput:     OUTPUT_VALIDATION_NONE,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
-			Name:           "AperyFuzz",
-			Path:           "../apery_fuzz/*.hms",
-			IsGlob:         true,
-			Debug:          false,
-			ValidateOutput: OUTPUT_VALIDATION_NONE,
-			Skip:           false,
+			Name:               "AperyFuzz",
+			Path:               "../tests/apery_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "",
+			ValidateOutput:     OUTPUT_VALIDATION_NONE,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
-			Name:           "MatrixFuzz",
-			Path:           "../matrix_fuzz/*.hms",
-			IsGlob:         true,
-			Debug:          false,
-			ValidateOutput: OUTPUT_VALIDATION_NONE,
-			Skip:           false,
+			Name:               "MatrixFuzz",
+			Path:               "../tests/matrix_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "",
+			ValidateOutput:     OUTPUT_VALIDATION_NONE,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
-			Name:              "scoping_regression",
-			Path:              "../tests/regression_scoping.hms",
-			IsGlob:            false,
-			Debug:             false,
-			ExpectedOutputRaw: "69\n123\n69\n42\n",
-			ValidateOutput:    OUTPUT_VALIDATION_RAW,
-			Skip:              false,
+			Name:               "scoping_regression",
+			Path:               "../tests/regression_scoping.hms",
+			IsGlob:             false,
+			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "69\n123\n69\n42\n",
+			ValidateOutput:     OUTPUT_VALIDATION_RAW,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
-			Name:           "Linear Gradient",
-			Path:           "../linear_gradient_fuzz/*.hms",
-			IsGlob:         true,
-			Debug:          false,
-			ValidateOutput: OUTPUT_VALIDATION_NONE,
-			Skip:           false,
+			Name:               "Linear Gradient",
+			Path:               "../tests/linear_gradient_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "",
+			ValidateOutput:     OUTPUT_VALIDATION_NONE,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 		{
-			Name:           "Linear Gradient 2D",
-			Path:           "../linear_gradient_2d_fuzz/*.hms",
-			IsGlob:         true,
-			Debug:          false,
-			ValidateOutput: OUTPUT_VALIDATION_NONE,
-			Skip:           false,
+			Name:               "Linear Gradient 2D",
+			Path:               "../tests/linear_gradient_2d_fuzz/*.hms",
+			IsGlob:             true,
+			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "",
+			ValidateOutput:     OUTPUT_VALIDATION_NONE,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
 		},
 	}
 
@@ -193,8 +237,10 @@ func TestScripts(t *testing.T) {
 			}
 
 			for _, file := range files {
+				fmt.Printf("FILE GLOB=%s\n", file)
 				for _, test := range tests {
 					if test.Path == file {
+						fmt.Println("cont")
 						continue
 					}
 				}
@@ -206,9 +252,10 @@ func TestScripts(t *testing.T) {
 					Path:               file,
 					IsGlob:             false,
 					Debug:              test.Debug,
-					ExpectedOutputRaw:  test.ExpectedOutputRaw,
 					ExpectedOutputFile: test.ExpectedOutputFile,
+					ExpectedOutputRaw:  test.ExpectedOutputRaw,
 					ValidateOutput:     test.ValidateOutput,
+					Skip:               false,
 					OverrideTimeout:    test.OverrideTimeout,
 					UseOverrideTimeout: test.UseOverrideTimeout,
 				})
@@ -286,8 +333,11 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 		return
 	}
 
-	compilerStruct := compiler.NewCompiler()
-	compiled := compilerStruct.Compile(modules, test.Path)
+	compilerStruct := compiler.NewCompiler(modules, test.Path)
+	compiled, err := compilerStruct.Compile()
+	if err != nil {
+		panic(fmt.Sprintf("compiler failed: %s", err.Error()))
+	}
 
 	if test.Debug {
 		i := 0
@@ -324,10 +374,8 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 	})
 
 	// TODO: how to handle the debugger at this point?
-	vm.SpawnAsync(runtime.FunctionInvocation{
-		Function: compiler.InitFunctionIdent,
-		Args:     make([]vmValue.Value, 0),
-	}, nil)
+
+	vm.SpawnAsync(runtime.MainFn(), nil)
 
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i
@@ -339,7 +387,7 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 			Span:    i.GetSpan(), // this call might panic
 		}
 
-		fmt.Printf("Reading: %s...\n", i.GetSpan().Filename)
+		fmt.Printf("Reading: %s../tests.\n", i.GetSpan().Filename)
 
 		file, err := os.ReadFile(i.GetSpan().Filename)
 		if err != nil {
@@ -355,13 +403,15 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 		panic(fmt.Sprintf("Core %d crashed", coreNum))
 	}
 
+	buf := *executor.PrintBuf
+
 	switch test.ValidateOutput {
 	case OUTPUT_VALIDATION_NONE:
 		break
 	case OUTPUT_VALIDATION_FILE:
-		assert.Equal(t, expectedOutputCache, *executor.PrintBuf, "Generated output does match expected output.")
+		assert.Equal(t, expectedOutputCache, buf, "Generated output does match expected output.")
 	case OUTPUT_VALIDATION_RAW:
-		assert.Equal(t, test.ExpectedOutputRaw, *executor.PrintBuf, "Generated output does match expected output.")
+		assert.Equal(t, test.ExpectedOutputRaw, buf, "Generated output does match expected output.")
 	}
 
 }
