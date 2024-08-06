@@ -36,7 +36,7 @@ func (self *Parser) singleton() (ast.SingletonTypeDefinition, *errors.Error) {
 	return ast.SingletonTypeDefinition{
 		Ident: ident,
 		Type:  rhsType,
-		Range: startLoc.Until(self.CurrentToken.Span.End, self.Filename),
+		Range: startLoc.Until(self.PreviousToken.Span.End, self.Filename),
 	}, nil
 }
 
