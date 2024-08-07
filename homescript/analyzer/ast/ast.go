@@ -116,7 +116,11 @@ type AnalyzedFunctionParams struct {
 func (self AnalyzedFunctionParams) Type() FunctionTypeParamKind {
 	params := make([]FunctionTypeParam, 0)
 	for _, param := range self.List {
-		params = append(params, NewFunctionTypeParam(param.Ident, param.Type, &param.SingletonIdent))
+		var singletonIdent *string = nil
+		if param.IsSingletonExtractor {
+			singletonIdent = &param.SingletonIdent
+		}
+		params = append(params, NewFunctionTypeParam(param.Ident, param.Type, singletonIdent))
 	}
 	return NewNormalFunctionTypeParamKind(params)
 }

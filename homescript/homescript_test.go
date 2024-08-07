@@ -292,7 +292,9 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 		InputProgram{
 			Filename:    test.Path,
 			ProgramText: string(code),
-		}, TestingAnalyzerScopeAdditions(), TestingAnalyzerHost{})
+		}, TestingAnalyzerScopeAdditions(), TestingAnalyzerHost{
+			IsInvokedInTests: true,
+		})
 
 	hasErr := false
 	if len(syntax) > 0 {

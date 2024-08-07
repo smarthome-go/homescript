@@ -39,9 +39,9 @@ type function struct {
 func (self function) Type(span errors.Span) ast.Type {
 	params := make([]ast.FunctionTypeParam, 0)
 	for _, param := range self.Parameters {
-		singletonIdent := new(string)
+		var singletonIdent *string = nil
 		if param.IsSingletonExtractor {
-			*singletonIdent = param.SingletonIdent
+			singletonIdent = &param.SingletonIdent
 		}
 
 		params = append(params, ast.NewFunctionTypeParam(

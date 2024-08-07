@@ -143,7 +143,9 @@ func TestingAnalyzerScopeAdditions() map[string]analyzer.Variable {
 	}
 }
 
-type TestingAnalyzerHost struct{}
+type TestingAnalyzerHost struct {
+	IsInvokedInTests bool
+}
 
 func (TestingAnalyzerHost) GetKnownObjectTypeFieldAnnotations() []string {
 	return []string{}
@@ -168,7 +170,13 @@ func (self TestingAnalyzerHost) PostValidationHook(analyzedModules map[string]as
 }
 
 func (self TestingAnalyzerHost) ResolveCodeModule(moduleName string) (code string, moduleFound bool, err error) {
-	path := fmt.Sprintf("../tests/%s.hms", moduleName)
+	var path string
+
+	if self.IsInvokedInTests {
+		path = fmt.Sprintf("../tests/%s.hms", moduleName)
+	} else {
+		path = fmt.Sprintf("%s.hms", moduleName)
+	}
 
 	file, err := os.ReadFile(path)
 	if err != nil {

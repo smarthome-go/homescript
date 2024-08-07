@@ -265,10 +265,14 @@ func (self *Analyzer) identExpression(node pAst.IdentExpression) ast.AnalyzedIde
 	// otherwise, mark the variable as used
 	variable.Used = true
 
+	typeWSpan := variable.Type.SetSpan(node.Span())
+
 	return ast.AnalyzedIdentExpression{
-		Ident:      node.Ident,
-		ResultType: variable.Type.SetSpan(node.Span()),
-		IsGlobal:   scope == 0,
+		Ident:       node.Ident,
+		ResultType:  typeWSpan,
+		IsGlobal:    scope == 0,
+		IsFunction:  false,
+		IsSingleton: false,
 	}
 }
 
@@ -411,9 +415,11 @@ func (self *Analyzer) functionLiteral(node pAst.FunctionLiteralExpression) ast.A
 
 		converted := self.ConvertType(param.Type, true)
 		newParams = append(newParams, ast.AnalyzedFnParam{
-			Ident: param.Ident,
-			Type:  converted,
-			Span:  param.Span,
+			Ident:                param.Ident,
+			Type:                 converted,
+			Span:                 param.Span,
+			IsSingletonExtractor: false,
+			SingletonIdent:       "",
 		})
 
 		// add the parameter to the new scope
@@ -755,6 +761,7 @@ func (self *Analyzer) callArgs(fnType ast.FunctionType, args pAst.CallArgs, base
 	// validate arguments depending on the parameter type of the function
 	switch fnType.Params.Kind() {
 	case ast.NormalFunctionTypeParamKindIdentifierKind:
+
 		// validate that all arguments match the declared parameter
 		baseParams := fnType.Params.(ast.NormalFunctionTypeParamKindIdentifier)
 

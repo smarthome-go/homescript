@@ -514,9 +514,19 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 					)
 				}
 
-				if prev := self.currentModule.addVar(item.Ident, NewVar(fn.Type(item.Span), item.Span, ImportedVariableOriginKind, false), false); prev != nil {
+				if prev := self.currentModule.addVar(
+					item.Ident,
+					NewVar(
+						fn.Type(item.Span),
+						item.Span,
+						ImportedVariableOriginKind,
+						false,
+					),
+					false,
+				); prev != nil {
 					self.error(fmt.Sprintf("Name '%s' already exists in current scope", item.Ident), nil, item.Span)
 				}
+
 				continue
 			}
 
