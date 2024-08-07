@@ -42,7 +42,9 @@ func analyzeFile(
 	analyzed, diagnostics, syntaxErrors := homescript.Analyze(homescript.InputProgram{
 		ProgramText: program,
 		Filename:    pathS,
-	}, homescript.TestingAnalyzerScopeAdditions(), homescript.TestingAnalyzerHost{})
+	}, homescript.TestingAnalyzerScopeAdditions(), homescript.TestingAnalyzerHost{
+		IsInvokedInTests: false,
+	})
 
 	if len(syntaxErrors) != 0 {
 		for _, syntaxErr := range syntaxErrors {

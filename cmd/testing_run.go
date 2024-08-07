@@ -38,9 +38,14 @@ func CompileVm(analyzed map[string]ast.AnalyzedProgram, filename string) compile
 func DefaultReadFileProvider(path string) (string, error) {
 	fmt.Printf("Reading: %s...\n", path)
 
-	file, err := os.ReadFile(path)
+	newPath := path
+	if !strings.HasSuffix(path, ".hms") {
+		newPath = fmt.Sprintf("%s.hms", path)
+	}
+
+	file, err := os.ReadFile(newPath)
 	if err != nil {
-		panic(fmt.Sprintf("Could not read file `%s` | %s\n", path, err.Error()))
+		panic(fmt.Sprintf("Could not read file `%s` | %s\n", newPath, err.Error()))
 	}
 
 	return string(file), nil
