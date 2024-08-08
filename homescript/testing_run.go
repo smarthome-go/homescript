@@ -42,12 +42,16 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, TestingVmScopeAdditions(), testingLimits)
 
 	debuggerOut := make(chan runtime.DebugOutput)
-	vm.SpawnAsync(runtime.FunctionInvocation{
-		Function: compiler.InitFunctionIdent,
-		Args:     make([]vmValue.Value, 0),
-		// TODO: is this allowed?
-		FunctionSignature: runtime.FunctionInvocationSignature{},
-	}, &debuggerOut)
+	vm.SpawnAsync(
+		runtime.FunctionInvocation{
+			Function: compiler.InitFunctionIdent,
+			Args:     make([]vmValue.Value, 0),
+			// TODO: is this allowed?
+			FunctionSignature: runtime.FunctionInvocationSignature{},
+		},
+		&debuggerOut,
+		nil,
+	)
 
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i

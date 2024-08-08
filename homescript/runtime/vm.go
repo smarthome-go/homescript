@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
@@ -13,6 +14,7 @@ import (
 )
 
 const shouldCatchPanic = false
+const VMWaitIdleSleep = time.Millisecond * 5
 
 type Globals struct {
 	Data  map[string]value.Value
@@ -223,8 +225,18 @@ type VMException struct {
 }
 
 // Returns the core of the newly spawned process.
-func (self *VM) SpawnAsync(invocation FunctionInvocation, debuggerOut *chan DebugOutput) *Core {
-	return self.spawnCoreInternal(invocation.Function, invocation.Args, debuggerOut, invocation.LiteralName)
+func (self *VM) SpawnAsync(
+	invocation FunctionInvocation,
+	debuggerOut *chan DebugOutput,
+	onFinish chan struct{},
+) *Core {
+	return self.spawnCoreInternal(
+		invocation.Function,
+		invocation.Args,
+		debuggerOut,
+		invocation.LiteralName,
+		onFinish,
+	)
 }
 
 // Spawns a new core but also calls `vm.Wait` internally.
@@ -269,7 +281,14 @@ func (self *VM) SpawnSync(invocation FunctionInvocation, debuggerOut *chan Debug
 		invertedArgs[argCIdx-idx] = invocation.Args[idx]
 	}
 
-	coreHandle := self.spawnCoreInternal(invocation.Function, invertedArgs, debuggerOut, invocation.LiteralName)
+	coreHandle := self.spawnCoreInternal(
+		invocation.Function,
+		invertedArgs,
+		debuggerOut,
+		invocation.LiteralName,
+		nil,
+	)
+
 	exceptionCore, interrupt := self.Wait()
 
 	return self.HandleTermination(
@@ -332,6 +351,7 @@ func (self *VM) spawnCoreInternal(
 	debuggerOutput *chan DebugOutput,
 	// If this flag is set, the caller knows what they are doing and want to bypass the function validity check.
 	literalName bool,
+	onFinish chan struct{},
 ) *Core {
 	toBeInvoked := function
 
@@ -351,7 +371,14 @@ func (self *VM) spawnCoreInternal(
 		// Smarter would be to insert clones manually?
 		core.push(value.AsPtr(elem)) // Implement a deep copy? Or clone?
 	}
-	go (*core).Run(toBeInvoked, debuggerOutput)
+
+	go func() {
+		(*core).Run(toBeInvoked, debuggerOutput)
+
+		if onFinish != nil {
+			onFinish <- struct{}{}
+		}
+	}()
 
 	return core
 }
@@ -418,6 +445,8 @@ func (self *VM) Wait() (coreNum uint, i *value.VmInterrupt) {
 		}
 
 		self.Cores.Lock.RUnlock()
+
+		time.Sleep(VMWaitIdleSleep)
 	}
 
 	return 0, nil

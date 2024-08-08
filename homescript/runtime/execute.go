@@ -68,7 +68,7 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 		}
 
 		// TODO: how to handle the debugger
-		self.parent.spawnCoreInternal(i.Value, args, nil, false)
+		self.parent.spawnCoreInternal(i.Value, args, nil, true, nil)
 		// TODO: implement a wrapper around the threading model and add it to a std-lib
 		// TODO: get thread handle and push it onto the stack
 		self.push(value.NewValueNull())
