@@ -44,6 +44,8 @@ type HostProvider interface {
 		mainModule string,
 		// NOTE: this can be quite dangerous: the callee can mess up the analyzer and potentially cause crashes
 		analyzer *Analyzer,
+		// If the analyzer found issues before this function was called.
+		containsError bool,
 	) []diagnostic.Diagnostic
 	// Returns a list of `known` object type annotations
 	// The analyzer uses these in order to sanity-check every annotation

@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
+	"golang.org/x/text/unicode/norm"
 )
 
 type ValueString struct {
@@ -21,7 +22,13 @@ func (_ ValueString) Kind() ValueKind { return StringValueKind }
 func (self ValueString) Display() (string, *VmInterrupt) { return self.Inner, nil }
 
 func (self ValueString) IsEqual(other Value) (bool, *VmInterrupt) {
-	return self.Inner == other.(ValueString).Inner, nil
+	otherStr := other.(ValueString).Inner
+	selfStr := self.Inner
+
+	isEq := selfStr == otherStr
+	// fmt.Printf("%v | % 100s != % 100s\n", isEq, selfStr, otherStr)
+
+	return isEq, nil
 }
 
 func (self ValueString) Fields() (map[string]*Value, *VmInterrupt) {
@@ -132,6 +139,7 @@ func (self ValueString) Clone() *Value {
 
 func NewValueString(inner string) *Value {
 	zero := 0
-	val := Value(ValueString{Inner: inner, currIterIdx: &zero})
+	normalized := norm.NFC.String(inner)
+	val := Value(ValueString{Inner: normalized, currIterIdx: &zero})
 	return &val
 }

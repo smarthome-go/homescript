@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
@@ -1398,6 +1399,23 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 	warnedUnreachable := false
 
 	for _, arm := range node.Arms {
+		spew.Dump(arm)
+
+		action := self.expression(arm.Action)
+
+		if !hadTypeErr && (resultType.Kind() == ast.UnknownTypeKind || resultType.Kind() == ast.NeverTypeKind) {
+			resultType = action.Type()
+		} else if err := self.TypeCheck(action.Type(), resultType, TypeCheckOptions{
+			AllowFunctionTypes:          true,
+			IgnoreFnParamNameMismatches: false,
+		}); err != nil {
+			hadTypeErr = true
+			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+			if err.ExpectedDiagnostic != nil {
+				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+			}
+		}
+
 		if !arm.Literal.IsLiteral() {
 			defaultArmSpan = &arm.Range
 			action := self.expression(arm.Action)
@@ -1427,21 +1445,6 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 			AllowFunctionTypes:          true,
 			IgnoreFnParamNameMismatches: false,
 		}); err != nil {
-			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
-			if err.ExpectedDiagnostic != nil {
-				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
-			}
-		}
-
-		action := self.expression(arm.Action)
-
-		if !hadTypeErr && (resultType.Kind() == ast.UnknownTypeKind || resultType.Kind() == ast.NeverTypeKind) {
-			resultType = action.Type()
-		} else if err := self.TypeCheck(action.Type(), resultType, TypeCheckOptions{
-			AllowFunctionTypes:          true,
-			IgnoreFnParamNameMismatches: false,
-		}); err != nil {
-			hadTypeErr = true
 			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
 			if err.ExpectedDiagnostic != nil {
 				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
