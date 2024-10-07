@@ -209,7 +209,7 @@ func main() {
 
 					if emitAsm {
 						fmt.Println("========= COMPILED (ASM) ============")
-						fmt.Println(code.AsmString())
+						fmt.Println(code.AsmString(true))
 
 						fmt.Println("=== Function annotations ===")
 						for key, annotations := range code.Annotations {

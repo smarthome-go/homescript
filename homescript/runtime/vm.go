@@ -98,6 +98,7 @@ func NewVM(
 			},
 		},
 		nil,
+		nil,
 	)
 
 	if res.Exception != nil {
@@ -228,19 +229,25 @@ type VMException struct {
 func (self *VM) SpawnAsync(
 	invocation FunctionInvocation,
 	debuggerOut *chan DebugOutput,
+	debuggerResume *chan struct{},
 	onFinish chan struct{},
 ) *Core {
 	return self.spawnCoreInternal(
 		invocation.Function,
 		invocation.Args,
 		debuggerOut,
+		debuggerResume,
 		invocation.LiteralName,
 		onFinish,
 	)
 }
 
 // Spawns a new core but also calls `vm.Wait` internally.
-func (self *VM) SpawnSync(invocation FunctionInvocation, debuggerOut *chan DebugOutput) FunctionInvocationResult {
+func (self *VM) SpawnSync(
+	invocation FunctionInvocation,
+	debuggerOut *chan DebugOutput,
+	debuggerResume *chan struct{},
+) FunctionInvocationResult {
 	if invocation.FunctionSignature.ReturnType == nil {
 		panic("Invocation called without return type specified.")
 	}
@@ -285,6 +292,7 @@ func (self *VM) SpawnSync(invocation FunctionInvocation, debuggerOut *chan Debug
 		invocation.Function,
 		invertedArgs,
 		debuggerOut,
+		debuggerResume,
 		invocation.LiteralName,
 		nil,
 	)
@@ -349,6 +357,7 @@ func (self *VM) spawnCoreInternal(
 	function string,
 	addToStack []value.Value,
 	debuggerOutput *chan DebugOutput,
+	debuggerResume *chan struct{},
 	// If this flag is set, the caller knows what they are doing and want to bypass the function validity check.
 	literalName bool,
 	onFinish chan struct{},
@@ -373,7 +382,7 @@ func (self *VM) spawnCoreInternal(
 	}
 
 	go func() {
-		(*core).Run(toBeInvoked, debuggerOutput)
+		(*core).Run(toBeInvoked, debuggerOutput, debuggerResume)
 
 		if onFinish != nil {
 			onFinish <- struct{}{}

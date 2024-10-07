@@ -151,7 +151,7 @@ func (TestingAnalyzerHost) GetKnownObjectTypeFieldAnnotations() []string {
 	return []string{}
 }
 
-func (self TestingAnalyzerHost) PostValidationHook(analyzedModules map[string]ast.AnalyzedProgram, mainModule string, _ *analyzer.Analyzer) []diagnostic.Diagnostic {
+func (self TestingAnalyzerHost) PostValidationHook(analyzedModules map[string]ast.AnalyzedProgram, mainModule string, _ *analyzer.Analyzer, _ bool) []diagnostic.Diagnostic {
 	fmt.Println("=== Begin functions ===")
 
 	for _, fn := range analyzedModules[mainModule].Functions {

@@ -42,6 +42,8 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 	vm := runtime.NewVM(compiled, executor, &ctx, &cancel, TestingVmScopeAdditions(), testingLimits)
 
 	debuggerOut := make(chan runtime.DebugOutput)
+	debuggerResume := make(chan struct{})
+
 	vm.SpawnAsync(
 		runtime.FunctionInvocation{
 			Function: compiler.InitFunctionIdent,
@@ -50,6 +52,7 @@ func TestingRunVm(analyzed map[string]ast.AnalyzedProgram, filename string, prin
 			FunctionSignature: runtime.FunctionInvocationSignature{},
 		},
 		&debuggerOut,
+		&debuggerResume,
 		nil,
 	)
 

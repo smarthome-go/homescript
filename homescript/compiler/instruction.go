@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
@@ -26,21 +27,75 @@ type CompileOutput struct {
 	Annotations ModuleAnnotations
 }
 
-func (self CompileOutput) AsmString() string {
+func (self CompileOutput) AsmStringHighlight(color bool, activeFunc *string, lineIdx *int) string {
+	functionNames := make([]string, 0)
+	for ident := range self.Functions {
+		functionNames = append(functionNames, ident)
+	}
+	slices.Sort(functionNames)
+
 	functionsStr := make([]string, 0)
 
-	for fnName, instructions := range self.Functions {
+	for _, fnName := range functionNames {
+		instructions := self.Functions[fnName]
+
+		if activeFunc != nil && *activeFunc != fnName {
+			continue
+		}
+
 		fnHeaderStr := fmt.Sprintf("FUNCTION %s (%s)", fnName, self.Mappings.Functions[fnName])
+		if color && activeFunc != nil && *activeFunc == fnName {
+			fnHeaderStr = fmt.Sprintf("\x1b[1;32m%s\x1b[0m | ACTIVE", fnHeaderStr)
+		}
 		fnInstructions := make([]string, 0)
 
 		for idx, instruction := range instructions {
-			fnInstructions = append(fnInstructions, fmt.Sprintf("\t%04d | %s\n", idx, instruction))
+			line := fmt.Sprintf("\t%04d | %s\n", idx, instruction.Display(color))
+
+			if color {
+				line = fmt.Sprintf("\x1b[1;90m%s\x1b[1;0m", line)
+			}
+
+			// Highlight active line
+			if activeFunc != nil && *activeFunc == fnName {
+				if lineIdx != nil {
+					if idx == *lineIdx {
+						line = fmt.Sprintf("\x1b[4m%s\x1b[0m", line)
+					}
+				}
+			}
+
+			fnInstructions = append(fnInstructions, line)
 		}
 
 		functionsStr = append(functionsStr, fmt.Sprintf("%s\n%s", fnHeaderStr, strings.Join(fnInstructions, "")))
 	}
 
 	return strings.Join(functionsStr, "END FUNCTION\n")
+}
+
+func (self CompileOutput) AsmString(color bool) string {
+	// functionsStr := make([]string, 0)
+	//
+	// for fnName, instructions := range self.Functions {
+	// 	fnHeaderStr := fmt.Sprintf("FUNCTION %s (%s)", fnName, self.Mappings.Functions[fnName])
+	// 	fnInstructions := make([]string, 0)
+	//
+	// 	for idx, instruction := range instructions {
+	// 		line := fmt.Sprintf("\t%04d | %s\n", idx, instruction.Display(color))
+	//
+	// 		if color {
+	// 			line = fmt.Sprintf("\x1b[1;90m%s\x1b[1;0m", line)
+	// 		}
+	//
+	// 		fnInstructions = append(fnInstructions, line)
+	// 	}
+	//
+	// 	functionsStr = append(functionsStr, fmt.Sprintf("%s\n%s", fnHeaderStr, strings.Join(fnInstructions, "")))
+	// }
+	//
+	// return strings.Join(functionsStr, "END FUNCTION\n")
+	return self.AsmStringHighlight(color, nil, nil)
 }
 
 type Opcode uint8
@@ -211,9 +266,14 @@ func (self Opcode) String() string {
 	}
 }
 
+const opcodeColor = "\x1b[1;39m"
+const argumentColor = "\x1b[1;31m"
+const colorReset = "\x1b[1;0m"
+
 type Instruction interface {
 	Opcode() Opcode
 	String() string
+	Display(color bool) string
 }
 
 // Primitive Instruction
@@ -224,6 +284,13 @@ type PrimitiveInstruction struct {
 
 func (self PrimitiveInstruction) Opcode() Opcode { return self.opCode }
 func (self PrimitiveInstruction) String() string { return self.opCode.String() }
+func (self PrimitiveInstruction) Display(color bool) string {
+	if !color {
+		return self.opCode.String()
+	} else {
+		return fmt.Sprintf("%s%s%s", opcodeColor, self.opCode.String(), colorReset)
+	}
+}
 
 func newPrimitiveInstruction(opCode Opcode) Instruction {
 	return PrimitiveInstruction{opCode: opCode}
@@ -239,6 +306,13 @@ type OneBoolInstruction struct {
 func (self OneBoolInstruction) Opcode() Opcode { return self.opCode }
 func (self OneBoolInstruction) String() string {
 	return fmt.Sprintf("%s(%v)", self.opCode, self.ValueBool)
+}
+
+func (self OneBoolInstruction) Display(color bool) string {
+	if !color {
+		return self.String()
+	}
+	return fmt.Sprintf("%s%s%s(%s%v%s)", opcodeColor, self.opCode, colorReset, argumentColor, self.ValueBool, colorReset)
 }
 
 func newOneBoolInstruction(opCode Opcode, valueBool bool) OneBoolInstruction {
@@ -260,6 +334,12 @@ func (self OneIntOneStringInstruction) Opcode() Opcode { return self.opCode }
 func (self OneIntOneStringInstruction) String() string {
 	return fmt.Sprintf("%s(%s:%d)", self.opCode, self.ValueString, self.ValueInt)
 }
+func (self OneIntOneStringInstruction) Display(color bool) string {
+	if !color {
+		return self.String()
+	}
+	return fmt.Sprintf("%s%s%s(%s%s:%d%s)", opcodeColor, self.opCode, colorReset, argumentColor, self.ValueString, self.ValueInt, colorReset)
+}
 
 func newOneIntOneStringInstruction(opCode Opcode, valueString string, valueInt int64) OneIntOneStringInstruction {
 	return OneIntOneStringInstruction{
@@ -280,6 +360,9 @@ func (self OneIntInstruction) Opcode() Opcode { return self.opCode }
 func (self OneIntInstruction) String() string {
 	return fmt.Sprintf("%s(%d)", self.opCode, self.Value)
 }
+func (self OneIntInstruction) Display(color bool) string {
+	return fmt.Sprintf("%s%s%s(%s%d%s)", opcodeColor, self.opCode, colorReset, argumentColor, self.Value, colorReset)
+}
 
 func newOneIntInstruction(opCode Opcode, value int64) OneIntInstruction {
 	return OneIntInstruction{
@@ -299,6 +382,12 @@ func (self OneStringInstruction) Opcode() Opcode { return self.opCode }
 func (self OneStringInstruction) String() string {
 	return fmt.Sprintf("%s(%s)", self.opCode, self.Value)
 }
+func (self OneStringInstruction) Display(color bool) string {
+	if !color {
+		return self.String()
+	}
+	return fmt.Sprintf("%s%s%s(%s%s%s)", opcodeColor, self.opCode, colorReset, argumentColor, self.Value, colorReset)
+}
 
 func newOneStringInstruction(opCode Opcode, value string) OneStringInstruction {
 	return OneStringInstruction{
@@ -317,6 +406,23 @@ type TwoStringInstruction struct {
 func (self TwoStringInstruction) Opcode() Opcode { return self.opCode }
 func (self TwoStringInstruction) String() string {
 	return fmt.Sprintf("%s(%s, %s)", self.opCode, self.Values[0], self.Values[1])
+}
+func (self TwoStringInstruction) Display(color bool) string {
+	if !color {
+		return self.String()
+	}
+	return fmt.Sprintf(
+		"%s%s%s(%s%s%s, %s%s%s)",
+		opcodeColor,
+		self.opCode,
+		colorReset,
+		argumentColor,
+		self.Values[0],
+		colorReset,
+		argumentColor,
+		self.Values[1],
+		colorReset,
+	)
 }
 
 func newTwoStringInstruction(opCode Opcode, value0 string, value1 string) TwoStringInstruction {
@@ -338,6 +444,24 @@ func (self CastInstruction) Opcode() Opcode { return self.opCode }
 func (self CastInstruction) String() string {
 	typeStr := strings.ReplaceAll(self.Type.String(), "\n", "\n        ")
 	return fmt.Sprintf("%v(as_type=%s; perform_cast=%t)", self.Opcode(), typeStr, self.AllowCast)
+}
+func (self CastInstruction) Display(color bool) string {
+	if !color {
+		return self.String()
+	}
+	typeStr := strings.ReplaceAll(self.Type.String(), "\n", "\n        ")
+	return fmt.Sprintf(
+		"%s%v%s(as_type=%s%s%s; perform_cast=%s%t%s)",
+		opcodeColor,
+		self.Opcode(),
+		colorReset,
+		argumentColor,
+		typeStr,
+		colorReset,
+		argumentColor,
+		self.AllowCast,
+		colorReset,
+	)
 }
 
 func newCastInstruction(type_ ast.Type, allowCast bool) CastInstruction {
@@ -368,6 +492,24 @@ func (self ValueInstruction) String() string {
 
 	str = strings.ReplaceAll(strings.ReplaceAll(str, "\n    ", ""), "\n", "")
 	return fmt.Sprintf("%v(%s)", self.Opcode(), str)
+}
+
+func (self ValueInstruction) Display(color bool) string {
+	if !color {
+		return self.String()
+	}
+
+	str, i := self.Value.Display()
+	if i != nil {
+		panic(*i)
+	}
+
+	if self.Value.Kind() == value.StringValueKind {
+		str = "\"" + str + "\""
+	}
+
+	str = strings.ReplaceAll(strings.ReplaceAll(str, "\n    ", ""), "\n", "")
+	return fmt.Sprintf("%s%v%s(%s%s%s)", opcodeColor, self.Opcode(), colorReset, argumentColor, str, colorReset)
 }
 
 func newValueInstruction(opCode Opcode, value value.Value) ValueInstruction {

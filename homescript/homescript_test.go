@@ -377,7 +377,7 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 
 	// TODO: how to handle the debugger at this point?
 
-	vm.SpawnAsync(runtime.MainFn(), nil)
+	vm.SpawnAsync(runtime.MainFn(), nil, nil, nil)
 
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i

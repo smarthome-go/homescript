@@ -85,7 +85,10 @@ func TestingRunVm(compiled compiler.CompileOutput, printToStdout bool, readFile 
 						Params:     []runtime.FunctionInvocationSignatureParam{},
 						ReturnType: ast.NewListType(ast.NewAnyType(errors.Span{}), errors.Span{}),
 					},
-				}, nil)
+				},
+					nil,
+					nil,
+				)
 
 				if result.Exception != nil {
 					panic("Annotation returned non <nil> exception")
@@ -102,13 +105,34 @@ func TestingRunVm(compiled compiler.CompileOutput, printToStdout bool, readFile 
 	}
 
 	debuggerOut := make(chan runtime.DebugOutput)
-	coreMain := vm.SpawnAsync(runtime.FunctionInvocation{
-		Function:          compiler.MainFunctionIdent,
-		LiteralName:       false,
-		Args:              make([]vmValue.Value, 0),
-		FunctionSignature: runtime.FunctionInvocationSignature{},
-	}, &debuggerOut)
-	go TestingDebugConsumer(&debuggerOut, coreMain)
+	debuggerResume := make(chan struct{})
+
+	coreMain := vm.SpawnAsync(
+		runtime.FunctionInvocation{
+			Function:          compiler.MainFunctionIdent,
+			LiteralName:       false,
+			Args:              make([]vmValue.Value, 0),
+			FunctionSignature: runtime.FunctionInvocationSignature{},
+		},
+		&debuggerOut,
+		&debuggerResume,
+		nil,
+	)
+
+	sourceCode, e := readFile(compiled.SourceMap[compiled.Mappings.Functions[compiler.MainFunctionIdent]][0].Filename)
+	if e != nil {
+		panic(e.Error())
+	}
+
+	d := NewDebugger(
+		&debuggerOut,
+		&debuggerResume,
+		coreMain,
+		sourceCode,
+		compiled,
+	)
+
+	go d.DebuggerMainloop()
 
 	if coreNum, i := vm.Wait(); i != nil {
 		i := *i
@@ -179,52 +203,4 @@ func TestingRunInterpreter(analyzed map[string]ast.AnalyzedProgram, filename str
 
 	<-blocking
 	cancel()
-}
-
-func TestingDebugConsumer(debuggerOutput *chan runtime.DebugOutput, core *runtime.Core) {
-	hits := make(map[uint]int)
-	colors := []int{0, 10, 2, 12, 4, 14, 3, 11, 1}
-
-	for {
-		select {
-		case msg, open := <-*debuggerOutput:
-			if !open {
-				return
-			}
-
-			// Read input file
-			program, err := os.ReadFile(msg.CurrentSpan.Filename)
-			if err != nil {
-				fmt.Printf("Debugger: cannot open input file `%s.hms`: %s\n", msg.CurrentSpan.Filename, err.Error())
-				return
-			}
-
-			programStr := string(program)
-			lines := strings.Split(programStr, "\n")
-
-			lineIdx := msg.CurrentSpan.Start.Line - 1
-			hits[lineIdx]++
-
-			// Highlight active line
-			for idx := range lines {
-				lineHit := hits[uint(idx)]
-				sumHits := 0
-				for _, lineHitsI := range hits {
-					sumHits += lineHitsI
-				}
-
-				cpuTimePercent := (float64(lineHit) / float64(sumHits))
-
-				color := colors[int(cpuTimePercent*float64(len(colors)-1))]
-
-				if idx == int(lineIdx) {
-					lines[idx] = fmt.Sprintf("\x1b[4m\x1b[1;3%dm%s\x1b[0m       (%s)", color, lines[lineIdx], msg.CurrentInstruction)
-				} else {
-					lines[idx] = fmt.Sprintf("\x1b[1;3%dm%s\x1b[1;0m", color, lines[idx])
-				}
-			}
-
-			fmt.Printf("\033[2J\033[H%s\n---------------------------\n%s\n", *(core.Executor).(homescript.TestingVmExecutor).PrintBuf, strings.Join(lines, "\n"))
-		}
-	}
 }

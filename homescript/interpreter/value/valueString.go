@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/agnivade/levenshtein"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 )
 
@@ -78,6 +79,10 @@ func (self ValueString) Fields() (map[string]*Value, *Interrupt) {
 				return nil, NewThrowInterrupt(span, err.Error())
 			}
 			return NewValueBool(res), nil
+		}),
+		"compare_lev": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *Interrupt) {
+			distance := levenshtein.ComputeDistance(self.Inner, args[0].(ValueString).Inner)
+			return NewValueInt(int64(distance)), nil
 		}),
 		"parse_json": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *Interrupt) {
 			var raw interface{}

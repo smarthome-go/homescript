@@ -27,8 +27,9 @@ const (
 
 const vmVerbose = VMNotVerbose
 
-const VM_DEBUGGER = false
-const VM_DEBUGGER_SLEEP = 10 * time.Millisecond
+const VM_DEBUGGER = true
+
+// const VM_DEBUGGER_SLEEP = 1000 * time.Millisecond
 
 type CallFrame struct {
 	Function           string
@@ -147,9 +148,10 @@ type DebugOutput struct {
 	CurrentCallFrame   CallFrame
 }
 
-func (self *Core) Run(function string, debuggerOut *chan DebugOutput) {
+func (self *Core) Run(function string, debuggerOut *chan DebugOutput, debuggerResume *chan struct{}) {
 	if debuggerOut != nil {
 		defer close(*debuggerOut)
+		defer close(*debuggerResume)
 	}
 
 	catchPanic := func() {
@@ -286,15 +288,15 @@ outer:
 
 			if VM_DEBUGGER {
 				// If there is a debugger attached, send it information
-				if debuggerOut != nil {
+				if debuggerOut != nil && debuggerResume != nil {
 					*debuggerOut <- DebugOutput{
 						CurrentInstruction: i,
 						CurrentSpan:        self.parent.SourceMap(*self.callFrame()),
 						CurrentCallFrame:   *self.callFrame(),
 					}
-				}
 
-				time.Sleep(VM_DEBUGGER_SLEEP)
+					<-*debuggerResume
+				}
 			}
 
 			if i := self.runInstruction(i); i != nil {
