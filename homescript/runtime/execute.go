@@ -42,6 +42,10 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 				self.parent.SourceMap(*self.callFrame()),
 			)
 		}
+	case compiler.Opcode_Clone:
+		v := self.pop()
+		cloned := (*v).Clone()
+		self.push(cloned)
 	case compiler.Opcode_Copy_Push:
 		i := instruction.(compiler.ValueInstruction)
 		v := i.Value

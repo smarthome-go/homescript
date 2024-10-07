@@ -7,14 +7,14 @@ type ValueIterator struct {
 func (_ ValueIterator) Kind() ValueKind { return IteratorValueKind }
 
 func (self ValueIterator) Display() (string, *VmInterrupt) {
-	return "<iterator>", nil // use float fallback
+	return "<iterator>", nil
 }
 
 func (self ValueIterator) IsEqual(other Value) (bool, *VmInterrupt) {
 	if other.Kind() != self.Kind() {
 		return false, nil
 	}
-	return false, nil
+	return true, nil
 }
 
 func (self ValueIterator) Fields() (map[string]*Value, *VmInterrupt) {

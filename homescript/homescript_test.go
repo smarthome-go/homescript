@@ -183,6 +183,18 @@ func TestScripts(t *testing.T) {
 			UseOverrideTimeout: false,
 		},
 		{
+			Name:               "iterators_regression",
+			Path:               "../tests/regression_iterators.hms",
+			IsGlob:             false,
+			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "OUTER\nA\nB\nOUTER\nA\n[]\n",
+			ValidateOutput:     OUTPUT_VALIDATION_RAW,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
+		},
+		{
 			Name:               "Linear Gradient",
 			Path:               "../tests/linear_gradient_fuzz/*.hms",
 			IsGlob:             true,

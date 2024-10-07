@@ -135,6 +135,7 @@ func (self *Compiler) compileStmt(node ast.AnalyzedStatement) {
 		self.compileExpr(node.IterExpression)
 
 		// Convert into iterator
+		self.insert(newPrimitiveInstruction(Opcode_Clone), node.Range) // NOTE: this call to clone fixes everything
 		self.insert(newPrimitiveInstruction(Opcode_IntoIter), node.Range)
 		iterName := self.mangleVar(fmt.Sprintf("$iter_%s", node.Identifier.Ident()))
 		self.insert(newOneStringInstruction(Opcode_SetVarImm, iterName), node.Range)

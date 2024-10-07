@@ -1,0 +1,27 @@
+fn main() {
+    let res = ['B', 'A'];
+    let existing_food = ["A", "B", "C", "D"];
+
+    let final: [str] = [];
+
+    for meal in res {
+        let exists = false;
+
+        println("OUTER");
+        for existing in existing_food {
+            println(existing);
+            if existing == meal {
+                exists = true;
+                break;
+            }
+        }
+
+        if exists {
+            continue;
+        }
+
+        final.push(meal)
+    }
+
+    println(final)
+}

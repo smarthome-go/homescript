@@ -103,6 +103,7 @@ type Opcode uint8
 const (
 	Opcode_Nop Opcode = iota
 	Opcode_Copy_Push
+	Opcode_Clone
 	Opcode_Cloning_Push
 	Opcode_Drop
 	Opcode_Spawn
@@ -159,6 +160,8 @@ func (self Opcode) String() string {
 	switch self {
 	case Opcode_Nop:
 		return "Nop"
+	case Opcode_Clone:
+		return "Clone"
 	case Opcode_Copy_Push:
 		return "CopyPush"
 	case Opcode_Cloning_Push:

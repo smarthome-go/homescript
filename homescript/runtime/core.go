@@ -27,7 +27,7 @@ const (
 
 const vmVerbose = VMNotVerbose
 
-const VM_DEBUGGER = true
+const VM_DEBUGGER = false
 
 // const VM_DEBUGGER_SLEEP = 1000 * time.Millisecond
 
