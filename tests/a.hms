@@ -1,9 +1,13 @@
 let FOO = 42;
 
 pub fn a_print() {
-    println(FOO);
+    //println(FOO);
+}
+
+pub fn with_param(a: int) -> bool {
+    let b = a;
+    true
 }
 
 fn main() {
-    a_print();
 }

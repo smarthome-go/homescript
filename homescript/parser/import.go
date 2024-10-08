@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"strings"
+
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	"github.com/smarthome-go/homescript/v3/homescript/lexer"
 	"github.com/smarthome-go/homescript/v3/homescript/parser/ast"
@@ -9,6 +11,44 @@ import (
 //
 // Import item
 //
+
+func (self *Parser) importIdent() (ast.SpannedIdent, *errors.Error) {
+	startLoc := self.CurrentToken.Span.Start
+	segments := make([]string, 0)
+
+	if self.CurrentToken.Kind == lexer.AtSymbol {
+		segments = append(segments, lexer.AtSymbol.String())
+		self.next()
+	}
+
+	if self.CurrentToken.Kind != lexer.Identifier {
+		return ast.SpannedIdent{}, self.expectedOneOfErr([]lexer.TokenKind{lexer.AtSymbol, lexer.Identifier})
+	}
+
+	self.next()
+
+	segments = append(segments, self.PreviousToken.Value)
+
+loop:
+	for {
+		switch self.CurrentToken.Kind {
+		case lexer.Colon:
+			segments = append(segments, self.CurrentToken.Kind.String())
+			self.next()
+			fallthrough
+		case lexer.Identifier:
+			self.expect(lexer.Identifier)
+			segments = append(segments, self.PreviousToken.Value)
+		default:
+			break loop
+		}
+	}
+
+	return ast.NewSpannedIdent(
+		strings.Join(segments, ""),
+		startLoc.Until(self.PreviousToken.Span.End, self.Filename),
+	), nil
+}
 
 func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
@@ -160,10 +200,10 @@ func (self *Parser) importItem() (ast.ImportStatement, *errors.Error) {
 		return ast.ImportStatement{}, err
 	}
 
-	if err := self.expectMultiple(lexer.Identifier, lexer.Underscore); err != nil {
+	fromModule, err := self.importIdent()
+	if err != nil {
 		return ast.ImportStatement{}, err
 	}
-	fromModule := ast.NewSpannedIdent(self.PreviousToken.Value, self.PreviousToken.Span)
 
 	if err := self.expectRecoverable(lexer.Semicolon); err != nil {
 		return ast.ImportStatement{}, err

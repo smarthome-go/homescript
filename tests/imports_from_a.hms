@@ -1,0 +1,5 @@
+import with_param from a;
+
+fn main() {
+    with_param(42);
+}

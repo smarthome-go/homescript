@@ -109,6 +109,8 @@ func (self *Analyzer) ConvertType(oldType pAst.HmsType, createErrors bool) ast.T
 			return ast.NewBoolType(oldType.Span())
 		case "str":
 			return ast.NewStringType(oldType.Span())
+		case "any":
+			return ast.NewAnyType(oldType.Span())
 		default:
 			resolved, found := self.currentModule.getType(nameType.Ident.Ident())
 			if !found {
