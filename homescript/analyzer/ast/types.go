@@ -361,6 +361,12 @@ func (self StringType) Fields(fieldSpan errors.Span) map[string]Type {
 			NewIntType(fieldSpan),
 			fieldSpan,
 		),
+		"substring": NewFunctionType(
+			NewNormalFunctionTypeParamKind([]FunctionTypeParam{NewFunctionTypeParam(ast.NewSpannedIdent("upper", fieldSpan), NewIntType(fieldSpan), nil)}),
+			fieldSpan,
+			NewStringType(fieldSpan),
+			fieldSpan,
+		),
 		"parse_json": NewFunctionType(
 			NewNormalFunctionTypeParamKind(make([]FunctionTypeParam, 0)),
 			fieldSpan,

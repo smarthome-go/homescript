@@ -95,6 +95,16 @@ func (self ValueString) Fields() (map[string]*Value, *VmInterrupt) {
 			distance := levenshtein.ComputeDistance(self.Inner, args[0].(ValueString).Inner)
 			return NewValueInt(int64(distance)), nil
 		}),
+		"substring": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
+			upper := args[0].(ValueInt).Inner
+
+			if upper >= int64(len(self.Inner)) {
+				return nil, NewVMThrowInterrupt(span, "index out of range")
+			}
+
+			sub := self.Inner[0:upper]
+			return NewValueString(sub), nil
+		}),
 		"parse_json": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 			var raw interface{}
 			if err := json.Unmarshal([]byte(self.Inner), &raw); err != nil {
