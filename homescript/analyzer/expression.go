@@ -133,10 +133,18 @@ func (self *Analyzer) block(node pAst.Block, pushNewScope bool) ast.AnalyzedBloc
 
 	// analyze statements
 	statements := make([]ast.AnalyzedStatement, 0)
-	// warnedUnreachable := false
+
+	var neverTypeStatementSpan *errors.Span
 
 	for _, statement := range node.Statements {
-		statements = append(statements, self.statement(statement))
+		thisStatement := self.statement(statement)
+
+		if neverTypeStatementSpan == nil && thisStatement.Type().Kind() == ast.NeverTypeKind {
+			span := statement.Span()
+			neverTypeStatementSpan = &span
+		}
+
+		statements = append(statements, thisStatement)
 	}
 
 	// analyze optional trailing expression
@@ -150,6 +158,8 @@ func (self *Analyzer) block(node pAst.Block, pushNewScope bool) ast.AnalyzedBloc
 	// otherwise, use the type of the trailing expression
 	var resultType ast.Type
 	switch {
+	case neverTypeStatementSpan != nil:
+		resultType = ast.NewNeverType()
 	case trailingExpr != nil:
 		resultType = trailingExpr.Type()
 	default:
@@ -1396,7 +1406,7 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 	var defaultArmSpan *errors.Span
 
 	var defaultArm *ast.AnalyzedExpression
-	warnedUnreachable := false
+	warnUnreachable := false
 
 	for _, arm := range node.Arms {
 		spew.Dump(arm)
@@ -1423,7 +1433,7 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 			continue
 		}
 
-		if defaultArmSpan != nil && !warnedUnreachable {
+		if defaultArmSpan != nil && !warnUnreachable {
 			self.warn(
 				"This match-arm is unreachable",
 				nil,
@@ -1436,7 +1446,7 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 				*defaultArmSpan,
 			)
 
-			warnedUnreachable = true
+			warnUnreachable = true
 		}
 
 		condition := self.expression(arm.Literal.Literal)
