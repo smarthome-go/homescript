@@ -203,7 +203,7 @@ outer:
 
 			callFrame := self.callFrame()
 			fn, found := (*self.Program)[callFrame.Function]
-			if !found {
+			if !found || len(fn) == 0 {
 				panic(fmt.Sprintf("Cannot execute instructions of non-existent routine: %s", callFrame.Function))
 			}
 

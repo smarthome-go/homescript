@@ -1,13 +1,15 @@
 package value
 
+import "fmt"
+
 type ValueVMFunction struct {
 	Ident string
 }
 
 func (_ ValueVMFunction) Kind() ValueKind { return VmFunctionValueKind }
 
-func (_ ValueVMFunction) Display() (string, *VmInterrupt) {
-	return "<vm-runtime-function>", nil
+func (self ValueVMFunction) Display() (string, *VmInterrupt) {
+	return fmt.Sprintf("<vm-runtime-function (%s)>", self.Ident), nil
 }
 
 func (_ ValueVMFunction) IsEqual(other Value) (bool, *VmInterrupt) {

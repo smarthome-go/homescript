@@ -1,3 +1,5 @@
+import assert_eq from testing;
+
 // Function which takes a list and returns a new list with another (appended) item
 fn append(list: [int], item: int) -> [int] {
     list.push(item);
@@ -9,7 +11,7 @@ fn main() {
     list.push(5);
 
     // This should be true
-    assert(list == [1, 2, 3, 4, 5]);
+    assert_eq(list, [1, 2, 3, 4, 5]);
 
     // This results in a type error
     // list.push(false);
@@ -26,7 +28,7 @@ fn main() {
     // Pushing list elements
     let list_1: [int] = [];
     list_1.push(1);
-    assert(list_1.len() == 1);
+    assert_eq(list_1.len(), 1);
 
     // Popping list elements
     println("list.pop");
@@ -109,5 +111,5 @@ fn main() {
         output += element.to_string();
     }
 
-    assert(output == '0123456789');
+    assert_eq(output, '0123456789');
 }

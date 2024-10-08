@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"fmt"
+
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
@@ -287,13 +289,17 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 	case ast.FunctionLiteralExpressionKind:
 		node := node.(ast.AnalyzedFunctionLiteralExpression)
 
-		fnName := self.mangleFn("$lambda")
-		self.addFn(fnName, fnName)
+		sourceIdent := fmt.Sprintf("$lambda_%d", self.lambdaCount)
+		self.lambdaCount++
+
+		fnName := self.mangleFn(sourceIdent)
+		self.addFn(sourceIdent, fnName)
+
 		oldCurrFn := self.currFn
 
 		self.compileFn(
 			ast.AnalyzedFunctionDefinition{
-				Ident:      pAst.NewSpannedIdent(fnName, node.Range),
+				Ident:      pAst.NewSpannedIdent(sourceIdent, node.Range),
 				Parameters: ast.AnalyzedFunctionParams{List: node.Parameters, Span: node.ParamSpan},
 				ReturnType: node.ReturnType,
 				Body:       node.Body,

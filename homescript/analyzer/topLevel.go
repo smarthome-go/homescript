@@ -148,8 +148,6 @@ func (self *Analyzer) functionDefinition(node pAst.FunctionDefinition) ast.Analy
 	// analyze function body
 	analyzedBlock := self.block(node.Body, false)
 
-	fmt.Printf("function=%s | expected=%s | got=%s\n", node.Ident, fnReturnType, analyzedBlock.Type())
-
 	// analyze return type
 	if err := self.TypeCheck(analyzedBlock.Type(), fnReturnType, TypeCheckOptions{
 		AllowFunctionTypes:          true,

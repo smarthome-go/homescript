@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/smarthome-go/homescript/v3/homescript"
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
@@ -26,6 +27,7 @@ const (
 	infoDebuggerCommandKind
 	callStackDebuggerCommandKind
 	breakpointDebuggerCommandKind
+	speedDebuggerCommandKind
 	singleStepDebuggerCommandKind
 )
 
@@ -103,6 +105,16 @@ type breakpointDebuggerCommand struct {
 func (c breakpointDebuggerCommand) Kind() debuggerCommandKind { return breakpointDebuggerCommandKind }
 
 //
+// Speed Subcommand
+//
+
+type speedDebuggerCommand struct {
+	Millis uint
+}
+
+func (c speedDebuggerCommand) Kind() debuggerCommandKind { return speedDebuggerCommandKind }
+
+//
 // END REPL commands.
 //
 
@@ -126,6 +138,8 @@ func parseDebuggerInput(input string) (debuggerCommand, error) {
 	command := tokens[0]
 
 	switch command {
+	case "speed":
+		return parseExecutionSpeed(tokens[1:])
 	case "info", "i":
 		return parseInfoInput(tokens[1:])
 	case "run", "r":
@@ -182,6 +196,22 @@ func ensureEOF(tokens []string) error {
 	return nil
 }
 
+func parseExecutionSpeed(tokens []string) (speedDebuggerCommand, error) {
+	if len(tokens) != 1 {
+		return speedDebuggerCommand{}, fmt.Errorf("Expected exactly one argument: <speed>, got %d", len(tokens))
+	}
+
+	speedRaw := tokens[0]
+	speed, err := strconv.ParseUint(speedRaw, 10, 64)
+	if err != nil {
+		return speedDebuggerCommand{}, err
+	}
+
+	return speedDebuggerCommand{
+		Millis: uint(speed),
+	}, nil
+}
+
 func parseBreakpointInput(tokens []string) (breakpointDebuggerCommand, error) {
 	if len(tokens) != 3 {
 		return breakpointDebuggerCommand{}, fmt.Errorf("Expected exactly two arguments: <source> <filename/function> <line>, got %d", len(tokens))
@@ -218,6 +248,7 @@ type Breakpoint struct {
 }
 
 type Debugger struct {
+	speedWait      time.Duration
 	running        bool
 	singleStep     bool
 	breakpoints    map[Breakpoint]struct{}
@@ -256,8 +287,6 @@ func (d *Debugger) DebuggerMainloop() {
 			lineIdx := int(msg.CurrentCallFrame.InstructionPointer)
 			programStr := d.programOut.AsmStringHighlight(true, &msg.CurrentCallFrame.Function, &lineIdx)
 
-			// coreInfo := fmt.Sprintf("Corenum %d | I: %v | IP: %d | FP: %s MP=%d | CLSTCK: %v | STCKSS=%d | STCK: [%s] | MEM: [%s] | GLOB:  [%s]\n", core.Corenum, i, core.callFrame().InstructionPointer, self.callFrame().Function, self.MemoryPointer, self.CallStack, len(self.Stack), strings.Join(stack, ", "), strings.Join(mem, ", "), strings.Join(globals, ", ")),
-
 			stack := make([]string, 0)
 			for _, v := range d.core.Stack {
 				if v == nil || *v == nil {
@@ -272,7 +301,6 @@ func (d *Debugger) DebuggerMainloop() {
 
 				stack = append(stack, d)
 			}
-			coreInfo := fmt.Sprintf("[%s]", strings.Join(stack, ", "))
 
 			// If the current line is not a breakpoint, skip it.
 			_, isBreakPoint := d.breakpoints[Breakpoint{
@@ -285,8 +313,7 @@ func (d *Debugger) DebuggerMainloop() {
 			}
 
 			fmt.Printf(
-				"\033[2J\033[H%s\n---------------------------\n%s\n---------------------------\n%s\n",
-				coreInfo,
+				"\033[2J\033[H%s\n---------------------------\n%s\n",
 				programStr,
 				*(d.core.Executor).(homescript.TestingVmExecutor).PrintBuf,
 			)
@@ -322,6 +349,10 @@ func (d *Debugger) DebuggerMainloop() {
 				break
 			}
 
+			if !d.singleStep {
+				time.Sleep(d.speedWait)
+			}
+
 			*d.debuggerResume <- struct{}{}
 		}
 	}
@@ -329,6 +360,9 @@ func (d *Debugger) DebuggerMainloop() {
 
 func (d *Debugger) interpret(command debuggerCommand) (breakOut bool, err error) {
 	switch c := command.(type) {
+	case speedDebuggerCommand:
+		d.speedWait = time.Millisecond * time.Duration(c.Millis)
+		fmt.Printf("New speed %v\n", d.speedWait)
 	case nopDebuggerCommand:
 		return false, nil
 	case runDebuggerCommand:
@@ -405,7 +439,13 @@ func (d *Debugger) interpret(command debuggerCommand) (breakOut bool, err error)
 			fmt.Println(stackStr)
 		}
 	case callStackDebuggerCommand:
-		panic("TODO: unhandled command: not implemented")
+		callstack := d.core.CallStack
+
+		for idx, frame := range callstack {
+			source := d.programOut.SourceMap[frame.Function][frame.InstructionPointer]
+			fmt.Printf("%d | %s:%d (%s:%d:%d)\n", idx, frame.Function, frame.InstructionPointer, source.Filename, source.Start.Line, source.Start.Column)
+		}
+
 	case continueDebuggerCommand:
 		if !d.running {
 			return false, errors.New("Not running")

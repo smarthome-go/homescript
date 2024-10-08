@@ -41,6 +41,7 @@ type Compiler struct {
 	varScopes       []map[string]string
 	currScope       *map[string]string
 	currModule      string
+	lambdaCount     uint
 	// Program source: required for invocations of the evaluator.
 	analyzedSource   map[string]ast.AnalyzedProgram
 	entryPointModule string
