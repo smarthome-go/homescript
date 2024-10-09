@@ -13,7 +13,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
-const shouldCatchPanic = false
+const shouldCatchPanic = true
 const VMWaitIdleSleep = time.Millisecond * 5
 
 type Globals struct {
@@ -232,9 +232,50 @@ func (self *VM) SpawnAsync(
 	debuggerResume *chan struct{},
 	onFinish chan struct{},
 ) *Core {
+	// TODO: refactor this function with the one below!!
+	if invocation.FunctionSignature.ReturnType == nil {
+		panic("Invocation called without return type specified.")
+	}
+
+	// Validate that the provided arguments match the function's signature.
+	expectedParamLen := len(invocation.FunctionSignature.Params)
+	gotArgLen := len(invocation.Args)
+
+	if gotArgLen != expectedParamLen {
+		panic(fmt.Sprintf(
+			"Illegal call: expected %d arguments due to function signature, got %d",
+			expectedParamLen,
+			gotArgLen,
+		))
+	}
+
+	index := 0
+	for _, param := range invocation.FunctionSignature.Params {
+		arg := invocation.Args[index]
+		_, interrupt := value.DeepCast(arg, param.Type, errors.Span{}, false)
+		if interrupt != nil {
+			panic(fmt.Sprintf(
+				"ARGS=%s | Argument %d for param `%s` type mismatch: `%s`",
+				spew.Sdump(invocation.Args),
+				index,
+				param.Ident,
+				(*interrupt).Message(),
+			))
+		}
+
+		index++
+	}
+
+	// Invert arguments so that they match the order in which they would be pushed onto the stack.
+	argCIdx := len(invocation.Args) - 1
+	invertedArgs := make([]value.Value, argCIdx+1)
+	for idx := argCIdx; idx >= 0; idx-- {
+		invertedArgs[argCIdx-idx] = invocation.Args[idx]
+	}
+
 	return self.spawnCoreInternal(
 		invocation.Function,
-		invocation.Args,
+		invertedArgs,
 		debuggerOut,
 		debuggerResume,
 		invocation.LiteralName,
