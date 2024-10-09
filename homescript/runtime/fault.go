@@ -57,12 +57,10 @@ func (self Core) normalException(
 	message string,
 	span errors.Span,
 ) *value.VmInterrupt {
-	trace, lineLen := self.unwind()
-
 	// TODO: add stack unwinding to the runtime err itself
 	return value.NewVMThrowInterrupt(
 		span,
-		formatStackTrace(message, trace, lineLen),
+		message,
 	)
 }
 

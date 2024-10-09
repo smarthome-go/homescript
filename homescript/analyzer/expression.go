@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
@@ -1409,8 +1408,6 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 	warnUnreachable := false
 
 	for _, arm := range node.Arms {
-		spew.Dump(arm)
-
 		action := self.expression(arm.Action)
 
 		if !hadTypeErr && (resultType.Kind() == ast.UnknownTypeKind || resultType.Kind() == ast.NeverTypeKind) {
@@ -1426,10 +1423,25 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 			}
 		}
 
-		if !arm.Literal.IsLiteral() {
-			defaultArmSpan = &arm.Range
-			action := self.expression(arm.Action)
-			defaultArm = &action
+		containsDefault := false
+		for _, lit := range arm.Literals {
+			if !lit.IsLiteral() {
+				defaultArmSpan = &arm.Range
+				action := self.expression(arm.Action)
+				defaultArm = &action
+				containsDefault = true
+			}
+		}
+
+		if containsDefault {
+			if len(arm.Literals) > 1 {
+				self.error(
+					"Default case `_` used in the same arm as literal values",
+					[]string{"To declare a default arm, use the `_` as the only matching value"},
+					arm.Range,
+				)
+			}
+
 			continue
 		}
 
@@ -1449,21 +1461,26 @@ func (self *Analyzer) matchExpression(node pAst.MatchExpression) ast.AnalyzedMat
 			warnUnreachable = true
 		}
 
-		condition := self.expression(arm.Literal.Literal)
+		literalsAnalyzed := make([]ast.AnalyzedExpression, len(arm.Literals))
 
-		if err := self.TypeCheck(condition.Type(), controlExpr.Type(), TypeCheckOptions{
-			AllowFunctionTypes:          true,
-			IgnoreFnParamNameMismatches: false,
-		}); err != nil {
-			self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
-			if err.ExpectedDiagnostic != nil {
-				self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+		for idx, lit := range arm.Literals {
+			condition := self.expression(lit.Literal)
+			literalsAnalyzed[idx] = condition
+
+			if err := self.TypeCheck(condition.Type(), controlExpr.Type(), TypeCheckOptions{
+				AllowFunctionTypes:          true,
+				IgnoreFnParamNameMismatches: false,
+			}); err != nil {
+				self.diagnostics = append(self.diagnostics, err.GotDiagnostic)
+				if err.ExpectedDiagnostic != nil {
+					self.diagnostics = append(self.diagnostics, *err.ExpectedDiagnostic)
+				}
 			}
 		}
 
 		arms = append(arms, ast.AnalyzedMatchArm{
-			Literal: condition,
-			Action:  action,
+			Literals: literalsAnalyzed,
+			Action:   action,
 		})
 	}
 

@@ -479,13 +479,18 @@ func (self MatchExpression) String() string {
 }
 
 type MatchArm struct {
-	Literal DefaultOrLiteral
-	Action  Expression
-	Range   errors.Span
+	Literals []DefaultOrLiteral
+	Action   Expression
+	Range    errors.Span
 }
 
 func (self MatchArm) String() string {
-	return fmt.Sprintf("%s => %s", self.Literal, self.Action)
+	literalsStr := make([]string, 0)
+	for _, lit := range self.Literals {
+		literalsStr = append(literalsStr, lit.String())
+	}
+
+	return fmt.Sprintf("%s => %s", strings.Join(literalsStr, " | "), self.Action)
 }
 
 type DefaultOrLiteral struct {

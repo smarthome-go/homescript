@@ -414,16 +414,18 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 			name := self.mangleLabel("case")
 			branches[i] = name
 
-			// Insert value to compare with
-			self.compileExpr(option.Literal)
+			for _, lit := range option.Literals {
+				// Insert value to compare with
+				self.compileExpr(lit)
 
-			// Compare control and branch value
-			// TODO: could DUP also work?
-			self.insert(newPrimitiveInstruction(Opcode_Eq_PopOnce), node.Range)
+				// Compare control and branch value
+				// TODO: could DUP also work?
+				self.insert(newPrimitiveInstruction(Opcode_Eq_PopOnce), node.Range)
 
-			// if true, jump to the label of this branch
-			self.insert(newPrimitiveInstruction(Opcode_Not), node.Range)
-			self.insert(newOneStringInstruction(Opcode_JumpIfFalse, name), node.Range)
+				// if true, jump to the label of this branch
+				self.insert(newPrimitiveInstruction(Opcode_Not), node.Range)
+				self.insert(newOneStringInstruction(Opcode_JumpIfFalse, name), node.Range)
+			}
 		}
 
 		default_branch := self.mangleLabel("match_default")

@@ -886,11 +886,11 @@ func (self *Parser) matchExpression() (ast.MatchExpression, *errors.Error) {
 
 func (self *Parser) matchArm() (arm ast.MatchArm, withBlock bool, err *errors.Error) {
 	startLoc := self.CurrentToken.Span.Start
-	var literal ast.DefaultOrLiteral
+	literals := make([]ast.DefaultOrLiteral, 0)
 
 	switch self.CurrentToken.Kind {
 	case lexer.Underscore:
-		literal = ast.NewDefaultOrLiteralDefault()
+		literals = append(literals, ast.NewDefaultOrLiteralDefault())
 		if err := self.next(); err != nil {
 			return ast.MatchArm{}, false, err
 		}
@@ -899,13 +899,23 @@ func (self *Parser) matchArm() (arm ast.MatchArm, withBlock bool, err *errors.Er
 		if err != nil {
 			return ast.MatchArm{}, false, err
 		}
-		literal = ast.NewDefaultOrLiteralLiteral(expr)
+		literals = append(literals, ast.NewDefaultOrLiteralLiteral(expr))
 	default:
-		expr, err := self.literal(true)
-		if err != nil {
-			return ast.MatchArm{}, false, err
+		for {
+			expr, err := self.literal(true)
+			if err != nil {
+				return ast.MatchArm{}, false, err
+			}
+			literals = append(literals, ast.NewDefaultOrLiteralLiteral(expr))
+
+			if self.CurrentToken.Kind != lexer.BitOr {
+				break
+			}
+
+			if err := self.next(); err != nil {
+				return ast.MatchArm{}, false, err
+			}
 		}
-		literal = ast.NewDefaultOrLiteralLiteral(expr)
 	}
 
 	if err := self.expect(lexer.FatArrow); err != nil {
@@ -918,9 +928,9 @@ func (self *Parser) matchArm() (arm ast.MatchArm, withBlock bool, err *errors.Er
 	}
 
 	return ast.MatchArm{
-		Literal: literal,
-		Action:  action,
-		Range:   startLoc.Until(self.PreviousToken.Span.End, self.Filename),
+		Literals: literals,
+		Action:   action,
+		Range:    startLoc.Until(self.PreviousToken.Span.End, self.Filename),
 	}, withBlock, nil
 }
 

@@ -629,12 +629,17 @@ func (self AnalyzedMatchExpression) Type() Type     { return self.ResultType }
 func (self AnalyzedMatchExpression) Constant() bool { return false }
 
 type AnalyzedMatchArm struct {
-	Literal AnalyzedExpression
-	Action  AnalyzedExpression
+	Literals []AnalyzedExpression
+	Action   AnalyzedExpression
 }
 
 func (self AnalyzedMatchArm) String() string {
-	return fmt.Sprintf("%s => %s", self.Literal, self.Action)
+	literalsStr := make([]string, 0)
+	for _, lit := range self.Literals {
+		literalsStr = append(literalsStr, lit.String())
+	}
+
+	return fmt.Sprintf("%s => %s", strings.Join(literalsStr, " | "), self.Action)
 }
 
 //

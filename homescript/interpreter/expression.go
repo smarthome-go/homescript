@@ -572,19 +572,21 @@ func (self *Interpreter) matchExpression(node ast.AnalyzedMatchExpression) (*val
 	}
 
 	for _, arm := range node.Arms {
-		literal, i := self.expression(arm.Literal)
-		if i != nil {
-			return nil, i
-		}
+		for _, lit := range arm.Literals {
+			literal, i := self.expression(lit)
+			if i != nil {
+				return nil, i
+			}
 
-		// check if the literal is equal to the value of the control expr
-		isEqual, i := (*literal).IsEqual(*control)
-		if i != nil {
-			return nil, i
-		}
+			// check if the literal is equal to the value of the control expr
+			isEqual, i := (*literal).IsEqual(*control)
+			if i != nil {
+				return nil, i
+			}
 
-		if isEqual {
-			return self.expression(arm.Action)
+			if isEqual {
+				return self.expression(arm.Action)
+			}
 		}
 	}
 
