@@ -124,7 +124,7 @@ func TestingRunVm(compiled compiler.CompileOutput, printToStdout bool, readFile 
 		panic(e.Error())
 	}
 
-	d := NewDebugger(
+	d := homescript.NewDebugger(
 		&debuggerOut,
 		&debuggerResume,
 		coreMain,

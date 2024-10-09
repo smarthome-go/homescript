@@ -1,4 +1,4 @@
-package main
+package homescript
 
 import (
 	"bufio"
@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/smarthome-go/homescript/v3/homescript"
 	"github.com/smarthome-go/homescript/v3/homescript/compiler"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime"
 )
@@ -313,9 +312,8 @@ func (d *Debugger) DebuggerMainloop() {
 			}
 
 			fmt.Printf(
-				"\033[2J\033[H%s\n---------------------------\n%s\n",
+				"\033[2J\033[H%s\n---------------------------\n",
 				programStr,
-				*(d.core.Executor).(homescript.TestingVmExecutor).PrintBuf,
 			)
 
 			for {
@@ -423,7 +421,7 @@ func (d *Debugger) interpret(command debuggerCommand) (breakOut bool, err error)
 
 			fmt.Printf("MP at:      %03d\n", d.core.MemoryPointer)
 			fmt.Printf("MAX memory: %03d\n", d.core.Limits.MaxMemorySize)
-			fmt.Printf("Used	    %03d (%d%%)\n", used, int(float64(used)/float64(vmLimits.MaxMemorySize)*100))
+			fmt.Printf("Used	    %03d (%d%%)\n", used, int(float64(used)/float64(d.core.Limits.MaxMemorySize)*100))
 			fmt.Println(strings.Join(outp, "\n"))
 		case stackInfoSubcommand:
 			stack := make([]string, 0)
@@ -466,140 +464,3 @@ func (d *Debugger) interpret(command debuggerCommand) (breakOut bool, err error)
 
 	return false, nil
 }
-
-// func TestingDebugConsumerAsm(
-// 	debuggerOutput *chan runtime.DebugOutput,
-// 	debuggerResume *chan struct{},
-// 	core *runtime.Core,
-// 	program compiler.CompileOutput,
-// ) {
-// 	for {
-// 		select {
-// 		case msg, open := <-*debuggerOutput:
-// 			if !open {
-// 				return
-// 			}
-//
-// 			lineIdx := int(msg.CurrentCallFrame.InstructionPointer)
-// 			programStr := program.AsmStringHighlight(true, &msg.CurrentCallFrame.Function, &lineIdx)
-//
-// 			// coreInfo := fmt.Sprintf("Corenum %d | I: %v | IP: %d | FP: %s MP=%d | CLSTCK: %v | STCKSS=%d | STCK: [%s] | MEM: [%s] | GLOB:  [%s]\n", core.Corenum, i, core.callFrame().InstructionPointer, self.callFrame().Function, self.MemoryPointer, self.CallStack, len(self.Stack), strings.Join(stack, ", "), strings.Join(mem, ", "), strings.Join(globals, ", ")),
-//
-// 			stack := make([]string, 0)
-// 			for _, v := range core.Stack {
-// 				d, i := (*v).Display()
-// 				if i != nil {
-// 					panic(*i)
-// 				}
-//
-// 				stack = append(stack, d)
-// 			}
-// 			coreInfo := fmt.Sprintf("[%s]", strings.Join(stack, ", "))
-//
-// 			fmt.Printf(
-// 				"\033[2J\033[H%s\n---------------------------\n%s\n---------------------------\n%s\n",
-// 				coreInfo,
-// 				programStr,
-// 				*(core.Executor).(homescript.TestingVmExecutor).PrintBuf,
-// 			)
-//
-// 		start:
-// 			// Wait for keypress.
-// 			inputLn := make([]byte, 10)
-// 			fmt.Scanln(&inputLn)
-// 			inputStr := string(inputLn)
-//
-// 			tokens := strings.Split(inputStr, " ")
-//
-// 			switch len(tokens) {
-// 			case 0:
-// 				// Do nothing
-// 			default:
-// 				switch tokens[0] {
-// 				case "bt":
-// 				case "i":
-// 					if len(tokens) != 2 {
-// 						fmt.Printf
-// 					}
-//
-// 					switch to
-//
-// 					for idx, v := range core.Memory {
-// 						if v == nil {
-// 							continue
-// 						}
-//
-// 						v, i := (*v).Display()
-// 						if i != nil {
-// 							panic(i)
-// 						}
-//
-// 						fmt.Printf("%02d | %s\n", idx, v)
-// 					}
-//
-// 					goto start
-// 				}
-// 			}
-//
-// 			*debuggerResume <- struct{}{}
-// 		}
-// 	}
-// }
-//
-// func TestingDebugConsumerCode(
-// 	debuggerOutput *chan runtime.DebugOutput,
-// 	debuggerResume *chan struct{},
-// 	core *runtime.Core,
-// ) {
-// 	const sleepTime = 500 * time.Millisecond
-//
-// 	hits := make(map[uint]int)
-// 	colors := []int{0, 10, 2, 12, 4, 14, 3, 11, 1}
-//
-// 	for {
-// 		select {
-// 		case msg, open := <-*debuggerOutput:
-// 			if !open {
-// 				return
-// 			}
-//
-// 			// Read input file
-// 			program, err := os.ReadFile(msg.CurrentSpan.Filename)
-// 			if err != nil {
-// 				fmt.Printf("Debugger: cannot open input file `%s.hms`: %s\n", msg.CurrentSpan.Filename, err.Error())
-// 				return
-// 			}
-//
-// 			programStr := string(program)
-// 			lines := strings.Split(programStr, "\n")
-//
-// 			lineIdx := msg.CurrentSpan.Start.Line - 1
-// 			hits[lineIdx]++
-//
-// 			// Highlight active line
-// 			for idx := range lines {
-// 				lineHit := hits[uint(idx)]
-// 				sumHits := 0
-// 				for _, lineHitsI := range hits {
-// 					sumHits += lineHitsI
-// 				}
-//
-// 				cpuTimePercent := (float64(lineHit) / float64(sumHits))
-//
-// 				color := colors[int(cpuTimePercent*float64(len(colors)-1))]
-//
-// 				if idx == int(lineIdx) {
-// 					lines[idx] = fmt.Sprintf("\x1b[4m\x1b[1;3%dm%s\x1b[0m       (%s)", color, lines[lineIdx], msg.CurrentInstruction)
-// 				} else {
-// 					lines[idx] = fmt.Sprintf("\x1b[1;3%dm%s\x1b[1;0m", color, lines[idx])
-// 				}
-// 			}
-//
-// 			fmt.Printf("\033[2J\033[H%s\n---------------------------\n%s\n", *(core.Executor).(homescript.TestingVmExecutor).PrintBuf, strings.Join(lines, "\n"))
-//
-// 			time.Sleep(sleepTime)
-//
-// 			*debuggerResume <- struct{}{}
-// 		}
-// 	}
-// }
