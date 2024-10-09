@@ -109,10 +109,13 @@ func TestingRunVm(compiled compiler.CompileOutput, printToStdout bool, readFile 
 
 	coreMain := vm.SpawnAsync(
 		runtime.FunctionInvocation{
-			Function:          compiler.MainFunctionIdent,
-			LiteralName:       false,
-			Args:              make([]vmValue.Value, 0),
-			FunctionSignature: runtime.FunctionInvocationSignature{},
+			Function:    compiler.MainFunctionIdent,
+			LiteralName: false,
+			Args:        make([]vmValue.Value, 0),
+			FunctionSignature: runtime.FunctionInvocationSignature{
+				Params:     []runtime.FunctionInvocationSignatureParam{},
+				ReturnType: ast.NewNullType(errors.Span{}),
+			},
 		},
 		&debuggerOut,
 		&debuggerResume,
