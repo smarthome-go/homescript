@@ -37,14 +37,20 @@ func analyzeFile(
 	program string,
 	pathS string,
 	printAnalyzed bool,
+	printDiagnostics bool,
 	fileReader func(path string) (string, error),
 ) (analyzed map[string]ast.AnalyzedProgram, entryModule string, err error) {
-	analyzed, diagnostics, syntaxErrors := homescript.Analyze(homescript.InputProgram{
-		ProgramText: program,
-		Filename:    pathS,
-	}, homescript.TestingAnalyzerScopeAdditions(), homescript.TestingAnalyzerHost{
-		IsInvokedInTests: false,
-	})
+	analyzed, diagnostics, syntaxErrors := homescript.Analyze(
+		homescript.InputProgram{
+			ProgramText: program,
+			Filename:    pathS,
+		},
+		homescript.TestingAnalyzerScopeAdditions(),
+		homescript.TestingAnalyzerHost{
+			IsInvokedInTests: false,
+		},
+		true,
+	)
 
 	if len(syntaxErrors) != 0 {
 		for _, syntaxErr := range syntaxErrors {
@@ -68,6 +74,10 @@ func analyzeFile(
 
 		if item.Span.Filename == "" {
 			panic(spew.Sdump(item))
+		}
+
+		if !printDiagnostics {
+			continue
 		}
 
 		file, err := fileReader(item.Span.Filename)
@@ -168,7 +178,7 @@ func main() {
 						return err
 					}
 
-					analyzed, entryModule, err := analyzeFile(string(file), filename, true, DefaultReadFileProvider)
+					analyzed, entryModule, err := analyzeFile(string(file), filename, true, true, DefaultReadFileProvider)
 					if err != nil {
 						return err
 					}
@@ -200,7 +210,7 @@ func main() {
 						return err
 					}
 
-					analyzedAndOpt, entryModule, err := analyzeFile(string(file), filename, true, DefaultReadFileProvider)
+					analyzedAndOpt, entryModule, err := analyzeFile(string(file), filename, true, true, DefaultReadFileProvider)
 					if err != nil {
 						return err
 					}
@@ -307,7 +317,7 @@ func main() {
 								return err
 							}
 
-							analyzed, entryModule, err := analyzeFile(string(file), filename, true, DefaultReadFileProvider)
+							analyzed, entryModule, err := analyzeFile(string(file), filename, true, true, DefaultReadFileProvider)
 							if err != nil {
 								return err
 							}

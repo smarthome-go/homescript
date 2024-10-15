@@ -147,7 +147,7 @@ func (self *Analyzer) dropScope(remove bool) {
 // Analyzer logic.
 //
 
-func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
+func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program, mainShallExist bool) {
 	currModulePrev := self.currentModule // Save previous module.
 	currModuleNamePrev := self.currentModuleName
 
@@ -251,13 +251,15 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 
 	// Check if the `main` function exists.
 	mainExists := false
+
 	for _, fn := range output.Functions {
 		if fn.Ident.Ident() == "main" {
 			mainExists = true
 			break
 		}
 	}
-	if !mainExists {
+
+	if !mainExists && mainShallExist {
 		self.error(
 			"Missing 'main' function",
 			[]string{"the 'main' function can be implemented like this: `fn main() { ... }`"},
@@ -313,12 +315,13 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program) {
 
 func (self *Analyzer) Analyze(
 	parsedEntryModule pAst.Program,
+	mainShallExist bool,
 ) (
 	modules map[string]ast.AnalyzedProgram,
 	diagnostics []diagnostic.Diagnostic,
 	syntaxErrors []errors.Error,
 ) {
-	self.analyzeModule(parsedEntryModule.Filename, parsedEntryModule)
+	self.analyzeModule(parsedEntryModule.Filename, parsedEntryModule, mainShallExist)
 
 	// If there are no serious errors found, call the post-validation hook.
 	containsErrs := false

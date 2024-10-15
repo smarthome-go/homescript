@@ -376,7 +376,7 @@ func worker(chunk []*zip.File, workerIndex int, expectedFileContents string, res
 		}
 
 		// TODO: also record these errors
-		analyzed, entryModule, err := analyzeFile(buf.String(), file.Name, false, zipFileReader)
+		analyzed, entryModule, err := analyzeFile(buf.String(), file.Name, false, false, zipFileReader)
 		if err != nil {
 			log.Panic(err.Error())
 		}

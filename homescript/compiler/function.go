@@ -54,7 +54,6 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) (annotation
 
 	// Compile annotations.
 	if node.Annotation != nil {
-		fmt.Println("ENTERING here")
 		compiledItems := make([]CompiledAnnotation, len(node.Annotation.Items))
 
 		for idx, annotation := range node.Annotation.Items {

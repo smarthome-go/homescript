@@ -387,7 +387,7 @@ func (self *Analyzer) importItem(node pAst.ImportStatement) ast.AnalyzedImport {
 		module, alreadyAnalyzed := self.modules[node.FromModule.Ident()]
 
 		if !alreadyAnalyzed {
-			self.analyzeModule(node.FromModule.Ident(), parsed)
+			self.analyzeModule(node.FromModule.Ident(), parsed, true)
 
 			// analyze if this import causes a cyclic dependency
 			if path, isCyclic := self.importGraphIsCyclic(self.currentModuleName); isCyclic {

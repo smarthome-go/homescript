@@ -306,7 +306,7 @@ func execTest(test Test, expectedOutputCache string, t *testing.T) {
 			ProgramText: string(code),
 		}, TestingAnalyzerScopeAdditions(), TestingAnalyzerHost{
 			IsInvokedInTests: true,
-		})
+		}, true)
 
 	hasErr := false
 	if len(syntax) > 0 {

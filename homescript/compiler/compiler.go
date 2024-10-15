@@ -1,8 +1,6 @@
 package compiler
 
 import (
-	"fmt"
-
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
@@ -157,7 +155,6 @@ func (self *Compiler) compileProgram(
 
 			for _, importItem := range item.ToImport {
 				if importItem.Kind != pAst.IMPORT_KIND_NORMAL {
-					fmt.Printf("Skipping non normal import: %s\n", importItem.String())
 					continue
 				}
 				self.insert(newTwoStringInstruction(Opcode_Import, item.FromModule.Ident(), importItem.Ident.Ident()), item.Range)

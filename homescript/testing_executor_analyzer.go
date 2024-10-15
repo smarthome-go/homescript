@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/diagnostic"
@@ -152,20 +151,6 @@ func (TestingAnalyzerHost) GetKnownObjectTypeFieldAnnotations() []string {
 }
 
 func (self TestingAnalyzerHost) PostValidationHook(analyzedModules map[string]ast.AnalyzedProgram, mainModule string, _ *analyzer.Analyzer, _ bool) []diagnostic.Diagnostic {
-	fmt.Println("=== Begin functions ===")
-
-	for _, fn := range analyzedModules[mainModule].Functions {
-		annotations := "NIL"
-
-		if fn.Annotation != nil {
-			annotations = spew.Sdump(*fn.Annotation)
-		}
-
-		fmt.Printf("function `%s` with annotations: %s\n", fn.Ident, annotations)
-	}
-
-	fmt.Println("=== END functions ===")
-
 	return nil
 }
 

@@ -30,6 +30,7 @@ func Analyze(
 	input InputProgram,
 	scopeAdditions map[string]analyzer.Variable,
 	host analyzer.HostProvider,
+	mainFunctionShallExist bool,
 ) (modules map[string]ast.AnalyzedProgram, diagnostics []diagnostic.Diagnostic, syntaxErrors []errors.Error) {
 	lex := lexer.NewLexer(input.ProgramText, input.Filename)
 	parser := parser.NewParser(lex, input.Filename)
@@ -42,7 +43,7 @@ func Analyze(
 	}
 
 	analyzer := analyzer.NewAnalyzer(host, scopeAdditions)
-	analyzedModules, diagnostics, analyzedSyntaxErrors := analyzer.Analyze(parsedTree)
+	analyzedModules, diagnostics, analyzedSyntaxErrors := analyzer.Analyze(parsedTree, mainFunctionShallExist)
 	syntaxErrors = append(syntaxErrors, analyzedSyntaxErrors...)
 	return analyzedModules, diagnostics, syntaxErrors
 }
