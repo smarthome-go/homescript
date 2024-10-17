@@ -48,7 +48,7 @@ func NewAnalyzer(host HostProvider, scopeAdditions map[string]Variable) Analyzer
 		currentModuleName:               "",
 		currentModule:                   nil,
 		host:                            host,
-		knownObjectTypeFieldAnnotations: []string{},
+		knownObjectTypeFieldAnnotations: make([]string, 0),
 	}
 
 	// Precompute this list as this could be expensive (depens on the host).

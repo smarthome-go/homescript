@@ -112,7 +112,7 @@ func (self *Compiler) compileFn(node ast.AnalyzedFunctionDefinition) (annotation
 					ArgumentFunctionIdent: annotationCallbackIdent,
 				}
 			case ast.AnalyzedAnnotationItem:
-				panic("TODO: this is not yet implemented")
+				fmt.Println("======= WARN: TODO: this is not yet implemented")
 			default:
 				panic("A new trigger kind was added without updating this code")
 			}

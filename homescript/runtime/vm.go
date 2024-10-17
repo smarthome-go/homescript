@@ -13,7 +13,7 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
-const shouldCatchPanic = true
+const shouldCatchPanic = false
 const VMWaitIdleSleep = time.Millisecond * 5
 
 type Globals struct {

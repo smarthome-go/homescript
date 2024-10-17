@@ -23,8 +23,27 @@ func (self *Analyzer) analyzeFnAnnotations(annotations pAst.FunctionAnnotationIn
 func (self *Analyzer) analyzeFnAnnotation(annotation pAst.AnnotationItem, fnIdent string) ast.AnalyzedAnnotationItem {
 	switch ann := annotation.(type) {
 	case pAst.AnnotationItemIdent:
-		panic("TODO: implement this kind of validation")
-		return ast.AnalyzedAnnotationItemIdent{}
+		const allowUnusedAnnotation = "allow_unused"
+
+		switch ann.Ident.Ident() {
+		case allowUnusedAnnotation:
+			fn, found := self.currentModule.getFunc(fnIdent)
+			if !found {
+				panic("impossible")
+			}
+
+			fn.Used = true
+		default:
+			self.error(
+				fmt.Sprintf("Illegal annotation: `%s`", ann.Ident),
+				[]string{},
+				ann.Span(),
+			)
+		}
+
+		return ast.AnalyzedAnnotationItemIdent{
+			Ident: ann.Ident,
+		}
 	case pAst.AnnotationItemTrigger:
 		// Analyze event trigger
 		trigger, triggerFound := self.currentModule.getTrigger(ann.TriggerSource.Ident())
