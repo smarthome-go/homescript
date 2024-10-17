@@ -582,6 +582,14 @@ func (self AnyObjectType) Fields(span errors.Span) map[string]Type {
 			NewOptionType(NewAnyType(span), span),
 			span,
 		),
+		"get_type": NewFunctionType(NewNormalFunctionTypeParamKind(
+			[]FunctionTypeParam{
+				NewFunctionTypeParam(ast.NewSpannedIdent("key", span), NewStringType(span), nil),
+			}),
+			span,
+			NewStringType(span),
+			span,
+		),
 		"keys": NewFunctionType(
 			NewNormalFunctionTypeParamKind(
 				make([]FunctionTypeParam, 0),

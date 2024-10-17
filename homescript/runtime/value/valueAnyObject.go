@@ -58,6 +58,10 @@ func (self ValueAnyObject) Fields() (map[string]*Value, *VmInterrupt) {
 			value := self.FieldsInternal[args[0].(ValueString).Inner]
 			return NewValueOption(value), nil
 		}),
+		"get_type": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
+			value := self.FieldsInternal[args[0].(ValueString).Inner]
+			return NewValueString((*value).Kind().TypeKind().String()), nil
+		}),
 		"keys": NewValueBuiltinFunction(func(executor Executor, cancelCtx *context.Context, span errors.Span, args ...Value) (*Value, *VmInterrupt) {
 			rawKeys := make([]string, 0)
 			for key := range self.FieldsInternal {
