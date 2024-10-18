@@ -96,6 +96,17 @@ func MarshalValue(self Value, isInner bool) (out interface{}, skipNull bool) {
 }
 
 func TypeAwareUnmarshalValue(self interface{}, typ ast.Type) *Value {
+	if typ.Kind() == ast.OptionTypeKind {
+		opt := typ.(ast.OptionType)
+
+		switch self.(type) {
+		case nil:
+			return NewNoneOption()
+		default:
+			return NewValueOption(TypeAwareUnmarshalValue(self, opt.Inner))
+		}
+	}
+
 	switch self := self.(type) {
 	case string:
 		return NewValueString(self)
