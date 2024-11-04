@@ -12,6 +12,12 @@ import (
 // Program
 //
 
+const MainFunctionIdent = "main"
+
+const InitFunctionIdent = "@init"
+
+const RegisterTriggerHostFn = "@trigger"
+
 type AnalyzedProgram struct {
 	Imports    []AnalyzedImport
 	Types      []AnalyzedTypeDefinition

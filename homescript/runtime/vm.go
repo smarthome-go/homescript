@@ -54,7 +54,7 @@ type VM struct {
 
 func MainFn() FunctionInvocation {
 	functionInvocation := FunctionInvocation{
-		Function:    compiler.MainFunctionIdent,
+		Function:    ast.MainFunctionIdent,
 		LiteralName: false,
 		Args:        []value.Value{},
 		FunctionSignature: FunctionInvocationSignature{
@@ -89,7 +89,7 @@ func NewVM(
 	// nolint:contextcheck
 	res := vm.SpawnSync(
 		FunctionInvocation{
-			Function:    compiler.InitFunctionIdent,
+			Function:    ast.InitFunctionIdent,
 			LiteralName: false,
 			Args:        []value.Value{},
 			FunctionSignature: FunctionInvocationSignature{

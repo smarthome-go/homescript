@@ -291,7 +291,11 @@ func (self PrimitiveInstruction) Display(color bool) string {
 	if !color {
 		return self.opCode.String()
 	} else {
-		return fmt.Sprintf("%s%s%s", opcodeColor, self.opCode.String(), colorReset)
+		color := opcodeColor
+		if self.opCode == Opcode_Return {
+			color = "\x1b[1;32m"
+		}
+		return fmt.Sprintf("%s%s%s", color, self.opCode.String(), colorReset)
 	}
 }
 

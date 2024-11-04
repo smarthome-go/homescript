@@ -1,17 +1,12 @@
 package compiler
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"github.com/smarthome-go/homescript/v3/homescript/analyzer/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/errors"
 	pAst "github.com/smarthome-go/homescript/v3/homescript/parser/ast"
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
-
-const MainFunctionIdent = "main"
-
-const InitFunctionIdent = "@init"
-
-const RegisterTriggerHostFn = "@trigger"
 
 type Loop struct {
 	labelStart    string
@@ -125,10 +120,11 @@ func (self *Compiler) compileProgram(
 		self.currModule = moduleName
 		self.modules[self.currModule] = make(map[string]*Function)
 
-		initFn := self.mangleFn(InitFunctionIdent)
-		self.addFn(InitFunctionIdent, initFn)
+		initFn := self.mangleFn(ast.InitFunctionIdent)
+
+		self.addFn(ast.InitFunctionIdent, initFn)
 		initFns[moduleName] = initFn
-		self.currFn = InitFunctionIdent
+		self.currFn = ast.InitFunctionIdent
 
 		for _, singleton := range module.Singletons {
 			// Save mangled name for external mapping.
@@ -184,22 +180,6 @@ func (self *Compiler) compileProgram(
 		}
 	}
 
-	// self.currModule = entryPointModule
-	// entryPointFN := self.mangleFn(EntryPointFunctionIdent)
-	// self.addFn(EntryPointFunctionIdent, entryPointFN)
-
-	// for moduleName, _ := range program {
-	// 	self.currModule = moduleName
-	//
-	// 	// If the current module is the entry module,
-	// 	// add all mangled functions to the `mangledEntryFunctions` map.
-	// 	if moduleName == entryPointModule {
-	// 		for srcIdent, fn := range self.modules[self.currModule] {
-	// 			mappings.Functions[srcIdent] = fn.MangledName
-	// 		}
-	// 	}
-	// }
-
 	moduleAnnotations := make(ModuleAnnotations)
 
 	for moduleName, module := range program {
@@ -208,7 +188,7 @@ func (self *Compiler) compileProgram(
 		// Compile all functions
 		var mainFnSpan errors.Span
 		for _, fn := range module.Functions {
-			if fn.Ident.Ident() == MainFunctionIdent {
+			if fn.Ident.Ident() == ast.MainFunctionIdent {
 				mainFnSpan = fn.Range
 			}
 			fnAnnotations, _ := self.compileFn(fn)
@@ -224,30 +204,17 @@ func (self *Compiler) compileProgram(
 		// Compile all impl block methods.
 		for _, impl := range module.ImplBlocks {
 			for _, fn := range impl.Methods {
-				// TODO: annotations here
 				self.compileFn(fn)
 			}
 		}
 
-		// Compile all events.
-		// TODO: allow customizing this `@event` prefix
-		// for _, fn := range module.Events {
-		// 	oldIdent := fn.Ident.Ident()
-		//
-		// 	fn.Ident = pAst.NewSpannedIdent(fmt.Sprintf("@event_%s", fn.Ident.Ident()), fn.Ident.Span())
-		// 	mangled := self.mangleFn(fn.Ident.Ident())
-		// 	self.addFn(fn.Ident.Ident(), mangled)
-		// 	self.compileFn(fn)
-		//
-		// 	// Add event function to mappings.
-		// 	mappings.Functions[oldIdent] = mangled
-		// }
-
 		if moduleName == entryPointModule {
 			// If the current module is the entry module,
 			// Go back to the entrypoint function and insert the main function call.
-			self.currFn = InitFunctionIdent
+			self.currFn = ast.InitFunctionIdent
 			self.currModule = entryPointModule
+
+			spew.Dump(initFns)
 
 			for moduleName, otherInit := range initFns {
 				if moduleName == entryPointModule {
@@ -258,16 +225,15 @@ func (self *Compiler) compileProgram(
 			}
 
 			self.insert(newPrimitiveInstruction(Opcode_Return), mainFnSpan)
+		}
+	}
 
-			// mangledMain, found := self.getMangledFn(MainFunctionIdent)
-			// if !found {
-			// 	panic(fmt.Sprintf("`%s` function not found in current module", MainFunctionIdent))
-			// }
+	for module := range initFns {
+		self.currModule = module
+		self.currFn = ast.InitFunctionIdent
 
-			// // Also create the entrypoint function which performs calls the `main` function.
-			// self.currFn = EntryPointFunctionIdent
-			// self.insert(newOneStringInstruction(Opcode_Call_Imm, mangledMain), mainFnSpan)
-			// self.insert(newPrimitiveInstruction(Opcode_Return), mainFnSpan)
+		if len(self.CurrFn().Instructions) == 0 {
+			self.insert(newPrimitiveInstruction(Opcode_Return), errors.Span{})
 		}
 	}
 
