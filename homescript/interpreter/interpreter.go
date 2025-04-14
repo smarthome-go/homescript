@@ -62,7 +62,7 @@ func (self *Interpreter) Execute(entryModule string) *value.Interrupt {
 		return err
 	}
 
-	_, i := self.callFunc(errors.Span{}, *self.currentModule.scopes[0]["main"], make([]ast.AnalyzedCallArgument, 0))
+	_, i := self.callFunc(errors.Span{}, *self.currentModule.scopes[0][ast.MainFunctionIdent], make([]ast.AnalyzedCallArgument, 0))
 	if i != nil {
 		// Run `kill` event if it exists
 		if (*i).Kind() == value.TerminateInterruptKind {

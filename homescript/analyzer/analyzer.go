@@ -253,7 +253,7 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program, main
 	mainExists := false
 
 	for _, fn := range output.Functions {
-		if fn.Ident.Ident() == "main" {
+		if fn.Ident.Ident() == ast.MainFunctionIdent {
 			mainExists = true
 			break
 		}
@@ -274,7 +274,7 @@ func (self *Analyzer) analyzeModule(moduleName string, module pAst.Program, main
 			continue
 		}
 		fnType := fn.FnType.(normalFunction)
-		if fnType.Ident.Ident() == "main" || strings.HasPrefix(fnType.Ident.Ident(), "_") { // Ignore the `main` fn.
+		if fnType.Ident.Ident() == ast.MainFunctionIdent || strings.HasPrefix(fnType.Ident.Ident(), "_") { // Ignore the `main` fn.
 			continue
 		}
 		self.warn(
