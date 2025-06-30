@@ -150,9 +150,36 @@ func TypeAwareUnmarshalValue(self interface{}, typ ast.Type) *Value {
 		}
 		return NewValueList(values)
 	case nil:
-		return NewNoneOption()
+		// NEW: if we get a none value, we need to 'upcast' it into the expected type.
+		return newDefaultValue(typ)
+		// return NewNoneOption()
 	default:
 		panic(fmt.Sprintf("Cannot parse unknown JSON value: `%v` (%v) to HMS value", self, reflect.TypeOf(self)))
+	}
+}
+
+func newDefaultValue(typ ast.Type) *Value {
+	switch typ.Kind() {
+	case ast.IntTypeKind:
+		return NewValueInt(0)
+	case ast.FloatTypeKind:
+		return NewValueFloat(0.0)
+	case ast.StringTypeKind:
+		return NewValueString("")
+	case ast.BoolTypeKind:
+		return NewValueBool(false)
+	case ast.OptionTypeKind:
+		return NewNoneOption()
+	case ast.ListTypeKind:
+		return NewValueList(make([]*Value, 0))
+	case ast.ObjectTypeKind:
+		fields := make(map[string]*Value)
+		for _, field := range typ.(ast.ObjectType).ObjFields {
+			fields[field.FieldName.Ident()] = newDefaultValue(field.Type)
+		}
+		return NewValueObject(fields)
+	default:
+		panic(fmt.Sprintf("Cannot parse unknown JSON value: `%v` (%v) to HMS value", typ, reflect.TypeOf(typ)))
 	}
 }
 

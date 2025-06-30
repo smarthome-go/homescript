@@ -381,7 +381,7 @@ func (self *VM) HandleTermination(
 			false,
 		)
 		if interrupt != nil {
-			panic(fmt.Sprintf("Foreign function invocation: return type assertion failed: %s", (*interrupt).Message()))
+			panic(fmt.Sprintf("Foreign function (%s) invocation: return type assertion failed: %s", invocation.Function, (*interrupt).Message()))
 		}
 
 		returnValue = *castValue
