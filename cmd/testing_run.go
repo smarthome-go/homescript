@@ -109,7 +109,7 @@ func TestingRunVm(compiled compiler.CompileOutput, printToStdout bool, readFile 
 
 	coreMain := vm.SpawnAsync(
 		runtime.FunctionInvocation{
-			Function:    compiler.MainFunctionIdent,
+			Function:    ast.MainFunctionIdent,
 			LiteralName: false,
 			Args:        make([]vmValue.Value, 0),
 			FunctionSignature: runtime.FunctionInvocationSignature{
@@ -122,7 +122,7 @@ func TestingRunVm(compiled compiler.CompileOutput, printToStdout bool, readFile 
 		nil,
 	)
 
-	sourceCode, e := readFile(compiled.SourceMap[compiled.Mappings.Functions[compiler.MainFunctionIdent]][0].Filename)
+	sourceCode, e := readFile(compiled.SourceMap[compiled.Mappings.Functions[ast.MainFunctionIdent]][0].Filename)
 	if e != nil {
 		panic(e.Error())
 	}
