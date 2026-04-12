@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -148,21 +149,26 @@ type DebugOutput struct {
 	CurrentCallFrame   CallFrame
 }
 
-func (self *Core) Run(function string, debuggerOut *chan DebugOutput, debuggerResume *chan struct{}) {
-	if debuggerOut != nil {
-		defer close(*debuggerOut)
-		defer close(*debuggerResume)
-	}
+// func (self *Core) Run(function string, debuggerOut *chan DebugOutput, debuggerResume *chan struct{}) {
+// }
 
+func (self *Core) Run(function string, debuggerOut *chan DebugOutput, debuggerResume *chan struct{}) {
 	catchPanic := func() {
 		if err := recover(); err != nil {
 			span := self.parent.SourceMap(*self.callFrame())
-			fmt.Printf("Panic occurred in core %d at (%s:%d => l.%d): `%s`\n", self.Corenum, self.callFrame().Function, self.callFrame().InstructionPointer, span.Start.Line, err)
+			fmt.Printf("Panic occurred in core %d at (%s:%d => l.%d):\n======== In-HMS Stacktrace ========: %s\n", self.Corenum, self.callFrame().Function, self.callFrame().InstructionPointer, span.Start.Line, err)
+			debug.PrintStack()
+			fmt.Printf("======== Host Stacktrace ========: %s\n", self.parent.hostCallStack)
 		}
 	}
 
 	if shouldCatchPanic {
-		defer catchPanic()
+		catchPanic()
+	}
+
+	if debuggerOut != nil {
+		defer close(*debuggerOut)
+		defer close(*debuggerResume)
 	}
 
 	self.pushCallStack(function)

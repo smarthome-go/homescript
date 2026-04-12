@@ -591,14 +591,16 @@ func (self *Core) runInstruction(instruction compiler.Instruction) *value.VmInte
 			return interrupt
 		}
 
-		field, found := fields[i.Value]
+		fieldKey := i.Value
+
+		field, found := fields[fieldKey]
 		if !found {
 			span := self.parent.SourceMap(*self.callFrame())
 			disp, interrupt := v.Display()
 			if interrupt != nil {
 				panic(interrupt)
 			}
-			panic(fmt.Sprintf("Field `%s` not found on `%s`: %s:%d:%d", i.Value, disp, span.Filename, span.Start.Index, span.Start.Column))
+			panic(fmt.Sprintf("Field `%s` not found on value `%s` (of type %s): %s:%d:%d", i.Value, disp, v.Kind().TypeKind(), span.Filename, span.Start.Index, span.Start.Column))
 		}
 		self.push(field)
 	case compiler.Opcode_Member_Anyobj:

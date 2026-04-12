@@ -1,0 +1,21 @@
+fn main() {
+    let json = '{ "a": -61 }';
+    println(json);
+
+    let error = true;
+
+    try {
+        let foo = (json.parse_json() as { ? })~>a as ?str;
+        println(foo);
+        println(foo.unwrap().parse_int());
+        error = false;
+    } catch e {
+        println(e);
+    }
+
+    if !error {
+        throw("Casts are broken")
+    }
+
+    println((1 as any as ?int).unwrap());
+}

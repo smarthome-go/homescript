@@ -101,26 +101,34 @@ func deepCastRecursive(val Value, typ ast.Type, span errors.Span, allowCasts boo
 	}
 
 	// TODO: is this OK?
+	// NOTE: 2 years later - this was not okay.
 	if typ.Kind() == ast.OptionTypeKind {
-		if val.Kind() == OptionValueKind {
+		typOption := typ.(ast.OptionType)
+		typInner := typOption.Inner
+
+		newUri := fieldURI.clone()
+		newUri.push(componentKindOptionInner, "", 0)
+
+		if val.Kind() != OptionValueKind {
+			innerCast, i := deepCastRecursive(val, typInner, span, allowCasts, fieldURI)
+			if i != nil {
+				return nil, i
+			}
+			return NewValueOption(innerCast), nil
+		} else {
 			valOption := val.(ValueOption)
-			typOption := typ.(ast.OptionType)
-			if !valOption.IsSome() {
+			if valOption.IsNone() {
 				return NewNoneOption(), nil
 			}
 
 			valInner := *valOption.Inner
-			typInner := typOption.Inner
 
-			newUri := fieldURI.clone()
-			newUri.push(componentKindOptionInner, "", 0)
 			innerCast, i := deepCastRecursive(valInner, typInner, span, allowCasts, fieldURI)
 			if i != nil {
 				return nil, i
 			}
 			return NewValueOption(innerCast), nil
 		}
-		return NewValueOption(&val), nil
 	}
 
 	switch val.Kind() {

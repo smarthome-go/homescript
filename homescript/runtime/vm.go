@@ -3,6 +3,8 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,8 +15,8 @@ import (
 	"github.com/smarthome-go/homescript/v3/homescript/runtime/value"
 )
 
-const shouldCatchPanic = false
-const VMWaitIdleSleep = time.Millisecond * 5
+const shouldCatchPanic = true
+const VMWaitIdleSleep = time.Millisecond * 1
 
 type Globals struct {
 	Data  map[string]value.Value
@@ -50,6 +52,7 @@ type VM struct {
 	CancelFunc    *context.CancelFunc
 	Interrupts    map[uint]value.VmInterrupt
 	LimitsPerCore CoreLimits
+	hostCallStack string
 }
 
 func MainFn() FunctionInvocation {
@@ -225,6 +228,21 @@ type VMException struct {
 	Interrupt value.VmInterrupt
 }
 
+func (self *VM) recordHostCaller() {
+	if !shouldCatchPanic {
+		self.hostCallStack = "not catching panics"
+		return
+	}
+
+	stackRaw := debug.Stack()
+	stackList := make([]string, len(stackRaw))
+	for i, l := range stackRaw {
+		stackList[i] = string(l)
+	}
+
+	self.hostCallStack = strings.Join(stackList, "")
+}
+
 // Returns the core of the newly spawned process.
 func (self *VM) SpawnAsync(
 	invocation FunctionInvocation,
@@ -232,6 +250,8 @@ func (self *VM) SpawnAsync(
 	debuggerResume *chan struct{},
 	onFinish chan struct{},
 ) *Core {
+	self.recordHostCaller()
+
 	// TODO: refactor this function with the one below!!
 	if invocation.FunctionSignature.ReturnType == nil {
 		panic("Invocation called without return type specified.")
@@ -289,6 +309,8 @@ func (self *VM) SpawnSync(
 	debuggerOut *chan DebugOutput,
 	debuggerResume *chan struct{},
 ) FunctionInvocationResult {
+	self.recordHostCaller()
+
 	if invocation.FunctionSignature.ReturnType == nil {
 		panic("Invocation called without return type specified.")
 	}
@@ -423,7 +445,9 @@ func (self *VM) spawnCoreInternal(
 	}
 
 	go func() {
+		fmt.Println("before run")
 		(*core).Run(toBeInvoked, debuggerOutput, debuggerResume)
+		fmt.Println("after run")
 
 		if onFinish != nil {
 			onFinish <- struct{}{}

@@ -15,6 +15,10 @@ func (self ValueOption) IsSome() bool {
 	return self.Inner != nil
 }
 
+func (self ValueOption) IsNone() bool {
+	return !self.IsSome()
+}
+
 func (_ ValueOption) Kind() ValueKind { return OptionValueKind }
 
 func (self ValueOption) Display() (string, *VmInterrupt) {
