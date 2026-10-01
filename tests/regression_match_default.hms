@@ -1,0 +1,44 @@
+// A `match` falling through to the `_` default arm left its control value on the stack.
+// When the result of such a function call was passed inline as an argument,
+// the leaked value clobbered the next argument of the outer call.
+
+fn m(b: bool) -> int {
+    match b {
+        true => { 1 }
+        _ => { 0 }
+    }
+}
+
+fn acquired(opt: ?int) -> int {
+    let acquired_at = match opt.is_some() {
+        true => opt.unwrap(),
+        _ => 0,
+    };
+    acquired_at
+}
+
+fn no_default(n: int) -> int {
+    match n {
+        1 => println("one"),
+        2 => println("two"),
+    }
+    n
+}
+
+fn show(a: str, x: int, y: bool) {
+    println(fmt("%s x=%d y=%v", a, x, y));
+}
+
+fn main() {
+    show("A", m(true), true);
+    show("B", m(false), true);
+    let v = m(false);
+    show("C", v, true);
+
+    let empty: ?int = none;
+    show("D", acquired(?42), true);
+    show("E", acquired(empty), true);
+
+    show("F", no_default(1), true);
+    show("G", no_default(3), true);
+}

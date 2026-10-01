@@ -195,6 +195,18 @@ func TestScripts(t *testing.T) {
 			UseOverrideTimeout: false,
 		},
 		{
+			Name:               "match_default_regression",
+			Path:               "../tests/regression_match_default.hms",
+			IsGlob:             false,
+			Debug:              false,
+			ExpectedOutputFile: "",
+			ExpectedOutputRaw:  "A x=1 y=true\nB x=0 y=true\nC x=0 y=true\nD x=42 y=true\nE x=0 y=true\none\nF x=1 y=true\nG x=3 y=true\n",
+			ValidateOutput:     OUTPUT_VALIDATION_RAW,
+			Skip:               false,
+			OverrideTimeout:    0,
+			UseOverrideTimeout: false,
+		},
+		{
 			Name:               "Linear Gradient",
 			Path:               "../tests/linear_gradient_fuzz/*.hms",
 			IsGlob:             true,

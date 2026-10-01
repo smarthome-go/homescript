@@ -428,12 +428,13 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 			}
 		}
 
-		default_branch := self.mangleLabel("match_default")
+		// No arm matched: the control value is still on the stack and has to be dropped,
+		// just like in the regular branches. Otherwise, it leaks into the surrounding code.
+		self.insert(newPrimitiveInstruction(Opcode_Drop), node.Range)
 		if node.DefaultArmAction != nil {
-			self.insert(newOneStringInstruction(Opcode_Jump, default_branch), node.Range)
-		} else {
-			self.insert(newOneStringInstruction(Opcode_Jump, after_branch), node.Range)
+			self.compileExpr(*node.DefaultArmAction)
 		}
+		self.insert(newOneStringInstruction(Opcode_Jump, after_branch), node.Range)
 
 		// Each individual branch
 		for i, option := range node.Arms {
@@ -441,12 +442,6 @@ func (self *Compiler) compileExpr(node ast.AnalyzedExpression) {
 			// Insert a `drop` since a eq_poponce was used
 			self.insert(newPrimitiveInstruction(Opcode_Drop), node.Range)
 			self.compileExpr(option.Action)
-			self.insert(newOneStringInstruction(Opcode_Jump, after_branch), node.Range)
-		}
-
-		if node.DefaultArmAction != nil {
-			self.insert(newOneStringInstruction(Opcode_Label, default_branch), node.Range)
-			self.compileExpr(*node.DefaultArmAction)
 			self.insert(newOneStringInstruction(Opcode_Jump, after_branch), node.Range)
 		}
 
